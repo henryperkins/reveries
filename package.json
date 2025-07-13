@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/genai": "1.4.0",
+    "@tailwindcss/vite": "^4.1.11",
     "node-fetch": "^3.3.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -21,10 +22,10 @@
     "@tailwindcss/postcss": "^4.1.11",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
+    "esbuild": "npm:esbuild-wasm@0.25.6",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.11",
     "typescript": "~5.7.2",
-    "vite": "^6.2.0",
-    "esbuild": "npm:esbuild-wasm@0.25.6"
+    "vite": "^6.2.0"
   }
 }
