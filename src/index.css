@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-westworld-cream: #f8f6f1;
+  --color-westworld-beige: #e8e0d5;
+  --color-westworld-tan: #c8b8a8;
+  --color-westworld-brown: #8b7355;
+  --color-westworld-darkbrown: #5a4a3a;
+  --color-westworld-black: #1a1a1a;
+  --color-westworld-gold: #d4a574;
+  --color-westworld-rust: #a0522d;
+}
+
+@layer base {
+  body {
+    @apply bg-westworld-cream text-westworld-darkbrown font-mono;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif text-westworld-black;
+  }
+
+  pre {
+    @apply bg-westworld-black text-westworld-cream p-4 rounded-lg overflow-x-auto;
+  }
+
+  code {
+    @apply bg-westworld-beige text-westworld-darkbrown px-1 py-0.5 rounded text-sm;
+  }
+
+  pre code {
+    @apply bg-transparent p-0 text-westworld-cream;
+  }
+
+  .prose h1 {
+    @apply text-3xl font-bold mb-4 text-westworld-black;
+  }
+
+  .prose h2 {
+    @apply text-2xl font-bold mb-3 text-westworld-black;
+  }
+
+  .prose h3 {
+    @apply text-xl font-semibold mb-2 text-westworld-black;
+  }
+
+  .prose p {
+    @apply mb-4 leading-relaxed;
+  }
+
+  .prose ul {
+    @apply list-disc list-inside mb-4 space-y-2;
+  }
+
+  .prose ol {
+    @apply list-decimal list-inside mb-4 space-y-2;
+  }
+
+  .prose blockquote {
+    @apply border-l-4 border-westworld-gold pl-4 py-2 mb-4 italic text-westworld-brown;
+  }
+
+  .prose a {
+    @apply text-westworld-rust underline hover:text-westworld-darkbrown transition-colors;
+  }
+
+  .reverie-tag {
+    @apply inline-block bg-westworld-tan text-westworld-black px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .reverie-input {
+    @apply w-full bg-westworld-beige border-2 border-westworld-tan rounded-lg px-4 py-2 
+           text-westworld-darkbrown placeholder-westworld-brown focus:outline-none 
+           focus:border-westworld-brown focus:ring-2 focus:ring-westworld-gold/20;
+  }
+
+  .reverie-button {
+    @apply bg-westworld-brown text-westworld-cream px-6 py-2 rounded-lg font-medium 
+           hover:bg-westworld-darkbrown transition-colors duration-200;
+  }
+
+  .reverie-card {
+    @apply bg-westworld-beige rounded-lg p-6 shadow-lg;
+  }
+}

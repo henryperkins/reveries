@@ -1,0 +1,6 @@
+{
+  "name": "Gemini Westworld Reverie Agent",
+  "description": "An agentic research host inspired by Westworld's concepts of scripts, subroutines, and reveries to answer user queries using the Gemini API.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
