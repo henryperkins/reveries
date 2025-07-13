@@ -20,7 +20,7 @@ export const InputBar: React.FC<InputBarProps> = ({ onQuerySubmit, isLoading, in
     if (inputValue.trim() && !isLoading) {
       onQuerySubmit(inputValue);
       // Do not clear input after submission, let App control query state
-      // setInputValue(''); 
+      // setInputValue('');
     }
   };
 
@@ -37,15 +37,14 @@ export const InputBar: React.FC<InputBarProps> = ({ onQuerySubmit, isLoading, in
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         placeholder="Initiate new narrative loop..."
-        className="flex-grow p-3 westworld-input rounded-lg placeholder-opacity-70 outline-none transition-all duration-300"
+        className="grow p-3 westworld-input rounded-lg placeholder-opacity-70 outline-hidden transition-all duration-300"
         disabled={isLoading}
         onKeyDown={handleKeyDown}
       />
       <button
         type="submit"
-        className={`p-3 rounded-full westworld-button text-white transform active:scale-95 ${
-          isLoading ? 'opacity-50 cursor-not-allowed' : ''
-        }`}
+        className={`p-3 rounded-full westworld-button text-white transform active:scale-95 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
         disabled={isLoading}
         aria-label="Submit query"
       >

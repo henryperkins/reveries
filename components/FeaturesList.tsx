@@ -9,7 +9,7 @@ interface FeatureItemProps {
 
 const FeatureItem: React.FC<FeatureItemProps> = ({ icon: Icon, text }) => (
   <li className="flex items-start space-x-3">
-    <div className="flex-shrink-0 w-6 h-6 westworld-text-gold mt-1">
+    <div className="shrink-0 w-6 h-6 westworld-text-gold mt-1">
       <Icon />
     </div>
     <span style={{color: 'var(--westworld-cream)'}}>{text}</span>

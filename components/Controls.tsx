@@ -31,8 +31,8 @@ const SelectDropdown: React.FC<{
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      className="w-full pl-10 pr-8 py-2.5 westworld-input rounded-lg appearance-none outline-none transition-all duration-300 disabled:opacity-50"
-      // Was: bg-brand-slate border-brand-steel text-brand-silver
+      className="w-full pl-10 pr-8 py-2.5 westworld-input rounded-lg appearance-none outline-hidden transition-all duration-300 disabled:opacity-50"
+    // Was: bg-brand-slate border-brand-steel text-brand-silver
     >
       {options.map(option => (
         <option key={option.value} value={option.value}>{option.label}</option>
@@ -76,7 +76,7 @@ export const Controls: React.FC<ControlsProps> = ({
         onClick={onNewSearch}
         disabled={isLoading}
         className="flex items-center justify-center gap-2 px-4 py-2.5 westworld-button text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-        // Was: focus:ring-offset-brand-charcoal
+      // Was: focus:ring-offset-brand-charcoal
       >
         <PlusIcon className="w-5 h-5" />
         New Search

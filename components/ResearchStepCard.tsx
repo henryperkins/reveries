@@ -30,10 +30,10 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({ step }) => {
 
   return (
     <div className={`${baseCardClasses} ${typeSpecificClasses}`}>
-      <div className={`flex-shrink-0 w-6 h-6 ${iconColor} mt-1`}>
+      <div className={`shrink-0 w-6 h-6 ${iconColor} mt-1`}>
         <IconComponent className={step.isSpinning ? 'animate-spin-slow' : ''} />
       </div>
-      <div className="flex-grow min-w-0">
+      <div className="grow min-w-0">
         <h3 className="text-md font-semibold westworld-text-gold westworld-mono">{step.title}</h3>
         <div className="text-sm mt-1 break-words" style={{color: 'var(--westworld-cream)'}}>
           {typeof step.content === 'string' ? (

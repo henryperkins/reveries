@@ -9,11 +9,15 @@
   --color-westworld-black: #1a1a1a;
   --color-westworld-gold: #d4a574;
   --color-westworld-rust: #a0522d;
-  
+
   --font-family-serif: Georgia, serif;
   --font-family-sans: ui-sans-serif, system-ui, sans-serif;
   --font-family-mono: Courier, monospace;
-  
+
+  /* Enhanced text shadows for dramatic effect */
+  --text-shadow-westworld-glow: 0 0 10px rgba(212, 165, 116, 0.3);
+  --text-shadow-westworld-depth: 2px 2px 4px rgba(26, 26, 26, 0.4);
+
   --spacing-0: 0px;
   --spacing-1: 0.25rem;
   --spacing-2: 0.5rem;
@@ -24,10 +28,10 @@
   --spacing-8: 2rem;
   --spacing-10: 2.5rem;
   --spacing-12: 3rem;
-  
+
   --radius-lg: 0.5rem;
   --radius-full: 9999px;
-  
+
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -37,7 +41,7 @@
   --font-size-3xl: 1.875rem;
   --font-size-4xl: 2.25rem;
   --font-size-5xl: 3rem;
-  
+
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
@@ -64,7 +68,7 @@
   }
 
   code {
-    @apply bg-westworld-beige text-westworld-darkbrown px-1 py-0.5 rounded text-sm;
+    @apply bg-westworld-beige text-westworld-darkbrown px-1 py-0.5 rounded-sm text-sm;
   }
 
   pre code {
@@ -73,14 +77,17 @@
 
   .prose h1 {
     @apply text-3xl font-bold mb-4 text-westworld-black;
+    text-shadow: var(--text-shadow-westworld-depth);
   }
 
   .prose h2 {
     @apply text-2xl font-bold mb-3 text-westworld-black;
+    text-shadow: var(--text-shadow-westworld-depth);
   }
 
   .prose h3 {
     @apply text-xl font-semibold mb-2 text-westworld-black;
+    text-shadow: 1px 1px 2px rgba(26, 26, 26, 0.2);
   }
 
   .prose p {
@@ -108,14 +115,25 @@
   }
 
   .reverie-input {
-    @apply w-full bg-westworld-beige border-2 border-westworld-tan rounded-lg px-4 py-2 text-westworld-darkbrown placeholder-westworld-brown focus:outline-none focus:border-westworld-brown focus:ring-2 focus:ring-westworld-gold/20;
+    @apply w-full bg-westworld-beige border-2 border-westworld-tan rounded-lg px-4 py-2 text-westworld-darkbrown placeholder-westworld-brown focus:outline-hidden focus:border-westworld-brown focus:ring-2 focus:ring-westworld-gold/20;
+    /* Touch-friendly sizing */
+    @apply pointer-coarse:px-6 pointer-coarse:py-3 pointer-coarse:text-lg;
   }
 
   .reverie-button {
     @apply bg-westworld-brown text-westworld-cream px-6 py-2 rounded-lg font-medium hover:bg-westworld-darkbrown transition-colors duration-200;
+    /* Touch-friendly sizing */
+    @apply pointer-coarse:px-8 pointer-coarse:py-3 pointer-coarse:text-lg;
   }
 
   .reverie-card {
     @apply bg-westworld-beige rounded-lg p-6 shadow-lg;
+    /* Enhanced title styling */
+  }
+
+  /* Enhanced card titles with subtle text shadows */
+  .reverie-card h3,
+  .research-step-card h3 {
+    text-shadow: 1px 1px 2px rgba(212, 165, 116, 0.3);
   }
 }

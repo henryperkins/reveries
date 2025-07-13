@@ -32,7 +32,7 @@ const formatContentWithSources = (text: string, sources?: { name: string; url?: 
           h3: ({ children }) => <h3 className="westworld-text-copper font-medium text-base mb-2">{children}</h3>,
           strong: ({ children }) => <strong className="westworld-text-gold font-semibold">{children}</strong>,
           em: ({ children }) => <em className="westworld-text-copper">{children}</em>,
-          code: ({ children }) => <code className="westworld-mono bg-black/30 px-1 py-0.5 rounded text-sm" style={{ color: 'var(--westworld-gold)' }}>{children}</code>,
+          code: ({ children }) => <code className="westworld-mono bg-black/30 px-1 py-0.5 rounded-sm text-sm" style={{ color: 'var(--westworld-gold)' }}>{children}</code>,
           blockquote: ({ children }) => <blockquote className="westworld-border border-l-4 pl-4 my-3 westworld-text-copper italic">{children}</blockquote>
         }}
       >
