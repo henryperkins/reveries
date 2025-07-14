@@ -6,8 +6,8 @@ export default defineConfig(({ mode }) => {
   return {
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GROK_API_KEY': JSON.stringify(env.GROK_API_KEY || env.XAI_API_KEY || ''),
-      'process.env.XAI_API_KEY': JSON.stringify(env.XAI_API_KEY || env.GROK_API_KEY || ''),
+      'process.env.XAI_API_KEY': JSON.stringify(env.XAI_API_KEY || ''),
+      'process.env.GROK_API_KEY': JSON.stringify(env.XAI_API_KEY || ''), // Use XAI_API_KEY as primary
       'process.env.AZURE_OPENAI_API_KEY': JSON.stringify(env.AZURE_OPENAI_API_KEY || ''),
       'process.env.AZURE_OPENAI_ENDPOINT': JSON.stringify(env.AZURE_OPENAI_ENDPOINT || ''),
       'process.env.AZURE_OPENAI_DEPLOYMENT': JSON.stringify(env.AZURE_OPENAI_DEPLOYMENT || ''),

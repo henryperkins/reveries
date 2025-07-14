@@ -1,9 +1,9 @@
-import { EffortType } from '../types';
+import { EffortType, Citation } from '../types';
 import { APIError, withRetry } from './errorHandler';
 
 export interface AzureOpenAIResponse {
   text: string;
-  sources?: { name: string; url?: string }[];
+  sources?: Citation[];
   reasoningEffort?: string;
   reasoningContent?: string;
 }
@@ -135,6 +135,13 @@ export class AzureOpenAIService {
     }, 3, (attempt, error) => {
       console.warn(`Azure OpenAI retry attempt ${attempt}:`, error.message);
     });
+  }
+
+  async generateText(
+    prompt: string,
+    effort: EffortType = EffortType.MEDIUM
+  ): Promise<AzureOpenAIResponse> {
+    return this.generateResponse(prompt, effort, true, 0.7, 2000);
   }
 
   async generateResponseWithTools(

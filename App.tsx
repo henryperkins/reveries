@@ -7,7 +7,7 @@ import { InputBar } from './components/InputBar';
 import { Controls } from './components/Controls';
 import { FeaturesList } from './components/FeaturesList';
 import { ProgressBar } from './components/ProgressBar';
-import { ResearchStep, ResearchStepType, EffortType, ModelType, ServiceCallConfig, EnhancedResearchResults, QueryType, AZURE_O3_MODEL } from './types';
+import { ResearchStep, ResearchStepType, EffortType, ModelType, ServiceCallConfig, EnhancedResearchResults, QueryType, AZURE_O3_MODEL, Citation } from './types';
 import { ResearchAgentService } from './services/researchAgentService';
 import { ResearchGraphManager } from './researchGraph';
 import { ResearchGraphView } from './components/ResearchGraphView';
@@ -22,7 +22,7 @@ import {
   CpuChipIcon, BeakerIcon, LightBulbIcon, CheckCircleIcon, XMarkIcon
 } from './components/icons';
 
-const formatContentWithSources = (text: string, sources?: { name: string; url?: string }[]): React.ReactNode => {
+const formatContentWithSources = (text: string, sources?: Citation[]): React.ReactNode => {
   const mainContent = (
     <div className="prose prose-sm max-w-none">
       <ReactMarkdown
@@ -63,18 +63,36 @@ const formatContentWithSources = (text: string, sources?: { name: string; url?: 
         <div className="mt-6 p-4 bg-black/10 rounded-lg">
           <h4 className="font-semibold mb-2 text-sm text-westworld-gold uppercase tracking-wider">Sources</h4>
           <ul className="space-y-1">
-            {sources.map((src, idx) => (
+            {sources.map((citation, idx) => (
               <li key={idx} className="flex items-start gap-2">
                 <span className="text-westworld-gold/60 mt-0.5">•</span>
-                <a
-                  href={src.url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-westworld-copper hover:text-westworld-gold transition-colors"
-                  title={src.url || src.name}
-                >
-                  {src.name || src.url || 'Unknown Source'}
-                </a>
+                <div className="flex-1">
+                  <a
+                    href={citation.url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-westworld-copper hover:text-westworld-gold transition-colors"
+                    title={citation.url}
+                  >
+                    {citation.title || (citation.url ? (() => {
+                      try {
+                        return new URL(citation.url).hostname;
+                      } catch {
+                        return citation.url;
+                      }
+                    })() : 'Unknown Source')}
+                  </a>
+                  {citation.authors && citation.authors.length > 0 && (
+                    <div className="text-xs text-westworld-copper/80 mt-1">
+                      By: {citation.authors.join(', ')}
+                    </div>
+                  )}
+                  {citation.published && (
+                    <div className="text-xs text-westworld-copper/60 mt-1">
+                      Published: {new Date(citation.published).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
@@ -139,7 +157,7 @@ const App: React.FC = () => {
     return newStepId;
   }, [selectedModel, selectedEffort]);
 
-  const updateStepContent = useCallback((stepId: string, newContent: string | React.ReactNode, newTitle?: string, newSources?: { name: string; url?: string }[]) => {
+  const updateStepContent = useCallback((stepId: string, newContent: string | React.ReactNode, newTitle?: string, newSources?: Citation[]) => {
     setResearchSteps(prevSteps => prevSteps.map(step =>
       step.id === stepId ? { ...step, title: newTitle || step.title, content: newContent, sources: newSources || step.sources, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), isSpinning: false } : step
     ));
@@ -370,7 +388,9 @@ const App: React.FC = () => {
           node.metadata = {
             ...node.metadata,
             queriesGenerated: result.sections?.map(s => s.topic) || [],
-            sourcesCount: result.sources.length
+            sourcesCount: result.sources.length,
+            citationsCount: result.sources.length,
+            uniqueCitations: result.sources.map(citation => citation.url || citation.title || '').filter(Boolean)
           };
         }
       }

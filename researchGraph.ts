@@ -12,6 +12,8 @@ export interface GraphNode {
     metadata?: {
         queriesGenerated?: string[];
         sourcesCount?: number;
+        citationsCount?: number;
+        uniqueCitations?: string[];
         errorMessage?: string;
         model?: string;
         effort?: string;
@@ -144,6 +146,7 @@ export class ResearchGraphManager {
         errorCount: number;
         successRate: number;
         sourcesCollected: number;
+        uniqueCitations: number;
     } {
         const nodes = Array.from(this.graph.nodes.values());
         const totalDuration = Date.now() - this.startTime;
@@ -159,13 +162,22 @@ export class ResearchGraphManager {
             acc + (node.metadata?.sourcesCount || 0), 0
         );
 
+        // Count unique citations across all nodes
+        const allCitations = new Set<string>();
+        nodes.forEach(node => {
+            if (node.metadata?.uniqueCitations) {
+                node.metadata.uniqueCitations.forEach(citation => allCitations.add(citation));
+            }
+        });
+
         return {
             totalNodes: nodes.length,
             totalDuration,
             averageStepDuration,
             errorCount,
             successRate,
-            sourcesCollected
+            sourcesCollected,
+            uniqueCitations: allCitations.size
         };
     }
 

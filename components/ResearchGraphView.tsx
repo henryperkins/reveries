@@ -433,6 +433,10 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
                   <div className="text-xl font-bold text-white">{stats.sourcesCollected}</div>
                 </div>
                 <div className="bg-black/10 rounded p-3">
+                  <div className="text-westworld-gold text-sm">Unique Citations</div>
+                  <div className="text-xl font-bold text-white">{stats.uniqueCitations}</div>
+                </div>
+                <div className="bg-black/10 rounded p-3">
                   <div className="text-westworld-gold text-sm">Total Duration</div>
                   <div className="text-xl font-bold text-white">{formatDuration(stats.totalDuration)}</div>
                 </div>

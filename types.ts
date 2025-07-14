@@ -16,6 +16,14 @@ export enum ResearchStepType {
   ANALYTICS = 'ANALYTICS'
 }
 
+export interface Citation {
+  url: string;
+  title?: string;
+  authors?: string[];
+  published?: string; // ISO date string
+  accessed?: string;  // ISO date string
+}
+
 export interface ResearchStep {
   id: string;
   type: ResearchStepType;
@@ -24,7 +32,7 @@ export interface ResearchStep {
   icon: React.ElementType; // For SVG components
   timestamp?: string;
   isSpinning?: boolean;
-  sources?: { name: string; url?: string }[];
+  sources?: Citation[];
 }
 
 export enum EffortType {
@@ -54,10 +62,10 @@ export interface ResearchDataState {
   userQuery: string;
   generatedQueries: string[];
   researchFindings: string;
-  researchSources: { name: string; url?: string }[];
+  researchSources: Citation[];
   reflectionText: string;
   finalAnswerText: string;
-  finalAnswerSources?: { name: string; url?: string }[];
+  finalAnswerSources?: Citation[];
   error?: string | null;
 }
 
@@ -75,13 +83,13 @@ export interface ResearchSection {
   topic: string;
   description: string;
   research?: string;
-  sources?: { name: string; url?: string }[];
+  sources?: Citation[];
 }
 
 export interface ResearchState {
   query: string;
   queryType?: QueryType;
-  searchResults: { name: string; url?: string }[];
+  searchResults: Citation[];
   synthesis: string;
   evaluation: {
     quality: 'good' | 'needs_improvement';
@@ -105,7 +113,7 @@ export type HouseParadigm = 'gryffindor' | 'hufflepuff' | 'ravenclaw' | 'slyther
 
 export interface EnhancedResearchResults {
   synthesis: string;
-  sources: { name: string; url?: string }[];
+  sources: Citation[];
   queryType?: QueryType;
   houseParadigm?: HouseParadigm;
   sections?: ResearchSection[];

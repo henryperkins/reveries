@@ -174,11 +174,7 @@ export class ResearchToolsService {
         required: ['sources', 'style']
       },
       execute: async (args) => {
-        // Would format citations properly
-        return {
-          citations: [],
-          style: args.style
-        };
+        return this.formatCitations(args.sources, args.style);
       }
     });
 
@@ -361,6 +357,10 @@ export class ResearchToolsService {
       recommendations.push('analyze_statistics');
     }
 
+    if (queryLower.includes('citation') || queryLower.includes('reference') || queryLower.includes('bibliography')) {
+      recommendations.push('format_citations');
+    }
+
     // Recommend based on query type
     switch (queryType) {
       case 'factual':
@@ -379,5 +379,113 @@ export class ResearchToolsService {
 
     // Remove duplicates and limit
     return [...new Set(recommendations)].slice(0, 3);
+  }
+
+  /**
+   * Format citations in various academic styles
+   */
+  private formatCitations(sources: any[], style: string): any {
+    const formattedCitations = sources.map((source, index) => {
+      const citation = this.formatSingleCitation(source, style);
+      return {
+        index: index + 1,
+        citation,
+        source
+      };
+    });
+
+    return {
+      citations: formattedCitations,
+      style,
+      formatted: formattedCitations.map(c => c.citation).join('\n\n'),
+      count: formattedCitations.length
+    };
+  }
+
+  /**
+   * Format a single citation based on the specified style
+   */
+  private formatSingleCitation(source: any, style: string): string {
+    const title = source.title || 'Unknown Title';
+    const authors = source.authors || [];
+    const year = source.year || (source.published ? new Date(source.published).getFullYear() : 'n.d.');
+    const url = source.url || '';
+
+    switch (style.toUpperCase()) {
+      case 'APA':
+        return this.formatAPA(title, authors, year, url);
+      case 'MLA':
+        return this.formatMLA(title, authors, year, url);
+      case 'CHICAGO':
+        return this.formatChicago(title, authors, year, url);
+      case 'HARVARD':
+        return this.formatHarvard(title, authors, year, url);
+      default:
+        return this.formatAPA(title, authors, year, url);
+    }
+  }
+
+  private formatAPA(title: string, authors: string[], year: string | number, url: string): string {
+    const authorText = authors.length > 0 ? 
+      (authors.length === 1 ? authors[0] : 
+       authors.length === 2 ? `${authors[0]} & ${authors[1]}` :
+       `${authors[0]} et al.`) : 'Unknown Author';
+    
+    let citation = `${authorText} (${year}). ${title}`;
+    if (url) {
+      citation += `. Retrieved from ${url}`;
+    }
+    return citation;
+  }
+
+  private formatMLA(title: string, authors: string[], year: string | number, url: string): string {
+    const authorText = authors.length > 0 ? 
+      (authors.length === 1 ? authors[0] : 
+       authors.length === 2 ? `${authors[0]} and ${authors[1]}` :
+       `${authors[0]} et al.`) : 'Unknown Author';
+    
+    let citation = `${authorText}. "${title}."`;
+    if (url) {
+      citation += ` Web. ${new Date().toLocaleDateString('en-US', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      })}.`;
+    }
+    return citation;
+  }
+
+  private formatChicago(title: string, authors: string[], year: string | number, url: string): string {
+    const authorText = authors.length > 0 ? 
+      (authors.length === 1 ? authors[0] : 
+       authors.length === 2 ? `${authors[0]} and ${authors[1]}` :
+       `${authors[0]} et al.`) : 'Unknown Author';
+    
+    let citation = `${authorText}. "${title}."`;
+    if (url) {
+      citation += ` Accessed ${new Date().toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      })}. ${url}.`;
+    }
+    return citation;
+  }
+
+  private formatHarvard(title: string, authors: string[], year: string | number, url: string): string {
+    const authorText = authors.length > 0 ? 
+      (authors.length === 1 ? authors[0] : 
+       authors.length === 2 ? `${authors[0]} and ${authors[1]}` :
+       `${authors[0]} et al.`) : 'Unknown Author';
+    
+    let citation = `${authorText} ${year}, '${title}'`;
+    if (url) {
+      citation += `, viewed ${new Date().toLocaleDateString('en-US', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      })}, <${url}>`;
+    }
+    return citation;
   }
 }

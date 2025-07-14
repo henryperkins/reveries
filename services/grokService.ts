@@ -1,9 +1,9 @@
-import { EffortType } from '../types';
+import { EffortType, Citation } from '../types';
 
 export interface GrokResponse {
   text: string;
-  sources?: { name: string; url?: string }[];
-  citations?: string[];
+  sources?: Citation[];
+  citations?: Citation[];
 }
 
 export interface ToolDefinition {
@@ -18,14 +18,12 @@ export class GrokService {
   private static instance: GrokService;
 
   private constructor() {
-    // Try different environment variable patterns
-    const apiKey = import.meta.env.VITE_XAI_API_KEY || 
-                  import.meta.env.VITE_GROK_API_KEY ||
-                  (typeof process !== 'undefined' && process.env?.XAI_API_KEY) ||
-                  (typeof process !== 'undefined' && process.env?.GROK_API_KEY);
-    
+    // Use XAI_API_KEY as the primary environment variable
+    const apiKey = import.meta.env.VITE_XAI_API_KEY ||
+                  (typeof process !== 'undefined' && process.env?.XAI_API_KEY);
+
     if (!apiKey) {
-      throw new Error('XAI/Grok API key is required. Set VITE_XAI_API_KEY or VITE_GROK_API_KEY');
+      throw new Error('XAI API key is required. Set VITE_XAI_API_KEY or XAI_API_KEY');
     }
     this.apiKey = apiKey;
   }
@@ -86,11 +84,11 @@ export class GrokService {
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content || '';
-      
+
       return {
         text: content,
-        sources: data.citations ? data.citations.map((url: string) => ({ name: url, url })) : undefined,
-        citations: data.citations
+        sources: this.processCitations(data.citations),
+        citations: this.processCitations(data.citations)
       };
     } catch (error) {
       console.error('Grok API error:', error);
@@ -109,7 +107,7 @@ export class GrokService {
   ): Promise<GrokResponse> {
     try {
       const messages = [{ role: "user", content: prompt }];
-      
+
       let requestBody: any = {
         model: "grok-4",
         messages: messages,
@@ -144,7 +142,7 @@ export class GrokService {
 
       let data = await response.json();
       const assistantMessage = data.choices?.[0]?.message;
-      
+
       if (assistantMessage) {
         messages.push(assistantMessage);
       }
@@ -154,7 +152,7 @@ export class GrokService {
         for (const toolCall of assistantMessage.tool_calls) {
           const functionName = toolCall.function.name;
           const functionArgs = JSON.parse(toolCall.function.arguments);
-          
+
           if (toolImplementations[functionName]) {
             const result = await toolImplementations[functionName](...Object.values(functionArgs));
             messages.push({
@@ -193,11 +191,11 @@ export class GrokService {
       }
 
       const content = data.choices?.[0]?.message?.content || '';
-      
+
       return {
         text: content,
-        sources: data.citations ? data.citations.map((url: string) => ({ name: url, url })) : undefined,
-        citations: data.citations
+        sources: this.processCitations(data.citations),
+        citations: this.processCitations(data.citations)
       };
     } catch (error) {
       console.error('Grok function calling error:', error);
@@ -269,11 +267,11 @@ export class GrokService {
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content || '';
-      
+
       return {
         text: content,
-        sources: data.citations ? data.citations.map((url: string) => ({ name: url, url })) : undefined,
-        citations: data.citations
+        sources: this.processCitations(data.citations),
+        citations: this.processCitations(data.citations)
       };
     } catch (error) {
       console.error('Grok live search error:', error);
@@ -309,5 +307,33 @@ export class GrokService {
         default: return { type: 'web' };
       }
     });
+  }
+
+  private processCitations(citations: any): Citation[] {
+    if (!citations || !Array.isArray(citations)) {
+      return [];
+    }
+
+    const fullCitations: Citation[] = [];
+    citations.forEach((citation: any) => {
+      if (typeof citation === 'string') {
+        // Handle legacy string citations
+        fullCitations.push({ url: citation });
+      } else if (citation && typeof citation === 'object') {
+        // Handle rich citation objects from X-AI API
+        const richCitation: Citation = {
+          url: citation.url || citation.link || '',
+          title: citation.title,
+          authors: citation.authors,
+          published: citation.published,
+          accessed: citation.accessed || new Date().toISOString()
+        };
+        if (richCitation.url) {
+          fullCitations.push(richCitation);
+        }
+      }
+    });
+
+    return fullCitations;
   }
 }

@@ -8,7 +8,8 @@ import {
   QueryType,
   ResearchSection,
   ResearchState,
-  EnhancedResearchResults
+  EnhancedResearchResults,
+  Citation
 } from "../types";
 import { APIError, withRetry, ErrorBoundary } from "./errorHandler";
 import { AzureOpenAIService } from "./azureOpenAIService";
@@ -20,7 +21,7 @@ import { ResearchToolsService } from "./researchToolsService";
  */
 interface ProviderResponse {
   text: string;
-  sources?: { name: string; url?: string }[];
+  sources?: Citation[];
 }
 
 const getGeminiApiKey = (): string => {
@@ -35,10 +36,10 @@ const getGeminiApiKey = (): string => {
 };
 
 const getGrokApiKey = (): string => {
-  const apiKeyFromEnv = (typeof process !== 'undefined' && process.env?.GROK_API_KEY) ? process.env.GROK_API_KEY : null;
+  const apiKeyFromEnv = (typeof process !== 'undefined' && process.env?.XAI_API_KEY) ? process.env.XAI_API_KEY : null;
   if (!apiKeyFromEnv) {
     throw new APIError(
-      'GROK_API_KEY environment variable is not set. Please use Gemini models instead.',
+      'XAI_API_KEY environment variable is not set. Please configure it before using Grok models.',
       'AUTH_ERROR',
       false,
       401
@@ -126,6 +127,38 @@ export class ResearchAgentService {
       console.warn(`Retry attempt ${attempt} for ${selectedModel}:`, error.message);
       ErrorBoundary.recordError();
     });
+  }
+
+  /**
+   * Generate text using Azure OpenAI service
+   */
+  private async generateTextWithAzureOpenAI(
+    prompt: string,
+    effort: EffortType,
+    useSearch: boolean
+  ): Promise<ProviderResponse> {
+    if (!this.azureOpenAI) {
+      throw new APIError(
+        "Azure OpenAI service not initialized",
+        "SERVICE_ERROR",
+        false
+      );
+    }
+
+    try {
+      const response = await this.azureOpenAI.generateText(prompt, effort);
+      return {
+        text: response.text,
+        sources: response.sources || []
+      };
+    } catch (error) {
+      console.error('Azure OpenAI API Error:', error);
+      throw new APIError(
+        `Azure OpenAI API request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        "API_ERROR",
+        true
+      );
+    }
   }
 
   /**
@@ -267,15 +300,16 @@ export class ResearchAgentService {
         );
       }
 
-      let sources: { name: string; url?: string }[] | undefined = undefined;
+      let sources: Citation[] | undefined = undefined;
 
       if (useSearch && response.response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
         const chunks = response.response.candidates[0].groundingMetadata.groundingChunks;
         sources = chunks
           .filter((chunk: any) => chunk.web && chunk.web.uri)
           .map((chunk: any) => ({
-            name: chunk.web?.title || chunk.web?.uri || 'Unknown Source',
             url: chunk.web?.uri,
+            title: chunk.web?.title || 'Unknown Source',
+            accessed: new Date().toISOString()
           }));
       }
 
@@ -454,9 +488,9 @@ export class ResearchAgentService {
     queries: string[],
     model: ModelType,
     effort: EffortType
-  ): Promise<{ aggregatedFindings: string; allSources: { name: string; url?: string }[] }> {
+  ): Promise<{ aggregatedFindings: string; allSources: Citation[] }> {
     let findingsOutputParts: string[] = [];
-    const allSources: { name: string; url?: string }[] = [];
+    const allSources: Citation[] = [];
     const uniqueSourceKeys = new Set<string>();
 
     if (!queries || queries.length === 0) {
@@ -479,10 +513,10 @@ export class ResearchAgentService {
 
         if (result.sources) {
           result.sources.forEach(source => {
-            const key = source.url || source.name;
-            if (key && !uniqueSourceKeys.has(key)) {
+            const normalizedKey = this.normalizeSourceKey(source);
+            if (normalizedKey && !uniqueSourceKeys.has(normalizedKey)) {
               allSources.push(source);
-              uniqueSourceKeys.add(key);
+              uniqueSourceKeys.add(normalizedKey);
             }
           });
         }
@@ -510,7 +544,7 @@ export class ResearchAgentService {
     return result.text;
   }
 
-  async generateFinalAnswer(userQuery: string, context: string, model: ModelType, useSearch: boolean, effort: EffortType): Promise<{ text: string; sources?: { name: string; url?: string }[] }> {
+  async generateFinalAnswer(userQuery: string, context: string, model: ModelType, useSearch: boolean, effort: EffortType): Promise<{ text: string; sources?: Citation[] }> {
     const prompt = `
       User Query: "${userQuery}"
       Relevant Context & Findings: "${context}"
@@ -998,7 +1032,7 @@ export class ResearchAgentService {
         acc.push(...section.sources);
       }
       return acc;
-    }, [] as { name: string; url?: string }[]);
+    }, [] as Citation[]);
 
     return {
       synthesis: finalSynthesis.text,
@@ -1428,5 +1462,84 @@ export class ResearchAgentService {
         focusAreas: ['influence_mapping', 'strategic_leverage', 'resource_optimization']
       }
     };
+  }
+
+  /**
+   * Function-driven research using advanced tools
+   */
+  private async performFunctionDrivenResearch(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('Host activating function-driven research protocols...');
+    
+    // Use the existing comprehensive research as a fallback
+    return this.performComprehensiveResearch(query, model, effort, onProgress);
+  }
+
+  /**
+   * Normalize a source citation for deduplication
+   */
+  private normalizeSourceKey(source: Citation): string {
+    // Primary: normalize URL
+    if (source.url) {
+      const normalizedUrl = this.normalizeUrl(source.url);
+      if (normalizedUrl) {
+        return normalizedUrl;
+      }
+    }
+
+    // Secondary: use title + first author combo
+    if (source.title && source.authors && source.authors.length > 0) {
+      const title = source.title.toLowerCase().replace(/[^\w\s]/g, '').trim();
+      const author = source.authors[0].toLowerCase().replace(/[^\w\s]/g, '').trim();
+      return `${title}|${author}`;
+    }
+
+    // Fallback: use title only
+    if (source.title) {
+      return source.title.toLowerCase().replace(/[^\w\s]/g, '').trim();
+    }
+
+    // Last resort: use URL as-is
+    return source.url || '';
+  }
+
+  /**
+   * Normalize URL for deduplication by removing query parameters and trailing slash
+   */
+  private normalizeUrl(url: string): string {
+    try {
+      const parsed = new URL(url);
+      
+      // Remove common tracking parameters
+      const trackingParams = [
+        'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
+        'fbclid', 'gclid', 'ref', 'source', 'campaign', 'medium',
+        'dclid', 'wbraid', 'gbraid', 'gad_source'
+      ];
+      
+      trackingParams.forEach(param => {
+        parsed.searchParams.delete(param);
+      });
+      
+      // Remove trailing slash and normalize
+      let normalized = parsed.origin + parsed.pathname;
+      if (parsed.search) {
+        normalized += parsed.search;
+      }
+      
+      // Remove trailing slash unless it's the root
+      if (normalized.endsWith('/') && normalized.length > parsed.origin.length + 1) {
+        normalized = normalized.slice(0, -1);
+      }
+      
+      return normalized;
+    } catch {
+      // If URL parsing fails, return as-is
+      return url;
+    }
   }
 }

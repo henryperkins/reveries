@@ -3,7 +3,8 @@ import { EffortType, ModelType, GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL 
 // Check if Grok API key is available
 const isGrokAvailable = () => {
   try {
-    return !!(import.meta.env.VITE_GROK_API_KEY || import.meta.env.VITE_XAI_API_KEY);
+    return !!(import.meta.env.VITE_XAI_API_KEY ||
+             (typeof process !== 'undefined' && process.env?.XAI_API_KEY));
   } catch {
     return false;
   }
