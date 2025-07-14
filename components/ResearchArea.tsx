@@ -10,7 +10,7 @@ interface ResearchAreaProps {
 export const ResearchArea: React.FC<ResearchAreaProps> = ({ steps }) => {
   if (steps.length === 0) {
     return (
-      <div className="text-center py-10 westworld-text-copper">
+      <div className="text-center py-10 text-westworld-rust">
         <p>Provide a query to initiate the host's narrative loop.</p>
       </div>
     );
@@ -18,7 +18,7 @@ export const ResearchArea: React.FC<ResearchAreaProps> = ({ steps }) => {
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      <h2 className="text-xl font-semibold westworld-text-gold mb-3 pb-2 border-b westworld-border">
+      <h2 className="text-xl font-semibold text-westworld-gold mb-3 pb-2 border-b border-westworld-tan">
         Narrative Construction
       </h2>
       {steps.map((step) => (

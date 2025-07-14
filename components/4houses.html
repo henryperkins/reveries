@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Four Houses of Inquiry: An Infographic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+
+        .house-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .house-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .flow-line {
+            width: 2px;
+            background-color: #94a3b8;
+            flex-grow: 1;
+        }
+
+        .flow-node {
+            border: 2px solid;
+        }
+    </style>
+</head>
+
+<body class="text-gray-800">
+
+    <header class="bg-gray-900 text-white text-center py-12 px-4">
+        <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-2">The Four Houses of Inquiry</h1>
+        <p class="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto">Agentic Research Strategies from the World of
+            Harry Potter</p>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8">
+
+        <section id="introduction" class="text-center mb-16">
+            <p class="text-lg text-gray-700 max-w-4xl mx-auto">
+                The four houses of Hogwarts provide a powerful framework for understanding different approaches to
+                research. Just as the Sorting Hat places students based on their values, researchers gravitate towards
+                methodologies that reflect their core philosophies. This infographic explores four distinct, agentic
+                research paradigms—each corresponding to a Hogwarts house—to reveal how bravery, loyalty, wit, and
+                ambition can shape the very fabric of inquiry.
+            </p>
+        </section>
+
+        <section id="paradigms" class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+
+            <div id="gryffindor" class="house-card border-t-8 border-red-600">
+                <div class="flex items-center mb-4">
+                    <span class="text-5xl mr-4">🦁</span>
+                    <div>
+                        <h2 class="text-3xl font-bold text-red-700">The Gryffindor Paradigm</h2>
+                        <p class="text-xl font-semibold text-gray-600">Research as Advocacy</p>
+                    </div>
+                </div>
+                <p class="mb-6 text-gray-700">Driven by a moral imperative, this paradigm uses research as a tool for
+                    social justice. It champions the cause of the marginalized and seeks to create tangible, positive
+                    change. The core question is not just 'what is wrong?' but 'how can we fix it?'.</p>
+                <div class="chart-container">
+                    <canvas id="gryffindorChart"></canvas>
+                </div>
+                <p class="mt-4 text-center text-sm text-gray-600">This donut chart shows the core components of the
+                    Gryffindor ethos, emphasizing the drive for action and justice.</p>
+            </div>
+
+            <div id="hufflepuff" class="house-card border-t-8 border-yellow-500">
+                <div class="flex items-center mb-4">
+                    <span class="text-5xl mr-4">🦡</span>
+                    <div>
+                        <h2 class="text-3xl font-bold text-yellow-600">The Hufflepuff Paradigm</h2>
+                        <p class="text-xl font-semibold text-gray-600">Research as Collaboration</p>
+                    </div>
+                </div>
+                <p class="mb-6 text-gray-700">This paradigm prioritizes fairness, inclusivity, and process. It views
+                    research as a human enterprise built on trust and mutual respect, where every voice is valued. The
+                    core belief is that sound outcomes emerge from a sound, collaborative foundation.</p>
+                <div class="chart-container">
+                    <canvas id="hufflepuffChart"></canvas>
+                </div>
+                <p class="mt-4 text-center text-sm text-gray-600">This bar chart highlights the foundational pillars of
+                    the Hufflepuff collaborative process, where fairness and inclusion are paramount.</p>
+            </div>
+
+            <div id="ravenclaw" class="house-card border-t-8 border-blue-600">
+                <div class="flex items-center mb-4">
+                    <span class="text-5xl mr-4">🦅</span>
+                    <div>
+                        <h2 class="text-3xl font-bold text-blue-700">The Ravenclaw Paradigm</h2>
+                        <p class="text-xl font-semibold text-gray-600">Research as Analysis</p>
+                    </div>
+                </div>
+                <p class="mb-6 text-gray-700">For Ravenclaw, research is the rigorous pursuit of knowledge for its own
+                    sake. This paradigm is dedicated to building elegant theories and uncovering objective truths
+                    through meticulous analysis, logic, and creativity. The ultimate prize is understanding.</p>
+                <div class="chart-container">
+                    <canvas id="ravenclawChart"></canvas>
+                </div>
+                <p class="mt-4 text-center text-sm text-gray-600">This radar chart illustrates the key practices
+                    Ravenclaw researchers use to ensure the intellectual rigor and validity of their work.</p>
+            </div>
+
+            <div id="slytherin" class="house-card border-t-8 border-green-600">
+                <div class="flex items-center mb-4">
+                    <span class="text-5xl mr-4">🐍</span>
+                    <div>
+                        <h2 class="text-3xl font-bold text-green-700">The Slytherin Paradigm</h2>
+                        <p class="text-xl font-semibold text-gray-600">Research as Strategy</p>
+                    </div>
+                </div>
+                <p class="mb-6 text-gray-700">Pragmatic and outcome-focused, this paradigm treats research as a
+                    high-leverage tool for achieving specific, influential goals. It values ambition, cunning, and
+                    resourcefulness to effectively navigate complex systems and drive impactful decisions.</p>
+                <div class="chart-container">
+                    <canvas id="slytherinChart"></canvas>
+                </div>
+                <p class="mt-4 text-center text-sm text-gray-600">This bubble chart visualizes the Slytherin focus on
+                    strategic impact and resourcefulness, where bubble size indicates the leverage of each practice.</p>
+            </div>
+        </section>
+
+        <section id="comparative-analysis" class="bg-white rounded-lg shadow-lg p-6 md:p-8 mb-16">
+            <h2 class="text-3xl font-bold text-center mb-2">A Comparative Analysis of Paradigms</h2>
+            <p class="text-center text-gray-700 mb-8 max-w-3xl mx-auto">While each house has a distinct orientation,
+                they share core research values to different degrees. This radar chart compares the four paradigms
+                across key methodological dimensions, revealing both their unique strengths and surprising overlaps.</p>
+            <div class="chart-container h-[400px] md:h-[500px] max-h-[550px]">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+        </section>
+
+        <section id="integration" class="mb-16">
+            <h2 class="text-3xl font-bold text-center mb-2">The Integrated Inquirer: The Hatstall Dilemma</h2>
+            <p class="text-center text-gray-700 mb-8 max-w-3xl mx-auto">The most complex challenges require an
+                integrated approach, blending the strengths of all four houses. A "Hatstall" researcher moves fluidly
+                between paradigms. Here's how they might tackle a multifaceted problem like climate change.</p>
+
+            <div class="bg-white rounded-lg shadow-lg p-6 md:p-8">
+                <div class="flex flex-col items-center">
+                    <div class="w-full max-w-lg text-center bg-gray-800 text-white p-4 rounded-lg shadow-xl mb-4">
+                        <h3 class="text-xl font-bold">Complex Problem: Climate Change Mitigation</h3>
+                    </div>
+
+                    <div class="w-px bg-slate-400 h-8"></div>
+
+                    <div class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+                        <div class="flex flex-col items-center">
+                            <div class="flow-node border-red-500 text-red-700 bg-red-50 p-4 rounded-lg w-full">
+                                <h4 class="font-bold">Gryffindor's Role</h4>
+                                <p class="text-sm">Conducts advocacy research with impacted communities to drive policy
+                                    change.</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="flow-node border-yellow-500 text-yellow-700 bg-yellow-50 p-4 rounded-lg w-full">
+                                <h4 class="font-bold">Hufflepuff's Role</h4>
+                                <p class="text-sm">Uses collaborative methods to co-design local adaptation strategies
+                                    with stakeholders.</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="flow-node border-blue-500 text-blue-700 bg-blue-50 p-4 rounded-lg w-full">
+                                <h4 class="font-bold">Ravenclaw's Role</h4>
+                                <p class="text-sm">Applies rigorous analysis to climate data to model patterns and build
+                                    theories.</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="flow-node border-green-500 text-green-700 bg-green-50 p-4 rounded-lg w-full">
+                                <h4 class="font-bold">Slytherin's Role</h4>
+                                <p class="text-sm">Identifies high-leverage intervention points to influence corporate
+                                    and government actors.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-full flex justify-center">
+                        <div class="w-3/4 flex justify-between">
+                            <div class="w-px bg-slate-400 h-8"></div>
+                            <div class="w-px bg-slate-400 h-8"></div>
+                        </div>
+                    </div>
+
+                    <div class="w-1/2 h-px bg-slate-400"></div>
+                    <div class="w-px bg-slate-400 h-8"></div>
+
+                    <div class="w-full max-w-lg text-center bg-purple-600 text-white p-4 rounded-lg shadow-xl mt-4">
+                        <h3 class="text-xl font-bold">Integrated Solution: A Holistic & Impactful Strategy</h3>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- New Section: Context Engineering for House-Based Research Agents -->
+        <section id="context-engineering" class="mb-16">
+            <h2 class="text-3xl font-bold text-center mb-2">Context Engineering for House-Based Research Agents</h2>
+            <p class="text-center text-gray-700 mb-8 max-w-3xl mx-auto">
+                Modern AI agents can be optimized for each research paradigm through careful context engineering. By
+                tailoring the information environment, prompt structures, and feedback loops, we can create specialized
+                agents that embody the strengths of each house.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Gryffindor Context Engineering -->
+                <div class="bg-red-50 border-2 border-red-200 rounded-lg p-6">
+                    <h3 class="text-2xl font-bold text-red-700 mb-4">🦁 Gryffindor Agent Context</h3>
+                    <div class="space-y-4">
+                        <div class="bg-white rounded p-4">
+                            <h4 class="font-semibold text-red-600">Context Priorities:</h4>
+                            <ul class="text-sm space-y-1 mt-2">
+                                <li>• Real-world impact data and case studies</li>
+                                <li>• Community testimonials and lived experiences</li>
+                                <li>• Policy frameworks and advocacy precedents</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white rounded p-4">
+                            <h4 class="font-semibold text-red-600">Prompt Template:</h4>
+                            <code class="text-xs block mt-2 p-2 bg-gray-100 rounded">
+                                "Given the urgent need for [issue], analyze the following context and propose concrete
+                                actions that will create immediate positive change for affected communities..."
+                            </code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hufflepuff Context Engineering -->
+                <div class="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-6">
+                    <h3 class="text-2xl font-bold text-yellow-600 mb-4">🦡 Hufflepuff Agent Context</h3>
+                    <div class="space-y-4">
+                        <div class="bg-white rounded p-4">
+                            <h4 class="font-semibold text-yellow-600">Context Priorities:</h4>
+                            <ul class="text-sm space-y-1 mt-2">
+                                <li>• Diverse stakeholder perspectives</li>
+                                <li>• Collaborative process documentation</li>
+                                <li>• Ethical guidelines and fairness metrics</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white rounded p-4">
+                            <h4 class="font-semibold text-yellow-600">Prompt Template:</h4>
+                            <code class="text-xs block mt-2 p-2 bg-gray-100 rounded">
+                                "Considering all stakeholder viewpoints in [context], facilitate a collaborative synthesis
+                                that honors each perspective while building toward shared understanding..."
+                            </code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ravenclaw Context Engineering -->
+                <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
+                    <h3 class="text-2xl font-bold text-blue-700 mb-4">🦅 Ravenclaw Agent Context</h3>
+                    <div class="space-y-4">
+                        <div class="bg-white rounded p-4">
+                            <h4 class="font-semibold text-blue-600">Context Priorities:</h4>
+                            <ul class="text-sm space-y-1 mt-2">
+                                <li>• Peer-reviewed literature and datasets</li>
+                                <li>• Methodological frameworks and theories</li>
+                                <li>• Statistical analyses and meta-studies</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white rounded p-4">
+                            <h4 class="font-semibold text-blue-600">Prompt Template:</h4>
+                            <code class="text-xs block mt-2 p-2 bg-gray-100 rounded">
+                                "Analyze the following academic sources on [topic], identify patterns across
+                                methodologies, and synthesize a comprehensive theoretical framework..."
+                            </code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Slytherin Context Engineering -->
+                <div class="bg-green-50 border-2 border-green-200 rounded-lg p-6">
+                    <h3 class="text-2xl font-bold text-green-700 mb-4">🐍 Slytherin Agent Context</h3>
+                    <div class="space-y-4">
+                        <div class="bg-white rounded p-4">
+                            <h4 class="font-semibold text-green-600">Context Priorities:</h4>
+                            <ul class="text-sm space-y-1 mt-2">
+                                <li>• Power structure analyses and influence maps</li>
+                                <li>• Strategic leverage points and timing</li>
+                                <li>• Resource optimization frameworks</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white rounded p-4">
+                            <h4 class="font-semibold text-green-600">Prompt Template:</h4>
+                            <code class="text-xs block mt-2 p-2 bg-gray-100 rounded">
+                                "Map the strategic landscape of [domain], identify key decision-makers and leverage
+                                points, then design a high-impact intervention strategy..."
+                            </code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Context Orchestration -->
+            <div class="mt-12 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg p-8">
+                <h3 class="text-2xl font-bold text-center mb-6">Dynamic Context Orchestration</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                    <div class="bg-white/10 rounded p-4">
+                        <h4 class="font-bold mb-2">Adaptive Context Windows</h4>
+                        <p class="text-sm">Agents dynamically adjust their context based on research phase and emerging
+                            insights</p>
+                    </div>
+                    <div class="bg-white/10 rounded p-4">
+                        <h4 class="font-bold mb-2">Cross-House Collaboration</h4>
+                        <p class="text-sm">Agents can request context from other paradigms when facing complex
+                            challenges</p>
+                    </div>
+                    <div class="bg-white/10 rounded p-4">
+                        <h4 class="font-bold mb-2">Iterative Refinement</h4>
+                        <p class="text-sm">Continuous feedback loops optimize context relevance and agent performance
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- New Section: Context Engineering Effectiveness by Paradigm -->
+        <section id="context-effectiveness" class="bg-white rounded-lg shadow-lg p-6 md:p-8 mb-16">
+            <h2 class="text-3xl font-bold text-center mb-8">Context Engineering Effectiveness by Paradigm</h2>
+            <div class="chart-container h-[400px]">
+                <canvas id="contextEffectivenessChart"></canvas>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-gray-900 text-white text-center py-6 px-4 mt-16">
+        <p class="text-sm text-gray-400">Infographic based on the report "The Four Houses of Inquiry: Agentic Research
+            Strategies from the World of Harry Potter".</p>
+    </footer>
+
+    <script>
+        const wrapLabel = (label, maxLength) => {
+            if (label.length <= maxLength) {
+                return label;
+            }
+            const words = label.split(' ');
+            let currentLine = '';
+            const lines = [];
+            words.forEach(word => {
+                if ((currentLine + ' ' + word).trim().length > maxLength) {
+                    lines.push(currentLine.trim());
+                    currentLine = word;
+                } else {
+                    currentLine = (currentLine + ' ' + word).trim();
+                }
+            });
+            lines.push(currentLine.trim());
+            return lines;
+        };
+
+        const tooltipTitleCallback = (tooltipItems) => {
+            const item = tooltipItems[0];
+            let label = item.chart.data.labels[item.dataIndex];
+            if (Array.isArray(label)) {
+                return label.join(' ');
+            } else {
+                return label;
+            }
+        };
+
+        const sharedTooltipOptions = {
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: tooltipTitleCallback
+                    }
+                }
+            }
+        };
+
+        new Chart(document.getElementById('gryffindorChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Action Research', 'Advocacy', 'Justice & Social Responsibility'],
+                datasets: [{
+                    label: 'Gryffindor Focus',
+                    data: [40, 30, 30],
+                    backgroundColor: ['#DC2626', '#F87171', '#FECACA'],
+                    borderColor: '#ffffff',
+                    borderWidth: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    tooltip: sharedTooltipOptions.plugins.tooltip
+                }
+            }
+        });
+
+        new Chart(document.getElementById('hufflepuffChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Fair Play', 'Inclusivity', 'Hard Work', 'Patience', 'Loyalty'],
+                datasets: [{
+                    label: 'Importance',
+                    data: [95, 90, 85, 80, 75],
+                    backgroundColor: '#FBBF24',
+                    borderColor: '#D97706',
+                    borderWidth: 2,
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: sharedTooltipOptions.plugins.tooltip
+                }
+            }
+        });
+
+        new Chart(document.getElementById('ravenclawChart'), {
+            type: 'radar',
+            data: {
+                labels: ['Triangulation', wrapLabel('Detailed Audit Trail', 16), 'Thick Description', 'Reflexivity', 'Literature Synthesis'],
+                datasets: [{
+                    label: 'Emphasis on Rigor',
+                    data: [85, 90, 75, 80, 95],
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    borderColor: '#2563EB',
+                    pointBackgroundColor: '#2563EB',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#2563EB',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: {
+                            display: true
+                        },
+                        suggestedMin: 0,
+                        suggestedMax: 100
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: sharedTooltipOptions.plugins.tooltip
+                }
+            }
+        });
+
+        new Chart(document.getElementById('slytherinChart'), {
+            type: 'bubble',
+            data: {
+                datasets: [{
+                    label: 'Strategic Practices',
+                    data: [
+                        { x: 60, y: 80, r: 25, label: 'High-Leverage Practices' },
+                        { x: 75, y: 60, r: 20, label: 'Social Power Analysis' },
+                        { x: 40, y: 40, r: 15, label: 'Statistical Power Analysis' },
+                        { x: 90, y: 90, r: 30, label: 'Aligning with Objectives' },
+                    ],
+                    backgroundColor: 'rgba(22, 163, 74, 0.6)',
+                    borderColor: '#15803d'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Impact' }
+                    },
+                    x: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Resourcefulness' }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                let label = context.raw.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += `(Impact: ${context.parsed.y}, Resourcefulness: ${context.parsed.x})`;
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('comparisonChart'), {
+            type: 'radar',
+            data: {
+                labels: ['Advocacy-Driven', 'Collaboration-Focused', 'Analysis-Oriented', 'Strategy-Led', 'Ethical Risk'],
+                datasets: [
+                    {
+                        label: 'Gryffindor',
+                        data: [95, 60, 50, 70, 80],
+                        borderColor: '#DC2626',
+                        backgroundColor: 'rgba(220, 38, 38, 0.2)',
+                    },
+                    {
+                        label: 'Hufflepuff',
+                        data: [50, 95, 60, 40, 30],
+                        borderColor: '#FBBF24',
+                        backgroundColor: 'rgba(251, 191, 36, 0.2)',
+                    },
+                    {
+                        label: 'Ravenclaw',
+                        data: [30, 50, 95, 65, 40],
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    },
+                    {
+                        label: 'Slytherin',
+                        data: [40, 30, 70, 95, 90],
+                        borderColor: '#16A34A',
+                        backgroundColor: 'rgba(22, 163, 74, 0.2)',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: sharedTooltipOptions.plugins.tooltip
+                }
+            }
+        });
+
+        new Chart(document.getElementById('contextEffectivenessChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Context Relevance', 'Processing Efficiency', 'Output Quality', 'Adaptability', 'Cross-Domain Transfer'],
+                datasets: [
+                    {
+                        label: 'Gryffindor',
+                        data: [85, 70, 80, 75, 60],
+                        backgroundColor: 'rgba(220, 38, 38, 0.7)',
+                        borderColor: '#DC2626',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Hufflepuff',
+                        data: [90, 75, 85, 80, 70],
+                        backgroundColor: 'rgba(251, 191, 36, 0.7)',
+                        borderColor: '#FBBF24',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Ravenclaw',
+                        data: [95, 85, 90, 70, 85],
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: '#3B82F6',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Slytherin',
+                        data: [80, 90, 85, 95, 75],
+                        backgroundColor: 'rgba(22, 163, 74, 0.7)',
+                        borderColor: '#16A34A',
+                        borderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Effectiveness Score'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

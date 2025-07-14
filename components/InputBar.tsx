@@ -37,13 +37,13 @@ export const InputBar: React.FC<InputBarProps> = ({ onQuerySubmit, isLoading, in
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
         placeholder="Initiate new narrative loop..."
-        className="grow p-3 westworld-input rounded-lg placeholder-opacity-70 outline-hidden transition-all duration-300"
+        className="grow p-3 reverie-input rounded-lg transition-all duration-300"
         disabled={isLoading}
         onKeyDown={handleKeyDown}
       />
       <button
         type="submit"
-        className={`p-3 rounded-full westworld-button text-white transform active:scale-95 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''
+        className={`rounded-full reverie-button transform active:scale-95 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''
           }`}
         disabled={isLoading}
         aria-label="Submit query"

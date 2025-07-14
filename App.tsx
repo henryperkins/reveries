@@ -27,13 +27,13 @@ const formatContentWithSources = (text: string, sources?: { name: string; url?: 
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: ({ children }) => <h1 className="westworld-text-gold font-bold text-xl mb-3">{children}</h1>,
-          h2: ({ children }) => <h2 className="westworld-text-gold font-semibold text-lg mb-2">{children}</h2>,
-          h3: ({ children }) => <h3 className="westworld-text-copper font-medium text-base mb-2">{children}</h3>,
-          strong: ({ children }) => <strong className="westworld-text-gold font-semibold">{children}</strong>,
-          em: ({ children }) => <em className="westworld-text-copper">{children}</em>,
+          h1: ({ children }) => <h1 className="text-westworld-gold font-bold text-xl mb-3">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-westworld-gold font-semibold text-lg mb-2">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-westworld-rust font-medium text-base mb-2">{children}</h3>,
+          strong: ({ children }) => <strong className="text-westworld-gold font-semibold">{children}</strong>,
+          em: ({ children }) => <em className="text-westworld-rust">{children}</em>,
           code: ({ children }) => <code className="westworld-mono bg-black/30 px-1 py-0.5 rounded-sm text-sm" style={{ color: 'var(--westworld-gold)' }}>{children}</code>,
-          blockquote: ({ children }) => <blockquote className="westworld-border border-l-4 pl-4 my-3 westworld-text-copper italic">{children}</blockquote>
+          blockquote: ({ children }) => <blockquote className="border-westworld-tan border-l-4 pl-4 my-3 text-westworld-rust italic">{children}</blockquote>
         }}
       >
         {text}
@@ -45,7 +45,7 @@ const formatContentWithSources = (text: string, sources?: { name: string; url?: 
     return (
       <>
         {mainContent}
-        <h4 className="font-semibold mt-3 mb-1 text-sm westworld-text-gold westworld-mono">Memory Sources:</h4>
+        <h4 className="font-semibold mt-3 mb-1 text-sm text-westworld-gold font-westworld-mono">Memory Sources:</h4>
         <ul className="list-disc list-inside text-xs space-y-1">
           {sources.map((src, idx) => (
             <li key={idx}>
@@ -53,7 +53,7 @@ const formatContentWithSources = (text: string, sources?: { name: string; url?: 
                 href={src.url || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="westworld-text-copper hover:text-white transition-colors duration-200"
+                className="text-westworld-rust hover:text-white transition-colors duration-200"
                 title={src.url || src.name}
               >
                 {src.name || src.url || 'Unknown Source'}
@@ -241,10 +241,10 @@ const App: React.FC = () => {
       <div className="w-full max-w-4xl">
         <Header />
 
-        <main className="mt-8 westworld-card p-6 sm:p-8 rounded-xl">
+        <main className="mt-8 bg-westworld-beige p-6 sm:p-8 rounded-xl">
           {currentQuery && researchSteps.length === 0 && !isLoading && (
-            <div className="westworld-card p-4 rounded-lg mb-6 westworld-border border westworld-text-gold">
-              <p className="font-semibold westworld-mono">{currentQuery}</p>
+            <div className="bg-westworld-beige p-4 rounded-lg mb-6 border-westworld-tan border text-westworld-gold">
+              <p className="font-semibold font-westworld-mono">{currentQuery}</p>
             </div>
           )}
           <ResearchArea steps={researchSteps} />
@@ -252,7 +252,7 @@ const App: React.FC = () => {
           {/* determinate progress bar for visual feedback */}
           <ProgressBar value={progressValue} />
 
-          {error && <p className="text-red-400 mt-4 text-sm westworld-mono">⚠ Aberration Detected: {error}</p>}
+          {error && <p className="text-red-400 mt-4 text-sm font-westworld-mono">⚠ Aberration Detected: {error}</p>}
           <InputBar onQuerySubmit={handleQuerySubmit} isLoading={isLoading} initialQuery={exampleQuery} />
           <Controls
             selectedEffort={selectedEffort}

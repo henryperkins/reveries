@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Context Engineering for Agentic Research</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .context-layer {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 1rem 0;
+        }
+        .agent-card {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .agent-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <header class="bg-gradient-to-r from-purple-900 to-indigo-900 text-white text-center py-12">
+        <h1 class="text-5xl font-black mb-2">Context Engineering for Agentic Research</h1>
+        <p class="text-xl text-purple-200">Optimizing AI Agents for Each Research Paradigm</p>
+    </header>
+
+    <main class="container mx-auto p-8">
+        <section class="mb-12">
+            <h2 class="text-3xl font-bold text-center mb-8">The Context Engineering Framework</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="context-layer">
+                    <h3 class="text-2xl font-bold mb-3">🎯 Intent Layer</h3>
+                    <p>Defines the research goal and desired outcomes. Different paradigms require different intent specifications.</p>
+                    <ul class="mt-4 space-y-2 text-sm">
+                        <li>• Gryffindor: Action-oriented objectives</li>
+                        <li>• Hufflepuff: Collaborative consensus goals</li>
+                        <li>• Ravenclaw: Knowledge discovery targets</li>
+                        <li>• Slytherin: Strategic leverage points</li>
+                    </ul>
+                </div>
+
+                <div class="context-layer">
+                    <h3 class="text-2xl font-bold mb-3">📊 Data Layer</h3>
+                    <p>Curates relevant information sources and structures them for optimal agent processing.</p>
+                    <ul class="mt-4 space-y-2 text-sm">
+                        <li>• Temporal context windows</li>
+                        <li>• Source credibility weights</li>
+                        <li>• Cross-reference mappings</li>
+                        <li>• Domain-specific ontologies</li>
+                    </ul>
+                </div>
+
+                <div class="context-layer">
+                    <h3 class="text-2xl font-bold mb-3">🔄 Feedback Layer</h3>
+                    <p>Implements iterative refinement through agent self-evaluation and human-in-the-loop validation.</p>
+                    <ul class="mt-4 space-y-2 text-sm">
+                        <li>• Confidence scoring</li>
+                        <li>• Bias detection</li>
+                        <li>• Result validation</li>
+                        <li>• Context adaptation</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-12">
+            <h2 class="text-3xl font-bold text-center mb-8">Context-Optimized Research Agents</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="agent-card border-l-4 border-red-600">
+                    <h3 class="text-2xl font-bold text-red-700 mb-3">🦁 Gryffindor Agent: The Advocate</h3>
+                    <h4 class="font-semibold mb-2">Context Engineering Strategy:</h4>
+                    <ul class="space-y-2 text-gray-700">
+                        <li><strong>Priority Context:</strong> Real-world impact metrics, case studies, policy documents</li>
+                        <li><strong>Prompt Engineering:</strong> "Identify actionable interventions that..."</li>
+                        <li><strong>Memory Management:</strong> Maintains history of successful advocacy strategies</li>
+                        <li><strong>Tool Integration:</strong> Community feedback APIs, policy tracking systems</li>
+                    </ul>
+                    <div class="mt-4 p-4 bg-red-50 rounded">
+                        <code class="text-sm">context_window = prioritize(community_voices, impact_data)</code>
+                    </div>
+                </div>
+
+                <div class="agent-card border-l-4 border-yellow-500">
+                    <h3 class="text-2xl font-bold text-yellow-600 mb-3">🦡 Hufflepuff Agent: The Collaborator</h3>
+                    <h4 class="font-semibold mb-2">Context Engineering Strategy:</h4>
+                    <ul class="space-y-2 text-gray-700">
+                        <li><strong>Priority Context:</strong> Stakeholder perspectives, consensus protocols, ethical guidelines</li>
+                        <li><strong>Prompt Engineering:</strong> "Consider all viewpoints and find common ground..."</li>
+                        <li><strong>Memory Management:</strong> Tracks participation patterns and inclusion metrics</li>
+                        <li><strong>Tool Integration:</strong> Collaboration platforms, sentiment analysis</li>
+                    </ul>
+                    <div class="mt-4 p-4 bg-yellow-50 rounded">
+                        <code class="text-sm">context_window = balance(stakeholder_inputs, fairness_metrics)</code>
+                    </div>
+                </div>
+
+                <div class="agent-card border-l-4 border-blue-600">
+                    <h3 class="text-2xl font-bold text-blue-700 mb-3">🦅 Ravenclaw Agent: The Analyst</h3>
+                    <h4 class="font-semibold mb-2">Context Engineering Strategy:</h4>
+                    <ul class="space-y-2 text-gray-700">
+                        <li><strong>Priority Context:</strong> Academic papers, datasets, methodological frameworks</li>
+                        <li><strong>Prompt Engineering:</strong> "Analyze patterns and derive theoretical insights..."</li>
+                        <li><strong>Memory Management:</strong> Builds knowledge graphs and citation networks</li>
+                        <li><strong>Tool Integration:</strong> Statistical packages, literature databases</li>
+                    </ul>
+                    <div class="mt-4 p-4 bg-blue-50 rounded">
+                        <code class="text-sm">context_window = structure(academic_sources, theoretical_models)</code>
+                    </div>
+                </div>
+
+                <div class="agent-card border-l-4 border-green-600">
+                    <h3 class="text-2xl font-bold text-green-700 mb-3">🐍 Slytherin Agent: The Strategist</h3>
+                    <h4 class="font-semibold mb-2">Context Engineering Strategy:</h4>
+                    <ul class="space-y-2 text-gray-700">
+                        <li><strong>Priority Context:</strong> Power structures, decision-maker profiles, leverage points</li>
+                        <li><strong>Prompt Engineering:</strong> "Identify strategic opportunities to maximize..."</li>
+                        <li><strong>Memory Management:</strong> Maps influence networks and tracks outcomes</li>
+                        <li><strong>Tool Integration:</strong> Network analysis, game theory models</li>
+                    </ul>
+                    <div class="mt-4 p-4 bg-green-50 rounded">
+                        <code class="text-sm">context_window = optimize(influence_maps, outcome_probabilities)</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-lg shadow-lg p-8 mb-12">
+            <h2 class="text-3xl font-bold text-center mb-8">Dynamic Context Adaptation</h2>
+            <div class="max-w-4xl mx-auto">
+                <canvas id="contextAdaptationChart"></canvas>
+            </div>
+            <p class="text-center text-gray-600 mt-4">This chart shows how context windows dynamically adjust based on research phase and paradigm requirements</p>
+        </section>
+    </main>
+
+    <script>
+        new Chart(document.getElementById('contextAdaptationChart'), {
+            type: 'line',
+            data: {
+                labels: ['Problem Definition', 'Data Collection', 'Analysis', 'Synthesis', 'Action'],
+                datasets: [
+                    {
+                        label: 'Gryffindor Context Density',
+                        data: [60, 70, 50, 80, 95],
+                        borderColor: '#DC2626',
+                        backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Hufflepuff Context Density',
+                        data: [80, 90, 70, 85, 75],
+                        borderColor: '#FBBF24',
+                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Ravenclaw Context Density',
+                        data: [70, 85, 95, 90, 60],
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Slytherin Context Density',
+                        data: [85, 60, 80, 70, 90],
+                        borderColor: '#16A34A',
+                        backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: 'Context Density (%)' }
+                    }
+                },
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

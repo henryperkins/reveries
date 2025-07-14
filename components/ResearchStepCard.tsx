@@ -11,21 +11,21 @@ interface ResearchStepCardProps {
 export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({ step }) => {
   const IconComponent = step.icon;
   
-  const baseCardClasses = "p-4 rounded-lg westworld-card flex items-start space-x-3";
+  const baseCardClasses = "p-4 rounded-lg bg-westworld-beige flex items-start space-x-3";
   let typeSpecificClasses = "";
-  let iconColor = "westworld-text-copper"; 
+  let iconColor = "text-westworld-rust"; 
 
   switch(step.type) {
     case ResearchStepType.USER_QUERY:
-      typeSpecificClasses = "westworld-border border animate-glow"; 
-      iconColor = "westworld-text-gold";
+      typeSpecificClasses = "border-westworld-tan border animate-glow"; 
+      iconColor = "text-westworld-gold";
       break;
     case ResearchStepType.FINAL_ANSWER:
-      typeSpecificClasses = "westworld-border border westworld-glow";
-      iconColor = "westworld-text-gold animate-glow";
+      typeSpecificClasses = "border-westworld-tan border";
+      iconColor = "text-westworld-gold animate-glow";
       break;
     default:
-      typeSpecificClasses = "westworld-border border"; 
+      typeSpecificClasses = "border-westworld-tan border"; 
   }
 
   return (
@@ -34,7 +34,7 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({ step }) => {
         <IconComponent className={step.isSpinning ? 'animate-spin-slow' : ''} />
       </div>
       <div className="grow min-w-0">
-        <h3 className="text-md font-semibold westworld-text-gold westworld-mono">{step.title}</h3>
+        <h3 className="text-md font-semibold text-westworld-gold font-westworld-mono">{step.title}</h3>
         <div className="text-sm mt-1 break-words" style={{color: 'var(--westworld-cream)'}}>
           {typeof step.content === 'string' ? (
             <div className="prose prose-sm prose-invert max-w-none">
@@ -44,7 +44,7 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({ step }) => {
             step.content 
           )}
         </div>
-        {step.timestamp && <p className="text-xs westworld-text-copper mt-1 westworld-mono">{step.timestamp}</p>}
+        {step.timestamp && <p className="text-xs text-westworld-rust mt-1 font-westworld-mono">{step.timestamp}</p>}
       </div>
     </div>
   );

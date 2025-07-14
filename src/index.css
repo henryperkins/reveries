@@ -115,7 +115,7 @@
   }
 
   .reverie-input {
-    @apply w-full bg-westworld-beige border-2 border-westworld-tan rounded-lg px-4 py-2 text-westworld-darkbrown placeholder-westworld-brown focus:outline-hidden focus:border-westworld-brown focus:ring-2 focus:ring-westworld-gold/20;
+    @apply w-full bg-westworld-beige border-2 border-westworld-tan rounded-lg px-4 py-2 text-westworld-darkbrown placeholder-westworld-brown focus:outline-none focus:border-westworld-brown focus:ring-2 focus:ring-westworld-gold/20;
     /* Touch-friendly sizing */
     @apply pointer-coarse:px-6 pointer-coarse:py-3 pointer-coarse:text-lg;
   }
@@ -135,5 +135,45 @@
   .reverie-card h3,
   .research-step-card h3 {
     text-shadow: 1px 1px 2px rgba(212, 165, 116, 0.3);
+  }
+
+  /* Main header title glow effect */
+  .westworld-title {
+    @apply text-westworld-black;
+    text-shadow: var(--text-shadow-westworld-glow);
+  }
+
+  /* Additional utility classes */
+  .westworld-text-gold {
+    @apply text-westworld-gold;
+  }
+
+  .westworld-text-copper {
+    @apply text-westworld-rust;
+  }
+
+  .westworld-border {
+    @apply border-westworld-tan;
+  }
+
+  .westworld-card {
+    @apply bg-westworld-beige;
+  }
+
+  .westworld-mono {
+    font-family: Courier, monospace;
+  }
+
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes glow {
+    from {
+      text-shadow: 0 0 10px rgba(212, 165, 116, 0.5);
+    }
+    to {
+      text-shadow: 0 0 20px rgba(212, 165, 116, 0.8), 0 0 30px rgba(212, 165, 116, 0.4);
+    }
   }
 }
