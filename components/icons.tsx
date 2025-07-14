@@ -94,3 +94,39 @@ export const GlobeAltIcon: React.FC<SVGProps> = (props) => (
   </svg>
 );
 
+export const BeakerIcon: React.FC<SVGProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5a2.25 2.25 0 0 0-.659 1.591V19.5a2.25 2.25 0 0 0 2.25 2.25h10.818a2.25 2.25 0 0 0 2.25-2.25v-3.409a2.25 2.25 0 0 0-.659-1.591L14.25 10.409a2.25 2.25 0 0 1-.659-1.591V3.104a48.554 48.554 0 0 0-3.478-.546 49.083 49.083 0 0 0-1.606-.009c-.538.052-1.084.134-1.507.546Z" />
+  </svg>
+);
+
+export const LightBulbIcon: React.FC<SVGProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18a4.5 4.5 0 0 0-4.5-4.5A4.5 4.5 0 0 0 5.25 18h9.75ZM8.288 14.212A5.25 5.25 0 1 1 17.25 10.5c0 .3-.03.59-.075.872a1.5 1.5 0 0 0-1.425 1.53v1.67a.75.75 0 0 1-.75.75h-3a.75.75 0 0 1-.75-.75v-1.67a1.5 1.5 0 0 0-1.425-1.53A6.792 6.792 0 0 1 8.288 14.212Z" />
+  </svg>
+);
+
+export const CheckCircleIcon: React.FC<SVGProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+  </svg>
+);
+
+export const ArrowDownTrayIcon: React.FC<SVGProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+  </svg>
+);
+
+export const ClipboardDocumentIcon: React.FC<SVGProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.108c-1.17 0-2.128-.806-2.133-1.976L3.75 4.133c.003-1.17.96-2.113 2.133-2.113h.227c.639-.074 1.281-.135 1.927-.184Z" />
+  </svg>
+);
+
+export const ChartBarIcon: React.FC<SVGProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+  </svg>
+);
+

@@ -1,8 +1,9 @@
 import React from 'react';
 
 // Corrected model identifiers based on latest guidelines
-export const GENAI_MODEL_FLASH = 'gemini-2.5-flash'; 
+export const GENAI_MODEL_FLASH = 'gemini-2.5-flash';
 export const GROK_MODEL_4 = 'grok-4';
+export const AZURE_O3_MODEL = 'o3-mini'; // Azure OpenAI o3 model
 
 export enum ResearchStepType {
   USER_QUERY = 'USER_QUERY',
@@ -11,7 +12,13 @@ export enum ResearchStepType {
   REFLECTION = 'REFLECTION',
   SEARCHING_FINAL_ANSWER = 'SEARCHING_FINAL_ANSWER',
   FINAL_ANSWER = 'FINAL_ANSWER',
-  ERROR = 'ERROR'
+  ERROR = 'ERROR',
+  // Enhanced LangGraph pattern types
+  QUERY_CLASSIFICATION = 'QUERY_CLASSIFICATION',
+  QUALITY_EVALUATION = 'QUALITY_EVALUATION',
+  RESEARCH_PLANNING = 'RESEARCH_PLANNING',
+  PARALLEL_RESEARCH = 'PARALLEL_RESEARCH',
+  ANALYTICS = 'ANALYTICS'
 }
 
 export interface ResearchStep {
@@ -31,8 +38,8 @@ export enum EffortType {
   HIGH = 'High',
 }
 
-// Updated ModelType to only include the allowed model
-export type ModelType = typeof GENAI_MODEL_FLASH | typeof GROK_MODEL_4;
+// Updated ModelType to include Azure O3
+export type ModelType = typeof GENAI_MODEL_FLASH | typeof GROK_MODEL_4 | typeof AZURE_O3_MODEL;
 
 
 export const effortOptions: { value: EffortType; label: string }[] = [
@@ -41,10 +48,11 @@ export const effortOptions: { value: EffortType; label: string }[] = [
   { value: EffortType.HIGH, label: 'Effort: High' },
 ];
 
-// Updated modelOptions to only include the allowed model
+// Updated modelOptions to include Azure O3
 export const modelOptions: { value: ModelType; label: string }[] = [
   { value: GENAI_MODEL_FLASH, label: 'Model: 2.5 Flash' },
   { value: GROK_MODEL_4, label: 'Model: Grok-4' },
+  { value: AZURE_O3_MODEL, label: 'Model: Azure O3' },
 ];
 
 export interface ResearchDataState {
@@ -63,4 +71,48 @@ export interface ServiceCallConfig {
   selectedModel: ModelType;
   selectedEffort: EffortType;
   shouldUseSearchInFinalAnswer: boolean;
+}
+
+// Enhanced research types for LangGraph patterns
+export type QueryType = 'factual' | 'analytical' | 'comparative' | 'exploratory';
+
+export interface ResearchSection {
+  topic: string;
+  description: string;
+  research?: string;
+  sources?: { name: string; url?: string }[];
+}
+
+export interface ResearchState {
+  query: string;
+  queryType?: QueryType;
+  searchResults: { name: string; url?: string }[];
+  synthesis: string;
+  evaluation: {
+    quality: 'good' | 'needs_improvement';
+    feedback?: string;
+    completeness?: number; // 0-1 score
+    accuracy?: number; // 0-1 score
+    clarity?: number; // 0-1 score
+  };
+  sections?: ResearchSection[];
+  refinementCount: number;
+}
+
+export interface EnhancedResearchResults {
+  synthesis: string;
+  sources: { name: string; url?: string }[];
+  evaluationMetadata?: ResearchState['evaluation'];
+  sections?: ResearchSection[];
+  queryType?: QueryType;
+  refinementCount?: number;
+  confidenceScore?: number; // 0-1 confidence in the results
+  adaptiveMetadata?: {
+    cacheHit?: boolean;
+    learnedPatterns?: boolean;
+    processingTime?: number;
+    complexityScore?: number;
+    selfHealed?: boolean;
+    healingStrategy?: 'broader_search' | 'enhanced_detail' | 'alternative_model';
+  };
 }

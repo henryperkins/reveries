@@ -1,9 +1,29 @@
-import { EffortType, ModelType, GENAI_MODEL_FLASH } from "./types";
+import { EffortType, ModelType, GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL } from './types';
+import { AzureOpenAIService } from './services/azureOpenAIService';
 
-// Removed GENAI_MODEL_FLASH, GENAI_MODEL_PRO, GENAI_MODEL_IMAGEN definitions.
-// GENAI_MODEL_FLASH is now imported from types.ts.
-// GENAI_MODEL_PRO was prohibited.
-// GENAI_MODEL_IMAGEN was unused in this context.
+// Check if Grok API key is available
+const isGrokAvailable = () => {
+  try {
+    return !!(typeof process !== 'undefined' && process.env?.GROK_API_KEY);
+  } catch {
+    return false;
+  }
+};
+
+// Check if Azure OpenAI is available
+const isAzureOpenAIAvailable = () => {
+  return AzureOpenAIService.isAvailable();
+};
+
+// Default model selection logic
+export const DEFAULT_MODEL: ModelType = (() => {
+  if (isAzureOpenAIAvailable()) return AZURE_O3_MODEL;
+  if (isGrokAvailable()) return GROK_MODEL_4;
+  return GENAI_MODEL_FLASH;
+})();
 
 export const DEFAULT_EFFORT: EffortType = EffortType.MEDIUM;
-export const DEFAULT_MODEL: ModelType = GENAI_MODEL_FLASH;
+
+// Export availability checks for UI
+export const GROK_AVAILABLE = isGrokAvailable();
+export const AZURE_OPENAI_AVAILABLE = isAzureOpenAIAvailable();

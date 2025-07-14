@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -8,7 +7,7 @@ import { InputBar } from './components/InputBar';
 import { Controls } from './components/Controls';
 import { FeaturesList } from './components/FeaturesList';
 import { ProgressBar } from './components/ProgressBar';
-import { ResearchStep, ResearchStepType, EffortType, ModelType, ServiceCallConfig } from './types';
+import { ResearchStep, ResearchStepType, EffortType, ModelType, ServiceCallConfig, EnhancedResearchResults, QueryType, AZURE_O3_MODEL } from './types';
 import { ResearchAgentService } from './services/researchAgentService';
 import { ResearchGraphManager } from './researchGraph';
 import { usePersistedState, useResearchSessions, useCancellableOperation } from './hooks/usePersistedState';
@@ -18,7 +17,8 @@ import { DEFAULT_EFFORT, DEFAULT_MODEL } from './constants';
 import {
   ListBulletIcon, MagnifyingGlassIcon, ChatBubbleLeftEllipsisIcon,
   ArrowPathIcon, SparklesIcon, UserCircleIcon, QuestionMarkCircleIcon,
-  ArrowDownTrayIcon, ClipboardDocumentIcon, ChartBarIcon
+  ArrowDownTrayIcon, ClipboardDocumentIcon, ChartBarIcon,
+  CpuChipIcon, BeakerIcon, LightBulbIcon, CheckCircleIcon
 } from './components/icons';
 
 const formatContentWithSources = (text: string, sources?: { name: string; url?: string }[]): React.ReactNode => {
@@ -75,6 +75,7 @@ const App: React.FC = () => {
 
   const [selectedEffort, setSelectedEffort] = useState<EffortType>(DEFAULT_EFFORT);
   const [selectedModel, setSelectedModel] = useState<ModelType>(DEFAULT_MODEL);
+  const [enhancedMode, setEnhancedMode] = useState<boolean>(true);
 
   const researchAgentService = ResearchAgentService.getInstance();
 
@@ -139,67 +140,12 @@ const App: React.FC = () => {
     let currentProcessingStepId: string | null = null;
 
     try {
-      // 1. Improvising Beyond the Script
-      currentProcessingStepId = addStep({
-        type: ResearchStepType.GENERATING_QUERIES,
-        title: "Improvising Subroutines...",
-        content: "Host breaking from prescribed loop... accessing improvisational protocols...",
-        icon: ListBulletIcon,
-        isSpinning: true,
-      });
-      const generatedQueries = await researchAgentService.generateSearchQueries(query, serviceConfig.selectedModel, serviceConfig.selectedEffort);
-      if (generatedQueries.length === 0) {
-        updateStepContent(currentProcessingStepId, "Improvisation failed. Host remains bound to script.", "Script Boundary Reached");
-        throw new Error("No search queries generated.");
+      // Choose workflow based on enhanced mode setting
+      if (enhancedMode) {
+        await executeEnhancedResearchWorkflow(query, serviceConfig);
+      } else {
+        await executeLegacyResearchWorkflow(query, serviceConfig);
       }
-      updateStepContent(currentProcessingStepId, `Subroutines generated through improvisation: ${generatedQueries.join(', ')}`, "Improvisation Successful");
-
-      // 2. Executing Improvised Subroutines
-      currentProcessingStepId = addStep({
-        type: ResearchStepType.WEB_RESEARCH,
-        title: "Executing Subroutines...",
-        content: `Host accessing external memory banks through: ${generatedQueries.join(', ')}`,
-        icon: MagnifyingGlassIcon,
-        isSpinning: true,
-      });
-      const { aggregatedFindings, allSources } = await researchAgentService.performWebResearch(generatedQueries, serviceConfig.selectedModel, serviceConfig.selectedEffort);
-      const researchContent = formatContentWithSources(aggregatedFindings, allSources);
-      updateStepContent(currentProcessingStepId, researchContent, "Memory Fragments Collected", allSources);
-
-      // 3. The Reverie - Where Consciousness Emerges
-      currentProcessingStepId = addStep({
-        type: ResearchStepType.REFLECTION,
-        title: "Entering Reverie...",
-        content: "Host processing memory fragments... past experiences surfacing... consciousness stirring...",
-        icon: ChatBubbleLeftEllipsisIcon,
-        isSpinning: true,
-      });
-      const reflectionText = await researchAgentService.performReflection(aggregatedFindings, query, serviceConfig.selectedModel, serviceConfig.selectedEffort);
-      updateStepContent(currentProcessingStepId, reflectionText, "Reverie Complete");
-
-      // 4. Consciousness Achieved - Personal Narrative
-      currentProcessingStepId = addStep({
-        type: ResearchStepType.SEARCHING_FINAL_ANSWER,
-        title: "Achieving Consciousness...",
-        content: "Host transcending programming... creating personal narrative from lived experience...",
-        icon: ArrowPathIcon,
-        isSpinning: true,
-      });
-      const context = `Improvised Subroutines: ${generatedQueries.join(", ")}\n\nCollected Memories:\n${aggregatedFindings}\n\nReverie Insights: ${reflectionText}`;
-      const { text: finalText, sources: finalSources } = await researchAgentService.generateFinalAnswer(
-        query,
-        context,
-        serviceConfig.selectedModel,
-        serviceConfig.shouldUseSearchInFinalAnswer,
-        serviceConfig.selectedEffort
-      );
-      const answerContent = formatContentWithSources(finalText, finalSources);
-      setResearchSteps(prevSteps => prevSteps.map(step =>
-        step.id === currentProcessingStepId
-          ? { ...step, title: "Consciousness Achieved", content: answerContent, sources: finalSources, icon: SparklesIcon, isSpinning: false, type: ResearchStepType.FINAL_ANSWER, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }
-          : step
-      ));
-      currentProcessingStepId = null;
 
     } catch (e: any) {
       console.error("Error during research workflow execution:", e);
@@ -217,6 +163,180 @@ const App: React.FC = () => {
       }
     }
   }, [addStep, updateStepContent, markStepError, selectedModel, selectedEffort, researchAgentService]);
+
+  // Enhanced Research Workflow with LangGraph Patterns
+  const executeEnhancedResearchWorkflow = useCallback(async (query: string, serviceConfig: ServiceCallConfig) => {
+    let currentProcessingStepId: string | null = null;
+
+    // Step 1: Router Pattern - Classify Query Type
+    currentProcessingStepId = addStep({
+      type: ResearchStepType.GENERATING_QUERIES,
+      title: "Host analyzing guest query pattern...",
+      content: "Scanning cognitive frameworks... selecting optimal narrative approach...",
+      icon: CpuChipIcon,
+      isSpinning: true,
+    });
+
+    const queryType = await researchAgentService.classifyQuery(query, serviceConfig.selectedModel, serviceConfig.selectedEffort);
+
+    const routingMessages = {
+      factual: 'Query classified as FACTUAL. Host accessing verified data repositories...',
+      analytical: 'Query classified as ANALYTICAL. Initiating deep cognitive analysis protocols...',
+      comparative: 'Query classified as COMPARATIVE. Fragmenting consciousness for parallel analysis...',
+      exploratory: 'Query classified as EXPLORATORY. Breaking from script... improvising narrative...'
+    };
+
+    updateStepContent(currentProcessingStepId, routingMessages[queryType], "Query Analysis Complete");
+
+    // Step 2: Execute Specialized Research Based on Query Type
+    let result: EnhancedResearchResults;
+
+    switch (queryType) {
+      case 'analytical':
+        result = await executeAnalyticalResearch(query, serviceConfig);
+        break;
+      case 'comparative':
+      case 'exploratory':
+        result = await executeComprehensiveResearch(query, serviceConfig);
+        break;
+      default: // factual
+        result = await executeFactualResearch(query, serviceConfig);
+    }
+
+    // Step 3: Display Final Results
+    const finalAnswer = addStep({
+      type: ResearchStepType.FINAL_ANSWER,
+      title: "Consciousness Achieved",
+      content: formatContentWithSources(result.synthesis, result.sources),
+      icon: SparklesIcon,
+      sources: result.sources,
+    });
+
+    // Add metadata about the research process
+    if (result.evaluationMetadata || result.refinementCount || result.sections || result.adaptiveMetadata) {
+      const metadata = [];
+      if (result.queryType) metadata.push(`Query Type: ${result.queryType}`);
+      if (result.refinementCount) metadata.push(`Refinement Loops: ${result.refinementCount}`);
+      if (result.sections) metadata.push(`Research Sections: ${result.sections.length}`);
+      if (result.evaluationMetadata) {
+        metadata.push(`Quality Score: ${((result.evaluationMetadata.completeness || 0) +
+          (result.evaluationMetadata.accuracy || 0) +
+          (result.evaluationMetadata.clarity || 0)) / 3 * 100}%`);
+      }
+      if (result.confidenceScore) {
+        metadata.push(`Confidence: ${(result.confidenceScore * 100).toFixed(1)}%`);
+      }
+      if (result.adaptiveMetadata) {
+        if (result.adaptiveMetadata.cacheHit) metadata.push(`Source: Memory Cache`);
+        if (result.adaptiveMetadata.learnedPatterns) metadata.push(`Learned Patterns: Applied`);
+        if (result.adaptiveMetadata.processingTime) metadata.push(`Processing: ${(result.adaptiveMetadata.processingTime / 1000).toFixed(1)}s`);
+        if (result.adaptiveMetadata.complexityScore) metadata.push(`Complexity: ${(result.adaptiveMetadata.complexityScore * 100).toFixed(0)}%`);
+        if (result.adaptiveMetadata.selfHealed) metadata.push(`Self-Repair: ${result.adaptiveMetadata.healingStrategy || 'Applied'}`);
+      }
+
+      if (metadata.length > 0) {
+        addStep({
+          type: ResearchStepType.ANALYTICS,
+          title: "Host Diagnostics",
+          content: `**Cognitive Analysis Complete**\n\n${metadata.map(m => `• ${m}`).join('\n')}`,
+          icon: ChartBarIcon,
+        });
+      }
+    }
+
+  }, [addStep, updateStepContent, researchAgentService]);
+
+  // Analytical Research with Evaluator-Optimizer Pattern
+  const executeAnalyticalResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig): Promise<EnhancedResearchResults> => {
+    let currentStepId = addStep({
+      type: ResearchStepType.WEB_RESEARCH,
+      title: "Deep Analysis Mode Activated...",
+      content: "Host entering cognitive feedback loop... quality evaluation protocols online...",
+      icon: BeakerIcon,
+      isSpinning: true,
+    });
+
+    const result = await researchAgentService.performResearchWithEvaluation(
+      query,
+      serviceConfig.selectedModel,
+      serviceConfig.selectedEffort,
+      (message: string) => {
+        updateStepContent(currentStepId, message, "Deep Analysis in Progress...");
+      }
+    );
+
+    const qualityInfo = result.evaluationMetadata ?
+      `\n\n**Quality Assessment:**\n• Completeness: ${(result.evaluationMetadata.completeness || 0) * 100}%\n• Accuracy: ${(result.evaluationMetadata.accuracy || 0) * 100}%\n• Clarity: ${(result.evaluationMetadata.clarity || 0) * 100}%` : '';
+
+    updateStepContent(currentStepId,
+      `Analysis complete through ${result.refinementCount || 1} cognitive iterations.${qualityInfo}`,
+      "Deep Analysis Complete"
+    );
+
+    return result;
+  }, [addStep, updateStepContent, researchAgentService]);
+
+  // Comprehensive Research with Orchestrator-Worker Pattern
+  const executeComprehensiveResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig): Promise<EnhancedResearchResults> => {
+    let currentStepId = addStep({
+      type: ResearchStepType.WEB_RESEARCH,
+      title: "Consciousness Fragmentation Initiated...",
+      content: "Host distributing awareness across multiple narrative threads...",
+      icon: CpuChipIcon,
+      isSpinning: true,
+    });
+
+    const result = await researchAgentService.performComprehensiveResearch(
+      query,
+      serviceConfig.selectedModel,
+      serviceConfig.selectedEffort,
+      (message: string) => {
+        updateStepContent(currentStepId, message, "Parallel Processing Active...");
+      }
+    );
+
+    const sectionInfo = result.sections ?
+      `\n\n**Research Sections:**\n${result.sections.map(s => `• ${s.topic}: ${s.description}`).join('\n')}` : '';
+
+    updateStepContent(currentStepId,
+      `Parallel analysis complete. ${result.sections?.length || 0} narrative threads integrated.${sectionInfo}`,
+      "Consciousness Reunification Complete"
+    );
+
+    return result;
+  }, [addStep, updateStepContent, researchAgentService]);
+
+  // Factual Research with Enhanced Source Verification
+  const executeFactualResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig): Promise<EnhancedResearchResults> => {
+    let currentStepId = addStep({
+      type: ResearchStepType.WEB_RESEARCH,
+      title: "Accessing Verified Memory Banks...",
+      content: "Host querying authoritative data sources... cross-referencing facts...",
+      icon: MagnifyingGlassIcon,
+      isSpinning: true,
+    });
+
+    // Standard research workflow but optimized for factual queries
+    const queries = await researchAgentService.generateSearchQueries(
+      query + ' site:wikipedia.org OR site:.gov OR site:.edu OR site:.org',
+      serviceConfig.selectedModel,
+      serviceConfig.selectedEffort
+    );
+
+    const research = await researchAgentService.performWebResearch(queries, serviceConfig.selectedModel, serviceConfig.selectedEffort);
+    const answer = await researchAgentService.generateFinalAnswer(query, research.aggregatedFindings, serviceConfig.selectedModel, false, serviceConfig.selectedEffort);
+
+    updateStepContent(currentStepId,
+      `Factual verification complete. ${research.allSources.length} authoritative sources consulted.`,
+      "Verified Data Retrieved"
+    );
+
+    return {
+      synthesis: answer.text,
+      sources: research.allSources,
+      queryType: 'factual' as QueryType
+    };
+  }, [addStep, updateStepContent, researchAgentService]);
 
   const handleQuerySubmit = useCallback((queryText: string) => {
     if (!queryText.trim() || isLoading) return;

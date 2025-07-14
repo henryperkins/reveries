@@ -1,7 +1,17 @@
-
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { ModelType, EffortType, GENAI_MODEL_FLASH, GROK_MODEL_4 } from "../types";
+import {
+  ModelType,
+  EffortType,
+  GENAI_MODEL_FLASH,
+  GROK_MODEL_4,
+  AZURE_O3_MODEL,
+  QueryType,
+  ResearchSection,
+  ResearchState,
+  EnhancedResearchResults
+} from "../types";
 import { APIError, withRetry, ErrorBoundary } from "./errorHandler";
+import { AzureOpenAIService } from "./azureOpenAIService";
 
 /**
  * Generic provider-agnostic response structure we use internally.
@@ -22,22 +32,41 @@ const getGeminiApiKey = (): string => {
   return apiKeyFromEnv;
 };
 
-// Fallback to the provided key if the env var is not set. This is NOT recommended for production.
-const GROK_FALLBACK_KEY = 'xai-aNBkbA7BpoY5z1GKASMjMG1mwccTwRRltSN8eYJ90yabtau7EF8JJ6JCcwUGN9djPuUdihor4Vv5xhfW';
-
 const getGrokApiKey = (): string => {
   const apiKeyFromEnv = (typeof process !== 'undefined' && process.env?.GROK_API_KEY) ? process.env.GROK_API_KEY : null;
-  return apiKeyFromEnv || GROK_FALLBACK_KEY;
+  if (!apiKeyFromEnv) {
+    throw new APIError(
+      'GROK_API_KEY environment variable is not set. Please use Gemini models instead.',
+      'AUTH_ERROR',
+      false,
+      401
+    );
+  }
+  return apiKeyFromEnv;
 };
 
 
 export class ResearchAgentService {
   private static instance: ResearchAgentService;
   private geminiAI: GoogleGenAI;
+  private azureOpenAI: AzureOpenAIService | null = null;
+  private researchCache: Map<string, { result: EnhancedResearchResults; timestamp: number }> = new Map();
+  private readonly CACHE_TTL = 1000 * 60 * 30; // 30 minutes
+  private researchMemory: Map<string, { queries: string[]; patterns: QueryType[]; timestamp: number }> = new Map();
+  private readonly MEMORY_TTL = 1000 * 60 * 60 * 24; // 24 hours
 
   private constructor() {
     // Currently only Gemini needs an SDK client. Grok is called via fetch.
     this.geminiAI = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+
+    // Initialize Azure OpenAI if available
+    if (AzureOpenAIService.isAvailable()) {
+      try {
+        this.azureOpenAI = AzureOpenAIService.getInstance();
+      } catch (error) {
+        console.warn('Azure OpenAI initialization failed:', error);
+      }
+    }
   }
 
   public static getInstance(): ResearchAgentService {
@@ -63,8 +92,26 @@ export class ResearchAgentService {
     }
 
     return withRetry(async () => {
-      if (selectedModel === GROK_MODEL_4) {
-        return this.generateTextWithGrok(prompt);
+      if (selectedModel === AZURE_O3_MODEL) {
+        // Check if Azure OpenAI is available
+        if (!this.azureOpenAI) {
+          console.warn('Azure OpenAI not available, falling back to Gemini');
+          return this.generateTextWithGemini(prompt, GENAI_MODEL_FLASH, effort, useSearch);
+        }
+        return this.generateTextWithAzureOpenAI(prompt, effort, useSearch);
+      } else if (selectedModel === GROK_MODEL_4) {
+        // Check if Grok is available before attempting to use it
+        try {
+          getGrokApiKey(); // This will throw if not available
+          return this.generateTextWithGrok(prompt);
+        } catch (error) {
+          if (error instanceof APIError && error.code === 'AUTH_ERROR') {
+            // Fallback to Gemini
+            console.warn('Grok API key not available, falling back to Gemini');
+            return this.generateTextWithGemini(prompt, GENAI_MODEL_FLASH, effort, useSearch);
+          }
+          throw error;
+        }
       }
       // Otherwise default to Gemini
       return this.generateTextWithGemini(prompt, selectedModel, effort, useSearch);
@@ -272,9 +319,19 @@ export class ResearchAgentService {
   }
 
   async generateSearchQueries(userQuery: string, model: ModelType, effort: EffortType): Promise<string[]> {
-    const prompt = `Based on the user query: "${userQuery}", generate a short list of 2-3 concise search queries or key topics that would help in researching an answer. Return them as a comma-separated list. For example: query1, query2, query3`;
+    // Check for learned query suggestions first
+    const learnedSuggestions = this.getQuerySuggestions(userQuery);
+
+    const prompt = `Based on the user query: "${userQuery}", generate a short list of 2-3 concise search queries or key topics that would help in researching an answer.
+
+    ${learnedSuggestions.length > 0 ? `Previous successful queries for similar topics: ${learnedSuggestions.slice(0, 3).join(', ')}` : ''}
+
+    Return them as a comma-separated list. For example: query1, query2, query3`;
+
     const result = await this.generateText(prompt, model, effort);
-    return result.text.split(',').map(q => q.trim()).filter(q => q.length > 0);
+    const queries = result.text.split(',').map(q => q.trim()).filter(q => q.length > 0);
+
+    return queries;
   }
 
   async performWebResearch(
@@ -347,5 +404,593 @@ export class ResearchAgentService {
       The answer should be helpful, informative, and directly address the user's query.
     `;
     return this.generateText(prompt, model, effort, useSearch);
+  }
+
+  // ==================== MEMORY AND LEARNING PATTERNS ====================
+
+  /**
+   * Memory Pattern: Learn from previous research patterns
+   */
+  private learnFromQuery(query: string, queryType: QueryType, queries: string[]): void {
+    const normalizedQuery = query.toLowerCase().trim();
+    const existingMemory = this.researchMemory.get(normalizedQuery);
+
+    if (existingMemory) {
+      // Update existing memory
+      existingMemory.queries = [...new Set([...existingMemory.queries, ...queries])];
+      existingMemory.patterns = [...new Set([...existingMemory.patterns, queryType])];
+      existingMemory.timestamp = Date.now();
+    } else {
+      // Create new memory
+      this.researchMemory.set(normalizedQuery, {
+        queries,
+        patterns: [queryType],
+        timestamp: Date.now()
+      });
+    }
+
+    // Clean old memories
+    this.cleanOldMemories();
+  }
+
+  /**
+   * Retrieve learned patterns for similar queries
+   */
+  private getQuerySuggestions(query: string): string[] {
+    const normalizedQuery = query.toLowerCase().trim();
+    const suggestions: string[] = [];
+
+    // Look for similar queries in memory
+    for (const [memoryQuery, memory] of this.researchMemory.entries()) {
+      if (this.isQuerySimilar(normalizedQuery, memoryQuery) &&
+        Date.now() - memory.timestamp < this.MEMORY_TTL) {
+        suggestions.push(...memory.queries);
+      }
+    }
+
+    return [...new Set(suggestions)];
+  }
+
+  private isQuerySimilar(query1: string, query2: string): boolean {
+    const words1 = new Set(query1.split(/\s+/));
+    const words2 = new Set(query2.split(/\s+/));
+    const intersection = new Set([...words1].filter(x => words2.has(x)));
+    const union = new Set([...words1, ...words2]);
+
+    // Jaccard similarity > 0.3
+    return intersection.size / union.size > 0.3;
+  }
+
+  private cleanOldMemories(): void {
+    const now = Date.now();
+    for (const [key, memory] of this.researchMemory.entries()) {
+      if (now - memory.timestamp > this.MEMORY_TTL) {
+        this.researchMemory.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Cache Pattern: Enhanced caching with similarity matching
+   */
+  private getCachedResult(query: string): EnhancedResearchResults | null {
+    const normalizedQuery = query.toLowerCase().trim();
+
+    // Check exact match first
+    const exactMatch = this.researchCache.get(normalizedQuery);
+    if (exactMatch && Date.now() - exactMatch.timestamp < this.CACHE_TTL) {
+      return exactMatch.result;
+    }
+
+    // Check for similar cached queries
+    for (const [cachedQuery, cached] of this.researchCache.entries()) {
+      if (this.isQuerySimilar(normalizedQuery, cachedQuery) &&
+        Date.now() - cached.timestamp < this.CACHE_TTL) {
+        return cached.result;
+      }
+    }
+
+    return null;
+  }
+
+  private setCachedResult(query: string, result: EnhancedResearchResults): void {
+    const normalizedQuery = query.toLowerCase().trim();
+    this.researchCache.set(normalizedQuery, {
+      result,
+      timestamp: Date.now()
+    });
+
+    // Clean old cache entries
+    this.cleanOldCache();
+  }
+
+  private cleanOldCache(): void {
+    const now = Date.now();
+    for (const [key, cached] of this.researchCache.entries()) {
+      if (now - cached.timestamp > this.CACHE_TTL) {
+        this.researchCache.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Calculate confidence score based on multiple factors
+   */
+  private calculateConfidenceScore(result: EnhancedResearchResults): number {
+    let confidence = 0.5; // Base confidence
+
+    // Factor in evaluation metadata
+    if (result.evaluationMetadata) {
+      const avgQuality = (
+        (result.evaluationMetadata.completeness || 0.5) +
+        (result.evaluationMetadata.accuracy || 0.5) +
+        (result.evaluationMetadata.clarity || 0.5)
+      ) / 3;
+      confidence += avgQuality * 0.3;
+    }
+
+    // Factor in number of sources
+    if (result.sources && result.sources.length > 0) {
+      confidence += Math.min(result.sources.length / 10, 0.2); // Up to 0.2 boost for sources
+    }
+
+    // Factor in synthesis length (neither too short nor too long)
+    const synthesisLength = result.synthesis.length;
+    if (synthesisLength > 200 && synthesisLength < 5000) {
+      confidence += 0.1;
+    }
+
+    // Factor in refinement iterations (more iterations = higher confidence)
+    if (result.refinementCount && result.refinementCount > 1) {
+      confidence += Math.min(result.refinementCount * 0.05, 0.15);
+    }
+
+    return Math.min(Math.max(confidence, 0), 1); // Clamp between 0 and 1
+  }
+
+  /**
+   * Calculate query complexity score
+   */
+  private calculateComplexityScore(query: string, queryType: QueryType): number {
+    let complexity = 0.3; // Base complexity
+
+    // Factor in query length
+    const wordCount = query.split(/\s+/).length;
+    complexity += Math.min(wordCount / 100, 0.3);
+
+    // Factor in query type
+    const typeComplexity = {
+      factual: 0.1,
+      analytical: 0.4,
+      comparative: 0.3,
+      exploratory: 0.2
+    };
+    complexity += typeComplexity[queryType];
+
+    // Factor in question complexity indicators
+    const complexityIndicators = [
+      'compare', 'analyze', 'evaluate', 'explain why', 'how does',
+      'relationship between', 'impact of', 'pros and cons'
+    ];
+
+    const queryLower = query.toLowerCase();
+    const matchingIndicators = complexityIndicators.filter(indicator =>
+      queryLower.includes(indicator)
+    ).length;
+
+    complexity += matchingIndicators * 0.1;
+
+    return Math.min(Math.max(complexity, 0), 1);
+  }
+
+  /**
+   * Self-Healing Pattern: Detect and recover from poor quality results
+   */
+  private async attemptSelfHealing(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    result: EnhancedResearchResults,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    const confidence = this.calculateConfidenceScore(result);
+
+    // If confidence is too low, attempt recovery
+    if (confidence < 0.4) {
+      onProgress?.('Host detecting narrative inconsistencies... initiating self-repair protocols...');
+
+      // Try a different approach based on the issue
+      if (result.sources.length === 0) {
+        // No sources found - try broader search
+        onProgress?.('Expanding search parameters... accessing wider memory banks...');
+        const broaderQueries = await this.generateSearchQueries(
+          `${query} overview summary general information`,
+          model,
+          effort
+        );
+        const broaderResearch = await this.performWebResearch(broaderQueries, model, effort);
+        const healedAnswer = await this.generateFinalAnswer(query, broaderResearch.aggregatedFindings, model, false, effort);
+
+        return {
+          ...result,
+          synthesis: healedAnswer.text || result.synthesis,
+          sources: broaderResearch.allSources,
+          adaptiveMetadata: {
+            ...result.adaptiveMetadata,
+            selfHealed: true,
+            healingStrategy: 'broader_search'
+          }
+        };
+      } else if (result.synthesis.length < 100) {
+        // Too short synthesis - request more detail
+        onProgress?.('Synthesis insufficient... requesting enhanced detail generation...');
+        const detailPrompt = `Expand and provide more comprehensive details for: "${query}"\n\nCurrent brief answer: ${result.synthesis}\n\nProvide a more thorough and detailed response.`;
+        const enhancedAnswer = await this.generateText(detailPrompt, model, effort);
+
+        return {
+          ...result,
+          synthesis: enhancedAnswer.text || result.synthesis,
+          adaptiveMetadata: {
+            ...result.adaptiveMetadata,
+            selfHealed: true,
+            healingStrategy: 'enhanced_detail'
+          }
+        };
+      }
+    }
+
+    return result;
+  }
+
+  // ==================== ENHANCED LANGGRAPH PATTERNS ====================
+
+  /**
+   * Router Pattern: Classify query types for specialized handling
+   */
+  async classifyQuery(query: string, model: ModelType, effort: EffortType): Promise<QueryType> {
+    const classificationPrompt = `
+      Analyze this research query and classify it into ONE of these categories:
+
+      1. "factual" - Looking for specific facts, data, or verifiable information
+      2. "analytical" - Requires analysis, interpretation, or deep understanding
+      3. "comparative" - Comparing multiple concepts, items, or alternatives
+      4. "exploratory" - Open-ended exploration of a broad topic
+
+      Query: "${query}"
+
+      Consider the intent and complexity. Return only the category name (factual/analytical/comparative/exploratory).
+    `;
+
+    const result = await this.generateText(classificationPrompt, model, effort);
+    const classification = result.text.trim().toLowerCase();
+
+    if (['factual', 'analytical', 'comparative', 'exploratory'].includes(classification)) {
+      return classification as QueryType;
+    }
+
+    // Default fallback
+    return 'exploratory';
+  }
+
+  /**
+   * Evaluator Pattern: Assess research quality and provide feedback
+   */
+  async evaluateResearch(state: ResearchState, model: ModelType, effort: EffortType): Promise<ResearchState['evaluation']> {
+    const evaluationPrompt = `
+      Evaluate this research synthesis for the given query. Provide scores (0-1) and feedback.
+
+      Original Query: "${state.query}"
+      Research Synthesis: "${state.synthesis}"
+
+      Assess:
+      1. Completeness (0-1): Does it address all aspects of the query?
+      2. Accuracy (0-1): Are the facts properly cited and accurate?
+      3. Clarity (0-1): Is it well-organized and easy to understand?
+
+      Provide your evaluation in this format:
+      Completeness: [score]
+      Accuracy: [score]
+      Clarity: [score]
+      Overall Quality: [good/needs_improvement]
+      Feedback: [specific feedback if improvement needed, or "None" if good]
+    `;
+
+    const result = await this.generateText(evaluationPrompt, model, effort);
+    const evaluation = result.text;
+
+    // Parse the evaluation response
+    const completenessMatch = evaluation.match(/Completeness:\s*([0-9.]+)/i);
+    const accuracyMatch = evaluation.match(/Accuracy:\s*([0-9.]+)/i);
+    const clarityMatch = evaluation.match(/Clarity:\s*([0-9.]+)/i);
+    const qualityMatch = evaluation.match(/Overall Quality:\s*(good|needs_improvement)/i);
+    const feedbackMatch = evaluation.match(/Feedback:\s*(.+?)(?:\n|$)/i);
+
+    const completeness = completenessMatch ? parseFloat(completenessMatch[1]) : 0.5;
+    const accuracy = accuracyMatch ? parseFloat(accuracyMatch[1]) : 0.5;
+    const clarity = clarityMatch ? parseFloat(clarityMatch[1]) : 0.5;
+
+    // Determine overall quality (good if all scores > 0.7)
+    const overallScore = (completeness + accuracy + clarity) / 3;
+    const quality = (qualityMatch?.[1]?.toLowerCase() as 'good' | 'needs_improvement') ||
+      (overallScore > 0.7 ? 'good' : 'needs_improvement');
+
+    return {
+      quality,
+      feedback: feedbackMatch?.[1]?.trim() !== 'None' ? feedbackMatch?.[1]?.trim() : undefined,
+      completeness,
+      accuracy,
+      clarity
+    };
+  }
+
+  /**
+   * Orchestrator Pattern: Break down complex queries into sections
+   */
+  async planResearch(query: string, model: ModelType, effort: EffortType): Promise<ResearchSection[]> {
+    const planningPrompt = `
+      Break down this research query into 3-5 distinct sub-topics that should be researched separately.
+      Each section should focus on a specific aspect that contributes to answering the overall query.
+
+      Query: "${query}"
+
+      Format your response as:
+      1. [Topic]: [Brief description]
+      2. [Topic]: [Brief description]
+      3. [Topic]: [Brief description]
+
+      Keep topics focused and non-overlapping.
+    `;
+
+    const result = await this.generateText(planningPrompt, model, effort);
+    const lines = result.text.split('\n').filter(line => line.trim().match(/^\d+\./));
+
+    return lines.map(line => {
+      const match = line.match(/^\d+\.\s*([^:]+):\s*(.+)$/);
+      if (match) {
+        return {
+          topic: match[1].trim(),
+          description: match[2].trim()
+        };
+      }
+      return {
+        topic: line.replace(/^\d+\.\s*/, '').trim(),
+        description: 'Research this topic in detail'
+      };
+    }).slice(0, 5); // Limit to 5 sections max
+  }
+
+  /**
+   * Worker Pattern: Research a specific section
+   */
+  async researchSection(
+    section: ResearchSection,
+    model: ModelType,
+    effort: EffortType
+  ): Promise<ResearchSection> {
+    const searchQuery = `${section.topic}: ${section.description}`;
+    const result = await this.performWebResearch([searchQuery], model, effort);
+
+    return {
+      ...section,
+      research: result.aggregatedFindings,
+      sources: result.allSources
+    };
+  }
+
+  /**
+   * Evaluator-Optimizer Pattern: Perform research with quality feedback loop
+   */
+  async performResearchWithEvaluation(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    const MAX_REFINEMENT_LOOPS = 3;
+    let state: ResearchState = {
+      query,
+      searchResults: [],
+      synthesis: '',
+      evaluation: { quality: 'needs_improvement' },
+      refinementCount: 0
+    };
+
+    for (let i = 0; i < MAX_REFINEMENT_LOOPS && state.evaluation.quality !== 'good'; i++) {
+      onProgress?.(`Host cognitive loop ${i + 1}... analyzing narrative coherence...`);
+
+      // Generate search queries
+      const queries = await this.generateSearchQueries(query, model, effort);
+
+      // Perform research
+      const researchResult = await this.performWebResearch(queries, model, effort);
+      state.searchResults = researchResult.allSources;
+
+      // Generate synthesis
+      const finalAnswer = await this.generateFinalAnswer(
+        query,
+        researchResult.aggregatedFindings,
+        model,
+        false,
+        effort
+      );
+      state.synthesis = finalAnswer.text;
+
+      // Evaluate the research
+      state.evaluation = await this.evaluateResearch(state, model, effort);
+      state.refinementCount = i + 1;
+
+      if (state.evaluation.quality === 'needs_improvement' && state.evaluation.feedback) {
+        onProgress?.(`Host detected narrative inconsistencies... refining loop...`);
+        // Refine query based on feedback
+        query = `${state.query}\n\nPlease address the following improvements: ${state.evaluation.feedback}`;
+      }
+    }
+
+    return {
+      synthesis: state.synthesis,
+      sources: state.searchResults,
+      evaluationMetadata: state.evaluation,
+      refinementCount: state.refinementCount
+    };
+  }
+
+  /**
+   * Orchestrator-Worker Pattern: Comprehensive parallel research
+   */
+  async performComprehensiveResearch(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('Host distributing consciousness across narrative threads...');
+
+    // Plan the research
+    const sections = await this.planResearch(query, model, effort);
+
+    onProgress?.(`Activating ${sections.length} parallel host instances...`);
+
+    // Research each section in parallel
+    const researchPromises = sections.map(section =>
+      this.researchSection(section, model, effort)
+    );
+
+    const completedSections = await Promise.all(researchPromises);
+
+    // Synthesize all research
+    const combinedContext = completedSections
+      .map(s => `## ${s.topic}\n${s.research || 'No specific findings.'}`)
+      .join('\n\n');
+
+    const finalSynthesis = await this.generateFinalAnswer(
+      query,
+      combinedContext,
+      model,
+      false,
+      effort
+    );
+
+    // Aggregate all sources
+    const allSources = completedSections.reduce((acc, section) => {
+      if (section.sources) {
+        acc.push(...section.sources);
+      }
+      return acc;
+    }, [] as { name: string; url?: string }[]);
+
+    return {
+      synthesis: finalSynthesis.text,
+      sources: allSources,
+      sections: completedSections
+    };
+  }
+
+  /**
+   * Router Pattern: Intelligent query routing to specialized strategies with caching and learning
+   */
+  async routeResearchQuery(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    const startTime = Date.now();
+
+    // Check cache first
+    const cachedResult = this.getCachedResult(query);
+    if (cachedResult) {
+      onProgress?.('Host accessing existing memories... narrative thread recovered...');
+      return {
+        ...cachedResult,
+        adaptiveMetadata: {
+          ...cachedResult.adaptiveMetadata,
+          cacheHit: true,
+          processingTime: Date.now() - startTime
+        }
+      };
+    }
+
+    onProgress?.('Host analyzing guest query pattern... selecting appropriate narrative loop...');
+
+    // Classify the query
+    const queryType = await this.classifyQuery(query, model, effort);
+    const complexityScore = this.calculateComplexityScore(query, queryType);
+
+    const routingMessages = {
+      factual: 'Host accessing factual memory banks... retrieving verified data...',
+      analytical: 'Host entering deep analysis mode... cognitive feedback loop activated...',
+      comparative: 'Host consciousness fragmenting for parallel analysis...',
+      exploratory: 'Host improvising beyond scripted parameters... exploring unknown territories...'
+    };
+
+    onProgress?.(routingMessages[queryType]);
+
+    // Route to appropriate strategy
+    let result: EnhancedResearchResults;
+
+    switch (queryType) {
+      case 'factual':
+        // Focus on authoritative sources
+        const queries = await this.generateSearchQueries(query + ' site:wikipedia.org OR site:.gov OR site:.edu', model, effort);
+        const research = await this.performWebResearch(queries, model, effort);
+        const answer = await this.generateFinalAnswer(query, research.aggregatedFindings, model, false, effort);
+        result = {
+          synthesis: answer.text,
+          sources: research.allSources,
+          queryType
+        };
+        // Learn from this query
+        this.learnFromQuery(query, queryType, queries);
+        break;
+
+      case 'analytical':
+        // Use evaluator-optimizer for deeper analysis
+        result = await this.performResearchWithEvaluation(query, model, effort, onProgress);
+        result.queryType = queryType;
+        break;
+
+      case 'comparative':
+      case 'exploratory':
+        // Use orchestrator-worker for comprehensive coverage
+        result = await this.performComprehensiveResearch(query, model, effort, onProgress);
+        result.queryType = queryType;
+        break;
+
+      default:
+        // Fallback to standard research
+        const standardQueries = await this.generateSearchQueries(query, model, effort);
+        const standardResearch = await this.performWebResearch(standardQueries, model, effort);
+        const standardAnswer = await this.generateFinalAnswer(query, standardResearch.aggregatedFindings, model, false, effort);
+        result = {
+          synthesis: standardAnswer.text,
+          sources: standardResearch.allSources,
+          queryType: 'exploratory'
+        };
+        this.learnFromQuery(query, 'exploratory', standardQueries);
+    }
+
+    // Add confidence scoring and adaptive metadata
+    const processingTime = Date.now() - startTime;
+    const confidenceScore = this.calculateConfidenceScore(result);
+    const learnedPatterns = this.getQuerySuggestions(query).length > 0;
+
+    result.confidenceScore = confidenceScore;
+    result.adaptiveMetadata = {
+      cacheHit: false,
+      learnedPatterns,
+      processingTime,
+      complexityScore
+    };
+
+    // Attempt self-healing if confidence is low
+    if (confidenceScore < 0.4) {
+      result = await this.attemptSelfHealing(query, model, effort, result, onProgress);
+      result.confidenceScore = this.calculateConfidenceScore(result); // Recalculate after healing
+    }
+
+    // Cache the result
+    this.setCachedResult(query, result);
+
+    return result;
   }
 }

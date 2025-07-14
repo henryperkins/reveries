@@ -1,7 +1,7 @@
-
 import React from 'react';
-import { EffortType, ModelType, effortOptions, modelOptions } from '../types';
-import { AdjustmentsHorizontalIcon, CpuChipIcon, PlusIcon, ChevronDownIcon } from './icons';
+import { EffortType, ModelType, effortOptions, modelOptions, GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL } from '../types';
+import { AdjustmentsHorizontalIcon, CpuChipIcon, PlusIcon, ChevronDownIcon, BeakerIcon, ArrowPathIcon } from './icons';
+import { GROK_AVAILABLE, AZURE_OPENAI_AVAILABLE } from '../constants';
 
 interface ControlsProps {
   selectedEffort: EffortType;
@@ -10,6 +10,8 @@ interface ControlsProps {
   onModelChange: (model: ModelType) => void;
   onNewSearch: () => void;
   isLoading: boolean;
+  enhancedMode?: boolean;
+  onEnhancedModeChange?: (enabled: boolean) => void;
 }
 
 const SelectDropdown: React.FC<{
@@ -48,8 +50,17 @@ const SelectDropdown: React.FC<{
 export const Controls: React.FC<ControlsProps> = ({
   selectedEffort, onEffortChange,
   selectedModel, onModelChange,
-  onNewSearch, isLoading
+  onNewSearch, isLoading,
+  enhancedMode = true,
+  onEnhancedModeChange
 }) => {
+  // Filter model options based on availability
+  const availableModelOptions = modelOptions.filter(option => {
+    if (option.value === GROK_MODEL_4 && !GROK_AVAILABLE) return false;
+    if (option.value === AZURE_O3_MODEL && !AZURE_OPENAI_AVAILABLE) return false;
+    return true;
+  });
+
   return (
     <div className="mt-4 flex flex-wrap gap-3 items-center justify-between">
       <div className="flex gap-3 flex-wrap sm:flex-nowrap">
@@ -66,17 +77,35 @@ export const Controls: React.FC<ControlsProps> = ({
           id="model-select"
           label="Model"
           value={selectedModel}
-          options={modelOptions}
+          options={availableModelOptions}
           onChange={(val) => onModelChange(val as ModelType)}
           icon={CpuChipIcon}
           disabled={isLoading}
         />
+
+        {/* Enhanced Mode Toggle */}
+        {onEnhancedModeChange && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border westworld-border bg-westworld-beige">
+            <BeakerIcon className="w-4 h-4 text-westworld-rust" />
+            <label htmlFor="enhanced-mode" className="text-sm text-westworld-rust font-westworld-mono">
+              Enhanced Patterns
+            </label>
+            <input
+              id="enhanced-mode"
+              type="checkbox"
+              checked={enhancedMode}
+              onChange={(e) => onEnhancedModeChange(e.target.checked)}
+              disabled={isLoading}
+              className="w-4 h-4 text-westworld-gold bg-westworld-beige border-westworld-tan rounded focus:ring-westworld-gold focus:ring-2"
+            />
+          </div>
+        )}
       </div>
+
       <button
         onClick={onNewSearch}
         disabled={isLoading}
         className="flex items-center justify-center gap-2 px-4 py-2.5 reverie-button disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-      // Was: focus:ring-offset-brand-charcoal
       >
         <PlusIcon className="w-5 h-5" />
         New Search
