@@ -150,6 +150,23 @@
     background: linear-gradient(to right, var(--color-surface), transparent);
   }
 
+  /* Improved focus states */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
+  }
+
+  /* Smooth scrolling with scroll margin */
+  * {
+    scroll-margin-top: 2rem;
+  }
+
+  /* Selection colors */
+  ::selection {
+    @apply bg-accent/30 text-text-primary;
+  }
+}
+
+@layer components {
   /* Interactive input styles */
   .reverie-input {
     @apply w-full bg-surface border-2 border-border rounded-lg px-4 py-3;
@@ -179,7 +196,10 @@
 
   /* Research step cards with entrance animation */
   .research-step-card {
-    @apply reverie-card;
+    @apply bg-surface rounded-lg p-6 shadow-sm;
+    @apply border border-border/20;
+    @apply transition-all duration-[var(--transition-slow)];
+    @apply hover:shadow-xl hover:border-accent/30 hover:translate-y-[-2px];
     animation: slideIn var(--transition-slow) ease-out;
   }
 
@@ -248,21 +268,6 @@
     100% {
       transform: translateX(100%);
     }
-  }
-
-  /* Improved focus states */
-  :focus-visible {
-    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
-  }
-
-  /* Smooth scrolling with scroll margin */
-  * {
-    scroll-margin-top: 2rem;
-  }
-
-  /* Selection colors */
-  ::selection {
-    @apply bg-accent/30 text-text-primary;
   }
 }
 

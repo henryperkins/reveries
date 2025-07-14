@@ -8,6 +8,7 @@ import { APIError } from '../services/errorHandler';
 import { ServiceCallConfig, ModelType, EffortType, ResearchStep, ResearchStepType } from '../types';
 import { FunctionCallVisualizer } from './FunctionCallVisualizer';
 import { usePersistedState, useResearchSessions } from './hooks/usePersistedState';
+import { ToolUsageIndicator } from './ToolUsageIndicator';
 
 const DEFAULT_MODEL: ModelType = 'gemini-2.5-flash';
 const DEFAULT_EFFORT: EffortType = EffortType.MEDIUM;
@@ -369,6 +370,14 @@ const App: React.FC = () => {
                                                         ))}
                                                     </ul>
                                                 </div>
+                                            )}
+
+                                            {/* Add tool usage indicator */}
+                                            {step.metadata?.toolsUsed && (
+                                                <ToolUsageIndicator
+                                                    toolsUsed={step.metadata.toolsUsed}
+                                                    recommendedTools={step.metadata.recommendedTools}
+                                                />
                                             )}
                                         </div>
                                     ))}

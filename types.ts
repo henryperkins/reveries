@@ -101,27 +101,29 @@ export interface FunctionCallHistory {
   timestamp: number;
 }
 
+export type HouseParadigm = 'gryffindor' | 'hufflepuff' | 'ravenclaw' | 'slytherin';
+
 export interface EnhancedResearchResults {
   synthesis: string;
   sources: { name: string; url?: string }[];
   queryType?: QueryType;
+  houseParadigm?: HouseParadigm;
   sections?: ResearchSection[];
-  evaluationMetadata?: {
-    completeness?: number;
-    accuracy?: number;
-    clarity?: number;
-  };
+  evaluationMetadata?: ResearchState['evaluation'];
   refinementCount?: number;
   confidenceScore?: number;
+  toolsUsed?: string[];
   adaptiveMetadata?: {
     cacheHit?: boolean;
     learnedPatterns?: boolean;
     processingTime?: number;
     complexityScore?: number;
     selfHealed?: boolean;
-    healingStrategy?: string;
-    functionDriven?: boolean;
-    toolsUsed?: string[];
+    healingStrategy?: 'broader_search' | 'enhanced_detail' | 'alternative_model';
+    paradigm?: HouseParadigm;
+    focusAreas?: string[];
+    recommendedTools?: string[];
+    toolsEnabled?: boolean;
+    toolEnhanced?: boolean;
   };
-  functionCallHistory?: FunctionCallHistory[];
 }

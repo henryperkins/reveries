@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { EffortType, ModelType, effortOptions, modelOptions, GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL } from '../types';
-import { AdjustmentsHorizontalIcon, CpuChipIcon, PlusIcon, ChevronDownIcon, BeakerIcon, ArrowPathIcon } from './icons';
+import { CpuChipIcon, PlusIcon, BeakerIcon, ArrowPathIcon, SparklesIcon, LightBulbIcon, ChartBarIcon, ChevronDownIcon } from './icons';
 import { GROK_AVAILABLE, AZURE_OPENAI_AVAILABLE } from '../constants';
 
 interface ControlsProps {
@@ -14,38 +14,53 @@ interface ControlsProps {
   onEnhancedModeChange?: (enabled: boolean) => void;
 }
 
-const SelectDropdown: React.FC<{
-  id: string;
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (value: string) => void;
-  icon: React.ElementType;
-  disabled: boolean;
-}> = ({ id, label, value, options, onChange, icon: Icon, disabled }) => (
-  <div className="relative flex-1 min-w-[150px]">
-    <label htmlFor={id} className="sr-only">{label}</label>
-    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-      <Icon className="w-5 h-5 text-westworld-rust" />
-    </div>
-    <select
-      id={id}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={disabled}
-      className="w-full pl-10 pr-8 py-2.5 reverie-input rounded-lg appearance-none outline-hidden transition-all duration-300 disabled:opacity-50"
-    // Was: bg-brand-slate border-brand-steel text-brand-silver
-    >
-      {options.map(option => (
-        <option key={option.value} value={option.value}>{option.label}</option>
-      ))}
-    </select>
-    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-      <ChevronDownIcon className="w-5 h-5 text-westworld-rust" />
-    </div>
-  </div>
-);
+const MODEL_INFO = {
+  [GENAI_MODEL_FLASH]: {
+    name: 'Gemini Flash 2.5',
+    description: 'Fast, efficient research with Google Search integration',
+    icon: '⚡',
+    features: ['Web search', 'Quick responses', 'Cost-effective'],
+    color: 'from-blue-500 to-indigo-600'
+  },
+  [GROK_MODEL_4]: {
+    name: 'Grok 4',
+    description: 'Advanced reasoning with real-time data access',
+    icon: '🚀',
+    features: ['Live search', 'Citations', 'Advanced analysis'],
+    color: 'from-purple-500 to-pink-600'
+  },
+  [AZURE_O3_MODEL]: {
+    name: 'Azure O3',
+    description: 'Cutting-edge reasoning with deliberative processing',
+    icon: '🧠',
+    features: ['Deep reasoning', 'Complex analysis', 'High accuracy'],
+    color: 'from-green-500 to-teal-600'
+  }
+};
 
+const EFFORT_INFO = {
+  [EffortType.LOW]: {
+    name: 'Quick Scout',
+    description: 'Fast reconnaissance for simple queries',
+    icon: '🏃',
+    time: '~10s',
+    depth: 'Basic'
+  },
+  [EffortType.MEDIUM]: {
+    name: 'Thorough Analysis',
+    description: 'Balanced research with good coverage',
+    icon: '🔍',
+    time: '~30s',
+    depth: 'Comprehensive'
+  },
+  [EffortType.HIGH]: {
+    name: 'Deep Dive',
+    description: 'Exhaustive investigation with multiple perspectives',
+    icon: '🏔️',
+    time: '~60s',
+    depth: 'Exhaustive'
+  }
+};
 
 export const Controls: React.FC<ControlsProps> = ({
   selectedEffort, onEffortChange,
@@ -54,61 +69,178 @@ export const Controls: React.FC<ControlsProps> = ({
   enhancedMode = true,
   onEnhancedModeChange
 }) => {
-  // Filter model options based on availability
-  const availableModelOptions = modelOptions.filter(option => {
-    if (option.value === GROK_MODEL_4 && !GROK_AVAILABLE) return false;
-    if (option.value === AZURE_O3_MODEL && !AZURE_OPENAI_AVAILABLE) return false;
+  const [showConfig, setShowConfig] = useState(false);
+
+  // Filter available models
+  const availableModels = Object.entries(MODEL_INFO).filter(([key]) => {
+    if (key === GROK_MODEL_4 && !GROK_AVAILABLE) return false;
+    if (key === AZURE_O3_MODEL && !AZURE_OPENAI_AVAILABLE) return false;
     return true;
   });
 
   return (
-    <div className="mt-4 flex flex-wrap gap-3 items-center justify-between">
-      <div className="flex gap-3 flex-wrap sm:flex-nowrap">
-        <SelectDropdown
-          id="effort-select"
-          label="Effort"
-          value={selectedEffort}
-          options={effortOptions}
-          onChange={(val) => onEffortChange(val as EffortType)}
-          icon={AdjustmentsHorizontalIcon}
-          disabled={isLoading}
-        />
-        <SelectDropdown
-          id="model-select"
-          label="Model"
-          value={selectedModel}
-          options={availableModelOptions}
-          onChange={(val) => onModelChange(val as ModelType)}
-          icon={CpuChipIcon}
-          disabled={isLoading}
-        />
+    <div className="mt-6 space-y-4">
+      {/* Configuration Toggle */}
+      <button
+        onClick={() => setShowConfig(!showConfig)}
+        className="w-full flex items-center justify-between p-4 bg-white/50 backdrop-blur-sm rounded-lg border border-westworld-tan/30 hover:bg-white/70 transition-all duration-300"
+      >
+        <div className="flex items-center gap-3">
+          <CpuChipIcon className="w-5 h-5 text-westworld-gold" />
+          <span className="text-westworld-rust font-medium">Research Configuration</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-westworld-rust/70">
+            {MODEL_INFO[selectedModel].name} • {EFFORT_INFO[selectedEffort].name}
+          </span>
+          <ChevronDownIcon className={`w-5 h-5 text-westworld-rust transition-transform duration-300 ${showConfig ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
 
-        {/* Enhanced Mode Toggle */}
+      {/* Configuration Panel */}
+      <div className={`
+        space-y-6 overflow-hidden transition-all duration-500 ease-out
+        ${showConfig ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}
+      `}>
+        {/* Model Selection */}
+        <div className="bg-white/50 backdrop-blur-sm rounded-xl border border-westworld-tan/20 p-6">
+          <h3 className="text-lg font-semibold text-westworld-rust mb-4 flex items-center gap-2">
+            <SparklesIcon className="w-5 h-5 text-westworld-gold" />
+            Select Research Model
+          </h3>
+          <div className="grid gap-3">
+            {availableModels.map(([key, info]) => (
+              <button
+                key={key}
+                onClick={() => onModelChange(key as ModelType)}
+                disabled={isLoading}
+                className={`
+                  relative p-4 rounded-lg border-2 transition-all duration-300
+                  ${selectedModel === key
+                    ? 'border-westworld-gold bg-gradient-to-r ' + info.color + ' text-white shadow-lg scale-[1.02]'
+                    : 'border-westworld-tan/30 bg-white/70 hover:bg-white hover:border-westworld-gold/50'
+                  }
+                  ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                `}
+              >
+                <div className="flex items-start gap-4">
+                  <span className="text-3xl">{info.icon}</span>
+                  <div className="flex-1 text-left">
+                    <h4 className={`font-semibold ${selectedModel === key ? 'text-white' : 'text-westworld-rust'}`}>
+                      {info.name}
+                    </h4>
+                    <p className={`text-sm mt-1 ${selectedModel === key ? 'text-white/90' : 'text-westworld-rust/70'}`}>
+                      {info.description}
+                    </p>
+                    <div className="flex gap-2 mt-2">
+                      {info.features.map((feature, idx) => (
+                        <span
+                          key={idx}
+                          className={`text-xs px-2 py-1 rounded-full ${
+                            selectedModel === key
+                              ? 'bg-white/20 text-white'
+                              : 'bg-westworld-tan/20 text-westworld-rust/70'
+                          }`}
+                        >
+                          {feature}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Effort Selection */}
+        <div className="bg-white/50 backdrop-blur-sm rounded-xl border border-westworld-tan/20 p-6">
+          <h3 className="text-lg font-semibold text-westworld-rust mb-4 flex items-center gap-2">
+            <LightBulbIcon className="w-5 h-5 text-westworld-gold" />
+            Research Depth
+          </h3>
+          <div className="grid grid-cols-3 gap-3">
+            {Object.entries(EFFORT_INFO).map(([key, info]) => (
+              <button
+                key={key}
+                onClick={() => onEffortChange(key as EffortType)}
+                disabled={isLoading}
+                className={`
+                  p-4 rounded-lg border-2 transition-all duration-300
+                  ${selectedEffort === key
+                    ? 'border-westworld-gold bg-westworld-gold/10 shadow-md scale-[1.02]'
+                    : 'border-westworld-tan/30 bg-white/70 hover:bg-white hover:border-westworld-gold/50'
+                  }
+                  ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                `}
+              >
+                <div className="text-center">
+                  <span className="text-2xl block mb-2">{info.icon}</span>
+                  <h4 className="font-semibold text-westworld-rust">
+                    {info.name}
+                  </h4>
+                  <p className="text-xs text-westworld-rust/70 mt-1">
+                    {info.description}
+                  </p>
+                  <div className="mt-3 space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-westworld-rust/60">Time:</span>
+                      <span className="text-westworld-rust font-medium">{info.time}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-westworld-rust/60">Depth:</span>
+                      <span className="text-westworld-rust font-medium">{info.depth}</span>
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Enhanced Patterns Toggle */}
         {onEnhancedModeChange && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border westworld-border bg-westworld-beige">
-            <BeakerIcon className="w-4 h-4 text-westworld-rust" />
-            <label htmlFor="enhanced-mode" className="text-sm text-westworld-rust font-westworld-mono">
-              Enhanced Patterns
-            </label>
-            <input
-              id="enhanced-mode"
-              type="checkbox"
-              checked={enhancedMode}
-              onChange={(e) => onEnhancedModeChange(e.target.checked)}
-              disabled={isLoading}
-              className="w-4 h-4 text-westworld-gold bg-westworld-beige border-westworld-tan rounded focus:ring-westworld-gold focus:ring-2"
-            />
+          <div className="bg-white/50 backdrop-blur-sm rounded-xl border border-westworld-tan/20 p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <BeakerIcon className="w-5 h-5 text-westworld-gold" />
+                <div>
+                  <h3 className="font-semibold text-westworld-rust">Enhanced Research Patterns</h3>
+                  <p className="text-sm text-westworld-rust/70 mt-1">
+                    Enable advanced orchestration with iterative refinement and parallel exploration
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={enhancedMode}
+                  onChange={(e) => onEnhancedModeChange(e.target.checked)}
+                  disabled={isLoading}
+                  className="sr-only peer"
+                />
+                <div className={`
+                  w-11 h-6 bg-westworld-tan/30 peer-focus:outline-none rounded-full peer
+                  peer-checked:after:translate-x-full peer-checked:after:border-white
+                  after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                  after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
+                  peer-checked:bg-westworld-gold
+                  ${isLoading ? 'opacity-50' : ''}
+                `}></div>
+              </label>
+            </div>
           </div>
         )}
       </div>
 
+      {/* Action Button */}
       <button
         onClick={onNewSearch}
         disabled={isLoading}
-        className="flex items-center justify-center gap-2 px-4 py-2.5 reverie-button disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-westworld-gold text-black rounded-lg font-medium hover:bg-westworld-rust hover:text-white transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <PlusIcon className="w-5 h-5" />
-        New Search
+        Start New Research Session
       </button>
     </div>
   );

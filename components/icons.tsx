@@ -159,3 +159,15 @@ export const ArrowsPointingOutIcon: React.FC<SVGProps> = (props) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 7.5 21 3m-5.5 13.5L21 21M7.5 16.5 3 21m4.5-13.5L3 3" />
   </svg>
 );
+
+export const ChevronLeftIcon: React.FC<SVGProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 19.5-7.5-7.5 7.5-7.5" />
+  </svg>
+);
+
+export const ChevronRightIcon: React.FC<SVGProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+  </svg>
+);

@@ -2,7 +2,7 @@ export class APIError extends Error {
   constructor(
     message: string,
     public code: string,
-    public retryable: boolean = true,
+    public isRetryable: boolean,
     public statusCode?: number
   ) {
     super(message);
@@ -10,89 +10,69 @@ export class APIError extends Error {
   }
 }
 
-export interface RetryConfig {
-  maxRetries: number;
-  initialDelay: number;
-  maxDelay: number;
-  backoffFactor: number;
+export class ErrorBoundary {
+  private static errorCount = 0;
+  private static lastErrorTime = 0;
+  private static readonly ERROR_THRESHOLD = 5;
+  private static readonly TIME_WINDOW = 60000; // 1 minute
+
+  static recordError(): void {
+    const now = Date.now();
+    if (now - this.lastErrorTime > this.TIME_WINDOW) {
+      this.errorCount = 0;
+    }
+    this.errorCount++;
+    this.lastErrorTime = now;
+  }
+
+  static shouldBlock(): boolean {
+    const now = Date.now();
+    if (now - this.lastErrorTime > this.TIME_WINDOW) {
+      this.errorCount = 0;
+      return false;
+    }
+    return this.errorCount >= this.ERROR_THRESHOLD;
+  }
+
+  static reset(): void {
+    this.errorCount = 0;
+    this.lastErrorTime = 0;
+  }
 }
 
-export const DEFAULT_RETRY_CONFIG: RetryConfig = {
-  maxRetries: 3,
-  initialDelay: 1000,
-  maxDelay: 10000,
-  backoffFactor: 2
-};
-
 export async function withRetry<T>(
-  operation: () => Promise<T>,
-  config: RetryConfig = DEFAULT_RETRY_CONFIG,
+  fn: () => Promise<T>,
+  maxRetries = 3,
   onRetry?: (attempt: number, error: Error) => void
 ): Promise<T> {
   let lastError: Error;
 
-  for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      return await operation();
+      return await fn();
     } catch (error) {
-      lastError = error as Error;
+      lastError = error instanceof Error ? error : new Error(String(error));
 
-      // Check for network errors and wrap them
-      if (lastError.message === 'Failed to fetch' || lastError.name === 'TypeError') {
-        lastError = new APIError(
-          'Network error: Unable to reach the API. Please check your internet connection and API endpoint.',
-          'NETWORK_ERROR',
-          true,
-          0
-        );
-      }
-
-      // Don't retry if it's not retryable
-      if (error instanceof APIError && !error.retryable) {
+      // Don't retry non-retryable errors
+      if (error instanceof APIError && !error.isRetryable) {
         throw error;
       }
 
-      // Don't retry on the last attempt
-      if (attempt === config.maxRetries) {
-        throw lastError;
+      // Don't retry on last attempt
+      if (attempt === maxRetries - 1) {
+        throw error;
       }
 
-      // Calculate delay with exponential backoff
-      const delay = Math.min(
-        config.initialDelay * Math.pow(config.backoffFactor, attempt),
-        config.maxDelay
-      );
+      // Exponential backoff: 1s, 2s, 4s
+      const backoffMs = Math.pow(2, attempt) * 1000;
 
       if (onRetry) {
         onRetry(attempt + 1, lastError);
       }
 
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise(resolve => setTimeout(resolve, backoffMs));
     }
   }
 
   throw lastError!;
-}
-
-export class ErrorBoundary {
-  private static errorCount = 0;
-  private static maxErrors = 5;
-  private static resetTime = 60000; // 1 minute
-
-  static shouldBlock(): boolean {
-    return this.errorCount >= this.maxErrors;
-  }
-
-  static recordError(): void {
-    this.errorCount++;
-
-    // Reset error count after reset time
-    setTimeout(() => {
-      this.errorCount = Math.max(0, this.errorCount - 1);
-    }, this.resetTime);
-  }
-
-  static reset(): void {
-    this.errorCount = 0;
-  }
 }

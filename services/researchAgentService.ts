@@ -13,6 +13,7 @@ import {
 import { APIError, withRetry, ErrorBoundary } from "./errorHandler";
 import { AzureOpenAIService } from "./azureOpenAIService";
 import { FunctionCallingService, FunctionCall, FunctionDefinition } from "./functionCallingService";
+import { ResearchToolsService } from "./researchToolsService";
 
 /**
  * Generic provider-agnostic response structure we use internally.
@@ -56,6 +57,7 @@ export class ResearchAgentService {
   private researchMemory: Map<string, { queries: string[]; patterns: QueryType[]; timestamp: number }> = new Map();
   private readonly MEMORY_TTL = 1000 * 60 * 60 * 24; // 24 hours
   private functionCallingService: FunctionCallingService;
+  private researchToolsService: ResearchToolsService;
 
   private constructor() {
     // Currently only Gemini needs an SDK client. Grok is called via fetch.
@@ -71,6 +73,7 @@ export class ResearchAgentService {
     }
 
     this.functionCallingService = FunctionCallingService.getInstance();
+    this.researchToolsService = ResearchToolsService.getInstance();
   }
 
   public static getInstance(): ResearchAgentService {
@@ -126,40 +129,21 @@ export class ResearchAgentService {
   }
 
   /**
-   * Enhanced generateTextWithGemini with function calling support
+   * Enhanced generateTextWithGemini with research tools support
    */
   private async generateTextWithGemini(
     prompt: string,
     selectedModel: ModelType,
     effort: EffortType,
     useSearch: boolean,
-    useFunctions: boolean = false
+    useFunctions: boolean = false,
+    useResearchTools: boolean = false
   ): Promise<ProviderResponse> {
     try {
       const model = this.geminiAI.getGenerativeModel({ model: selectedModel });
+
+      // Generation config only contains generation parameters
       const generationConfig: any = {};
-
-      // Configure tools
-      const tools: any[] = [];
-
-      if (useSearch) {
-        tools.push({ googleSearch: {} });
-      }
-
-      if (useFunctions) {
-        const functionDefs = this.functionCallingService.getFunctionDefinitions();
-        tools.push({
-          functionDeclarations: functionDefs.map(fn => ({
-            name: fn.name,
-            description: fn.description,
-            parameters: fn.parameters
-          }))
-        });
-      }
-
-      if (tools.length > 0) {
-        generationConfig.tools = tools;
-      }
 
       // Configure thinking based on effort level and model
       if (selectedModel === GENAI_MODEL_FLASH) {
@@ -193,10 +177,38 @@ export class ResearchAgentService {
         }
       }
 
-      const response: GenerateContentResponse = await model.generateContent({
+      // Tools array - separate from generationConfig
+      const tools: any[] = [];
+
+      if (useSearch) {
+        tools.push({ googleSearch: {} });
+      }
+
+      if (useFunctions || useResearchTools) {
+        const functionDefs = this.functionCallingService.getFunctionDefinitions();
+        const researchToolDefs = useResearchTools ? this.researchToolsService.getToolDefinitions() : [];
+
+        tools.push({
+          functionDeclarations: [...functionDefs, ...researchToolDefs].map(fn => ({
+            name: fn.name,
+            description: fn.description,
+            parameters: fn.parameters
+          }))
+        });
+      }
+
+      // Create the request body with proper structure
+      const requestBody: any = {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig,
-      });
+      };
+
+      // Add tools at the top level if any exist
+      if (tools.length > 0) {
+        requestBody.tools = tools;
+      }
+
+      const response: GenerateContentResponse = await model.generateContent(requestBody);
 
       // Handle function calls if present
       if (response.response.candidates?.[0]?.content?.parts) {
@@ -212,25 +224,36 @@ export class ResearchAgentService {
           }
         }
 
-        if (functionCalls.length > 0 && useFunctions) {
+        if (functionCalls.length > 0 && (useFunctions || useResearchTools)) {
           // Execute function calls
           const results = await Promise.all(
-            functionCalls.map(fc => this.functionCallingService.executeFunction(fc))
+            functionCalls.map(async (fc) => {
+              // Try research tools first
+              if (useResearchTools) {
+                try {
+                  const result = await this.researchToolsService.executeTool(fc);
+                  return { result, error: null };
+                } catch (e) {
+                  // Not a research tool, try regular functions
+                }
+              }
+              return this.functionCallingService.executeFunction(fc);
+            })
           );
 
           // Generate final response with function results
           const followUpPrompt = `
             Original request: ${prompt}
 
-            Function results:
+            Tool/Function results:
             ${results.map((r, i) =>
-            `${functionCalls[i].name}: ${JSON.stringify(r.result)}`
-          ).join('\n')}
+              `${functionCalls[i].name}: ${JSON.stringify(r.result)}`
+            ).join('\n')}
 
-            Based on these function results, provide a comprehensive response.
+            Based on these results, provide a comprehensive response.
           `;
 
-          return this.generateTextWithGemini(followUpPrompt, selectedModel, effort, useSearch, false);
+          return this.generateTextWithGemini(followUpPrompt, selectedModel, effort, useSearch, false, false);
         }
       }
 
@@ -992,7 +1015,8 @@ export class ResearchAgentService {
     model: ModelType,
     effort: EffortType,
     onProgress?: (message: string) => void,
-    useFunctionCalling: boolean = true
+    useFunctionCalling: boolean = true,
+    useResearchTools: boolean = true
   ): Promise<EnhancedResearchResults> {
     const startTime = Date.now();
 
@@ -1012,8 +1036,10 @@ export class ResearchAgentService {
 
     onProgress?.('Host analyzing guest query pattern... selecting appropriate narrative loop...');
 
-    // Classify the query
+    // Enhanced classification with house paradigms
     const queryType = await this.classifyQuery(query, model, effort);
+    const houseParadigm = await this.determineHouseParadigm(query, queryType, model, effort);
+
     const complexityScore = this.calculateComplexityScore(query, queryType);
 
     const routingMessages = {
@@ -1023,50 +1049,72 @@ export class ResearchAgentService {
       exploratory: 'Host improvising beyond scripted parameters... exploring unknown territories...'
     };
 
-    onProgress?.(routingMessages[queryType]);
+    const houseMessages = {
+      gryffindor: 'Activating advocacy protocols... prioritizing real-world impact...',
+      hufflepuff: 'Engaging collaborative synthesis... harmonizing stakeholder perspectives...',
+      ravenclaw: 'Initializing deep analytical frameworks... pursuing theoretical excellence...',
+      slytherin: 'Mapping strategic landscape... identifying leverage points...'
+    };
 
-    // Route to appropriate strategy
+    onProgress?.(routingMessages[queryType]);
+    if (houseParadigm) {
+      onProgress?.(houseMessages[houseParadigm]);
+    }
+
+    // Route to house-specific strategy if applicable
     let result: EnhancedResearchResults;
 
-    switch (queryType) {
-      case 'factual':
-        // Focus on authoritative sources
-        const queries = await this.generateSearchQueries(query + ' site:wikipedia.org OR site:.gov OR site:.edu', model, effort);
-        const research = await this.performWebResearch(queries, model, effort);
-        const answer = await this.generateFinalAnswer(query, research.aggregatedFindings, model, false, effort);
-        result = {
-          synthesis: answer.text,
-          sources: research.allSources,
-          queryType
-        };
-        // Learn from this query
-        this.learnFromQuery(query, queryType, queries);
-        break;
+    if (houseParadigm) {
+      result = await this.performHouseBasedResearch(
+        query,
+        houseParadigm,
+        queryType,
+        model,
+        effort,
+        onProgress
+      );
+    } else {
+      // ...existing routing logic...
+      switch (queryType) {
+        case 'factual':
+          // Focus on authoritative sources
+          const queries = await this.generateSearchQueries(query + ' site:wikipedia.org OR site:.gov OR site:.edu', model, effort);
+          const research = await this.performWebResearch(queries, model, effort);
+          const answer = await this.generateFinalAnswer(query, research.aggregatedFindings, model, false, effort);
+          result = {
+            synthesis: answer.text,
+            sources: research.allSources,
+            queryType
+          };
+          // Learn from this query
+          this.learnFromQuery(query, queryType, queries);
+          break;
 
-      case 'analytical':
-        // Use evaluator-optimizer for deeper analysis
-        result = await this.performResearchWithEvaluation(query, model, effort, onProgress);
-        result.queryType = queryType;
-        break;
+        case 'analytical':
+          // Use evaluator-optimizer for deeper analysis
+          result = await this.performResearchWithEvaluation(query, model, effort, onProgress);
+          result.queryType = queryType;
+          break;
 
-      case 'comparative':
-      case 'exploratory':
-        // Use orchestrator-worker for comprehensive coverage
-        result = await this.performComprehensiveResearch(query, model, effort, onProgress);
-        result.queryType = queryType;
-        break;
+        case 'comparative':
+        case 'exploratory':
+          // Use orchestrator-worker for comprehensive coverage
+          result = await this.performComprehensiveResearch(query, model, effort, onProgress);
+          result.queryType = queryType;
+          break;
 
-      default:
-        // Fallback to standard research
-        const standardQueries = await this.generateSearchQueries(query, model, effort);
-        const standardResearch = await this.performWebResearch(standardQueries, model, effort);
-        const standardAnswer = await this.generateFinalAnswer(query, standardResearch.aggregatedFindings, model, false, effort);
-        result = {
-          synthesis: standardAnswer.text,
-          sources: standardResearch.allSources,
-          queryType: 'exploratory'
-        };
-        this.learnFromQuery(query, 'exploratory', standardQueries);
+        default:
+          // Fallback to standard research
+          const standardQueries = await this.generateSearchQueries(query, model, effort);
+          const standardResearch = await this.performWebResearch(standardQueries, model, effort);
+          const standardAnswer = await this.generateFinalAnswer(query, standardResearch.aggregatedFindings, model, false, effort);
+          result = {
+            synthesis: standardAnswer.text,
+            sources: standardResearch.allSources,
+            queryType: 'exploratory'
+          };
+          this.learnFromQuery(query, 'exploratory', standardQueries);
+      }
     }
 
     // Add confidence scoring and adaptive metadata
@@ -1102,115 +1150,282 @@ export class ResearchAgentService {
       }
     }
 
+    // Get tool recommendations
+    const recommendedTools = this.researchToolsService.recommendToolsForQuery(query, queryType);
+
+    if (recommendedTools.length > 0 && useResearchTools) {
+      onProgress?.(`Host identified ${recommendedTools.length} specialized tools for this query...`);
+    }
+
+    // Enhanced result with tool usage information
+    result.toolsUsed = recommendedTools;
+    result.adaptiveMetadata = {
+      ...result.adaptiveMetadata,
+      recommendedTools,
+      toolsEnabled: useResearchTools
+    };
+
     return result;
   }
 
   /**
-   * Function-driven research workflow
+   * Determine which house paradigm best fits the query
    */
-  async performFunctionDrivenResearch(
+  private async determineHouseParadigm(
+    query: string,
+    queryType: QueryType,
+    model: ModelType,
+    effort: EffortType
+  ): Promise<'gryffindor' | 'hufflepuff' | 'ravenclaw' | 'slytherin' | null> {
+    const paradigmPrompt = `
+      Analyze this research query and determine if it strongly aligns with one of these paradigms:
+
+      1. "gryffindor" - Advocacy & Action: Focuses on social justice, community impact, policy change
+         Keywords: impact, community, change, justice, action, help, improve
+
+      2. "hufflepuff" - Collaboration & Fairness: Emphasizes stakeholder perspectives, consensus, ethics
+         Keywords: stakeholders, perspectives, fair, inclusive, together, ethics
+
+      3. "ravenclaw" - Deep Analysis: Pursues theoretical understanding, rigorous methodology
+         Keywords: theory, analyze, understand, patterns, framework, methodology
+
+      4. "slytherin" - Strategic Leverage: Seeks influence points, power dynamics, optimal outcomes
+         Keywords: strategy, influence, leverage, optimize, power, decision-makers
+
+      Query: "${query}"
+
+      If the query strongly matches one paradigm, return just the paradigm name.
+      If no strong match, return "none".
+    `;
+
+    const result = await this.generateText(paradigmPrompt, model, effort);
+    const paradigm = result.text.trim().toLowerCase();
+
+    if (['gryffindor', 'hufflepuff', 'ravenclaw', 'slytherin'].includes(paradigm)) {
+      return paradigm as 'gryffindor' | 'hufflepuff' | 'ravenclaw' | 'slytherin';
+    }
+    return null;
+  }
+
+  /**
+   * House-specific research implementations
+   */
+  private async performHouseBasedResearch(
+    query: string,
+    house: 'gryffindor' | 'hufflepuff' | 'ravenclaw' | 'slytherin',
+    queryType: QueryType,
+    model: ModelType,
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    switch (house) {
+      case 'gryffindor':
+        return this.performGryffindorResearch(query, model, effort, onProgress);
+      case 'hufflepuff':
+        return this.performHufflepuffResearch(query, model, effort, onProgress);
+      case 'ravenclaw':
+        return this.performRavenclawResearch(query, model, effort, onProgress);
+      case 'slytherin':
+        return this.performSlytherinResearch(query, model, effort, onProgress);
+    }
+  }
+
+  /**
+   * Gryffindor: Advocacy-focused research
+   */
+  private async performGryffindorResearch(
     query: string,
     model: ModelType,
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
-    this.functionCallingService.resetToolState();
+    onProgress?.('Gryffindor mode: Seeking real-world impact opportunities...');
 
-    onProgress?.('Host analyzing query structure... initializing function protocols...');
+    // Focus on community impact and actionable outcomes
+    const searchQueries = [
+      `${query} community impact real examples`,
+      `${query} successful interventions case studies`,
+      `${query} policy recommendations action steps`
+    ];
 
-    // Step 1: Analyze query intent
-    const intentAnalysis = await this.functionCallingService.executeFunction({
-      name: 'analyze_query_intent',
-      arguments: { query }
-    });
+    const research = await this.performWebResearch(searchQueries, model, effort);
 
-    if (intentAnalysis.error) {
-      throw new APIError('Failed to analyze query intent', 'FUNCTION_ERROR', true);
-    }
+    const synthesisPrompt = `
+      Based on this research about "${query}", provide:
+      1. Real-world impact assessment
+      2. Affected communities and stakeholders
+      3. Concrete action steps that individuals/organizations can take
+      4. Policy recommendations
+      5. Success stories and proven interventions
 
-    const { intent, confidence } = intentAnalysis.result;
-    this.functionCallingService.updateContext('intent', intent);
-    this.functionCallingService.updateContext('confidence', confidence);
+      Research findings: ${research.aggregatedFindings}
 
-    onProgress?.(`Host identified ${intent} pattern with ${(confidence * 100).toFixed(0)}% confidence...`);
+      Focus on actionable, justice-oriented solutions that create positive change.
+    `;
 
-    // Step 2: Extract entities
-    const entityExtraction = await this.functionCallingService.executeFunction({
-      name: 'extract_key_entities',
-      arguments: { text: query }
-    });
+    const synthesis = await this.generateText(synthesisPrompt, model, effort);
 
-    const entities = entityExtraction.result || {};
-    this.functionCallingService.updateContext('entities', entities);
-
-    // Step 3: Generate search strategy
-    const strategyGeneration = await this.functionCallingService.executeFunction({
-      name: 'generate_search_strategy',
-      arguments: { intent, entities }
-    });
-
-    const strategy = strategyGeneration.result || {};
-    this.functionCallingService.updateContext('strategy', strategy);
-
-    onProgress?.(`Host configured ${strategy.approach} approach... preparing ${strategy.searchQueries?.length || 0} search vectors...`);
-
-    // Step 4: Perform research with strategy
-    const researchResults = await this.performWebResearch(
-      strategy.searchQueries || [query],
-      model,
-      effort
-    );
-
-    // Step 5: Evaluate sources
-    const sourceEvaluations = await Promise.all(
-      researchResults.allSources.map(source =>
-        this.functionCallingService.executeFunction({
-          name: 'evaluate_source_quality',
-          arguments: { source }
-        })
-      )
-    );
-
-    const highQualitySources = researchResults.allSources.filter((source, i) => {
-      const evaluation = sourceEvaluations[i];
-      return evaluation.result?.score > 0.7;
-    });
-
-    onProgress?.(`Host validated ${highQualitySources.length} high-quality sources...`);
-
-    // Step 6: Synthesize findings
-    const synthesis = await this.functionCallingService.executeFunction({
-      name: 'synthesize_findings',
-      arguments: {
-        findings: researchResults.aggregatedFindings,
-        strategy
+    return {
+      synthesis: synthesis.text,
+      sources: research.allSources,
+      queryType: 'analytical',
+      houseParadigm: 'gryffindor',
+      confidenceScore: 0.85,
+      adaptiveMetadata: {
+        paradigm: 'gryffindor',
+        focusAreas: ['community_impact', 'action_steps', 'policy_change']
       }
-    });
+    };
+  }
 
-    // Generate final answer with all context
-    const finalAnswer = await this.generateFinalAnswer(
-      query,
-      researchResults.aggregatedFindings,
+  /**
+   * Hufflepuff: Collaboration-focused research
+   */
+  private async performHufflepuffResearch(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('Hufflepuff mode: Gathering diverse stakeholder perspectives...');
+
+    // Focus on multiple viewpoints and collaborative solutions
+    const searchQueries = [
+      `${query} different perspectives stakeholders`,
+      `${query} collaborative approaches consensus`,
+      `${query} ethical considerations fairness`
+    ];
+
+    const research = await this.performWebResearch(searchQueries, model, effort);
+
+    const synthesisPrompt = `
+      Based on this research about "${query}", provide:
+      1. All relevant stakeholder perspectives
+      2. Areas of consensus and disagreement
+      3. Ethical considerations and fairness issues
+      4. Collaborative approaches that honor all viewpoints
+      5. Inclusive solutions that work for everyone
+
+      Research findings: ${research.aggregatedFindings}
+
+      Emphasize fairness, inclusion, and finding common ground.
+    `;
+
+    const synthesis = await this.generateText(synthesisPrompt, model, effort);
+
+    return {
+      synthesis: synthesis.text,
+      sources: research.allSources,
+      queryType: 'comparative',
+      houseParadigm: 'hufflepuff',
+      confidenceScore: 0.82,
+      adaptiveMetadata: {
+        paradigm: 'hufflepuff',
+        focusAreas: ['stakeholder_perspectives', 'consensus_building', 'ethical_balance']
+      }
+    };
+  }
+
+  /**
+   * Ravenclaw: Deep analytical research
+   */
+  private async performRavenclawResearch(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('Ravenclaw mode: Constructing theoretical frameworks...');
+
+    // Focus on academic rigor and theoretical understanding
+    const searchQueries = [
+      `${query} academic research peer reviewed`,
+      `${query} theoretical framework models`,
+      `${query} systematic analysis methodology`
+    ];
+
+    const research = await this.performWebResearch(searchQueries, model, effort);
+
+    const synthesisPrompt = `
+      Based on this research about "${query}", provide:
+      1. Theoretical frameworks and models
+      2. Key patterns and relationships
+      3. Methodological approaches used in studies
+      4. Gaps in current knowledge
+      5. Future research directions
+
+      Research findings: ${research.aggregatedFindings}
+
+      Prioritize academic rigor, theoretical depth, and systematic analysis.
+    `;
+
+    const synthesis = await this.generateText(synthesisPrompt, model, effort);
+
+    // Additional evaluation for academic quality
+    const evaluation = await this.evaluateResearch(
+      { query, synthesis: synthesis.text, searchResults: research.allSources, evaluation: { quality: 'needs_improvement' }, refinementCount: 0 },
       model,
-      false,
       effort
     );
 
     return {
-      synthesis: finalAnswer.text,
-      sources: highQualitySources.length > 0 ? highQualitySources : researchResults.allSources,
-      queryType: intent,
-      functionCallHistory: this.functionCallingService.getExecutionHistory(),
-      evaluationMetadata: {
-        completeness: synthesis.result?.mainPoints?.length > 0 ? 0.8 : 0.5,
-        accuracy: highQualitySources.length / Math.max(researchResults.allSources.length, 1),
-        clarity: 0.7
-      },
-      confidenceScore: confidence,
+      synthesis: synthesis.text,
+      sources: research.allSources,
+      queryType: 'analytical',
+      houseParadigm: 'ravenclaw',
+      evaluationMetadata: evaluation,
+      confidenceScore: 0.90,
       adaptiveMetadata: {
-        functionDriven: true,
-        toolsUsed: this.functionCallingService.getExecutionHistory().map(h => h.function),
-        processingTime: Date.now()
+        paradigm: 'ravenclaw',
+        focusAreas: ['theoretical_frameworks', 'systematic_analysis', 'knowledge_gaps']
+      }
+    };
+  }
+
+  /**
+   * Slytherin: Strategy-focused research
+   */
+  private async performSlytherinResearch(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('Slytherin mode: Mapping strategic leverage points...');
+
+    // Focus on power dynamics and strategic opportunities
+    const searchQueries = [
+      `${query} key decision makers influence`,
+      `${query} strategic opportunities leverage points`,
+      `${query} power dynamics stakeholder analysis`
+    ];
+
+    const research = await this.performWebResearch(searchQueries, model, effort);
+
+    const synthesisPrompt = `
+      Based on this research about "${query}", provide:
+      1. Key decision-makers and influencers
+      2. Strategic leverage points for maximum impact
+      3. Power dynamics and influence networks
+      4. Resource optimization strategies
+      5. High-impact intervention opportunities
+
+      Research findings: ${research.aggregatedFindings}
+
+      Focus on strategic thinking, influence mapping, and achieving objectives efficiently.
+    `;
+
+    const synthesis = await this.generateText(synthesisPrompt, model, effort);
+
+    return {
+      synthesis: synthesis.text,
+      sources: research.allSources,
+      queryType: 'analytical',
+      houseParadigm: 'slytherin',
+      confidenceScore: 0.88,
+      adaptiveMetadata: {
+        paradigm: 'slytherin',
+        focusAreas: ['influence_mapping', 'strategic_leverage', 'resource_optimization']
       }
     };
   }

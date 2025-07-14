@@ -1,4 +1,4 @@
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { getGeminiApiKey } from "../utils/config.js";
 import { GENAI_MODEL_FLASH } from "../constants.js";
 
@@ -54,6 +54,7 @@ export class GeminiService {
       useSearch = false
     } = options;
 
+    // Generation config only contains generation parameters
     const generationConfig: any = {};
 
     // Configure thinking
@@ -69,9 +70,9 @@ export class GeminiService {
       generationConfig.maxOutputTokens = maxOutputTokens;
     }
 
-    // Configure tools
+    // Tools array - separate from generationConfig
     const tools: any[] = [];
-    
+
     if (useSearch) {
       tools.push({ googleSearch: {} });
     }
@@ -86,16 +87,20 @@ export class GeminiService {
       });
     }
 
-    if (tools.length > 0) {
-      generationConfig.tools = tools;
-    }
-
     try {
-      const response: GenerateContentResponse = await this.geminiAI.models.generateContent({
-        model,
-        contents: prompt,
-        config: generationConfig,
-      });
+      // Create the request body with proper structure
+      const requestBody: any = {
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig,
+      };
+
+      // Add tools at the top level if any exist
+      if (tools.length > 0) {
+        requestBody.tools = tools;
+      }
+
+      const model = this.geminiAI.getGenerativeModel({ model: options.model || GENAI_MODEL_FLASH });
+      const response = await model.generateContent(requestBody);
 
       const text = (response as any).text ?? '';
       const functionCalls: GeminiFunctionCall[] = [];
@@ -104,7 +109,7 @@ export class GeminiService {
       // Extract function calls if present
       if ((response as any).candidates?.[0]?.content?.parts) {
         const parts = (response as any).candidates[0].content.parts;
-        
+
         for (const part of parts) {
           if (part.functionCall) {
             functionCalls.push({
