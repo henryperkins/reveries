@@ -16,6 +16,11 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        // ⬇️ stub-out Azure OpenAI for the browser build
+        './services/azureOpenAIService': path.resolve(
+          __dirname,
+          './services/azureOpenAIStub.ts'
+        )
       }
     },
     css: {
