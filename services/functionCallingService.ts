@@ -1,0 +1,394 @@
+import { EffortType } from '../types';
+
+export interface FunctionParameter {
+    type: string;
+    description: string;
+    enum?: string[];
+    items?: { type: string };
+}
+
+export interface FunctionDefinition {
+    name: string;
+    description: string;
+    parameters: {
+        type: 'object';
+        properties: Record<string, FunctionParameter>;
+        required: string[];
+    };
+}
+
+export interface FunctionCall {
+    name: string;
+    arguments: Record<string, any>;
+    id?: string;
+}
+
+export interface FunctionResult {
+    result: any;
+    error?: string;
+}
+
+export interface ToolUseState {
+    currentStep: string;
+    history: Array<{
+        function: string;
+        arguments: Record<string, any>;
+        result: any;
+        timestamp: number;
+    }>;
+    context: Record<string, any>;
+}
+
+export class FunctionCallingService {
+    private static instance: FunctionCallingService;
+    private functionImplementations: Map<string, (...args: any[]) => Promise<any>>;
+    private toolState: ToolUseState;
+
+    private constructor() {
+        this.functionImplementations = new Map();
+        this.toolState = {
+            currentStep: 'initial',
+            history: [],
+            context: {}
+        };
+        this.registerDefaultFunctions();
+    }
+
+    public static getInstance(): FunctionCallingService {
+        if (!FunctionCallingService.instance) {
+            FunctionCallingService.instance = new FunctionCallingService();
+        }
+        return FunctionCallingService.instance;
+    }
+
+    /**
+     * Register default research functions
+     */
+    private registerDefaultFunctions(): void {
+        // Define research-specific functions
+        this.registerFunction('analyze_query_intent', async (query: string) => {
+            const intents = {
+                factual: ['what is', 'define', 'who is', 'when did', 'where is'],
+                analytical: ['analyze', 'explain', 'how does', 'why does', 'impact of'],
+                comparative: ['compare', 'versus', 'vs', 'difference between', 'better than'],
+                exploratory: ['tell me about', 'overview of', 'introduction to', 'guide to']
+            };
+
+            const queryLower = query.toLowerCase();
+            for (const [intent, keywords] of Object.entries(intents)) {
+                if (keywords.some(keyword => queryLower.includes(keyword))) {
+                    return { intent, confidence: 0.8 };
+                }
+            }
+            return { intent: 'exploratory', confidence: 0.5 };
+        });
+
+        this.registerFunction('extract_key_entities', async (text: string) => {
+            // Simple entity extraction
+            const entities = {
+                topics: [],
+                timeframes: [],
+                locations: [],
+                comparisons: []
+            };
+
+            // Extract topics (capitalized words)
+            const topicMatches = text.match(/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/g);
+            if (topicMatches) {
+                entities.topics = [...new Set(topicMatches)];
+            }
+
+            // Extract timeframes
+            const timeMatches = text.match(/\b\d{4}\b|\b(recent|current|latest|historical)\b/gi);
+            if (timeMatches) {
+                entities.timeframes = [...new Set(timeMatches)];
+            }
+
+            // Extract comparison indicators
+            const compareMatches = text.match(/\b(vs|versus|compared to|better than)\b/gi);
+            if (compareMatches) {
+                entities.comparisons = compareMatches;
+            }
+
+            return entities;
+        });
+
+        this.registerFunction('generate_search_strategy', async (intent: string, entities: any) => {
+            const strategies = {
+                factual: {
+                    approach: 'authoritative_sources',
+                    sources: ['wikipedia', 'gov', 'edu'],
+                    depth: 'shallow',
+                    verification: true
+                },
+                analytical: {
+                    approach: 'multi_perspective',
+                    sources: ['academic', 'expert_analysis', 'case_studies'],
+                    depth: 'deep',
+                    verification: true
+                },
+                comparative: {
+                    approach: 'side_by_side',
+                    sources: ['reviews', 'benchmarks', 'comparisons'],
+                    depth: 'medium',
+                    verification: false
+                },
+                exploratory: {
+                    approach: 'broad_coverage',
+                    sources: ['general', 'overview', 'introduction'],
+                    depth: 'medium',
+                    verification: false
+                }
+            };
+
+            const strategy = strategies[intent as keyof typeof strategies] || strategies.exploratory;
+
+            return {
+                ...strategy,
+                entities,
+                searchQueries: this.generateQueriesFromStrategy(intent, entities)
+            };
+        });
+
+        this.registerFunction('evaluate_source_quality', async (source: { url?: string; name: string }) => {
+            if (!source.url) return { quality: 'unknown', score: 0.5 };
+
+            const qualityIndicators = {
+                high: ['.gov', '.edu', 'wikipedia.org', 'nature.com', 'science.org', 'arxiv.org'],
+                medium: ['.org', 'medium.com', 'github.com'],
+                low: ['blogspot.com', 'wordpress.com']
+            };
+
+            for (const [quality, domains] of Object.entries(qualityIndicators)) {
+                if (domains.some(domain => source.url!.includes(domain))) {
+                    return {
+                        quality,
+                        score: quality === 'high' ? 0.9 : quality === 'medium' ? 0.6 : 0.3
+                    };
+                }
+            }
+
+            return { quality: 'medium', score: 0.5 };
+        });
+
+        this.registerFunction('synthesize_findings', async (findings: any[], strategy: any) => {
+            const synthesis = {
+                mainPoints: [],
+                supportingEvidence: [],
+                contradictions: [],
+                gaps: []
+            };
+
+            // Extract main points
+            if (Array.isArray(findings)) {
+                synthesis.mainPoints = findings
+                    .filter(f => f && typeof f === 'object')
+                    .map(f => f.summary || f.text || '')
+                    .filter(text => text.length > 50);
+            }
+
+            // Identify gaps based on strategy
+            if (strategy.entities?.topics?.length > 0) {
+                const coveredTopics = synthesis.mainPoints.join(' ').toLowerCase();
+                synthesis.gaps = strategy.entities.topics.filter(
+                    (topic: string) => !coveredTopics.includes(topic.toLowerCase())
+                );
+            }
+
+            return synthesis;
+        });
+    }
+
+    private generateQueriesFromStrategy(intent: string, entities: any): string[] {
+        const queries: string[] = [];
+        const baseTopics = entities.topics || [];
+
+        switch (intent) {
+            case 'factual':
+                baseTopics.forEach((topic: string) => {
+                    queries.push(`${topic} definition facts`);
+                    queries.push(`${topic} official data statistics`);
+                });
+                break;
+            case 'analytical':
+                baseTopics.forEach((topic: string) => {
+                    queries.push(`${topic} analysis research`);
+                    queries.push(`${topic} impact effects consequences`);
+                });
+                break;
+            case 'comparative':
+                if (baseTopics.length >= 2) {
+                    queries.push(`${baseTopics[0]} vs ${baseTopics[1]} comparison`);
+                    queries.push(`difference between ${baseTopics[0]} and ${baseTopics[1]}`);
+                }
+                break;
+            default:
+                baseTopics.forEach((topic: string) => {
+                    queries.push(`${topic} overview introduction`);
+                });
+        }
+
+        return queries.slice(0, 5); // Limit queries
+    }
+
+    /**
+     * Register a function implementation
+     */
+    registerFunction(name: string, implementation: (...args: any[]) => Promise<any>): void {
+        this.functionImplementations.set(name, implementation);
+    }
+
+    /**
+     * Execute a function call
+     */
+    async executeFunction(functionCall: FunctionCall): Promise<FunctionResult> {
+        const implementation = this.functionImplementations.get(functionCall.name);
+
+        if (!implementation) {
+            return {
+                result: null,
+                error: `Function ${functionCall.name} not found`
+            };
+        }
+
+        try {
+            const args = Object.values(functionCall.arguments);
+            const result = await implementation(...args);
+
+            // Update tool state
+            this.toolState.history.push({
+                function: functionCall.name,
+                arguments: functionCall.arguments,
+                result,
+                timestamp: Date.now()
+            });
+
+            return { result };
+        } catch (error) {
+            return {
+                result: null,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            };
+        }
+    }
+
+    /**
+     * Get function definitions for model
+     */
+    getFunctionDefinitions(): FunctionDefinition[] {
+        return [
+            {
+                name: 'analyze_query_intent',
+                description: 'Analyze the user query to determine research intent and approach',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        query: {
+                            type: 'string',
+                            description: 'The user query to analyze'
+                        }
+                    },
+                    required: ['query']
+                }
+            },
+            {
+                name: 'extract_key_entities',
+                description: 'Extract key entities, topics, and timeframes from text',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        text: {
+                            type: 'string',
+                            description: 'Text to extract entities from'
+                        }
+                    },
+                    required: ['text']
+                }
+            },
+            {
+                name: 'generate_search_strategy',
+                description: 'Generate a search strategy based on intent and entities',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        intent: {
+                            type: 'string',
+                            description: 'The research intent',
+                            enum: ['factual', 'analytical', 'comparative', 'exploratory']
+                        },
+                        entities: {
+                            type: 'object',
+                            description: 'Extracted entities from the query'
+                        }
+                    },
+                    required: ['intent', 'entities']
+                }
+            },
+            {
+                name: 'evaluate_source_quality',
+                description: 'Evaluate the quality and reliability of a source',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        source: {
+                            type: 'object',
+                            description: 'Source to evaluate with name and optional URL'
+                        }
+                    },
+                    required: ['source']
+                }
+            },
+            {
+                name: 'synthesize_findings',
+                description: 'Synthesize research findings into structured insights',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        findings: {
+                            type: 'array',
+                            items: { type: 'object' },
+                            description: 'Array of research findings'
+                        },
+                        strategy: {
+                            type: 'object',
+                            description: 'The search strategy used'
+                        }
+                    },
+                    required: ['findings']
+                }
+            }
+        ];
+    }
+
+    /**
+     * Get tool state
+     */
+    getToolState(): ToolUseState {
+        return { ...this.toolState };
+    }
+
+    /**
+     * Reset tool state
+     */
+    resetToolState(): void {
+        this.toolState = {
+            currentStep: 'initial',
+            history: [],
+            context: {}
+        };
+    }
+
+    /**
+     * Update context
+     */
+    updateContext(key: string, value: any): void {
+        this.toolState.context[key] = value;
+    }
+
+    /**
+     * Get execution history
+     */
+    getExecutionHistory(): ToolUseState['history'] {
+        return [...this.toolState.history];
+    }
+}

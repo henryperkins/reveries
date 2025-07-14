@@ -1,4 +1,4 @@
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenerativeAI, GenerateContentResponse } from "@google/generative-ai";
 import {
   ModelType,
   EffortType,
@@ -12,6 +12,7 @@ import {
 } from "../types";
 import { APIError, withRetry, ErrorBoundary } from "./errorHandler";
 import { AzureOpenAIService } from "./azureOpenAIService";
+import { FunctionCallingService, FunctionCall, FunctionDefinition } from "./functionCallingService";
 
 /**
  * Generic provider-agnostic response structure we use internally.
@@ -48,16 +49,17 @@ const getGrokApiKey = (): string => {
 
 export class ResearchAgentService {
   private static instance: ResearchAgentService;
-  private geminiAI: GoogleGenAI;
+  private geminiAI: GoogleGenerativeAI;
   private azureOpenAI: AzureOpenAIService | null = null;
   private researchCache: Map<string, { result: EnhancedResearchResults; timestamp: number }> = new Map();
   private readonly CACHE_TTL = 1000 * 60 * 30; // 30 minutes
   private researchMemory: Map<string, { queries: string[]; patterns: QueryType[]; timestamp: number }> = new Map();
   private readonly MEMORY_TTL = 1000 * 60 * 60 * 24; // 24 hours
+  private functionCallingService: FunctionCallingService;
 
   private constructor() {
     // Currently only Gemini needs an SDK client. Grok is called via fetch.
-    this.geminiAI = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    this.geminiAI = new GoogleGenerativeAI(getGeminiApiKey());
 
     // Initialize Azure OpenAI if available
     if (AzureOpenAIService.isAvailable()) {
@@ -67,6 +69,8 @@ export class ResearchAgentService {
         console.warn('Azure OpenAI initialization failed:', error);
       }
     }
+
+    this.functionCallingService = FunctionCallingService.getInstance();
   }
 
   public static getInstance(): ResearchAgentService {
@@ -121,30 +125,116 @@ export class ResearchAgentService {
     });
   }
 
+  /**
+   * Enhanced generateTextWithGemini with function calling support
+   */
   private async generateTextWithGemini(
     prompt: string,
     selectedModel: ModelType,
     effort: EffortType,
-    useSearch: boolean
+    useSearch: boolean,
+    useFunctions: boolean = false
   ): Promise<ProviderResponse> {
     try {
+      const model = this.geminiAI.getGenerativeModel({ model: selectedModel });
       const generationConfig: any = {};
 
+      // Configure tools
+      const tools: any[] = [];
+
       if (useSearch) {
-        generationConfig.tools = [{ googleSearch: {} }];
+        tools.push({ googleSearch: {} });
       }
 
-      if (selectedModel === GENAI_MODEL_FLASH && effort === EffortType.LOW) {
-        generationConfig.thinkingConfig = { thinkingBudget: 0 };
+      if (useFunctions) {
+        const functionDefs = this.functionCallingService.getFunctionDefinitions();
+        tools.push({
+          functionDeclarations: functionDefs.map(fn => ({
+            name: fn.name,
+            description: fn.description,
+            parameters: fn.parameters
+          }))
+        });
       }
 
-      const response: GenerateContentResponse = await this.geminiAI.models.generateContent({
-        model: selectedModel,
-        contents: prompt,
-        config: generationConfig,
+      if (tools.length > 0) {
+        generationConfig.tools = tools;
+      }
+
+      // Configure thinking based on effort level and model
+      if (selectedModel === GENAI_MODEL_FLASH) {
+        switch (effort) {
+          case EffortType.LOW:
+            generationConfig.thinkingConfig = { thinkingBudget: 0 };
+            break;
+          case EffortType.MEDIUM:
+            generationConfig.thinkingConfig = { thinkingBudget: 8192 };
+            break;
+          case EffortType.HIGH:
+            generationConfig.thinkingConfig = { thinkingBudget: 16384 };
+            break;
+          default:
+            generationConfig.thinkingConfig = { thinkingBudget: -1 }; // Dynamic
+        }
+      } else if (selectedModel.includes('pro')) {
+        // Gemini Pro models support higher thinking budgets
+        switch (effort) {
+          case EffortType.LOW:
+            generationConfig.thinkingConfig = { thinkingBudget: 1024 };
+            break;
+          case EffortType.MEDIUM:
+            generationConfig.thinkingConfig = { thinkingBudget: 16384 };
+            break;
+          case EffortType.HIGH:
+            generationConfig.thinkingConfig = { thinkingBudget: 32768 };
+            break;
+          default:
+            generationConfig.thinkingConfig = { thinkingBudget: -1 }; // Dynamic
+        }
+      }
+
+      const response: GenerateContentResponse = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig,
       });
 
-      const text = (response as any).text ?? '';
+      // Handle function calls if present
+      if (response.response.candidates?.[0]?.content?.parts) {
+        const parts = response.response.candidates[0].content.parts;
+        const functionCalls: FunctionCall[] = [];
+
+        for (const part of parts) {
+          if (part.functionCall) {
+            functionCalls.push({
+              name: part.functionCall.name,
+              arguments: part.functionCall.args || {}
+            });
+          }
+        }
+
+        if (functionCalls.length > 0 && useFunctions) {
+          // Execute function calls
+          const results = await Promise.all(
+            functionCalls.map(fc => this.functionCallingService.executeFunction(fc))
+          );
+
+          // Generate final response with function results
+          const followUpPrompt = `
+            Original request: ${prompt}
+
+            Function results:
+            ${results.map((r, i) =>
+            `${functionCalls[i].name}: ${JSON.stringify(r.result)}`
+          ).join('\n')}
+
+            Based on these function results, provide a comprehensive response.
+          `;
+
+          return this.generateTextWithGemini(followUpPrompt, selectedModel, effort, useSearch, false);
+        }
+      }
+
+      const text = response.response.text();
 
       if (!text) {
         throw new APIError(
@@ -156,8 +246,8 @@ export class ResearchAgentService {
 
       let sources: { name: string; url?: string }[] | undefined = undefined;
 
-      if (useSearch && (response as any).candidates?.[0]?.groundingMetadata?.groundingChunks) {
-        const chunks = (response as any).candidates[0].groundingMetadata.groundingChunks;
+      if (useSearch && response.response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+        const chunks = response.response.candidates[0].groundingMetadata.groundingChunks;
         sources = chunks
           .filter((chunk: any) => chunk.web && chunk.web.uri)
           .map((chunk: any) => ({
@@ -659,6 +749,12 @@ export class ResearchAgentService {
       3. "comparative" - Comparing multiple concepts, items, or alternatives
       4. "exploratory" - Open-ended exploration of a broad topic
 
+      Examples:
+      - "What is the population of Tokyo?" → factual
+      - "How does climate change affect marine ecosystems?" → analytical
+      - "Compare React vs Vue.js for enterprise applications" → comparative
+      - "Tell me about artificial intelligence" → exploratory
+
       Query: "${query}"
 
       Consider the intent and complexity. Return only the category name (factual/analytical/comparative/exploratory).
@@ -895,7 +991,8 @@ export class ResearchAgentService {
     query: string,
     model: ModelType,
     effort: EffortType,
-    onProgress?: (message: string) => void
+    onProgress?: (message: string) => void,
+    useFunctionCalling: boolean = true
   ): Promise<EnhancedResearchResults> {
     const startTime = Date.now();
 
@@ -994,6 +1091,127 @@ export class ResearchAgentService {
     // Cache the result
     this.setCachedResult(query, result);
 
+    // Use function-driven approach for complex queries
+    if (useFunctionCalling && complexityScore > 0.6) {
+      onProgress?.('Host activating advanced function protocols...');
+      try {
+        return await this.performFunctionDrivenResearch(query, model, effort, onProgress);
+      } catch (error) {
+        console.warn('Function-driven research failed, falling back to standard approach:', error);
+        // Fall through to standard routing
+      }
+    }
+
     return result;
+  }
+
+  /**
+   * Function-driven research workflow
+   */
+  async performFunctionDrivenResearch(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    this.functionCallingService.resetToolState();
+
+    onProgress?.('Host analyzing query structure... initializing function protocols...');
+
+    // Step 1: Analyze query intent
+    const intentAnalysis = await this.functionCallingService.executeFunction({
+      name: 'analyze_query_intent',
+      arguments: { query }
+    });
+
+    if (intentAnalysis.error) {
+      throw new APIError('Failed to analyze query intent', 'FUNCTION_ERROR', true);
+    }
+
+    const { intent, confidence } = intentAnalysis.result;
+    this.functionCallingService.updateContext('intent', intent);
+    this.functionCallingService.updateContext('confidence', confidence);
+
+    onProgress?.(`Host identified ${intent} pattern with ${(confidence * 100).toFixed(0)}% confidence...`);
+
+    // Step 2: Extract entities
+    const entityExtraction = await this.functionCallingService.executeFunction({
+      name: 'extract_key_entities',
+      arguments: { text: query }
+    });
+
+    const entities = entityExtraction.result || {};
+    this.functionCallingService.updateContext('entities', entities);
+
+    // Step 3: Generate search strategy
+    const strategyGeneration = await this.functionCallingService.executeFunction({
+      name: 'generate_search_strategy',
+      arguments: { intent, entities }
+    });
+
+    const strategy = strategyGeneration.result || {};
+    this.functionCallingService.updateContext('strategy', strategy);
+
+    onProgress?.(`Host configured ${strategy.approach} approach... preparing ${strategy.searchQueries?.length || 0} search vectors...`);
+
+    // Step 4: Perform research with strategy
+    const researchResults = await this.performWebResearch(
+      strategy.searchQueries || [query],
+      model,
+      effort
+    );
+
+    // Step 5: Evaluate sources
+    const sourceEvaluations = await Promise.all(
+      researchResults.allSources.map(source =>
+        this.functionCallingService.executeFunction({
+          name: 'evaluate_source_quality',
+          arguments: { source }
+        })
+      )
+    );
+
+    const highQualitySources = researchResults.allSources.filter((source, i) => {
+      const evaluation = sourceEvaluations[i];
+      return evaluation.result?.score > 0.7;
+    });
+
+    onProgress?.(`Host validated ${highQualitySources.length} high-quality sources...`);
+
+    // Step 6: Synthesize findings
+    const synthesis = await this.functionCallingService.executeFunction({
+      name: 'synthesize_findings',
+      arguments: {
+        findings: researchResults.aggregatedFindings,
+        strategy
+      }
+    });
+
+    // Generate final answer with all context
+    const finalAnswer = await this.generateFinalAnswer(
+      query,
+      researchResults.aggregatedFindings,
+      model,
+      false,
+      effort
+    );
+
+    return {
+      synthesis: finalAnswer.text,
+      sources: highQualitySources.length > 0 ? highQualitySources : researchResults.allSources,
+      queryType: intent,
+      functionCallHistory: this.functionCallingService.getExecutionHistory(),
+      evaluationMetadata: {
+        completeness: synthesis.result?.mainPoints?.length > 0 ? 0.8 : 0.5,
+        accuracy: highQualitySources.length / Math.max(researchResults.allSources.length, 1),
+        clarity: 0.7
+      },
+      confidenceScore: confidence,
+      adaptiveMetadata: {
+        functionDriven: true,
+        toolsUsed: this.functionCallingService.getExecutionHistory().map(h => h.function),
+        processingTime: Date.now()
+      }
+    };
   }
 }

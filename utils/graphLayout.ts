@@ -161,26 +161,26 @@ export function getNodeStyle(type: ResearchStepType): {
 } {
   const styles = {
     [ResearchStepType.USER_QUERY]: {
-      background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-      border: '#075985',
+      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+      border: '#1e40af',
       textColor: '#ffffff',
-      icon: '👤'
+      icon: '❓'
     },
     [ResearchStepType.GENERATING_QUERIES]: {
-      background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-      border: '#5b21b6',
+      background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+      border: '#6d28d9',
       textColor: '#ffffff',
       icon: '🔍'
     },
     [ResearchStepType.WEB_RESEARCH]: {
-      background: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)',
-      border: '#155e75',
+      background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+      border: '#0e7490',
       textColor: '#ffffff',
       icon: '🌐'
     },
     [ResearchStepType.REFLECTION]: {
-      background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-      border: '#6d28d9',
+      background: 'linear-gradient(135deg, #a855f7 0%, #9333ea 100%)',
+      border: '#7e22ce',
       textColor: '#ffffff',
       icon: '💭'
     },
@@ -194,13 +194,13 @@ export function getNodeStyle(type: ResearchStepType): {
       background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
       border: '#047857',
       textColor: '#ffffff',
-      icon: '✨'
+      icon: '✅'
     },
     [ResearchStepType.ERROR]: {
       background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
       border: '#b91c1c',
       textColor: '#ffffff',
-      icon: '⚠️'
+      icon: '❌'
     },
     [ResearchStepType.ANALYTICS]: {
       background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',

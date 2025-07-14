@@ -1,4 +1,3 @@
-
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -10,41 +9,77 @@ interface ResearchStepCardProps {
 
 export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({ step }) => {
   const IconComponent = step.icon;
-  
-  const baseCardClasses = "p-4 rounded-lg bg-westworld-beige flex items-start space-x-3";
-  let typeSpecificClasses = "";
-  let iconColor = "text-westworld-rust"; 
 
-  switch(step.type) {
-    case ResearchStepType.USER_QUERY:
-      typeSpecificClasses = "border-westworld-tan border animate-glow"; 
-      iconColor = "text-westworld-gold";
-      break;
-    case ResearchStepType.FINAL_ANSWER:
-      typeSpecificClasses = "border-westworld-tan border";
-      iconColor = "text-westworld-gold animate-glow";
-      break;
-    default:
-      typeSpecificClasses = "border-westworld-tan border"; 
-  }
+  const getStepStyles = (type: ResearchStepType) => {
+    const styles = {
+      [ResearchStepType.USER_QUERY]: {
+        iconColor: 'text-accent',
+        borderColor: 'border-accent/30',
+        bgGradient: 'from-accent/5 to-transparent',
+        animate: true
+      },
+      [ResearchStepType.FINAL_ANSWER]: {
+        iconColor: 'text-accent animate-pulse-soft',
+        borderColor: 'border-accent/40',
+        bgGradient: 'from-accent/10 to-transparent',
+        animate: false
+      },
+      [ResearchStepType.ERROR]: {
+        iconColor: 'text-red-500',
+        borderColor: 'border-red-300',
+        bgGradient: 'from-red-50 to-transparent',
+        animate: false
+      },
+      default: {
+        iconColor: 'text-accent-dark',
+        borderColor: 'border-border',
+        bgGradient: 'from-surface to-transparent',
+        animate: false
+      }
+    };
+
+    return styles[type] || styles.default;
+  };
+
+  const stepStyles = getStepStyles(step.type);
 
   return (
-    <div className={`${baseCardClasses} ${typeSpecificClasses}`}>
-      <div className={`shrink-0 w-6 h-6 ${iconColor} mt-1`}>
-        <IconComponent className={step.isSpinning ? 'animate-spin-slow' : ''} />
-      </div>
-      <div className="grow min-w-0">
-        <h3 className="text-md font-semibold text-westworld-gold font-westworld-mono">{step.title}</h3>
-        <div className="text-sm mt-1 break-words" style={{color: 'var(--westworld-cream)'}}>
-          {typeof step.content === 'string' ? (
-            <div className="prose prose-sm prose-invert max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{step.content}</ReactMarkdown>
-            </div>
-          ) : (
-            step.content 
+    <div className={`
+      research-step-card
+      bg-gradient-to-r ${stepStyles.bgGradient}
+      border ${stepStyles.borderColor}
+      ${stepStyles.animate ? 'animate-glow' : ''}
+      group
+    `}>
+      <div className="flex gap-4">
+        <div className={`
+          shrink-0 w-8 h-8 ${stepStyles.iconColor}
+          transition-transform duration-200 group-hover:scale-110
+          ${step.isSpinning ? 'animate-spin' : ''}
+        `}>
+          <IconComponent />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-medium text-text-primary mb-2">
+            {step.title}
+          </h3>
+          <div className="text-text-secondary space-y-2">
+            {typeof step.content === 'string' ? (
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {step.content}
+                </ReactMarkdown>
+              </div>
+            ) : (
+              step.content
+            )}
+          </div>
+          {step.timestamp && (
+            <p className="text-xs text-text-muted mt-3 font-mono">
+              {step.timestamp}
+            </p>
           )}
         </div>
-        {step.timestamp && <p className="text-xs text-westworld-rust mt-1 font-westworld-mono">{step.timestamp}</p>}
       </div>
     </div>
   );

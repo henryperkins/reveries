@@ -1,22 +1,47 @@
 @import "tailwindcss";
 
 @theme {
-  --color-westworld-cream: #f8f6f1;
-  --color-westworld-beige: #e8e0d5;
-  --color-westworld-tan: #c8b8a8;
-  --color-westworld-brown: #8b7355;
-  --color-westworld-darkbrown: #5a4a3a;
-  --color-westworld-black: #1a1a1a;
-  --color-westworld-gold: #d4a574;
-  --color-westworld-rust: #a0522d;
+  /* Simplified color palette with semantic naming */
+  --color-background: #f8f6f1;
+  /* cream */
+  --color-surface: #e8e0d5;
+  /* beige */
+  --color-border: #c8b8a8;
+  /* tan */
+  --color-text-primary: #1a1a1a;
+  /* black */
+  --color-text-secondary: #5a4a3a;
+  /* dark brown */
+  --color-text-muted: #8b7355;
+  /* brown */
+  --color-accent: #d4a574;
+  /* gold */
+  --color-accent-dark: #a0522d;
+  /* rust */
+
+  /* Map to existing westworld colors for compatibility */
+  --color-westworld-cream: var(--color-background);
+  --color-westworld-beige: var(--color-surface);
+  --color-westworld-tan: var(--color-border);
+  --color-westworld-brown: var(--color-text-muted);
+  --color-westworld-darkbrown: var(--color-text-secondary);
+  --color-westworld-black: var(--color-text-primary);
+  --color-westworld-gold: var(--color-accent);
+  --color-westworld-rust: var(--color-accent-dark);
+
+  /* Enhanced text effects */
+  --text-shadow-subtle: 0 1px 2px rgba(26, 26, 26, 0.1);
+  --text-shadow-glow: 0 0 20px rgba(212, 165, 116, 0.4);
+  --text-shadow-dramatic: 2px 2px 4px rgba(26, 26, 26, 0.3);
+
+  /* Interactive transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
 
   --font-family-serif: Georgia, serif;
   --font-family-sans: ui-sans-serif, system-ui, sans-serif;
   --font-family-mono: Courier, monospace;
-
-  /* Enhanced text shadows for dramatic effect */
-  --text-shadow-westworld-glow: 0 0 10px rgba(212, 165, 116, 0.3);
-  --text-shadow-westworld-depth: 2px 2px 4px rgba(26, 26, 26, 0.4);
 
   --spacing-0: 0px;
   --spacing-1: 0.25rem;
@@ -48,132 +73,226 @@
 }
 
 @layer base {
+
+  /* Simplified base styles */
   body {
-    @apply bg-westworld-cream text-westworld-darkbrown;
-    font-family: Courier, monospace;
+    @apply bg-background text-text-primary;
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
   }
 
+  /* Clean typography hierarchy */
   h1,
   h2,
   h3,
   h4,
   h5,
   h6 {
-    font-family: Georgia, serif;
-    @apply text-westworld-black;
+    @apply font-serif text-text-primary;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
   }
 
+  h1 {
+    @apply text-4xl font-bold mb-6;
+  }
+
+  h2 {
+    @apply text-3xl font-semibold mb-4;
+  }
+
+  h3 {
+    @apply text-2xl font-medium mb-3;
+  }
+
+  /* Enhanced code blocks */
   pre {
-    @apply bg-westworld-black text-westworld-cream p-4 rounded-lg overflow-x-auto;
+    @apply bg-text-primary text-background p-4 rounded-lg overflow-x-auto;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    transition: box-shadow var(--transition-base);
+  }
+
+  pre:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2);
   }
 
   code {
-    @apply bg-westworld-beige text-westworld-darkbrown px-1 py-0.5 rounded-sm text-sm;
+    @apply bg-surface text-text-secondary px-1.5 py-0.5 rounded text-sm;
+    font-family: 'Courier New', monospace;
   }
 
-  pre code {
-    @apply bg-transparent p-0 text-westworld-cream;
+  /* Clean link styles */
+  a {
+    @apply text-accent-dark underline-offset-2 hover:text-accent transition-colors;
+    transition-duration: var(--transition-fast);
   }
 
-  .prose h1 {
-    @apply text-3xl font-bold mb-4 text-westworld-black;
-    text-shadow: var(--text-shadow-westworld-depth);
-  }
-
-  .prose h2 {
-    @apply text-2xl font-bold mb-3 text-westworld-black;
-    text-shadow: var(--text-shadow-westworld-depth);
-  }
-
-  .prose h3 {
-    @apply text-xl font-semibold mb-2 text-westworld-black;
-    text-shadow: 1px 1px 2px rgba(26, 26, 26, 0.2);
+  /* Improved prose styles */
+  .prose {
+    @apply max-w-none;
   }
 
   .prose p {
-    @apply mb-4 leading-relaxed;
+    @apply mb-4 text-text-secondary leading-relaxed;
   }
 
-  .prose ul {
-    @apply list-disc list-inside mb-4 space-y-2;
-  }
-
+  .prose ul,
   .prose ol {
-    @apply list-decimal list-inside mb-4 space-y-2;
+    @apply mb-4 ml-6 space-y-2;
+  }
+
+  .prose li {
+    @apply text-text-secondary;
   }
 
   .prose blockquote {
-    @apply border-l-4 border-westworld-gold pl-4 py-2 mb-4 italic text-westworld-brown;
+    @apply border-l-4 border-accent pl-4 py-2 mb-4 italic text-text-muted;
+    background: linear-gradient(to right, var(--color-surface), transparent);
   }
 
-  .prose a {
-    @apply text-westworld-rust underline hover:text-westworld-darkbrown transition-colors;
-  }
-
-  .reverie-tag {
-    @apply inline-block bg-westworld-tan text-westworld-black px-3 py-1 rounded-full text-sm font-medium;
-  }
-
+  /* Interactive input styles */
   .reverie-input {
-    @apply w-full bg-westworld-beige border-2 border-westworld-tan rounded-lg px-4 py-2 text-westworld-darkbrown placeholder-westworld-brown focus:outline-none focus:border-westworld-brown focus:ring-2 focus:ring-westworld-gold/20;
-    /* Touch-friendly sizing */
-    @apply pointer-coarse:px-6 pointer-coarse:py-3 pointer-coarse:text-lg;
+    @apply w-full bg-surface border-2 border-border rounded-lg px-4 py-3;
+    @apply text-text-primary placeholder-text-muted;
+    @apply transition-all duration-[var(--transition-base)];
+    @apply focus:border-accent focus:bg-background focus:shadow-md;
+    @apply hover:border-accent/50;
   }
 
+  /* Enhanced button styles */
   .reverie-button {
-    @apply bg-westworld-brown text-westworld-cream px-6 py-2 rounded-lg font-medium hover:bg-westworld-darkbrown transition-colors duration-200;
-    /* Touch-friendly sizing */
-    @apply pointer-coarse:px-8 pointer-coarse:py-3 pointer-coarse:text-lg;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply bg-accent text-text-primary px-6 py-3 rounded-lg font-medium;
+    @apply transition-all duration-[var(--transition-base)];
+    @apply hover:bg-accent-dark hover:shadow-lg hover:scale-[1.02];
+    @apply active:scale-[0.98] active:shadow-sm;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
   }
 
+  /* Card with hover effects */
   .reverie-card {
-    @apply bg-westworld-beige rounded-lg p-6 shadow-lg;
-    /* Enhanced title styling */
+    @apply bg-surface rounded-lg p-6 shadow-sm;
+    @apply border border-border/20;
+    @apply transition-all duration-[var(--transition-slow)];
+    @apply hover:shadow-xl hover:border-accent/30 hover:translate-y-[-2px];
   }
 
-  /* Enhanced card titles with subtle text shadows */
-  .reverie-card h3,
-  .research-step-card h3 {
-    text-shadow: 1px 1px 2px rgba(212, 165, 116, 0.3);
+  /* Research step cards with entrance animation */
+  .research-step-card {
+    @apply reverie-card;
+    animation: slideIn var(--transition-slow) ease-out;
   }
 
-  /* Main header title glow effect */
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Westworld title with refined glow */
   .westworld-title {
-    @apply text-westworld-black;
-    text-shadow: var(--text-shadow-westworld-glow);
+    @apply text-text-primary;
+    text-shadow: var(--text-shadow-glow);
+    transition: text-shadow var(--transition-slow);
   }
 
-  /* Additional utility classes */
-  .westworld-text-gold {
-    @apply text-westworld-gold;
+  .westworld-title:hover {
+    text-shadow: 0 0 30px rgba(212, 165, 116, 0.6);
   }
 
-  .westworld-text-copper {
-    @apply text-westworld-rust;
-  }
-
-  .westworld-border {
-    @apply border-westworld-tan;
-  }
-
-  .westworld-card {
-    @apply bg-westworld-beige;
-  }
-
-  .westworld-mono {
-    font-family: Courier, monospace;
-  }
-
+  /* Simplified glow animation */
   .animate-glow {
-    animation: glow 2s ease-in-out infinite alternate;
+    animation: glow 3s ease-in-out infinite;
   }
 
   @keyframes glow {
-    from {
-      text-shadow: 0 0 10px rgba(212, 165, 116, 0.5);
+
+    0%,
+    100% {
+      filter: brightness(1);
+      text-shadow: 0 0 20px rgba(212, 165, 116, 0.4);
     }
-    to {
-      text-shadow: 0 0 20px rgba(212, 165, 116, 0.8), 0 0 30px rgba(212, 165, 116, 0.4);
+
+    50% {
+      filter: brightness(1.1);
+      text-shadow: 0 0 30px rgba(212, 165, 116, 0.7);
     }
+  }
+
+  /* Loading states */
+  .loading-shimmer {
+    @apply relative overflow-hidden;
+  }
+
+  .loading-shimmer::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(212, 165, 116, 0.2),
+        transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Improved focus states */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
+  }
+
+  /* Smooth scrolling with scroll margin */
+  * {
+    scroll-margin-top: 2rem;
+  }
+
+  /* Selection colors */
+  ::selection {
+    @apply bg-accent/30 text-text-primary;
+  }
+}
+
+/* Custom scrollbar */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-accent) var(--color-surface);
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-surface rounded-full;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-accent rounded-full;
+    @apply hover:bg-accent-dark;
+  }
+}
+
+/* Responsive touch targets */
+@media (pointer: coarse) {
+
+  .reverie-button,
+  .reverie-input {
+    min-height: 44px;
   }
 }

@@ -94,20 +94,34 @@ export interface ResearchState {
   refinementCount: number;
 }
 
+export interface FunctionCallHistory {
+  function: string;
+  arguments: Record<string, any>;
+  result: any;
+  timestamp: number;
+}
+
 export interface EnhancedResearchResults {
   synthesis: string;
   sources: { name: string; url?: string }[];
-  evaluationMetadata?: ResearchState['evaluation'];
-  sections?: ResearchSection[];
   queryType?: QueryType;
+  sections?: ResearchSection[];
+  evaluationMetadata?: {
+    completeness?: number;
+    accuracy?: number;
+    clarity?: number;
+  };
   refinementCount?: number;
-  confidenceScore?: number; // 0-1 confidence in the results
+  confidenceScore?: number;
   adaptiveMetadata?: {
     cacheHit?: boolean;
     learnedPatterns?: boolean;
     processingTime?: number;
     complexityScore?: number;
     selfHealed?: boolean;
-    healingStrategy?: 'broader_search' | 'enhanced_detail' | 'alternative_model';
+    healingStrategy?: string;
+    functionDriven?: boolean;
+    toolsUsed?: string[];
   };
+  functionCallHistory?: FunctionCallHistory[];
 }
