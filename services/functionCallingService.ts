@@ -20,7 +20,6 @@ export interface FunctionDefinition {
 export interface FunctionCall {
     name: string;
     arguments: Record<string, any>;
-    id?: string;
 }
 
 export interface FunctionResult {
@@ -41,11 +40,10 @@ export interface ToolUseState {
 
 export class FunctionCallingService {
     private static instance: FunctionCallingService;
-    private functionImplementations: Map<string, (...args: any[]) => Promise<any>>;
+    private functions: Map<string, (...args: any[]) => any> = new Map();
     private toolState: ToolUseState;
 
     private constructor() {
-        this.functionImplementations = new Map();
         this.toolState = {
             currentStep: 'initial',
             history: [],
@@ -208,23 +206,30 @@ export class FunctionCallingService {
                 baseTopics.forEach((topic: string) => {
                     queries.push(`${topic} definition facts`);
                     queries.push(`${topic} official data statistics`);
+                    queries.push(`what is ${topic}`);
+                    queries.push(`define ${topic}`);
                 });
                 break;
             case 'analytical':
                 baseTopics.forEach((topic: string) => {
                     queries.push(`${topic} analysis research`);
                     queries.push(`${topic} impact effects consequences`);
+                    queries.push(`how does ${topic}`);
+                    queries.push(`why does ${topic}`);
                 });
                 break;
             case 'comparative':
                 if (baseTopics.length >= 2) {
                     queries.push(`${baseTopics[0]} vs ${baseTopics[1]} comparison`);
                     queries.push(`difference between ${baseTopics[0]} and ${baseTopics[1]}`);
+                    queries.push(`compare ${baseTopics[0]} ${baseTopics[1]}`);
                 }
                 break;
             default:
                 baseTopics.forEach((topic: string) => {
                     queries.push(`${topic} overview introduction`);
+                    queries.push(`guide to ${topic}`);
+                    queries.push(`introduction to ${topic}`);
                 });
         }
 
@@ -235,35 +240,31 @@ export class FunctionCallingService {
      * Register a function implementation
      */
     registerFunction(name: string, implementation: (...args: any[]) => Promise<any>): void {
-        this.functionImplementations.set(name, implementation);
+        this.functions.set(name, implementation);
     }
 
     /**
      * Execute a function call
      */
-    async executeFunction(functionCall: FunctionCall): Promise<FunctionResult> {
-        const implementation = this.functionImplementations.get(functionCall.name);
-
-        if (!implementation) {
-            return {
-                result: null,
-                error: `Function ${functionCall.name} not found`
-            };
-        }
-
+    async executeFunction(call: FunctionCall): Promise<{ result: any; error: any }> {
         try {
-            const args = Object.values(functionCall.arguments);
-            const result = await implementation(...args);
+            const fn = this.functions.get(call.name);
+            if (!fn) {
+                throw new Error(`Function ${call.name} not found`);
+            }
+
+            const args = Object.values(call.arguments);
+            const result = await fn(...args);
 
             // Update tool state
             this.toolState.history.push({
-                function: functionCall.name,
-                arguments: functionCall.arguments,
+                function: call.name,
+                arguments: call.arguments,
                 result,
                 timestamp: Date.now()
             });
 
-            return { result };
+            return { result, error: null };
         } catch (error) {
             return {
                 result: null,
@@ -356,7 +357,27 @@ export class FunctionCallingService {
                     },
                     required: ['findings']
                 }
-            }
+            },
+            {
+                name: 'getCurrentTime',
+                description: 'Get the current time in ISO format',
+                parameters: {
+                    type: 'object',
+                    properties: {},
+                },
+            },
+            {
+                name: 'calculateSum',
+                description: 'Calculate the sum of two numbers',
+                parameters: {
+                    type: 'object',
+                    properties: {
+                        a: { type: 'number', description: 'First number' },
+                        b: { type: 'number', description: 'Second number' },
+                    },
+                    required: ['a', 'b'],
+                },
+            },
         ];
     }
 

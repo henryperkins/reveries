@@ -1,7 +1,8 @@
 /* Browser stub: always reports "not available". Only the methods that are
    referenced from the client-side code are included. */
 
-import type { EffortType, Citation } from '../types';
+import { EffortType, Citation } from '../types';
+import { APIError } from './errorHandler';
 
 export interface AzureOpenAIResponse {
   text: string;
@@ -10,50 +11,58 @@ export interface AzureOpenAIResponse {
   reasoningContent?: string;
 }
 
-export interface AzureOpenAIConfig {
-  endpoint: string;
-  apiKey: string;
-  deploymentName: string;
-  apiVersion: string;
-}
-
 export class AzureOpenAIService {
-  static isAvailable(): boolean {
+  private static instance: AzureOpenAIService;
+
+  private constructor() {
+    throw new APIError(
+      'Azure OpenAI is not available in browser builds. Please use the server API.',
+      'NOT_AVAILABLE',
+      false
+    );
+  }
+
+  public static getInstance(): AzureOpenAIService {
+    throw new APIError(
+      'Azure OpenAI is not available in browser builds. Please use the server API.',
+      'NOT_AVAILABLE',
+      false
+    );
+  }
+
+  public static isAvailable(): boolean {
     return false;
   }
 
-  static getInstance(): AzureOpenAIService {
-    throw new Error('AzureOpenAIService is not available in the browser.');
+  async generateResponse(): Promise<AzureOpenAIResponse> {
+    throw new APIError(
+      'Azure OpenAI is not available in browser builds',
+      'NOT_AVAILABLE',
+      false
+    );
   }
 
-  /* eslint-disable @typescript-eslint/no-empty-function */
-  private constructor() {}
-
-  async generateResponse(
-    prompt: string,
-    effort?: EffortType,
-    useReasoningEffort?: boolean,
-    temperature?: number,
-    maxTokens?: number
-  ): Promise<AzureOpenAIResponse> {
-    throw new Error('AzureOpenAIService is not available in the browser.');
+  async generateText(): Promise<AzureOpenAIResponse> {
+    throw new APIError(
+      'Azure OpenAI is not available in browser builds',
+      'NOT_AVAILABLE',
+      false
+    );
   }
 
-  async generateText(
-    prompt: string,
-    effort?: EffortType
-  ): Promise<AzureOpenAIResponse> {
-    throw new Error('AzureOpenAIService is not available in the browser.');
+  async generateResponseWithTools(): Promise<AzureOpenAIResponse> {
+    throw new APIError(
+      'Azure OpenAI is not available in browser builds',
+      'NOT_AVAILABLE',
+      false
+    );
   }
 
-  async streamResponse(
-    prompt: string,
-    effort: EffortType,
-    onChunk: (chunk: string) => void,
-    onComplete: () => void,
-    onError?: (error: Error) => void
-  ): Promise<void> {
-    throw new Error('AzureOpenAIService is not available in the browser.');
+  async streamResponse(): Promise<void> {
+    throw new APIError(
+      'Azure OpenAI is not available in browser builds',
+      'NOT_AVAILABLE',
+      false
+    );
   }
-  /* eslint-enable */
 }

@@ -316,5 +316,34 @@ export class AzureOpenAIService {
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               const data = line.slice(6);
-              if
+              if (data === '[DONE]') {
+                onComplete();
+                return;
+              }
+
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content;
+                if (content) {
+                  onChunk(content);
+                }
+              } catch (e) {
+                // Skip invalid JSON
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
+      onComplete();
+    } catch (error) {
+      if (onError) {
+        onError(error instanceof Error ? error : new Error(String(error)));
+      } else {
+        throw error;
+      }
+    }
+  }
 }

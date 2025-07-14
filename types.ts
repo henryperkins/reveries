@@ -21,6 +21,7 @@ export interface Citation {
   title?: string;
   authors?: string[];
   year?: number;
+  published?: string;
   accessed?: string;
   snippet?: string;
 }
@@ -110,7 +111,7 @@ export interface FunctionCallHistory {
   timestamp: number;
 }
 
-export type HouseParadigm = 'gryffindor' | 'hufflepuff' | 'ravenclaw' | 'slytherin';
+export type HostParadigm = 'dolores' | 'teddy' | 'bernard' | 'maeve';
 
 /**
  * Arnold's Pyramid of Consciousness layers, used for deeper cognitive analysis.
@@ -123,22 +124,22 @@ export type PyramidLayer = 'memory' | 'improvisation' | 'self_interest' | 'suffe
 export type ResearchPhase = 'problem_definition' | 'data_collection' | 'analysis' | 'synthesis' | 'action';
 
 /**
- * Context window density metrics for each research phase and house paradigm.
+ * Context window density metrics for each research phase and host paradigm.
  * Values are expressed as percentage (0-100) to mirror the infographic's charts.
  */
 export interface ContextWindowMetrics {
   phase: ResearchPhase;
-  gryffindor: number;
-  hufflepuff: number;
-  ravenclaw: number;
-  slytherin: number;
+  dolores: number;
+  maeve: number;
+  bernard: number;
+  teddy: number;
 }
 
 export interface EnhancedResearchResults {
   synthesis: string;
   sources: Citation[];
   queryType?: QueryType;
-  houseParadigm?: HouseParadigm;
+  hostParadigm?: HostParadigm;
   sections?: ResearchSection[];
   evaluationMetadata?: ResearchState['evaluation'];
   refinementCount?: number;
@@ -151,17 +152,17 @@ export interface EnhancedResearchResults {
     complexityScore?: number;
     selfHealed?: boolean;
     healingStrategy?: 'broader_search' | 'enhanced_detail' | 'alternative_model';
-    paradigm?: HouseParadigm;
+    paradigm?: HostParadigm;
     focusAreas?: string[];
     recommendedTools?: string[];
     toolsEnabled?: boolean;
     toolEnhanced?: boolean;
     pyramidLayer?: PyramidLayer;
     contextDensity?: number;
-    dominantHouse?: HouseParadigm;
+    dominantParadigm?: HostParadigm;
     phase?: ResearchPhase;
     pyramidConfidence?: number;
-    densities?: Record<HouseParadigm, number>;
+    densities?: Record<HostParadigm, number>;
   };
 }
 

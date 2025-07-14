@@ -30,7 +30,7 @@ const MODEL_INFO = {
     color: 'from-purple-500 to-pink-600'
   },
   [AZURE_O3_MODEL]: {
-    name: 'Azure O3',
+    name: 'Azure o3',
     description: 'Cutting-edge reasoning with deliberative processing',
     icon: '🧠',
     features: ['Deep reasoning', 'Complex analysis', 'High accuracy'],
@@ -83,10 +83,10 @@ export const Controls: React.FC<ControlsProps> = ({
       {/* Configuration Toggle */}
       <button
         onClick={() => setShowConfig(!showConfig)}
-        className="w-full flex items-center justify-between p-4 bg-white/50 backdrop-blur-sm rounded-lg border border-westworld-tan/30 hover:bg-white/70 transition-all duration-300"
+        className="w-full flex items-center justify-between p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-westworld-tan/30 hover:bg-white/70 transition-all duration-300 group"
       >
         <div className="flex items-center gap-3">
-          <CpuChipIcon className="w-5 h-5 text-westworld-gold" />
+          <CpuChipIcon className="w-5 h-5 text-westworld-gold group-hover:rotate-12 transition-transform" />
           <span className="text-westworld-rust font-medium">Research Configuration</span>
         </div>
         <div className="flex items-center gap-2">
@@ -237,7 +237,7 @@ export const Controls: React.FC<ControlsProps> = ({
       <button
         onClick={onNewSearch}
         disabled={isLoading}
-        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-westworld-gold text-black rounded-lg font-medium hover:bg-westworld-rust hover:text-white transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-westworld-gold to-westworld-copper text-black rounded-xl font-medium hover:from-westworld-rust hover:to-westworld-copper hover:text-white transition-all duration-300 shadow-md hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
       >
         <PlusIcon className="w-5 h-5" />
         Start New Research Session

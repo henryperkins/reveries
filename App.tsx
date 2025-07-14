@@ -677,14 +677,17 @@ const App: React.FC = () => {
   }, [sessions]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-westworld-tan/20 to-westworld-beige/30 flex flex-col items-center py-8 px-4">
-      <div className="w-full max-w-4xl">
+    <div className="min-h-screen bg-gradient-to-br from-westworld-cream via-westworld-beige to-westworld-tan/20 flex flex-col items-center py-8 px-4">
+      <div className="w-full max-w-4xl animate-fadeIn">
         <Header />
 
-        <main className="mt-8 bg-white/90 backdrop-blur-sm shadow-2xl p-8 rounded-2xl border border-westworld-tan/20">
+        <main className="mt-8 bg-white/80 backdrop-blur-md shadow-2xl p-8 rounded-2xl border border-westworld-tan/20">
           {currentQuery && researchSteps.length === 0 && !isLoading && (
-            <div className="bg-westworld-gold/10 p-4 rounded-lg mb-6 border border-westworld-gold/30">
-              <p className="font-semibold text-westworld-rust">{currentQuery}</p>
+            <div className="bg-gradient-to-r from-westworld-gold/10 to-westworld-gold/5 p-4 rounded-xl mb-6 border border-westworld-gold/30">
+              <p className="font-semibold text-westworld-rust flex items-center gap-2">
+                <UserCircleIcon className="w-5 h-5 text-westworld-gold" />
+                {currentQuery}
+              </p>
             </div>
           )}
 
@@ -692,16 +695,16 @@ const App: React.FC = () => {
 
           {/* Progress bar with better visibility */}
           {isLoading && (
-            <div className="mt-6 mb-4">
+            <div className="mt-6 mb-4 animate-fadeIn">
               <ProgressBar value={progressValue} />
             </div>
           )}
 
           {error && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-600 text-sm flex items-center gap-2">
+            <div className="mt-4 p-4 bg-gradient-to-r from-red-50 to-red-100/50 border border-red-300 rounded-xl animate-fadeIn">
+              <p className="text-red-700 text-sm flex items-center gap-2">
                 <XMarkIcon className="w-5 h-5" />
-                <span className="font-medium">Error:</span> {error}
+                <span className="font-medium">System Alert:</span> {error}
               </p>
             </div>
           )}
@@ -718,6 +721,8 @@ const App: React.FC = () => {
                 onModelChange={setSelectedModel}
                 onNewSearch={handleNewSearch}
                 isLoading={isLoading}
+                enhancedMode={enhancedMode}
+                onEnhancedModeChange={setEnhancedMode}
               />
 
               {/* Action buttons with improved styling */}
@@ -725,48 +730,48 @@ const App: React.FC = () => {
                 <button
                   onClick={() => setShowGraph(true)}
                   disabled={researchSteps.length === 0}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-westworld-gold text-black rounded-lg hover:bg-westworld-copper hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-westworld-gold to-westworld-copper text-black rounded-xl hover:from-westworld-copper hover:to-westworld-rust hover:text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <ChartBarIcon className="w-5 h-5" />
-                  <span className="font-medium">View Graph</span>
+                  <span className="font-medium">View Research Graph</span>
                 </button>
 
                 <button
                   onClick={handleExport}
                   disabled={researchSteps.length === 0}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-westworld-copper text-white rounded-lg hover:bg-westworld-rust transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-westworld-copper to-westworld-rust text-white rounded-xl hover:from-westworld-rust hover:to-westworld-darkbrown transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <ArrowDownTrayIcon className="w-5 h-5" />
-                  <span className="font-medium">Export</span>
+                  <span className="font-medium">Export Results</span>
                 </button>
 
                 {isLoading && (
                   <button
                     onClick={cancelOperation}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm hover:shadow-md animate-pulse"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-300 shadow-md hover:shadow-lg animate-pulse transform hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <XMarkIcon className="w-5 h-5" />
-                    <span className="font-medium">Cancel</span>
+                    <span className="font-medium">Abort Process</span>
                   </button>
                 )}
               </div>
             </div>
 
             {/* Keyboard shortcuts with better styling */}
-            <div className="mt-4 p-3 bg-westworld-tan/10 rounded-lg border border-westworld-tan/20">
-              <p className="text-xs text-westworld-copper font-medium mb-1">Keyboard Shortcuts:</p>
-              <div className="flex flex-wrap gap-3 text-xs">
-                <span className="flex items-center gap-1">
-                  <kbd className="px-2 py-1 bg-white/50 rounded border border-westworld-tan/30 font-mono">Ctrl+Enter</kbd>
-                  <span className="text-westworld-rust">Submit</span>
+            <div className="mt-6 p-4 bg-gradient-to-r from-westworld-tan/10 to-westworld-tan/5 rounded-xl border border-westworld-tan/20">
+              <p className="text-sm text-westworld-copper font-semibold mb-2">Quick Commands:</p>
+              <div className="flex flex-wrap gap-4 text-xs">
+                <span className="flex items-center gap-2">
+                  <kbd className="px-2.5 py-1.5 bg-white/60 rounded-lg border border-westworld-tan/30 font-mono shadow-sm">Ctrl+Enter</kbd>
+                  <span className="text-westworld-rust">Submit Query</span>
                 </span>
-                <span className="flex items-center gap-1">
-                  <kbd className="px-2 py-1 bg-white/50 rounded border border-westworld-tan/30 font-mono">Ctrl+G</kbd>
-                  <span className="text-westworld-rust">Graph</span>
+                <span className="flex items-center gap-2">
+                  <kbd className="px-2.5 py-1.5 bg-white/60 rounded-lg border border-westworld-tan/30 font-mono shadow-sm">Ctrl+G</kbd>
+                  <span className="text-westworld-rust">Show Graph</span>
                 </span>
-                <span className="flex items-center gap-1">
-                  <kbd className="px-2 py-1 bg-white/50 rounded border border-westworld-tan/30 font-mono">Esc</kbd>
-                  <span className="text-westworld-rust">Cancel</span>
+                <span className="flex items-center gap-2">
+                  <kbd className="px-2.5 py-1.5 bg-white/60 rounded-lg border border-westworld-tan/30 font-mono shadow-sm">Esc</kbd>
+                  <span className="text-westworld-rust">Cancel Operation</span>
                 </span>
               </div>
             </div>

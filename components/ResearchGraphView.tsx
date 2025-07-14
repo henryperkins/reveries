@@ -78,11 +78,11 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
 
       // Style based on edge type
       if (edge.type === 'error') {
-        ctx.strokeStyle = '#ef4444';
+        ctx.strokeStyle = '#dc2626';
         ctx.setLineDash([5, 5]);
         ctx.lineWidth = 2;
       } else {
-        ctx.strokeStyle = '#94a3b8';
+        ctx.strokeStyle = '#c8b8a8';
         ctx.setLineDash([]);
         ctx.lineWidth = 1.5;
       }
@@ -103,7 +103,7 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
         ctx.lineTo(-10, -5);
         ctx.lineTo(-10, 5);
         ctx.closePath();
-        ctx.fillStyle = edge.type === 'error' ? '#ef4444' : '#94a3b8';
+        ctx.fillStyle = edge.type === 'error' ? '#dc2626' : '#c8b8a8';
         ctx.fill();
         ctx.restore();
       }

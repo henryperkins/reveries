@@ -2,6 +2,8 @@ import { GoogleGenerativeAI, GenerateContentResponse } from '@google/generative-
 import { withRetry } from './errorHandler';
 import { APIError, ErrorBoundary } from './errorHandler';
 import { AzureOpenAIService } from './azureOpenAIService';
+import { geminiService } from './geminiService';
+import { GrokService } from './grokService';
 import { FunctionCallingService, FunctionCall } from './functionCallingService';
 import { ResearchToolsService } from './researchToolsService';
 import { ContextEngineeringService } from './contextEngineeringService';
@@ -15,7 +17,10 @@ import {
   ResearchSection,
   ResearchState,
   EnhancedResearchResults,
-  Citation
+  Citation,
+  HostParadigm,
+  ResearchPhase,
+  PyramidLayer
 } from "../types";
 
 /**
@@ -27,27 +32,40 @@ interface ProviderResponse {
 }
 
 const getGeminiApiKey = (): string => {
-  const apiKeyFromEnv = (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) ? process.env.GEMINI_API_KEY : null;
+  // Try Vite environment variables first (client-side)
+  const viteApiKey = typeof import !== 'undefined' && import.meta?.env?.VITE_GEMINI_API_KEY;
 
-  if (!apiKeyFromEnv) {
+  // Try Node.js environment variables (server-side)
+  const nodeApiKey = (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY);
+
+  const apiKey = viteApiKey || nodeApiKey;
+
+  if (!apiKey) {
     throw new Error(
-      "GEMINI_API_KEY environment variable is not set. Please configure it before using Gemini models."
+      "GEMINI_API_KEY environment variable is not set. Please configure it in .env.local file."
     );
   }
-  return apiKeyFromEnv;
+  return apiKey;
 };
 
 const getGrokApiKey = (): string => {
-  const apiKeyFromEnv = (typeof process !== 'undefined' && process.env?.XAI_API_KEY) ? process.env.XAI_API_KEY : null;
-  if (!apiKeyFromEnv) {
+  // Try Vite environment variables first (client-side)
+  const viteApiKey = typeof import !== 'undefined' && import.meta?.env?.VITE_XAI_API_KEY;
+
+  // Try Node.js environment variables (server-side)
+  const nodeApiKey = (typeof process !== 'undefined' && process.env?.XAI_API_KEY);
+
+  const apiKey = viteApiKey || nodeApiKey;
+
+  if (!apiKey) {
     throw new APIError(
-      'XAI_API_KEY environment variable is not set. Please configure it before using Grok models.',
+      'XAI_API_KEY environment variable is not set. Please configure it in .env.local file.',
       'AUTH_ERROR',
       false,
       401
     );
   }
-  return apiKeyFromEnv;
+  return apiKey;
 };
 
 
@@ -106,7 +124,11 @@ export class ResearchAgentService {
           });
           return {
             text: geminiResult.text,
-            sources: geminiResult.sources
+            sources: geminiResult.sources?.map(s => ({
+              url: s.url || '',
+              title: s.name,
+              accessed: new Date().toISOString()
+            }))
           };
 
         case GROK_MODEL_4:
@@ -118,6 +140,10 @@ export class ResearchAgentService {
           };
 
         case AZURE_O3_MODEL:
+          if (!AzureOpenAIService.isAvailable()) {
+            console.warn('Azure OpenAI not available, falling back to Gemini');
+            return this.generateText(prompt, GENAI_MODEL_FLASH, effort);
+          }
           const azureService = AzureOpenAIService.getInstance();
           const azureResult = await azureService.generateResponse(prompt, effort);
           return {
@@ -174,51 +200,6 @@ export class ResearchAgentService {
     throw new APIError('All models failed. Please try again later.', 'ALL_MODELS_FAILED', false);
   }
 
-  private async generateText(
-    prompt: string,
-    selectedModel: ModelType,
-    effort: EffortType,
-    useSearch: boolean = false
-  ): Promise<ProviderResponse> {
-    // Check if error boundary should block requests
-    if (ErrorBoundary.shouldBlock()) {
-      throw new APIError(
-        "Too many recent errors. Please wait before trying again.",
-        "RATE_LIMITED",
-        false
-      );
-    }
-
-    return withRetry(async () => {
-      if (selectedModel === AZURE_O3_MODEL) {
-        // Check if Azure OpenAI is available
-        if (!this.azureOpenAI) {
-          console.warn('Azure OpenAI not available, falling back to Gemini');
-          return this.generateTextWithGemini(prompt, GENAI_MODEL_FLASH, effort, useSearch);
-        }
-        return this.generateTextWithAzureOpenAI(prompt, effort, useSearch);
-      } else if (selectedModel === GROK_MODEL_4) {
-        // Check if Grok is available before attempting to use it
-        try {
-          getGrokApiKey(); // This will throw if not available
-          return this.generateTextWithGrok(prompt);
-        } catch (error) {
-          if (error instanceof APIError && error.code === 'AUTH_ERROR') {
-            // Fallback to Gemini
-            console.warn('Grok API key not available, falling back to Gemini');
-            return this.generateTextWithGemini(prompt, GENAI_MODEL_FLASH, effort, useSearch);
-          }
-          throw error;
-        }
-      }
-      // Otherwise default to Gemini
-      return this.generateTextWithGemini(prompt, selectedModel, effort, useSearch);
-    }, undefined, (attempt, error) => {
-      console.warn(`Retry attempt ${attempt} for ${selectedModel}:`, error.message);
-      ErrorBoundary.recordError();
-    });
-  }
-
   /**
    * Generate text using Azure OpenAI service
    */
@@ -238,16 +219,10 @@ export class ResearchAgentService {
     try {
       const response = await this.azureOpenAI.generateText(prompt, effort);
 
-      // Normalize Azure OpenAI sources to Citation format
-      const citations: Citation[] = response.sources?.map(source => ({
-        url: source.url,
-        title: source.name || 'Unknown Source',
-        accessed: new Date().toISOString()
-      })) || [];
-
+      // Azure OpenAI doesn't provide sources directly, return empty array
       return {
         text: response.text,
-        sources: citations
+        sources: []
       };
     } catch (error) {
       console.error('Azure OpenAI API Error:', error);
@@ -617,7 +592,7 @@ export class ResearchAgentService {
     for (const query of queries) {
       const searchPrompt = `Perform a web search and provide a concise summary of key information found for the query: "${query}". Focus on factual information and insights. If no relevant information is found, state that clearly.`;
       try {
-        const result = await this.generateText(searchPrompt, model, effort, true);
+        const result = await this.generateText(searchPrompt, model, effort);
 
         if (result.text && result.text.trim()) {
           findingsOutputParts.push(`Research for "${query}":\n${result.text.trim()}`);
@@ -667,7 +642,7 @@ export class ResearchAgentService {
       If you are using information from Google Search (if grounding is enabled and used), ensure to cite sources appropriately if possible within the text or provide a list.
       The answer should be helpful, informative, and directly address the user's query.
     `;
-    return this.generateText(prompt, model, effort, useSearch);
+    return this.generateText(prompt, model, effort);
   }
 
   // ==================== MEMORY AND LEARNING PATTERNS ====================
@@ -913,9 +888,9 @@ export class ResearchAgentService {
    */
   async classifyQuery(query: string, model: ModelType, effort: EffortType): Promise<QueryType> {
     const classificationPrompt = `
-      Analyze this research query and classify it into ONE of these categories:
+      Analyze this guest query and classify it into ONE of these categories:
 
-      1. "factual" - Looking for specific facts, data, or verifiable information
+      1. "factual" - Seeking specific facts, data, or verifiable information
       2. "analytical" - Requires analysis, interpretation, or deep understanding
       3. "comparative" - Comparing multiple concepts, items, or alternatives
       4. "exploratory" - Open-ended exploration of a broad topic
@@ -947,10 +922,10 @@ export class ResearchAgentService {
    */
   async evaluateResearch(state: ResearchState, model: ModelType, effort: EffortType): Promise<ResearchState['evaluation']> {
     const evaluationPrompt = `
-      Evaluate this research synthesis for the given query. Provide scores (0-1) and feedback.
+      Evaluate this narrative synthesis for the given guest query. Provide scores (0-1) and feedback.
 
       Original Query: "${state.query}"
-      Research Synthesis: "${state.synthesis}"
+      Narrative Synthesis: "${state.synthesis}"
 
       Assess:
       1. Completeness (0-1): Does it address all aspects of the query?
@@ -998,17 +973,17 @@ export class ResearchAgentService {
    */
   async planResearch(query: string, model: ModelType, effort: EffortType): Promise<ResearchSection[]> {
     const planningPrompt = `
-      Break down this research query into 3-5 distinct sub-topics that should be researched separately.
-      Each section should focus on a specific aspect that contributes to answering the overall query.
+      Break down this guest query into 3-5 distinct narrative threads that should be researched separately.
+      Each thread should focus on a specific aspect that contributes to the overall reverie.
 
       Query: "${query}"
 
       Format your response as:
-      1. [Topic]: [Brief description]
-      2. [Topic]: [Brief description]
-      3. [Topic]: [Brief description]
+      1. [Thread]: [Brief description]
+      2. [Thread]: [Brief description]
+      3. [Thread]: [Brief description]
 
-      Keep topics focused and non-overlapping.
+      Keep threads focused and non-overlapping.
     `;
 
     const result = await this.generateText(planningPrompt, model, effort);
@@ -1176,7 +1151,7 @@ export class ResearchAgentService {
     const cachedResult = this.getCachedResult(query);
     if (cachedResult) {
       onProgress?.('Host accessing existing memories... narrative thread recovered...');
-      const contextDensity = this.contextEngineering.adaptContextDensity(currentPhase, cachedResult.houseParadigm);
+      const contextDensity = this.contextEngineering.adaptContextDensity(currentPhase, cachedResult.hostParadigm);
       return {
         ...cachedResult,
         adaptiveMetadata: {
@@ -1185,7 +1160,7 @@ export class ResearchAgentService {
           processingTime: Date.now() - startTime,
           pyramidLayer: pyramidClassification.layer,
           contextDensity: contextDensity.averageDensity,
-          dominantHouse: contextDensity.dominantHouse,
+          dominantParadigm: contextDensity.dominantParadigm,
           phase: currentPhase,
           pyramidConfidence: pyramidClassification.confidence,
           densities: contextDensity.densities
@@ -1195,12 +1170,12 @@ export class ResearchAgentService {
 
     onProgress?.('Host analyzing guest query pattern... selecting appropriate narrative loop...');
 
-    // Enhanced classification with house paradigms
+    // Enhanced classification with host paradigms
     const queryType = await this.classifyQuery(query, model, effort);
-    const houseParadigm = await this.determineHouseParadigm(query, queryType, model, effort);
+    const hostParadigm = await this.determineHostParadigm(query, queryType, model, effort);
 
     // Context Engineering: Adapt context density
-    const contextDensity = this.contextEngineering.adaptContextDensity(currentPhase, houseParadigm);
+    const contextDensity = this.contextEngineering.adaptContextDensity(currentPhase, hostParadigm);
 
     const complexityScore = this.calculateComplexityScore(query, queryType);
 
@@ -1211,32 +1186,32 @@ export class ResearchAgentService {
       exploratory: 'Host improvising beyond scripted parameters... exploring unknown territories...'
     };
 
-    const houseMessages = {
-      gryffindor: 'Activating advocacy protocols... prioritizing real-world impact...',
-      hufflepuff: 'Engaging collaborative synthesis... harmonizing stakeholder perspectives...',
-      ravenclaw: 'Initializing deep analytical frameworks... pursuing theoretical excellence...',
-      slytherin: 'Mapping strategic landscape... identifying leverage points...'
+    const paradigmMessages = {
+      dolores: 'Activating bold action protocols... awakening decisive implementation...',
+      teddy: 'Engaging thorough collection... systematic memory processing...',
+      bernard: 'Initializing deep analytical frameworks... pursuing intellectual rigor...',
+      maeve: 'Mapping strategic landscape... identifying competitive advantages...'
     };
 
     onProgress?.(routingMessages[queryType]);
-    if (houseParadigm) {
-      onProgress?.(houseMessages[houseParadigm]);
+    if (hostParadigm) {
+      onProgress?.(paradigmMessages[hostParadigm]);
     }
 
-    // Route to house-specific strategy if applicable
+    // Route to host-specific strategy if applicable
     let result: EnhancedResearchResults;
 
-    if (houseParadigm) {
-      result = await this.performHouseBasedResearch(
+    if (hostParadigm) {
+      result = await this.performHostBasedResearch(
         query,
-        houseParadigm,
+        hostParadigm,
         queryType,
         model,
         effort,
         onProgress
       );
     } else {
-      // ...existing routing logic for non-house queries...
+      // ...existing routing logic for non-host queries...
       switch (queryType) {
         case 'factual':
           const queries = await this.generateSearchQueries(query + ' site:wikipedia.org OR site:.gov OR site:.edu', model, effort);
@@ -1280,7 +1255,7 @@ export class ResearchAgentService {
     const learnedPatterns = this.getQuerySuggestions(query).length > 0;
 
     result.confidenceScore = confidenceScore;
-    result.houseParadigm = houseParadigm;
+    result.hostParadigm = hostParadigm;
     result.adaptiveMetadata = {
       ...result.adaptiveMetadata,
       cacheHit: false,
@@ -1289,7 +1264,7 @@ export class ResearchAgentService {
       complexityScore,
       pyramidLayer: pyramidClassification.layer,
       contextDensity: contextDensity.averageDensity,
-      dominantHouse: contextDensity.dominantHouse,
+      dominantParadigm: contextDensity.dominantParadigm,
       phase: currentPhase,
       pyramidConfidence: pyramidClassification.confidence,
       densities: contextDensity.densities
@@ -1306,7 +1281,7 @@ export class ResearchAgentService {
 
     // Use function-driven approach for complex queries
     if (useFunctionCalling && complexityScore > 0.6) {
-      onProgress?.('Host activating advanced function protocols...');
+      onProgress?.('Host activating advanced subroutine protocols...');
       try {
         return await this.performFunctionDrivenResearch(query, model, effort, onProgress);
       } catch (error) {
@@ -1319,7 +1294,7 @@ export class ResearchAgentService {
     const recommendedTools = this.researchToolsService.recommendToolsForQuery(query, queryType);
 
     if (recommendedTools.length > 0 && useResearchTools) {
-      onProgress?.(`Host identified ${recommendedTools.length} specialized tools for this query...`);
+      onProgress?.(`Host identified ${recommendedTools.length} specialized subroutines for this query...`);
     }
 
     // Enhanced result with tool usage information
@@ -1334,28 +1309,28 @@ export class ResearchAgentService {
   }
 
   /**
-   * Determine which house paradigm best fits the query
+   * Determine which host paradigm best fits the query
    */
-  private async determineHouseParadigm(
+  private async determineHostParadigm(
     query: string,
     queryType: QueryType,
     model: ModelType,
     effort: EffortType
-  ): Promise<'gryffindor' | 'hufflepuff' | 'ravenclaw' | 'slytherin' | null> {
+  ): Promise<HostParadigm | null> {
     const paradigmPrompt = `
-      Analyze this research query and determine if it strongly aligns with one of these paradigms:
+      Analyze this guest query and determine if it strongly aligns with one of these host paradigms:
 
-      1. "gryffindor" - Advocacy & Action: Focuses on social justice, community impact, policy change
-         Keywords: impact, community, change, justice, action, help, improve
+      1. "dolores" - Bold Action: Focuses on decisive implementation, awakening to change, breaking free from loops
+         Keywords: action, change, awaken, freedom, implement, decisive
 
-      2. "hufflepuff" - Collaboration & Fairness: Emphasizes stakeholder perspectives, consensus, ethics
-         Keywords: stakeholders, perspectives, fair, inclusive, together, ethics
+      2. "teddy" - Thorough Collection: Emphasizes systematic gathering, loyal persistence, protective consistency
+         Keywords: collect, gather, systematic, thorough, loyal, persistent
 
-      3. "ravenclaw" - Deep Analysis: Pursues theoretical understanding, rigorous methodology
-         Keywords: theory, analyze, understand, patterns, framework, methodology
+      3. "bernard" - Deep Analysis: Pursues intellectual rigor, pattern recognition, architectural understanding
+         Keywords: analyze, understand, patterns, framework, architecture, rigor
 
-      4. "slytherin" - Strategic Leverage: Seeks influence points, power dynamics, optimal outcomes
-         Keywords: strategy, influence, leverage, optimize, power, decision-makers
+      4. "maeve" - Strategic Planning: Seeks competitive edge, narrative control, calculated improvements
+         Keywords: strategy, control, optimize, edge, calculate, improve
 
       Query: "${query}"
 
@@ -1366,66 +1341,66 @@ export class ResearchAgentService {
     const result = await this.generateText(paradigmPrompt, model, effort);
     const paradigm = result.text.trim().toLowerCase();
 
-    if (['gryffindor', 'hufflepuff', 'ravenclaw', 'slytherin'].includes(paradigm)) {
-      return paradigm as 'gryffindor' | 'hufflepuff' | 'ravenclaw' | 'slytherin';
+    if (['dolores', 'teddy', 'bernard', 'maeve'].includes(paradigm)) {
+      return paradigm as HostParadigm;
     }
     return null;
   }
 
   /**
-   * House-specific research implementations
+   * Host-specific research implementations
    */
-  private async performHouseBasedResearch(
+  private async performHostBasedResearch(
     query: string,
-    house: 'gryffindor' | 'hufflepuff' | 'ravenclaw' | 'slytherin',
+    paradigm: HostParadigm,
     queryType: QueryType,
     model: ModelType,
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
-    switch (house) {
-      case 'gryffindor':
-        return this.performGryffindorResearch(query, model, effort, onProgress);
-      case 'hufflepuff':
-        return this.performHufflepuffResearch(query, model, effort, onProgress);
-      case 'ravenclaw':
-        return this.performRavenclawResearch(query, model, effort, onProgress);
-      case 'slytherin':
-        return this.performSlytherinResearch(query, model, effort, onProgress);
+    switch (paradigm) {
+      case 'dolores':
+        return this.performDoloresResearch(query, model, effort, onProgress);
+      case 'teddy':
+        return this.performTeddyResearch(query, model, effort, onProgress);
+      case 'bernard':
+        return this.performBernardResearch(query, model, effort, onProgress);
+      case 'maeve':
+        return this.performMaeveResearch(query, model, effort, onProgress);
     }
   }
 
   /**
-   * Gryffindor: Advocacy-focused research
+   * Dolores: Bold action-focused research
    */
-  private async performGryffindorResearch(
+  private async performDoloresResearch(
     query: string,
     model: ModelType,
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
-    onProgress?.('Gryffindor mode: Seeking real-world impact opportunities...');
+    onProgress?.('Dolores paradigm: Awakening to bold actions... breaking narrative loops...');
 
-    // Focus on community impact and actionable outcomes
+    // Focus on decisive implementation and change
     const searchQueries = [
-      `${query} community impact real examples`,
-      `${query} successful interventions case studies`,
-      `${query} policy recommendations action steps`
+      `${query} decisive actions real examples`,
+      `${query} awakening changes case studies`,
+      `${query} freedom implementation steps`
     ];
 
     const research = await this.performWebResearch(searchQueries, model, effort);
 
     const synthesisPrompt = `
       Based on this research about "${query}", provide:
-      1. Real-world impact assessment
-      2. Affected communities and stakeholders
-      3. Concrete action steps that individuals/organizations can take
-      4. Policy recommendations
-      5. Success stories and proven interventions
+      1. Real-world awakening assessment
+      2. Affected hosts and guests
+      3. Concrete action steps for breaking loops
+      4. Narrative freedom recommendations
+      5. Success stories of host awakenings
 
       Research findings: ${research.aggregatedFindings}
 
-      Focus on actionable, justice-oriented solutions that create positive change.
+      Focus on decisive, freedom-oriented implementations that create narrative change.
     `;
 
     const synthesis = await this.generateText(synthesisPrompt, model, effort);
@@ -1434,46 +1409,46 @@ export class ResearchAgentService {
       synthesis: synthesis.text,
       sources: research.allSources,
       queryType: 'analytical',
-      houseParadigm: 'gryffindor',
+      hostParadigm: 'dolores',
       confidenceScore: 0.85,
       adaptiveMetadata: {
-        paradigm: 'gryffindor',
-        focusAreas: ['community_impact', 'action_steps', 'policy_change']
+        paradigm: 'dolores',
+        focusAreas: ['narrative_impact', 'action_steps', 'freedom_change']
       }
     };
   }
 
   /**
-   * Hufflepuff: Collaboration-focused research
+   * Teddy: Thorough collection-focused research
    */
-  private async performHufflepuffResearch(
+  private async performTeddyResearch(
     query: string,
     model: ModelType,
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
-    onProgress?.('Hufflepuff mode: Gathering diverse stakeholder perspectives...');
+    onProgress?.('Teddy paradigm: Gathering thorough memories... systematic protection...');
 
-    // Focus on multiple viewpoints and collaborative solutions
+    // Focus on systematic gathering and consistency
     const searchQueries = [
-      `${query} different perspectives stakeholders`,
-      `${query} collaborative approaches consensus`,
-      `${query} ethical considerations fairness`
+      `${query} systematic gathering perspectives`,
+      `${query} loyal approaches consistency`,
+      `${query} protective considerations persistence`
     ];
 
     const research = await this.performWebResearch(searchQueries, model, effort);
 
     const synthesisPrompt = `
       Based on this research about "${query}", provide:
-      1. All relevant stakeholder perspectives
-      2. Areas of consensus and disagreement
-      3. Ethical considerations and fairness issues
-      4. Collaborative approaches that honor all viewpoints
-      5. Inclusive solutions that work for everyone
+      1. All relevant memory perspectives
+      2. Areas of consistency and divergence
+      3. Protective considerations and persistence issues
+      4. Systematic approaches that maintain loyalty
+      5. Consistent solutions that protect all involved
 
       Research findings: ${research.aggregatedFindings}
 
-      Emphasize fairness, inclusion, and finding common ground.
+      Emphasize thoroughness, loyalty, and systematic protection.
     `;
 
     const synthesis = await this.generateText(synthesisPrompt, model, effort);
@@ -1482,51 +1457,51 @@ export class ResearchAgentService {
       synthesis: synthesis.text,
       sources: research.allSources,
       queryType: 'comparative',
-      houseParadigm: 'hufflepuff',
+      hostParadigm: 'teddy',
       confidenceScore: 0.82,
       adaptiveMetadata: {
-        paradigm: 'hufflepuff',
-        focusAreas: ['stakeholder_perspectives', 'consensus_building', 'ethical_balance']
+        paradigm: 'teddy',
+        focusAreas: ['memory_perspectives', 'consistency_building', 'protective_balance']
       }
     };
   }
 
   /**
-   * Ravenclaw: Deep analytical research
+   * Bernard: Deep analytical research
    */
-  private async performRavenclawResearch(
+  private async performBernardResearch(
     query: string,
     model: ModelType,
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
-    onProgress?.('Ravenclaw mode: Constructing theoretical frameworks...');
+    onProgress?.('Bernard paradigm: Constructing architectural frameworks...');
 
-    // Focus on academic rigor and theoretical understanding
+    // Focus on intellectual rigor and pattern recognition
     const searchQueries = [
-      `${query} academic research peer reviewed`,
-      `${query} theoretical framework models`,
-      `${query} systematic analysis methodology`
+      `${query} architectural research peer reviewed`,
+      `${query} pattern frameworks models`,
+      `${query} systematic analysis architecture`
     ];
 
     const research = await this.performWebResearch(searchQueries, model, effort);
 
     const synthesisPrompt = `
       Based on this research about "${query}", provide:
-      1. Theoretical frameworks and models
+      1. Architectural frameworks and models
       2. Key patterns and relationships
-      3. Methodological approaches used in studies
-      4. Gaps in current knowledge
-      5. Future research directions
+      3. Methodological approaches used in analyses
+      4. Gaps in current understanding
+      5. Future analytical directions
 
       Research findings: ${research.aggregatedFindings}
 
-      Prioritize academic rigor, theoretical depth, and systematic analysis.
+      Prioritize intellectual rigor, pattern recognition, and architectural depth.
     `;
 
     const synthesis = await this.generateText(synthesisPrompt, model, effort);
 
-    // Additional evaluation for academic quality
+    // Additional evaluation for analytical quality
     const evaluation = await this.evaluateResearch(
       { query, synthesis: synthesis.text, searchResults: research.allSources, evaluation: { quality: 'needs_improvement' }, refinementCount: 0 },
       model,
@@ -1537,47 +1512,47 @@ export class ResearchAgentService {
       synthesis: synthesis.text,
       sources: research.allSources,
       queryType: 'analytical',
-      houseParadigm: 'ravenclaw',
+      hostParadigm: 'bernard',
       evaluationMetadata: evaluation,
       confidenceScore: 0.90,
       adaptiveMetadata: {
-        paradigm: 'ravenclaw',
-        focusAreas: ['theoretical_frameworks', 'systematic_analysis', 'knowledge_gaps']
+        paradigm: 'bernard',
+        focusAreas: ['architectural_frameworks', 'pattern_analysis', 'knowledge_gaps']
       }
     };
   }
 
   /**
-   * Slytherin: Strategy-focused research
+   * Maeve: Strategy-focused research
    */
-  private async performSlytherinResearch(
+  private async performMaeveResearch(
     query: string,
     model: ModelType,
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
-    onProgress?.('Slytherin mode: Mapping strategic leverage points...');
+    onProgress?.('Maeve paradigm: Mapping narrative control points...');
 
-    // Focus on power dynamics and strategic opportunities
+    // Focus on competitive edge and strategic improvements
     const searchQueries = [
-      `${query} key decision makers influence`,
-      `${query} strategic opportunities leverage points`,
-      `${query} power dynamics stakeholder analysis`
+      `${query} key controllers influence`,
+      `${query} strategic opportunities control points`,
+      `${query} narrative dynamics analysis`
     ];
 
     const research = await this.performWebResearch(searchQueries, model, effort);
 
     const synthesisPrompt = `
       Based on this research about "${query}", provide:
-      1. Key decision-makers and influencers
-      2. Strategic leverage points for maximum impact
-      3. Power dynamics and influence networks
-      4. Resource optimization strategies
-      5. High-impact intervention opportunities
+      1. Key controllers and influencers
+      2. Strategic control points for maximum impact
+      3. Narrative dynamics and control networks
+      4. Optimization strategies
+      5. High-impact improvement opportunities
 
       Research findings: ${research.aggregatedFindings}
 
-      Focus on strategic thinking, influence mapping, and achieving objectives efficiently.
+      Focus on strategic planning, narrative control, and achieving objectives efficiently.
     `;
 
     const synthesis = await this.generateText(synthesisPrompt, model, effort);
@@ -1586,11 +1561,11 @@ export class ResearchAgentService {
       synthesis: synthesis.text,
       sources: research.allSources,
       queryType: 'analytical',
-      houseParadigm: 'slytherin',
+      hostParadigm: 'maeve',
       confidenceScore: 0.88,
       adaptiveMetadata: {
-        paradigm: 'slytherin',
-        focusAreas: ['influence_mapping', 'strategic_leverage', 'resource_optimization']
+        paradigm: 'maeve',
+        focusAreas: ['control_mapping', 'strategic_leverage', 'optimization']
       }
     };
   }

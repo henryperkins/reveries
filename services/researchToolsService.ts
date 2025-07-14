@@ -1,4 +1,5 @@
-import { FunctionDefinition, FunctionCall } from './functionCallingService';
+import { QueryType } from '../types';
+import { FunctionCall, FunctionDefinition } from './functionCallingService';
 import { Citation } from '../types';
 
 export interface ResearchTool {
@@ -304,6 +305,61 @@ export class ResearchToolsService {
           edges: [],
           stats: {}
         };
+      }
+    });
+
+    // Query analysis tool
+    this.registerTool({
+      name: 'analyzeQuery',
+      description: 'Analyze a query to determine its type and complexity',
+      category: 'analysis',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'The query to analyze' }
+        },
+        required: ['query']
+      },
+      execute: async (args) => {
+        const queryLower = args.query.toLowerCase();
+
+        let type: QueryType = 'exploratory';
+        if (queryLower.includes('what is') || queryLower.includes('define')) {
+          type = 'factual';
+        } else if (queryLower.includes('compare') || queryLower.includes('difference')) {
+          type = 'comparative';
+        } else if (queryLower.includes('analyze') || queryLower.includes('explain')) {
+          type = 'analytical';
+        }
+
+        const complexity = Math.min(args.query.split(' ').length / 20, 1);
+
+        return { type, complexity };
+      }
+    });
+
+    // Search query generator
+    this.registerTool({
+      name: 'generateSearchQueries',
+      description: 'Generate optimal search queries for a given topic',
+      category: 'search',
+      parameters: {
+        type: 'object',
+        properties: {
+          topic: { type: 'string', description: 'The topic to search for' },
+          count: { type: 'number', description: 'Number of queries to generate' }
+        },
+        required: ['topic']
+      },
+      execute: async (args) => {
+        const queries: string[] = [args.topic];
+
+        // Generate variations
+        if (args.count > 1) queries.push(`${args.topic} definition explanation`);
+        if (args.count > 2) queries.push(`${args.topic} examples applications`);
+        if (args.count > 3) queries.push(`${args.topic} research studies`);
+
+        return queries.slice(0, args.count);
       }
     });
   }
