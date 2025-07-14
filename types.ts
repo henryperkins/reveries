@@ -112,6 +112,28 @@ export interface FunctionCallHistory {
 
 export type HouseParadigm = 'gryffindor' | 'hufflepuff' | 'ravenclaw' | 'slytherin';
 
+/**
+ * Arnold's Pyramid of Consciousness layers, used for deeper cognitive analysis.
+ */
+export type PyramidLayer = 'memory' | 'improvisation' | 'self_interest' | 'suffering';
+
+/**
+ * Research phases for context density adaptation
+ */
+export type ResearchPhase = 'problem_definition' | 'data_collection' | 'analysis' | 'synthesis' | 'action';
+
+/**
+ * Context window density metrics for each research phase and house paradigm.
+ * Values are expressed as percentage (0-100) to mirror the infographic's charts.
+ */
+export interface ContextWindowMetrics {
+  phase: ResearchPhase;
+  gryffindor: number;
+  hufflepuff: number;
+  ravenclaw: number;
+  slytherin: number;
+}
+
 export interface EnhancedResearchResults {
   synthesis: string;
   sources: Citation[];
@@ -134,5 +156,11 @@ export interface EnhancedResearchResults {
     recommendedTools?: string[];
     toolsEnabled?: boolean;
     toolEnhanced?: boolean;
+    pyramidLayer?: PyramidLayer;
+    contextDensity?: number;
+    dominantHouse?: HouseParadigm;
+    phase?: ResearchPhase;
+    pyramidConfidence?: number;
+    densities?: Record<HouseParadigm, number>;
   };
 }

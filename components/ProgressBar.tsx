@@ -13,7 +13,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ value }) => {
     <div className="w-full">
       <div className="flex justify-between items-center mb-2">
         <span className="text-xs font-medium text-westworld-rust">
-          Processing Research
+          Research Progress
         </span>
         <span className="text-xs font-mono text-westworld-copper">
           {percentage}%

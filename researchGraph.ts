@@ -56,6 +56,9 @@ export class ResearchGraphManager {
         const nodeId = `node-${step.id}`;
         const timestamp = new Date().toISOString();
 
+        // Record the start time for this node
+        this.nodeTimestamps.set(nodeId, Date.now());
+
         const node: GraphNode = {
             id: nodeId,
             stepId: step.id,
@@ -64,15 +67,13 @@ export class ResearchGraphManager {
             timestamp,
             children: [],
             parents: parentId ? [parentId] : [],
-            metadata
+            metadata: {
+                ...metadata,
+                sourcesCount: metadata?.sourcesCount || 0,
+                citationsCount: metadata?.citationsCount || 0,
+                uniqueCitations: metadata?.uniqueCitations || []
+            }
         };
-
-        // Calculate duration if this is updating an existing node
-        if (this.nodeTimestamps.has(nodeId)) {
-            node.duration = Date.now() - this.nodeTimestamps.get(nodeId)!;
-        } else {
-            this.nodeTimestamps.set(nodeId, Date.now());
-        }
 
         this.graph.nodes.set(nodeId, node);
 
@@ -98,6 +99,23 @@ export class ResearchGraphManager {
         }
 
         return node;
+    }
+
+    // Public method to update node duration
+    updateNodeDuration(nodeId: string): void {
+        const node = this.graph.nodes.get(nodeId);
+        const startTime = this.nodeTimestamps.get(nodeId);
+        if (node && startTime) {
+            node.duration = Date.now() - startTime;
+        }
+    }
+
+    // Public method to update node metadata
+    updateNodeMetadata(nodeId: string, metadata: Partial<GraphNode['metadata']>): void {
+        const node = this.graph.nodes.get(nodeId);
+        if (node) {
+            node.metadata = { ...node.metadata, ...metadata };
+        }
     }
 
     // Add an edge between nodes

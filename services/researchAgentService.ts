@@ -1,9 +1,10 @@
 import { GoogleGenerativeAI, GenerateContentResponse } from '@google/generative-ai';
-import { withRetry } from './retryHandler';
+import { withRetry } from './errorHandler';
 import { APIError, ErrorBoundary } from './errorHandler';
 import { AzureOpenAIService } from './azureOpenAIService';
 import { FunctionCallingService, FunctionCall } from './functionCallingService';
 import { ResearchToolsService } from './researchToolsService';
+import { ContextEngineeringService } from './contextEngineeringService';
 import {
   ModelType,
   EffortType,
@@ -60,6 +61,7 @@ export class ResearchAgentService {
   private readonly MEMORY_TTL = 1000 * 60 * 60 * 24; // 24 hours
   private functionCallingService: FunctionCallingService;
   private researchToolsService: ResearchToolsService;
+  private contextEngineering: ContextEngineeringService;
 
   private constructor() {
     // Currently only Gemini needs an SDK client. Grok is called via fetch.
@@ -76,6 +78,7 @@ export class ResearchAgentService {
 
     this.functionCallingService = FunctionCallingService.getInstance();
     this.researchToolsService = ResearchToolsService.getInstance();
+    this.contextEngineering = ContextEngineeringService.getInstance();
   }
 
   public static getInstance(): ResearchAgentService {
@@ -1079,16 +1082,27 @@ export class ResearchAgentService {
   ): Promise<EnhancedResearchResults> {
     const startTime = Date.now();
 
+    // Context Engineering: Determine pyramid layer and phase
+    const pyramidClassification = this.contextEngineering.determinePyramidLayer(query);
+    const currentPhase = this.contextEngineering.inferResearchPhase(query);
+
     // Check cache first
     const cachedResult = this.getCachedResult(query);
     if (cachedResult) {
       onProgress?.('Host accessing existing memories... narrative thread recovered...');
+      const contextDensity = this.contextEngineering.adaptContextDensity(currentPhase, cachedResult.houseParadigm);
       return {
         ...cachedResult,
         adaptiveMetadata: {
           ...cachedResult.adaptiveMetadata,
           cacheHit: true,
-          processingTime: Date.now() - startTime
+          processingTime: Date.now() - startTime,
+          pyramidLayer: pyramidClassification.layer,
+          contextDensity: contextDensity.averageDensity,
+          dominantHouse: contextDensity.dominantHouse,
+          phase: currentPhase,
+          pyramidConfidence: pyramidClassification.confidence,
+          densities: contextDensity.densities
         }
       };
     }
@@ -1098,6 +1112,9 @@ export class ResearchAgentService {
     // Enhanced classification with house paradigms
     const queryType = await this.classifyQuery(query, model, effort);
     const houseParadigm = await this.determineHouseParadigm(query, queryType, model, effort);
+
+    // Context Engineering: Adapt context density
+    const contextDensity = this.contextEngineering.adaptContextDensity(currentPhase, houseParadigm);
 
     const complexityScore = this.calculateComplexityScore(query, queryType);
 
@@ -1133,10 +1150,9 @@ export class ResearchAgentService {
         onProgress
       );
     } else {
-      // ...existing routing logic...
+      // ...existing routing logic for non-house queries...
       switch (queryType) {
         case 'factual':
-          // Focus on authoritative sources
           const queries = await this.generateSearchQueries(query + ' site:wikipedia.org OR site:.gov OR site:.edu', model, effort);
           const research = await this.performWebResearch(queries, model, effort);
           const answer = await this.generateFinalAnswer(query, research.aggregatedFindings, model, false, effort);
@@ -1145,25 +1161,21 @@ export class ResearchAgentService {
             sources: research.allSources,
             queryType
           };
-          // Learn from this query
           this.learnFromQuery(query, queryType, queries);
           break;
 
         case 'analytical':
-          // Use evaluator-optimizer for deeper analysis
           result = await this.performResearchWithEvaluation(query, model, effort, onProgress);
           result.queryType = queryType;
           break;
 
         case 'comparative':
         case 'exploratory':
-          // Use orchestrator-worker for comprehensive coverage
           result = await this.performComprehensiveResearch(query, model, effort, onProgress);
           result.queryType = queryType;
           break;
 
         default:
-          // Fallback to standard research
           const standardQueries = await this.generateSearchQueries(query, model, effort);
           const standardResearch = await this.performWebResearch(standardQueries, model, effort);
           const standardAnswer = await this.generateFinalAnswer(query, standardResearch.aggregatedFindings, model, false, effort);
@@ -1176,23 +1188,31 @@ export class ResearchAgentService {
       }
     }
 
-    // Add confidence scoring and adaptive metadata
+    // Add context engineering metadata to result
     const processingTime = Date.now() - startTime;
     const confidenceScore = this.calculateConfidenceScore(result);
     const learnedPatterns = this.getQuerySuggestions(query).length > 0;
 
     result.confidenceScore = confidenceScore;
+    result.houseParadigm = houseParadigm;
     result.adaptiveMetadata = {
+      ...result.adaptiveMetadata,
       cacheHit: false,
       learnedPatterns,
       processingTime,
-      complexityScore
+      complexityScore,
+      pyramidLayer: pyramidClassification.layer,
+      contextDensity: contextDensity.averageDensity,
+      dominantHouse: contextDensity.dominantHouse,
+      phase: currentPhase,
+      pyramidConfidence: pyramidClassification.confidence,
+      densities: contextDensity.densities
     };
 
     // Attempt self-healing if confidence is low
     if (confidenceScore < 0.4) {
       result = await this.attemptSelfHealing(query, model, effort, result, onProgress);
-      result.confidenceScore = this.calculateConfidenceScore(result); // Recalculate after healing
+      result.confidenceScore = this.calculateConfidenceScore(result);
     }
 
     // Cache the result

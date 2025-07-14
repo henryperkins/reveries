@@ -173,12 +173,22 @@ const App: React.FC = () => {
     };
     setResearchSteps(prevSteps => [...prevSteps, newStep]);
 
-    // Add to graph
+    // Add to graph with initial metadata
     const parentId = graphManagerRef.current.getGraph().currentPath.slice(-1)[0];
-    graphManagerRef.current.addNode(newStep, parentId, {
+    const metadata: any = {
       model: selectedModel,
-      effort: selectedEffort
-    });
+      effort: selectedEffort,
+      sourcesCount: stepData.sources?.length || 0,
+      citationsCount: stepData.sources?.length || 0,
+      uniqueCitations: stepData.sources?.map(s => s.url || s.title || '').filter(Boolean) || []
+    };
+
+    // Add step-specific metadata
+    if (stepData.type === ResearchStepType.GENERATING_QUERIES) {
+      metadata.queriesGenerated = [];
+    }
+
+    graphManagerRef.current.addNode(newStep, parentId, metadata);
 
     return newStepId;
   }, [selectedModel, selectedEffort]);
@@ -187,12 +197,50 @@ const App: React.FC = () => {
     setResearchSteps(prevSteps => prevSteps.map(step =>
       step.id === stepId ? { ...step, title: newTitle || step.title, content: newContent, sources: newSources || step.sources, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), isSpinning: false } : step
     ));
+
+    // Update graph node metadata
+    const nodeId = `node-${stepId}`;
+    const node = graphManagerRef.current.getGraph().nodes.get(nodeId);
+    if (node) {
+      // Extract queries if this is a query generation step
+      if (node.type === ResearchStepType.GENERATING_QUERIES && typeof newContent === 'string') {
+        const queriesMatch = newContent.match(/Generated (\d+) search queries/);
+        if (queriesMatch) {
+          const queryCount = parseInt(queriesMatch[1], 10);
+          node.metadata = {
+            ...node.metadata,
+            queriesGenerated: Array(queryCount).fill(null).map((_, i) => `Query ${i + 1}`)
+          };
+        }
+      }
+
+      // Update sources metadata
+      if (newSources && newSources.length > 0) {
+        const uniqueCitations = newSources.map(s => s.url || s.title || '').filter(Boolean);
+        node.metadata = {
+          ...node.metadata,
+          sourcesCount: newSources.length,
+          citationsCount: newSources.length,
+          uniqueCitations: [...new Set(uniqueCitations)]
+        };
+      }
+
+      // Mark node as complete by updating duration
+      const nodeTimestamp = graphManagerRef.current['nodeTimestamps'].get(nodeId);
+      if (nodeTimestamp) {
+        node.duration = Date.now() - nodeTimestamp;
+      }
+    }
   }, []);
 
   const markStepError = useCallback((stepId: string, errorMessage: string, title?: string) => {
     setResearchSteps(prevSteps => prevSteps.map(step =>
       step.id === stepId ? { ...step, title: title || "Error", content: errorMessage, icon: QuestionMarkCircleIcon, isSpinning: false, type: ResearchStepType.ERROR } : step
     ));
+
+    // Mark error in graph with proper node ID
+    const nodeId = `node-${stepId}`;
+    graphManagerRef.current.markNodeError(nodeId, errorMessage);
   }, []);
 
   const executeResearchWorkflow = useCallback(async (query: string) => {
@@ -288,7 +336,9 @@ const App: React.FC = () => {
       });
 
       const queries = await researchAgentService.generateSearchQueries(query, serviceConfig.selectedModel, serviceConfig.selectedEffort);
-      updateStepContent(currentProcessingStepId, `Generated ${queries.length} search queries`, "Search Queries Ready");
+
+      // Update with actual queries
+      updateStepContent(currentProcessingStepId, `Generated ${queries.length} search queries:\n${queries.map((q, i) => `${i + 1}. ${q}`).join('\n')}`, "Search Queries Ready");
 
       // Step 2: Web research
       currentProcessingStepId = addStep({
@@ -300,9 +350,33 @@ const App: React.FC = () => {
       });
 
       const research = await researchAgentService.performWebResearch(queries, serviceConfig.selectedModel, serviceConfig.selectedEffort);
-      updateStepContent(currentProcessingStepId, `Found ${research.allSources.length} sources`, "Research Complete");
+      updateStepContent(
+        currentProcessingStepId,
+        `Found ${research.allSources.length} sources from web research.`,
+        "Research Complete",
+        research.allSources
+      );
 
-      // Step 3: Generate final answer
+      // Step 3: Reflection (if we have sources)
+      if (research.allSources.length > 0) {
+        currentProcessingStepId = addStep({
+          type: ResearchStepType.REFLECTION,
+          title: "Reflecting on Findings",
+          content: "Analyzing gathered information...",
+          icon: LightBulbIcon,
+          isSpinning: true,
+        });
+
+        const reflection = await researchAgentService.performReflection(
+          research.aggregatedFindings,
+          query,
+          serviceConfig.selectedModel,
+          serviceConfig.selectedEffort
+        );
+        updateStepContent(currentProcessingStepId, reflection, "Reflection Complete");
+      }
+
+      // Step 4: Generate final answer
       currentProcessingStepId = addStep({
         type: ResearchStepType.FINAL_ANSWER,
         title: "Generating Final Answer",
@@ -319,11 +393,14 @@ const App: React.FC = () => {
         serviceConfig.selectedEffort
       );
 
-      updateStepContent(currentProcessingStepId, formatContentWithSources(answer.text, research.allSources), "Analysis Complete");
+      const allSources = [...research.allSources, ...(answer.sources || [])];
+      updateStepContent(currentProcessingStepId, formatContentWithSources(answer.text, allSources), "Analysis Complete", allSources);
 
     } catch (error: any) {
       if (currentProcessingStepId) {
         markStepError(currentProcessingStepId, error.message || "An error occurred", "Error");
+        // Also mark in graph
+        graphManagerRef.current.markNodeError(`node-${currentProcessingStepId}`, error.message || "An error occurred");
       }
       throw error;
     }

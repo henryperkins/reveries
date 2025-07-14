@@ -178,7 +178,7 @@ export const InputBar: React.FC<InputBarProps> = ({ onQuerySubmit, isLoading, in
             {isLoading ? (
               <>
                 <span className="animate-spin">⟳</span>
-                <span>Processing...</span>
+                <span>Researching...</span>
               </>
             ) : (
               <span>Submit</span>
