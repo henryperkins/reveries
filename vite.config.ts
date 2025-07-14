@@ -34,6 +34,12 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
+      // Explicit dev-server port and HMR client port
+      port: 5175,
+      strictPort: true,        // Fail if 5175 is taken instead of auto-incrementing
+      hmr: {
+        clientPort: 5175,      // Ensure websocket uses same port
+      },
       proxy: {
         '/api': {
           target: 'http://localhost:3001',

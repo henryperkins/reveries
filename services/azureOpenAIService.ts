@@ -78,7 +78,7 @@ export class AzureOpenAIService {
     effort: EffortType = EffortType.MEDIUM,
     useReasoningEffort: boolean = true,
     temperature: number = 0.7,
-    maxTokens: number = 2000
+    maxTokens: number = 32000
   ): Promise<AzureOpenAIResponse> {
     return withRetry(async () => {
       const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
@@ -94,11 +94,15 @@ export class AzureOpenAIService {
             content: prompt
           }
         ],
-        temperature,
         // Use max_completion_tokens for o3 models
         max_completion_tokens: maxTokens,
         response_format: { type: "text" }
       };
+
+      // Only add temperature for non-o3 models
+      if (!this.config.deploymentName.includes('o3')) {
+        requestBody.temperature = temperature;
+      }
 
       // Add reasoning effort for o3 models
       if (useReasoningEffort && this.config.deploymentName.includes('o3')) {
@@ -170,7 +174,7 @@ export class AzureOpenAIService {
     prompt: string,
     effort: EffortType = EffortType.MEDIUM
   ): Promise<AzureOpenAIResponse> {
-    return this.generateResponse(prompt, effort, true, 0.7, 2000);
+    return this.generateResponse(prompt, effort, true, 0.7, 32000);
   }
 
   async generateResponseWithTools(
@@ -196,9 +200,13 @@ export class AzureOpenAIService {
         messages,
         tools,
         tool_choice: "auto",
-        temperature: 0.7,
-        max_tokens: 2000
+        max_completion_tokens: 32000
       };
+
+      // Only add temperature for non-o3 models
+      if (!this.config.deploymentName.includes('o3')) {
+        requestBody.temperature = 0.7;
+      }
 
       if (this.config.deploymentName.includes('o3')) {
         requestBody.reasoning_effort = this.mapEffortToReasoning(effort);
@@ -280,9 +288,13 @@ export class AzureOpenAIService {
         }
       ],
       stream: true,
-      temperature: 0.7,
       max_completion_tokens: 2000
     };
+
+    // Only add temperature for non-o3 models
+    if (!this.config.deploymentName.includes('o3')) {
+      requestBody.temperature = 0.7;
+    }
 
     if (this.config.deploymentName.includes('o3')) {
       requestBody.reasoning_effort = this.mapEffortToReasoning(effort);
