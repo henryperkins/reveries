@@ -53,16 +53,22 @@ export class ContextEngineeringService {
   } {
     const metrics = DEFAULT_CONTEXT_WINDOW_METRICS.find(m => m.phase === phase);
 
+    // Default fallback with error handling
+    const defaultDensity = 75;
+    const defaultParadigm: HostParadigm = 'bernard';
+    const defaultDensities = {
+      dolores: defaultDensity,
+      maeve: defaultDensity,
+      bernard: defaultDensity,
+      teddy: defaultDensity
+    };
+
     if (!metrics) {
+      console.warn(`No metrics found for phase: ${phase}, using defaults`);
       return {
-        averageDensity: 75,
-        dominantParadigm: 'bernard',
-        densities: {
-          dolores: 75,
-          maeve: 75,
-          bernard: 75,
-          teddy: 75
-        }
+        averageDensity: defaultDensity,
+        dominantParadigm: defaultParadigm,
+        densities: defaultDensities
       };
     }
 

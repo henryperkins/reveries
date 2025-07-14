@@ -1,6 +1,6 @@
 import { AzureOpenAIService } from '../services/azureOpenAIService';
 import { ResearchAgentService } from '../services/researchAgentService';
-import { ModelType, EffortType } from '../types';
+import { ModelType, EffortType, GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL } from '../types';
 
 export interface ResearchRequest {
   prompt: string;
@@ -27,8 +27,9 @@ export async function handleResearchRequest(req: ResearchRequest): Promise<Resea
     throw new Error('Invalid prompt');
   }
 
-  if (!req.model || !['gemini-2.5-flash', 'grok-4', 'o3-mini'].includes(req.model)) {
-    throw new Error('Invalid model');
+  const validModels = [GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL];
+  if (!req.model || !validModels.includes(req.model)) {
+    throw new Error(`Invalid model. Valid models: ${validModels.join(', ')}`);
   }
 
   try {
@@ -40,13 +41,16 @@ export async function handleResearchRequest(req: ResearchRequest): Promise<Resea
       sources: result.sources,
       metadata: {
         model: req.model,
-        reasoningEffort: req.model === 'o3-mini' ? req.effort.toLowerCase() : undefined,
+        reasoningEffort: req.model === AZURE_O3_MODEL ? req.effort.toLowerCase() : undefined,
         processingTime: Date.now() - startTime,
       },
     };
   } catch (error) {
     console.error('Research API error:', error);
-    throw error;
+    if (error instanceof Error) {
+      throw new Error(`Research failed: ${error.message}`);
+    }
+    throw new Error('Unknown research error occurred');
   }
 }
 

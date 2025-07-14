@@ -167,10 +167,18 @@ export class ResearchAgentService {
   }
 
   /**
-   * Attempt fallback to alternative models
+   * Attempt fallback to alternative models with recursion prevention
    */
-  private async attemptFallback(prompt: string, originalModel: ModelType, effort: EffortType): Promise<{ text: string; sources?: Citation[] }> {
+  private async attemptFallback(
+    prompt: string, 
+    originalModel: ModelType, 
+    effort: EffortType,
+    attemptedModels: Set<ModelType> = new Set()
+  ): Promise<{ text: string; sources?: Citation[] }> {
     console.warn(`Attempting fallback from ${originalModel}`);
+
+    // Prevent infinite recursion by tracking attempted models
+    attemptedModels.add(originalModel);
 
     // Define fallback chain
     const fallbackChain: ModelType[] = [];
@@ -187,12 +195,29 @@ export class ResearchAgentService {
       fallbackChain.push(GROK_MODEL_4);
     }
 
-    for (const fallbackModel of fallbackChain) {
+    // Filter out already attempted models
+    const availableFallbacks = fallbackChain.filter(model => !attemptedModels.has(model));
+
+    if (availableFallbacks.length === 0) {
+      throw new APIError('All fallback models exhausted. Please try again later.', 'ALL_MODELS_FAILED', false);
+    }
+
+    for (const fallbackModel of availableFallbacks) {
       try {
         console.log(`Trying fallback model: ${fallbackModel}`);
-        return await this.generateText(prompt, fallbackModel, effort);
+        
+        // Use internal method to avoid recursion through main generateText
+        switch (fallbackModel) {
+          case GENAI_MODEL_FLASH:
+            return await this.generateTextWithGemini(prompt, fallbackModel, effort, true);
+          case GROK_MODEL_4:
+            return await this.generateTextWithGrokAndTools(prompt);
+          case AZURE_O3_MODEL:
+            return await this.generateTextWithAzureOpenAI(prompt, effort, false);
+        }
       } catch (error) {
         console.warn(`Fallback to ${fallbackModel} failed:`, error);
+        attemptedModels.add(fallbackModel);
         continue;
       }
     }

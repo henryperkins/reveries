@@ -22,9 +22,9 @@ export interface FunctionCall {
     arguments: Record<string, any>;
 }
 
-export interface FunctionResult {
-    result: any;
-    error?: string;
+export interface FunctionResult<T = any> {
+    result: T | null;
+    error?: string | null;
 }
 
 export interface ToolUseState {
@@ -244,10 +244,19 @@ export class FunctionCallingService {
     }
 
     /**
-     * Execute a function call
+     * Execute a function call with stricter type validation
      */
-    async executeFunction(call: FunctionCall): Promise<{ result: any; error: any }> {
+    async executeFunction(call: FunctionCall): Promise<FunctionResult> {
         try {
+            // Validate input
+            if (!call.name || typeof call.name !== 'string') {
+                throw new Error('Invalid function name');
+            }
+
+            if (!call.arguments || typeof call.arguments !== 'object') {
+                throw new Error('Invalid function arguments');
+            }
+
             const fn = this.functions.get(call.name);
             if (!fn) {
                 throw new Error(`Function ${call.name} not found`);
@@ -266,9 +275,12 @@ export class FunctionCallingService {
 
             return { result, error: null };
         } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            console.error(`Function execution error for ${call.name}:`, errorMessage);
+            
             return {
                 result: null,
-                error: error instanceof Error ? error.message : 'Unknown error'
+                error: errorMessage
             };
         }
     }
