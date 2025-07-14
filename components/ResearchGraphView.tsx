@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ResearchGraphManager, getNodeColor, generateMermaidDiagram } from '../researchGraph';
 import { ResearchStepType } from '../types';
-import { ChartBarIcon, ArrowDownTrayIcon, XMarkIcon } from './icons';
+import { ChartBarIcon, ArrowDownTrayIcon, XMarkIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowsPointingOutIcon } from './icons';
+import { GraphLayoutEngine, getNodeStyle } from '../utils/graphLayout';
+import { formatDuration } from '../utils/exportUtils';
 
 interface ResearchGraphViewProps {
   graphManager: ResearchGraphManager;
@@ -12,6 +14,14 @@ interface ResearchGraphViewProps {
 export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManager, isOpen, onClose }) => {
   const [stats, setStats] = useState(graphManager.getStatistics());
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+
+  const layoutEngine = useRef(new GraphLayoutEngine());
 
   useEffect(() => {
     if (!isOpen) return;
@@ -19,79 +29,286 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
     // Update stats
     setStats(graphManager.getStatistics());
 
-    // Simple canvas visualization
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Set canvas size
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * window.devicePixelRatio;
+    canvas.height = rect.height * window.devicePixelRatio;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
     // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, rect.width, rect.height);
 
-    // Get graph data
+    // Apply transformations
+    ctx.save();
+    ctx.translate(rect.width / 2 + pan.x, 100 + pan.y);
+    ctx.scale(zoom, zoom);
+
+    // Get graph data and layout
     const graphData = graphManager.exportForVisualization();
-
-    // Simple node positioning
-    const nodePositions = new Map<string, { x: number; y: number }>();
-    const levelHeight = 100;
-    const nodeWidth = 150;
-
-    graphData.nodes.forEach((node, index) => {
-      const x = 50 + (index % 3) * (nodeWidth + 50);
-      const y = 50 + node.level * levelHeight;
-      nodePositions.set(node.id, { x, y });
-    });
+    const { nodes: layoutNodes, edges: layoutEdges } = layoutEngine.current.layoutGraph(
+      graphData.nodes,
+      graphData.edges
+    );
 
     // Draw edges
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 2;
-    graphData.edges.forEach(edge => {
-      const start = nodePositions.get(edge.source);
-      const end = nodePositions.get(edge.target);
-      if (start && end) {
+    layoutEdges.forEach(edge => {
+      if (edge.points.length < 2) return;
+
+      ctx.beginPath();
+      ctx.moveTo(edge.points[0].x, edge.points[0].y);
+
+      if (edge.points.length === 4) {
+        // Bezier curve
+        ctx.bezierCurveTo(
+          edge.points[1].x, edge.points[1].y,
+          edge.points[2].x, edge.points[2].y,
+          edge.points[3].x, edge.points[3].y
+        );
+      } else {
+        // Linear
+        edge.points.forEach((point, i) => {
+          if (i > 0) ctx.lineTo(point.x, point.y);
+        });
+      }
+
+      // Style based on edge type
+      if (edge.type === 'error') {
+        ctx.strokeStyle = '#ef4444';
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 2;
+      } else {
+        ctx.strokeStyle = '#94a3b8';
+        ctx.setLineDash([]);
+        ctx.lineWidth = 1.5;
+      }
+
+      ctx.stroke();
+
+      // Draw arrow
+      if (edge.points.length >= 2) {
+        const lastPoint = edge.points[edge.points.length - 1];
+        const prevPoint = edge.points[edge.points.length - 2];
+        const angle = Math.atan2(lastPoint.y - prevPoint.y, lastPoint.x - prevPoint.x);
+
+        ctx.save();
+        ctx.translate(lastPoint.x, lastPoint.y);
+        ctx.rotate(angle);
         ctx.beginPath();
-        ctx.moveTo(start.x + nodeWidth / 2, start.y + 30);
-        ctx.lineTo(end.x + nodeWidth / 2, end.y);
-        if (edge.type === 'error') {
-          ctx.setLineDash([5, 5]);
-          ctx.strokeStyle = '#ef4444';
-        } else {
-          ctx.setLineDash([]);
-          ctx.strokeStyle = '#64748b';
-        }
-        ctx.stroke();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-10, -5);
+        ctx.lineTo(-10, 5);
+        ctx.closePath();
+        ctx.fillStyle = edge.type === 'error' ? '#ef4444' : '#94a3b8';
+        ctx.fill();
+        ctx.restore();
       }
     });
 
     // Draw nodes
-    graphData.nodes.forEach(node => {
-      const pos = nodePositions.get(node.id);
-      if (!pos) return;
+    layoutNodes.forEach(node => {
+      const style = getNodeStyle(node.type);
+      const isHovered = node.id === hoveredNode;
+      const isSelected = node.id === selectedNode;
 
-      // Node background
-      ctx.fillStyle = getNodeColor(node.type as ResearchStepType);
-      ctx.fillRect(pos.x, pos.y, nodeWidth, 50);
+      // Shadow for depth
+      if (isHovered || isSelected) {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 4;
+      }
 
-      // Node border
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(pos.x, pos.y, nodeWidth, 50);
+      // Node background with gradient
+      const gradient = ctx.createLinearGradient(
+        node.x, node.y,
+        node.x, node.y + node.height
+      );
 
-      // Node text
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '12px monospace';
+      if (isHovered) {
+        // Lighter gradient on hover
+        gradient.addColorStop(0, style.background.replace('0%', '20%'));
+        gradient.addColorStop(1, style.background.replace('100%', '80%'));
+      } else {
+        const bgColors = style.background.match(/#[0-9a-f]{6}/gi) || ['#64748b', '#475569'];
+        gradient.addColorStop(0, bgColors[0]);
+        gradient.addColorStop(1, bgColors[1]);
+      }
+
+      // Draw rounded rectangle
+      const radius = 8;
+      ctx.beginPath();
+      ctx.moveTo(node.x + radius, node.y);
+      ctx.lineTo(node.x + node.width - radius, node.y);
+      ctx.quadraticCurveTo(node.x + node.width, node.y, node.x + node.width, node.y + radius);
+      ctx.lineTo(node.x + node.width, node.y + node.height - radius);
+      ctx.quadraticCurveTo(node.x + node.width, node.y + node.height, node.x + node.width - radius, node.y + node.height);
+      ctx.lineTo(node.x + radius, node.y + node.height);
+      ctx.quadraticCurveTo(node.x, node.y + node.height, node.x, node.y + node.height - radius);
+      ctx.lineTo(node.x, node.y + radius);
+      ctx.quadraticCurveTo(node.x, node.y, node.x + radius, node.y);
+      ctx.closePath();
+
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // Border
+      ctx.strokeStyle = isSelected ? '#fbbf24' : style.border;
+      ctx.lineWidth = isSelected ? 3 : 1.5;
+      ctx.stroke();
+
+      // Reset shadow
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+
+      // Icon
+      if (style.icon) {
+        ctx.font = '20px sans-serif';
+        ctx.fillStyle = style.textColor;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(style.icon, node.x + 10, node.y + node.height / 2);
+      }
+
+      // Text
+      ctx.font = isHovered ? 'bold 13px sans-serif' : '12px sans-serif';
+      ctx.fillStyle = style.textColor;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Truncate label if too long
-      let label = node.label;
-      if (label.length > 20) {
-        label = label.substring(0, 17) + '...';
+      // Truncate text if too long
+      let text = node.title;
+      const maxWidth = node.width - (style.icon ? 50 : 20);
+      const textWidth = ctx.measureText(text).width;
+
+      if (textWidth > maxWidth) {
+        while (ctx.measureText(text + '...').width > maxWidth && text.length > 0) {
+          text = text.slice(0, -1);
+        }
+        text += '...';
       }
-      ctx.fillText(label, pos.x + nodeWidth / 2, pos.y + 25);
+
+      ctx.fillText(text, node.x + node.width / 2 + (style.icon ? 10 : 0), node.y + node.height / 2);
+
+      // Duration badge
+      const nodeData = graphData.nodes.find(n => n.id === node.id);
+      if (nodeData?.metadata?.duration) {
+        const duration = formatDuration(nodeData.metadata.duration);
+        ctx.font = '10px sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.textAlign = 'right';
+        ctx.fillText(duration, node.x + node.width - 10, node.y + node.height - 10);
+      }
     });
-  }, [graphManager, isOpen]);
+
+    ctx.restore();
+
+    // Handle mouse events
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left - rect.width / 2 - pan.x) / zoom;
+      const y = (e.clientY - rect.top - 100 - pan.y) / zoom;
+
+      // Check hover
+      const hovered = layoutNodes.find(node =>
+        x >= node.x && x <= node.x + node.width &&
+        y >= node.y && y <= node.y + node.height
+      );
+
+      if (hovered) {
+        setHoveredNode(hovered.id);
+        canvas.style.cursor = 'pointer';
+      } else {
+        setHoveredNode(null);
+        canvas.style.cursor = isDragging ? 'grabbing' : 'grab';
+      }
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left - rect.width / 2 - pan.x) / zoom;
+      const y = (e.clientY - rect.top - 100 - pan.y) / zoom;
+
+      const clicked = layoutNodes.find(node =>
+        x >= node.x && x <= node.x + node.width &&
+        y >= node.y && y <= node.y + node.height
+      );
+
+      if (clicked) {
+        setSelectedNode(clicked.id);
+      } else {
+        setIsDragging(true);
+        setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    const handleMouseLeave = () => {
+      setHoveredNode(null);
+      setIsDragging(false);
+    };
+
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mouseup', handleMouseUp);
+    canvas.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('mousedown', handleMouseDown);
+      canvas.removeEventListener('mouseup', handleMouseUp);
+      canvas.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [graphManager, isOpen, zoom, pan, hoveredNode, selectedNode, isDragging]);
+
+  // Handle dragging
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setPan({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragStart]);
+
+  // Handle zoom
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      setZoom(prev => Math.max(0.1, Math.min(3, prev * delta)));
+    };
+
+    canvas.addEventListener('wheel', handleWheel);
+    return () => canvas.removeEventListener('wheel', handleWheel);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -106,10 +323,33 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
     URL.revokeObjectURL(url);
   };
 
+  const resetView = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  // Get selected node details
+  const getSelectedNodeDetails = () => {
+    if (!selectedNode) return null;
+
+    const graphData = graphManager.exportForVisualization();
+    const node = graphData.nodes.find(n => n.id === selectedNode);
+
+    if (!node) return null;
+
+    return {
+      title: node.label,
+      type: node.type,
+      metadata: node.metadata
+    };
+  };
+
+  const selectedDetails = getSelectedNodeDetails();
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-westworld-beige rounded-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
-        <div className="p-6 border-b border-westworld-tan flex justify-between items-center">
+      <div className="bg-westworld-beige rounded-xl max-w-7xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+        <div className="p-6 border-b border-westworld-tan flex justify-between items-center bg-gradient-to-r from-westworld-beige to-westworld-tan/20">
           <h2 className="text-2xl font-bold text-westworld-gold flex items-center gap-2">
             <ChartBarIcon className="w-6 h-6" />
             Research Graph Analysis
@@ -122,58 +362,105 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
-          {/* Statistics */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-black/20 rounded p-4">
-              <div className="text-westworld-gold text-sm">Total Steps</div>
-              <div className="text-2xl font-bold text-white">{stats.totalNodes}</div>
+        <div className="flex h-[calc(90vh-100px)]">
+          {/* Main Graph Area */}
+          <div className="flex-1 p-6 overflow-hidden">
+            {/* Graph Controls */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setZoom(prev => Math.min(3, prev * 1.2))}
+                className="p-2 bg-black/20 rounded hover:bg-black/30 transition-colors text-white"
+                title="Zoom In"
+              >
+                <MagnifyingGlassPlusIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setZoom(prev => Math.max(0.1, prev / 1.2))}
+                className="p-2 bg-black/20 rounded hover:bg-black/30 transition-colors text-white"
+                title="Zoom Out"
+              >
+                <MagnifyingGlassMinusIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={resetView}
+                className="p-2 bg-black/20 rounded hover:bg-black/30 transition-colors text-white"
+                title="Reset View"
+              >
+                <ArrowsPointingOutIcon className="w-5 h-5" />
+              </button>
+              <div className="ml-auto text-sm text-westworld-copper">
+                Zoom: {(zoom * 100).toFixed(0)}%
+              </div>
             </div>
-            <div className="bg-black/20 rounded p-4">
-              <div className="text-westworld-gold text-sm">Success Rate</div>
-              <div className="text-2xl font-bold text-white">{(stats.successRate * 100).toFixed(0)}%</div>
-            </div>
-            <div className="bg-black/20 rounded p-4">
-              <div className="text-westworld-gold text-sm">Sources Found</div>
-              <div className="text-2xl font-bold text-white">{stats.sourcesCollected}</div>
-            </div>
-            <div className="bg-black/20 rounded p-4">
-              <div className="text-westworld-gold text-sm">Total Duration</div>
-              <div className="text-2xl font-bold text-white">{(stats.totalDuration / 1000).toFixed(1)}s</div>
-            </div>
-            <div className="bg-black/20 rounded p-4">
-              <div className="text-westworld-gold text-sm">Avg Step Time</div>
-              <div className="text-2xl font-bold text-white">{(stats.averageStepDuration / 1000).toFixed(1)}s</div>
-            </div>
-            <div className="bg-black/20 rounded p-4">
-              <div className="text-westworld-gold text-sm">Error Count</div>
-              <div className="text-2xl font-bold text-white">{stats.errorCount}</div>
-            </div>
-          </div>
 
-          {/* Graph Visualization */}
-          <div className="bg-black/20 rounded p-4 mb-6">
-            <h3 className="text-westworld-gold font-semibold mb-2">Research Flow Visualization</h3>
-            <div className="overflow-x-auto">
+            {/* Graph Canvas */}
+            <div className="bg-black/20 rounded-lg overflow-hidden" style={{ height: 'calc(100% - 60px)' }}>
               <canvas
                 ref={canvasRef}
-                width={800}
-                height={400}
-                className="border border-westworld-tan rounded"
-                style={{ background: 'var(--westworld-black)' }}
+                className="w-full h-full"
+                style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)' }}
               />
             </div>
           </div>
 
-          {/* Export Options */}
-          <div className="flex gap-4">
-            <button
-              onClick={exportMermaid}
-              className="flex items-center gap-2 px-4 py-2 bg-westworld-gold text-black rounded hover:bg-westworld-rust transition-colors"
-            >
-              <ArrowDownTrayIcon className="w-5 h-5" />
-              Export as Mermaid Diagram
-            </button>
+          {/* Sidebar */}
+          <div className="w-80 border-l border-westworld-tan p-6 overflow-y-auto bg-gradient-to-b from-westworld-beige to-westworld-tan/10">
+            {/* Statistics */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-westworld-gold mb-3">Statistics</h3>
+              <div className="space-y-3">
+                <div className="bg-black/10 rounded p-3">
+                  <div className="text-westworld-gold text-sm">Total Steps</div>
+                  <div className="text-xl font-bold text-white">{stats.totalNodes}</div>
+                </div>
+                <div className="bg-black/10 rounded p-3">
+                  <div className="text-westworld-gold text-sm">Success Rate</div>
+                  <div className="text-xl font-bold text-white">{(stats.successRate * 100).toFixed(0)}%</div>
+                </div>
+                <div className="bg-black/10 rounded p-3">
+                  <div className="text-westworld-gold text-sm">Sources Found</div>
+                  <div className="text-xl font-bold text-white">{stats.sourcesCollected}</div>
+                </div>
+                <div className="bg-black/10 rounded p-3">
+                  <div className="text-westworld-gold text-sm">Total Duration</div>
+                  <div className="text-xl font-bold text-white">{formatDuration(stats.totalDuration)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Selected Node Details */}
+            {selectedDetails && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-westworld-gold mb-3">Selected Node</h3>
+                <div className="bg-black/10 rounded p-4">
+                  <h4 className="font-medium text-white mb-2">{selectedDetails.title}</h4>
+                  <div className="text-sm text-westworld-copper space-y-1">
+                    <div>Type: {selectedDetails.type}</div>
+                    {selectedDetails.metadata?.duration && (
+                      <div>Duration: {formatDuration(selectedDetails.metadata.duration)}</div>
+                    )}
+                    {selectedDetails.metadata?.sourcesCount && (
+                      <div>Sources: {selectedDetails.metadata.sourcesCount}</div>
+                    )}
+                    {selectedDetails.metadata?.errorMessage && (
+                      <div className="text-red-400">Error: {selectedDetails.metadata.errorMessage}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Export Options */}
+            <div>
+              <h3 className="text-lg font-semibold text-westworld-gold mb-3">Export</h3>
+              <button
+                onClick={exportMermaid}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-westworld-gold text-black rounded hover:bg-westworld-rust hover:text-white transition-colors"
+              >
+                <ArrowDownTrayIcon className="w-5 h-5" />
+                Export as Mermaid
+              </button>
+            </div>
           </div>
         </div>
       </div>

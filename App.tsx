@@ -12,14 +12,14 @@ import { ResearchAgentService } from './services/researchAgentService';
 import { ResearchGraphManager } from './researchGraph';
 import { ResearchGraphView } from './components/ResearchGraphView';
 import { usePersistedState, useResearchSessions, useCancellableOperation } from './hooks/usePersistedState';
-import { exportResearch, copyToClipboard, formatDuration } from './utils/exportUtils';
+import { exportResearchAsJSON } from './utils/exportUtils';
 import { APIError, ErrorBoundary } from './services/errorHandler';
 import { DEFAULT_EFFORT, DEFAULT_MODEL } from './constants';
 import {
   ListBulletIcon, MagnifyingGlassIcon, ChatBubbleLeftEllipsisIcon,
   ArrowPathIcon, SparklesIcon, UserCircleIcon, QuestionMarkCircleIcon,
-  ArrowDownTrayIcon, ClipboardDocumentIcon, ChartBarIcon,
-  CpuChipIcon, BeakerIcon, LightBulbIcon, CheckCircleIcon
+  ArrowDownTrayIcon, ChartBarIcon,
+  CpuChipIcon, BeakerIcon, LightBulbIcon, CheckCircleIcon, XMarkIcon
 } from './components/icons';
 
 const formatContentWithSources = (text: string, sources?: { name: string; url?: string }[]): React.ReactNode => {
@@ -28,13 +28,27 @@ const formatContentWithSources = (text: string, sources?: { name: string; url?: 
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: ({ children }) => <h1 className="text-westworld-gold font-bold text-xl mb-3">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-westworld-gold font-semibold text-lg mb-2">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-westworld-rust font-medium text-base mb-2">{children}</h3>,
-          strong: ({ children }) => <strong className="text-westworld-gold font-semibold">{children}</strong>,
-          em: ({ children }) => <em className="text-westworld-rust">{children}</em>,
-          code: ({ children }) => <code className="westworld-mono bg-black/30 px-1 py-0.5 rounded-sm text-sm" style={{ color: 'var(--westworld-gold)' }}>{children}</code>,
-          blockquote: ({ children }) => <blockquote className="border-westworld-tan border-l-4 pl-4 my-3 text-westworld-rust italic">{children}</blockquote>
+          h1: ({ children }) => <h1 className="text-2xl font-bold mb-4 text-westworld-rust">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-xl font-semibold mb-3 text-westworld-rust">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-lg font-medium mb-2 text-westworld-copper">{children}</h3>,
+          strong: ({ children }) => <strong className="font-semibold text-westworld-rust">{children}</strong>,
+          em: ({ children }) => <em className="italic text-westworld-copper">{children}</em>,
+          code: ({ children }) => <code className="bg-black/20 px-2 py-1 rounded text-sm font-mono text-westworld-gold">{children}</code>,
+          blockquote: ({ children }) => <blockquote className="border-l-4 border-westworld-gold/30 pl-4 my-4 italic text-westworld-copper">{children}</blockquote>,
+          ul: ({ children }) => <ul className="list-disc list-inside space-y-1 my-3">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 my-3">{children}</ol>,
+          li: ({ children }) => <li className="text-westworld-rust">{children}</li>,
+          p: ({ children }) => <p className="mb-3 leading-relaxed text-westworld-rust">{children}</p>,
+          a: ({ children, href }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-westworld-gold hover:text-westworld-copper underline decoration-dotted underline-offset-2 transition-colors"
+            >
+              {children}
+            </a>
+          ),
         }}
       >
         {text}
@@ -46,22 +60,25 @@ const formatContentWithSources = (text: string, sources?: { name: string; url?: 
     return (
       <>
         {mainContent}
-        <h4 className="font-semibold mt-3 mb-1 text-sm text-westworld-gold font-westworld-mono">Memory Sources:</h4>
-        <ul className="list-disc list-inside text-xs space-y-1">
-          {sources.map((src, idx) => (
-            <li key={idx}>
-              <a
-                href={src.url || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-westworld-rust hover:text-white transition-colors duration-200"
-                title={src.url || src.name}
-              >
-                {src.name || src.url || 'Unknown Source'}
-              </a>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-6 p-4 bg-black/10 rounded-lg">
+          <h4 className="font-semibold mb-2 text-sm text-westworld-gold uppercase tracking-wider">Sources</h4>
+          <ul className="space-y-1">
+            {sources.map((src, idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <span className="text-westworld-gold/60 mt-0.5">•</span>
+                <a
+                  href={src.url || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-westworld-copper hover:text-westworld-gold transition-colors"
+                  title={src.url || src.name}
+                >
+                  {src.name || src.url || 'Unknown Source'}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
       </>
     );
   }
@@ -77,6 +94,9 @@ const App: React.FC = () => {
   // Add research graph management
   const graphManagerRef = useRef<ResearchGraphManager>(new ResearchGraphManager());
   const [showGraph, setShowGraph] = useState(false);
+
+  // Initialize research agent service
+  const researchAgentService = ResearchAgentService.getInstance();
 
   // Use persisted state for settings
   const [selectedEffort, setSelectedEffort] = usePersistedState<EffortType>('selectedEffort', DEFAULT_EFFORT);
@@ -95,7 +115,7 @@ const App: React.FC = () => {
 
   // Enhanced progress calculation with graph tracking
   const completedAutomatedSteps = graphManagerRef.current.getGraph().nodes.size - 1; // Exclude user query
-  const totalSteps = enhancedMode ? 6 : 4; // More steps in enhanced mode
+  const totalSteps = enhancedMode ? 7 : 4; // More steps in enhanced mode (including analytics)
   const progressValue = isLoading
     ? Math.min(completedAutomatedSteps / totalSteps, 0.95)
     : 1;
@@ -209,6 +229,62 @@ const App: React.FC = () => {
     }
   }, [addStep, updateStepContent, markStepError, selectedModel, selectedEffort, researchAgentService, startOperation, cancelOperation, addSession, updateSession, sessions]);
 
+  // Legacy Research Workflow (simplified version)
+  const executeLegacyResearchWorkflow = useCallback(async (query: string, serviceConfig: ServiceCallConfig, signal?: AbortSignal) => {
+    let currentProcessingStepId: string | null = null;
+
+    try {
+      // Step 1: Generate search queries
+      currentProcessingStepId = addStep({
+        type: ResearchStepType.GENERATING_QUERIES,
+        title: "Generating Search Queries",
+        content: "Creating optimized search queries...",
+        icon: MagnifyingGlassIcon,
+        isSpinning: true,
+      });
+
+      const queries = await researchAgentService.generateSearchQueries(query, serviceConfig.selectedModel, serviceConfig.selectedEffort);
+      updateStepContent(currentProcessingStepId, `Generated ${queries.length} search queries`, "Search Queries Ready");
+
+      // Step 2: Web research
+      currentProcessingStepId = addStep({
+        type: ResearchStepType.WEB_RESEARCH,
+        title: "Performing Web Research",
+        content: "Searching for relevant information...",
+        icon: ArrowPathIcon,
+        isSpinning: true,
+      });
+
+      const research = await researchAgentService.performWebResearch(queries, serviceConfig.selectedModel, serviceConfig.selectedEffort);
+      updateStepContent(currentProcessingStepId, `Found ${research.allSources.length} sources`, "Research Complete");
+
+      // Step 3: Generate final answer
+      currentProcessingStepId = addStep({
+        type: ResearchStepType.FINAL_ANSWER,
+        title: "Generating Final Answer",
+        content: "Synthesizing information...",
+        icon: SparklesIcon,
+        isSpinning: true,
+      });
+
+      const answer = await researchAgentService.generateFinalAnswer(
+        query,
+        research.aggregatedFindings,
+        serviceConfig.selectedModel,
+        serviceConfig.shouldUseSearchInFinalAnswer,
+        serviceConfig.selectedEffort
+      );
+
+      updateStepContent(currentProcessingStepId, formatContentWithSources(answer.text, research.allSources), "Analysis Complete");
+
+    } catch (error: any) {
+      if (currentProcessingStepId) {
+        markStepError(currentProcessingStepId, error.message || "An error occurred", "Error");
+      }
+      throw error;
+    }
+  }, [addStep, updateStepContent, markStepError, researchAgentService]);
+
   // Enhanced Research Workflow with LangGraph Patterns
   const executeEnhancedResearchWorkflow = useCallback(async (query: string, serviceConfig: ServiceCallConfig, signal?: AbortSignal) => {
     let currentProcessingStepId: string | null = null;
@@ -222,7 +298,7 @@ const App: React.FC = () => {
       isSpinning: true,
     });
 
-    const queryType = await researchAgentService.classifyQuery(query, serviceConfig.selectedModel, serviceConfig.selectedEffort, signal);
+    const queryType = await researchAgentService.classifyQuery(query, serviceConfig.selectedModel, serviceConfig.selectedEffort);
 
     const routingMessages = {
       factual: 'Query classified as FACTUAL. Host accessing verified data repositories...',
@@ -280,15 +356,24 @@ const App: React.FC = () => {
       }
 
       if (metadata.length > 0) {
-        addStep({
+        const analyticsStep = addStep({
           type: ResearchStepType.ANALYTICS,
           title: "Host Diagnostics",
           content: `**Cognitive Analysis Complete**\n\n${metadata.map(m => `• ${m}`).join('\n')}`,
           icon: ChartBarIcon,
         });
-      }
-    }
 
+        // Update graph node with analytics metadata
+        const nodeId = `node-${analyticsStep}`;
+        const node = graphManagerRef.current.getGraph().nodes.get(nodeId);
+        if (node) {
+          node.metadata = {
+            ...node.metadata,
+            queriesGenerated: result.sections?.map(s => s.topic) || [],
+            sourcesCount: result.sources.length
+          };
+        }
+      }
   }, [addStep, updateStepContent, researchAgentService]);
 
   // Analytical Research with Evaluator-Optimizer Pattern
@@ -307,8 +392,7 @@ const App: React.FC = () => {
       serviceConfig.selectedEffort,
       (message: string) => {
         updateStepContent(currentStepId, message, "Deep Analysis in Progress...");
-      },
-      signal
+      }
     );
 
     const qualityInfo = result.evaluationMetadata ?
@@ -338,8 +422,7 @@ const App: React.FC = () => {
       serviceConfig.selectedEffort,
       (message: string) => {
         updateStepContent(currentStepId, message, "Parallel Processing Active...");
-      },
-      signal
+      }
     );
 
     const sectionInfo = result.sections ?
@@ -370,7 +453,7 @@ const App: React.FC = () => {
       serviceConfig.selectedEffort
     );
 
-    const research = await researchAgentService.performWebResearch(queries, serviceConfig.selectedModel, serviceConfig.selectedEffort, signal);
+    const research = await researchAgentService.performWebResearch(queries, serviceConfig.selectedModel, serviceConfig.selectedEffort);
     const answer = await researchAgentService.generateFinalAnswer(query, research.aggregatedFindings, serviceConfig.selectedModel, false, serviceConfig.selectedEffort);
 
     updateStepContent(currentStepId,
@@ -411,7 +494,7 @@ const App: React.FC = () => {
       }
     };
 
-    exportResearch(exportData, `research-${Date.now()}.json`);
+    exportResearchAsJSON(exportData, `research-${Date.now()}.json`);
   }, [currentQuery, researchSteps, selectedModel, selectedEffort]);
 
   // Add keyboard shortcuts
@@ -438,84 +521,136 @@ const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleQuerySubmit, isLoading, isOperationActive, cancelOperation]);
 
+  // Restore session on app load
+  useEffect(() => {
+    // Find the most recent incomplete session
+    const recentSession = sessions
+      .filter(s => !s.completed && s.graphData)
+      .sort((a, b) => b.timestamp - a.timestamp)[0];
+
+    if (recentSession && !currentQuery && researchSteps.length === 0) {
+      try {
+        // Restore graph state
+        const restoredManager = ResearchGraphManager.deserialize(recentSession.graphData!);
+        graphManagerRef.current = restoredManager;
+
+        // Restore UI state
+        setCurrentQuery(recentSession.query);
+        setResearchSteps(recentSession.steps);
+        currentSessionRef.current = recentSession.id;
+
+        // Restore model settings if available
+        if (recentSession.model) {
+          setSelectedModel(recentSession.model as ModelType);
+        }
+        if (recentSession.effort) {
+          setSelectedEffort(recentSession.effort as EffortType);
+        }
+      } catch (error) {
+        console.error('Failed to restore session:', error);
+      }
+    }
+  }, [sessions]);
+
   return (
-    <div className="min-h-screen flex flex-col items-center py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-westworld-tan/20 to-westworld-beige/30 flex flex-col items-center py-8 px-4">
       <div className="w-full max-w-4xl">
         <Header />
 
-        <main className="mt-8 bg-westworld-beige p-6 sm:p-8 rounded-xl">
+        <main className="mt-8 bg-white/90 backdrop-blur-sm shadow-2xl p-8 rounded-2xl border border-westworld-tan/20">
           {currentQuery && researchSteps.length === 0 && !isLoading && (
-            <div className="bg-westworld-beige p-4 rounded-lg mb-6 border-westworld-tan border text-westworld-gold">
-              <p className="font-semibold font-westworld-mono">{currentQuery}</p>
+            <div className="bg-westworld-gold/10 p-4 rounded-lg mb-6 border border-westworld-gold/30">
+              <p className="font-semibold text-westworld-rust">{currentQuery}</p>
             </div>
           )}
+
           <ResearchArea steps={researchSteps} />
 
-          {/* determinate progress bar for visual feedback */}
-          <ProgressBar value={progressValue} />
+          {/* Progress bar with better visibility */}
+          {isLoading && (
+            <div className="mt-6 mb-4">
+              <ProgressBar value={progressValue} />
+            </div>
+          )}
 
-          {error && <p className="text-red-400 mt-4 text-sm font-westworld-mono">⚠ Aberration Detected: {error}</p>}
-          <InputBar onQuerySubmit={handleQuerySubmit} isLoading={isLoading} initialQuery={exampleQuery} />
-          <Controls
-            selectedEffort={selectedEffort}
-            onEffortChange={setSelectedEffort}
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            onNewSearch={handleNewSearch}
-            isLoading={isLoading}
-          />
-
-          {/* Enhanced controls with new features */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Controls
-              selectedEffort={selectedEffort}
-              onEffortChange={setSelectedEffort}
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
-              onNewSearch={handleNewSearch}
-              isLoading={isLoading}
-            />
-
-            {/* Additional action buttons */}
-            <button
-              onClick={() => setShowGraph(true)}
-              disabled={researchSteps.length === 0}
-              className="px-4 py-2 bg-westworld-copper text-white rounded hover:bg-westworld-rust transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <ChartBarIcon className="w-5 h-5" />
-              View Graph
-            </button>
-
-            <button
-              onClick={handleExport}
-              disabled={researchSteps.length === 0}
-              className="px-4 py-2 bg-westworld-gold text-black rounded hover:bg-westworld-rust transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <ArrowDownTrayIcon className="w-5 h-5" />
-              Export
-            </button>
-
-            {isLoading && (
-              <button
-                onClick={cancelOperation}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center gap-2"
-              >
+          {error && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm flex items-center gap-2">
                 <XMarkIcon className="w-5 h-5" />
-                Cancel
-              </button>
-            )}
-          </div>
+                <span className="font-medium">Error:</span> {error}
+              </p>
+            </div>
+          )}
 
-          {/* Keyboard shortcuts hint */}
-          <div className="mt-2 text-xs text-westworld-rust">
-            <span className="font-westworld-mono">Ctrl+Enter</span> to submit •
-            <span className="font-westworld-mono"> Ctrl+G</span> to view graph •
-            <span className="font-westworld-mono"> Esc</span> to cancel
+          <div className="mt-6 space-y-4">
+            <InputBar onQuerySubmit={handleQuerySubmit} isLoading={isLoading} />
+
+            {/* Consolidated controls section */}
+            <div className="flex flex-col gap-4">
+              <Controls
+                selectedEffort={selectedEffort}
+                onEffortChange={setSelectedEffort}
+                selectedModel={selectedModel}
+                onModelChange={setSelectedModel}
+                onNewSearch={handleNewSearch}
+                isLoading={isLoading}
+              />
+
+              {/* Action buttons with improved styling */}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => setShowGraph(true)}
+                  disabled={researchSteps.length === 0}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-westworld-gold text-black rounded-lg hover:bg-westworld-copper hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                >
+                  <ChartBarIcon className="w-5 h-5" />
+                  <span className="font-medium">View Graph</span>
+                </button>
+
+                <button
+                  onClick={handleExport}
+                  disabled={researchSteps.length === 0}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-westworld-copper text-white rounded-lg hover:bg-westworld-rust transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                >
+                  <ArrowDownTrayIcon className="w-5 h-5" />
+                  <span className="font-medium">Export</span>
+                </button>
+
+                {isLoading && (
+                  <button
+                    onClick={cancelOperation}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm hover:shadow-md animate-pulse"
+                  >
+                    <XMarkIcon className="w-5 h-5" />
+                    <span className="font-medium">Cancel</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Keyboard shortcuts with better styling */}
+            <div className="mt-4 p-3 bg-westworld-tan/10 rounded-lg border border-westworld-tan/20">
+              <p className="text-xs text-westworld-copper font-medium mb-1">Keyboard Shortcuts:</p>
+              <div className="flex flex-wrap gap-3 text-xs">
+                <span className="flex items-center gap-1">
+                  <kbd className="px-2 py-1 bg-white/50 rounded border border-westworld-tan/30 font-mono">Ctrl+Enter</kbd>
+                  <span className="text-westworld-rust">Submit</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="px-2 py-1 bg-white/50 rounded border border-westworld-tan/30 font-mono">Ctrl+G</kbd>
+                  <span className="text-westworld-rust">Graph</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="px-2 py-1 bg-white/50 rounded border border-westworld-tan/30 font-mono">Esc</kbd>
+                  <span className="text-westworld-rust">Cancel</span>
+                </span>
+              </div>
+            </div>
           </div>
         </main>
 
         <FeaturesList />
-      </div
+      </div>
 
       {/* Research Graph Visualization Modal */}
       <ResearchGraphView

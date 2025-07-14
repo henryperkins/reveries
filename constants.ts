@@ -26,4 +26,3 @@ export const DEFAULT_EFFORT: EffortType = EffortType.MEDIUM;
 // Export availability checks for UI
 export const GROK_AVAILABLE = isGrokAvailable();
 export const AZURE_OPENAI_AVAILABLE = isAzureOpenAIAvailable();
-export const AZURE_OPENAI_AVAILABLE = isAzureOpenAIAvailable();

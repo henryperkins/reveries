@@ -13,11 +13,6 @@ export enum ResearchStepType {
   SEARCHING_FINAL_ANSWER = 'SEARCHING_FINAL_ANSWER',
   FINAL_ANSWER = 'FINAL_ANSWER',
   ERROR = 'ERROR',
-  // Enhanced LangGraph pattern types
-  QUERY_CLASSIFICATION = 'QUERY_CLASSIFICATION',
-  QUALITY_EVALUATION = 'QUALITY_EVALUATION',
-  RESEARCH_PLANNING = 'RESEARCH_PLANNING',
-  PARALLEL_RESEARCH = 'PARALLEL_RESEARCH',
   ANALYTICS = 'ANALYTICS'
 }
 
@@ -111,6 +106,11 @@ export interface EnhancedResearchResults {
     cacheHit?: boolean;
     learnedPatterns?: boolean;
     processingTime?: number;
+    complexityScore?: number;
+    selfHealed?: boolean;
+    healingStrategy?: 'broader_search' | 'enhanced_detail' | 'alternative_model';
+  };
+}
     complexityScore?: number;
     selfHealed?: boolean;
     healingStrategy?: 'broader_search' | 'enhanced_detail' | 'alternative_model';
