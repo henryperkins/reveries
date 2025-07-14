@@ -1,4 +1,9 @@
-import { GoogleGenerativeAI, GenerateContentResponse } from "@google/generative-ai";
+import { GoogleGenerativeAI, GenerateContentResponse } from '@google/generative-ai';
+import { withRetry } from './retryHandler';
+import { APIError, ErrorBoundary } from './errorHandler';
+import { AzureOpenAIService } from './azureOpenAIService';
+import { FunctionCallingService, FunctionCall } from './functionCallingService';
+import { ResearchToolsService } from './researchToolsService';
 import {
   ModelType,
   EffortType,
@@ -11,10 +16,6 @@ import {
   EnhancedResearchResults,
   Citation
 } from "../types";
-import { APIError, withRetry, ErrorBoundary } from "./errorHandler";
-import { AzureOpenAIService } from "./azureOpenAIService";
-import { FunctionCallingService, FunctionCall, FunctionDefinition } from "./functionCallingService";
-import { ResearchToolsService } from "./researchToolsService";
 
 /**
  * Generic provider-agnostic response structure we use internally.
@@ -147,9 +148,17 @@ export class ResearchAgentService {
 
     try {
       const response = await this.azureOpenAI.generateText(prompt, effort);
+
+      // Normalize Azure OpenAI sources to Citation format
+      const citations: Citation[] = response.sources?.map(source => ({
+        url: source.url,
+        title: source.name || 'Unknown Source',
+        accessed: new Date().toISOString()
+      })) || [];
+
       return {
         text: response.text,
-        sources: response.sources || []
+        sources: citations
       };
     } catch (error) {
       console.error('Azure OpenAI API Error:', error);
@@ -300,7 +309,7 @@ export class ResearchAgentService {
         );
       }
 
-      let sources: Citation[] | undefined = undefined;
+      let sources: Citation[] = [];
 
       if (useSearch && response.response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
         const chunks = response.response.candidates[0].groundingMetadata.groundingChunks;
@@ -354,7 +363,7 @@ export class ResearchAgentService {
   }
 
   /**
-   * Function-calling capable Grok loop. Exposes a `search_web` tool backed by Gemini’s search.
+   * Function-calling capable Grok loop. Exposes a `search_web` tool backed by Gemini's search.
    */
   private async generateTextWithGrokAndTools(prompt: string): Promise<ProviderResponse> {
     const apiKey = getGrokApiKey();
@@ -459,7 +468,23 @@ export class ResearchAgentService {
       }
 
       // Normal assistant response, stop.
-      return { text: message.content ?? '' };
+      // Extract any citations from the response if available
+      const citations: Citation[] = [];
+
+      // If the message contains citation metadata, extract it
+      if (message.metadata?.citations) {
+        message.metadata.citations.forEach((citation: any) => {
+          citations.push({
+            url: citation.url || citation.link || '',
+            title: citation.title || 'Unknown Source',
+            authors: citation.authors,
+            published: citation.published,
+            accessed: citation.accessed || new Date().toISOString()
+          });
+        });
+      }
+
+      return { text: message.content ?? '', sources: citations };
     }
 
     throw new Error('Grok tool-calling loop exceeded max iterations');
@@ -1474,7 +1499,7 @@ export class ResearchAgentService {
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
     onProgress?.('Host activating function-driven research protocols...');
-    
+
     // Use the existing comprehensive research as a fallback
     return this.performComprehensiveResearch(query, model, effort, onProgress);
   }
@@ -1513,29 +1538,29 @@ export class ResearchAgentService {
   private normalizeUrl(url: string): string {
     try {
       const parsed = new URL(url);
-      
+
       // Remove common tracking parameters
       const trackingParams = [
         'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
         'fbclid', 'gclid', 'ref', 'source', 'campaign', 'medium',
         'dclid', 'wbraid', 'gbraid', 'gad_source'
       ];
-      
+
       trackingParams.forEach(param => {
         parsed.searchParams.delete(param);
       });
-      
+
       // Remove trailing slash and normalize
       let normalized = parsed.origin + parsed.pathname;
       if (parsed.search) {
         normalized += parsed.search;
       }
-      
+
       // Remove trailing slash unless it's the root
       if (normalized.endsWith('/') && normalized.length > parsed.origin.length + 1) {
         normalized = normalized.slice(0, -1);
       }
-      
+
       return normalized;
     } catch {
       // If URL parsing fails, return as-is

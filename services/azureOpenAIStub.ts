@@ -1,7 +1,7 @@
-/* Browser stub: always reports “not available”. Only the methods that are
+/* Browser stub: always reports "not available". Only the methods that are
    referenced from the client-side code are included. */
 
-import type { EffortType } from '../types';
+import type { EffortType, Citation } from '../types';
 
 export class AzureOpenAIService {
   static isAvailable(): boolean {
@@ -22,5 +22,5 @@ export class AzureOpenAIService {
 /* Type helpers so that existing `import type { AzureOpenAIResponse }` keeps working. */
 export type AzureOpenAIResponse = {
   text: string;
-  sources?: { name: string; url?: string }[];
+  sources?: Citation[];
 };

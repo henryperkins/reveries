@@ -1,9 +1,10 @@
 import { FunctionDefinition, FunctionCall } from './functionCallingService';
+import { Citation } from '../types';
 
 export interface ResearchTool {
   name: string;
   description: string;
-  category: 'search' | 'analysis' | 'citation' | 'verification' | 'visualization';
+  category: 'search' | 'analysis' | 'citation' | 'verification' | 'visualization' | 'knowledge';
   parameters: any;
   execute: (args: any) => Promise<any>;
 }
@@ -386,11 +387,20 @@ export class ResearchToolsService {
    */
   private formatCitations(sources: any[], style: string): any {
     const formattedCitations = sources.map((source, index) => {
-      const citation = this.formatSingleCitation(source, style);
+      // Normalize source to Citation format
+      const normalizedCitation: Citation = {
+        url: source.url || '',
+        title: source.title || 'Unknown Title',
+        authors: source.authors || [],
+        published: source.published || source.year ? `${source.year}-01-01` : undefined,
+        accessed: source.accessed || new Date().toISOString()
+      };
+
+      const citation = this.formatSingleCitation(normalizedCitation, style);
       return {
         index: index + 1,
         citation,
-        source
+        source: normalizedCitation
       };
     });
 
@@ -405,10 +415,10 @@ export class ResearchToolsService {
   /**
    * Format a single citation based on the specified style
    */
-  private formatSingleCitation(source: any, style: string): string {
+  private formatSingleCitation(source: Citation, style: string): string {
     const title = source.title || 'Unknown Title';
     const authors = source.authors || [];
-    const year = source.year || (source.published ? new Date(source.published).getFullYear() : 'n.d.');
+    const year = source.published ? new Date(source.published).getFullYear() : 'n.d.';
     const url = source.url || '';
 
     switch (style.toUpperCase()) {
@@ -426,11 +436,11 @@ export class ResearchToolsService {
   }
 
   private formatAPA(title: string, authors: string[], year: string | number, url: string): string {
-    const authorText = authors.length > 0 ? 
-      (authors.length === 1 ? authors[0] : 
+    const authorText = authors.length > 0 ?
+      (authors.length === 1 ? authors[0] :
        authors.length === 2 ? `${authors[0]} & ${authors[1]}` :
        `${authors[0]} et al.`) : 'Unknown Author';
-    
+
     let citation = `${authorText} (${year}). ${title}`;
     if (url) {
       citation += `. Retrieved from ${url}`;
@@ -439,11 +449,11 @@ export class ResearchToolsService {
   }
 
   private formatMLA(title: string, authors: string[], year: string | number, url: string): string {
-    const authorText = authors.length > 0 ? 
-      (authors.length === 1 ? authors[0] : 
+    const authorText = authors.length > 0 ?
+      (authors.length === 1 ? authors[0] :
        authors.length === 2 ? `${authors[0]} and ${authors[1]}` :
        `${authors[0]} et al.`) : 'Unknown Author';
-    
+
     let citation = `${authorText}. "${title}."`;
     if (url) {
       citation += ` Web. ${new Date().toLocaleDateString('en-US', {
@@ -456,11 +466,11 @@ export class ResearchToolsService {
   }
 
   private formatChicago(title: string, authors: string[], year: string | number, url: string): string {
-    const authorText = authors.length > 0 ? 
-      (authors.length === 1 ? authors[0] : 
+    const authorText = authors.length > 0 ?
+      (authors.length === 1 ? authors[0] :
        authors.length === 2 ? `${authors[0]} and ${authors[1]}` :
        `${authors[0]} et al.`) : 'Unknown Author';
-    
+
     let citation = `${authorText}. "${title}."`;
     if (url) {
       citation += ` Accessed ${new Date().toLocaleDateString('en-US', {
@@ -473,11 +483,11 @@ export class ResearchToolsService {
   }
 
   private formatHarvard(title: string, authors: string[], year: string | number, url: string): string {
-    const authorText = authors.length > 0 ? 
-      (authors.length === 1 ? authors[0] : 
+    const authorText = authors.length > 0 ?
+      (authors.length === 1 ? authors[0] :
        authors.length === 2 ? `${authors[0]} and ${authors[1]}` :
        `${authors[0]} et al.`) : 'Unknown Author';
-    
+
     let citation = `${authorText} ${year}, '${title}'`;
     if (url) {
       citation += `, viewed ${new Date().toLocaleDateString('en-US', {

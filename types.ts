@@ -20,8 +20,9 @@ export interface Citation {
   url: string;
   title?: string;
   authors?: string[];
-  published?: string; // ISO date string
-  accessed?: string;  // ISO date string
+  year?: number;
+  accessed?: string;
+  snippet?: string;
 }
 
 export interface ResearchStep {

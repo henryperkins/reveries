@@ -1,6 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
-import { getGeminiApiKey } from "../utils/config.js";
-import { GENAI_MODEL_FLASH } from "../constants.js";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GENAI_MODEL_FLASH } from "../types";
 
 export interface GeminiFunctionCall {
   name: string;
@@ -30,11 +29,22 @@ export interface GeminiServiceOptions {
   useSearch?: boolean;
 }
 
+const getGeminiApiKey = (): string => {
+  const apiKeyFromEnv = (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) ? process.env.GEMINI_API_KEY : null;
+
+  if (!apiKeyFromEnv) {
+    throw new Error(
+      "GEMINI_API_KEY environment variable is not set. Please configure it before using Gemini models."
+    );
+  }
+  return apiKeyFromEnv;
+};
+
 export class GeminiService {
-  private geminiAI: GoogleGenAI;
+  private geminiAI: GoogleGenerativeAI;
 
   constructor() {
-    this.geminiAI = new GoogleGenAI({ apiKey: getGeminiApiKey() });
+    this.geminiAI = new GoogleGenerativeAI(getGeminiApiKey());
   }
 
   async generateContent(

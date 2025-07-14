@@ -5,7 +5,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
       'process.env.XAI_API_KEY': JSON.stringify(env.XAI_API_KEY || ''),
       'process.env.GROK_API_KEY': JSON.stringify(env.XAI_API_KEY || ''), // Use XAI_API_KEY as primary
       'process.env.AZURE_OPENAI_API_KEY': JSON.stringify(env.AZURE_OPENAI_API_KEY || ''),

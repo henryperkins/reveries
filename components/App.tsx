@@ -389,3 +389,6 @@ const App: React.FC = () => {
 };
 
             export default App;
+
+// Look for the section that displays the research result
+// This should show how citations are rendered and the final message format

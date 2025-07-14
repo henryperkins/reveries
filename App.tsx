@@ -57,39 +57,65 @@ const formatContentWithSources = (text: string, sources?: Citation[]): React.Rea
   );
 
   if (sources && sources.length > 0) {
+    // Filter out duplicate sources by URL
+    const uniqueSources = sources.reduce((acc, source) => {
+      const existingIndex = acc.findIndex(s => s.url === source.url);
+      if (existingIndex === -1) {
+        acc.push(source);
+      } else if (source.title && (!acc[existingIndex].title || acc[existingIndex].title === 'Unknown Source')) {
+        // Update with better title if available
+        acc[existingIndex] = source;
+      }
+      return acc;
+    }, [] as Citation[]);
+
     return (
       <>
         {mainContent}
         <div className="mt-6 p-4 bg-black/10 rounded-lg">
           <h4 className="font-semibold mb-2 text-sm text-westworld-gold uppercase tracking-wider">Sources</h4>
-          <ul className="space-y-1">
-            {sources.map((citation, idx) => (
-              <li key={idx} className="flex items-start gap-2">
+          <ul className="space-y-2">
+            {uniqueSources.map((citation, idx) => (
+              <li key={`${citation.url}-${idx}`} className="flex items-start gap-2">
                 <span className="text-westworld-gold/60 mt-0.5">•</span>
                 <div className="flex-1">
                   <a
                     href={citation.url || '#'}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-westworld-copper hover:text-westworld-gold transition-colors"
+                    className="text-sm text-westworld-copper hover:text-westworld-gold transition-colors break-words"
                     title={citation.url}
                   >
                     {citation.title || (citation.url ? (() => {
                       try {
-                        return new URL(citation.url).hostname;
+                        const url = new URL(citation.url);
+                        return url.hostname.replace('www.', '');
                       } catch {
-                        return citation.url;
+                        return citation.url.length > 50 ? citation.url.substring(0, 50) + '...' : citation.url;
                       }
                     })() : 'Unknown Source')}
                   </a>
                   {citation.authors && citation.authors.length > 0 && (
                     <div className="text-xs text-westworld-copper/80 mt-1">
-                      By: {citation.authors.join(', ')}
+                      By: {citation.authors.slice(0, 3).join(', ')}{citation.authors.length > 3 ? ' et al.' : ''}
                     </div>
                   )}
                   {citation.published && (
                     <div className="text-xs text-westworld-copper/60 mt-1">
-                      Published: {new Date(citation.published).toLocaleDateString()}
+                      Published: {new Date(citation.published).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </div>
+                  )}
+                  {citation.accessed && (
+                    <div className="text-xs text-westworld-copper/50 mt-0.5">
+                      Accessed: {new Date(citation.accessed).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
                     </div>
                   )}
                 </div>
