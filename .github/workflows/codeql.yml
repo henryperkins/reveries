@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'javascript', 'typescript' ]
+        language: [ 'javascript-typescript' ]
 
     steps:
     - name: Checkout repository
@@ -40,11 +40,19 @@ jobs:
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
+        queries: +security-extended,security-and-quality
 
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v3
+    - name: Build project
+      run: |
+        echo "VITE_GEMINI_API_KEY=dummy" > .env.local
+        echo "VITE_XAI_API_KEY=dummy" >> .env.local
+        echo "VITE_AZURE_OPENAI_API_KEY=dummy" >> .env.local
+        echo "VITE_AZURE_OPENAI_ENDPOINT=https://dummy.openai.azure.com" >> .env.local
+        npx tsc --noEmit
+        npm run build
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
         category: "/language:${{matrix.language}}"
+        ram: 4096
