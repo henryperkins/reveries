@@ -51,54 +51,46 @@ export class ResearchGraphManager {
         this.nodeTimestamps = new Map();
     }
 
-    // Add a node to the graph
-    addNode(step: ResearchStep, parentId?: string, metadata?: GraphNode['metadata']): GraphNode {
+    /**
+     * Add a node with comprehensive metadata tracking
+     */
+    addNode(
+        step: ResearchStep,
+        parentId?: string | null,
+        metadata?: ResearchMetadata
+    ): ResearchGraphNode {
         const nodeId = `node-${step.id}`;
-        const timestamp = new Date().toISOString();
+        const timestamp = Date.now();
 
-        // Record the start time for this node
-        this.nodeTimestamps.set(nodeId, Date.now());
-
-        const node: GraphNode = {
-            id: nodeId,
-            stepId: step.id,
-            type: step.type,
-            title: step.title,
-            timestamp,
-            children: [],
-            parents: parentId ? [parentId] : [],
-            metadata: {
-                ...metadata,
-                sourcesCount: metadata?.sourcesCount || 0,
-                citationsCount: metadata?.citationsCount || 0,
-                uniqueCitations: metadata?.uniqueCitations || []
-            }
+        // Ensure metadata includes all available information
+        const enrichedMetadata: ResearchMetadata = {
+            ...metadata,
+            sourcesCount: step.sources?.length || 0,
+            processingTime: this.lastNodeTimestamp ? timestamp - this.lastNodeTimestamp : 0
         };
 
-        this.graph.nodes.set(nodeId, node);
+        const newNode: ResearchGraphNode = {
+            id: nodeId,
+            data: step,
+            metadata: enrichedMetadata
+        };
 
-        // Set root node if this is the first node
-        if (!this.graph.rootNode && step.type === ResearchStepType.USER_QUERY) {
-            this.graph.rootNode = nodeId;
-        }
+        this.graph.nodes.set(nodeId, newNode);
+        this.graph.currentPath.push(nodeId);
 
-        // Add edge from parent if specified
         if (parentId) {
-            this.addEdge(parentId, nodeId, 'sequential');
-
-            // Update parent's children
-            const parentNode = this.graph.nodes.get(parentId);
-            if (parentNode && !parentNode.children.includes(nodeId)) {
-                parentNode.children.push(nodeId);
-            }
+            const edgeId = `edge-${parentId}-${nodeId}`;
+            const edgeType: EdgeType = step.type === ResearchStepType.ERROR ? 'error' : 'sequential';
+            this.graph.edges.set(edgeId, {
+                id: edgeId,
+                source: parentId,
+                target: nodeId,
+                type: edgeType
+            });
         }
 
-        // Update current path
-        if (step.type !== ResearchStepType.ERROR) {
-            this.graph.currentPath.push(nodeId);
-        }
-
-        return node;
+        this.lastNodeTimestamp = timestamp;
+        return newNode;
     }
 
     // Public method to update node duration
@@ -199,62 +191,132 @@ export class ResearchGraphManager {
         };
     }
 
-    // Export graph for visualization
-    exportForVisualization(): {
-        nodes: Array<{
-            id: string;
-            label: string;
-            type: string;
-            level: number;
-            metadata: any;
-        }>;
-        edges: Array<{
-            source: string;
-            target: string;
-            type: string;
-            label?: string;
-        }>;
-    } {
+    /**
+     * Get comprehensive export data
+     */
+    getExportData(query: string, sessionId?: string): ExportedResearchData {
+        const stats = this.getStatistics();
         const nodes = Array.from(this.graph.nodes.values());
-        const levelMap = this.calculateNodeLevels();
+        const edges = Array.from(this.graph.edges.values());
+
+        // Collect all sources
+        const allSources: Citation[] = [];
+        const sourcesByStep: Record<string, Citation[]> = {};
+        const sourcesByDomain: Record<string, Citation[]> = {};
+        const seenUrls = new Set<string>();
+
+        nodes.forEach(node => {
+            const sources = node.data.sources || [];
+            sourcesByStep[node.id] = sources;
+
+            sources.forEach(source => {
+                if (source.url && !seenUrls.has(source.url)) {
+                    seenUrls.add(source.url);
+                    allSources.push(source);
+
+                    // Group by domain
+                    try {
+                        const domain = new URL(source.url).hostname;
+                        if (!sourcesByDomain[domain]) {
+                            sourcesByDomain[domain] = [];
+                        }
+                        sourcesByDomain[domain].push(source);
+                    } catch (e) {
+                        // Invalid URL, skip domain grouping
+                    }
+                }
+            });
+        });
+
+        // Collect function calls
+        const functionCalls: ExportedResearchData['functionCalls'] = [];
+        nodes.forEach(node => {
+            if (node.metadata?.functionCalls && node.metadata.functionCalls.length > 0) {
+                functionCalls.push({
+                    step: node.id,
+                    calls: node.metadata.functionCalls
+                });
+            }
+        });
+
+        // Determine primary model and effort
+        const modelCounts = new Map<ModelType, number>();
+        const effortCounts = new Map<EffortType, number>();
+
+        nodes.forEach(node => {
+            if (node.metadata?.model) {
+                modelCounts.set(node.metadata.model, (modelCounts.get(node.metadata.model) || 0) + 1);
+            }
+            if (node.metadata?.effort) {
+                effortCounts.set(node.metadata.effort, (effortCounts.get(node.metadata.effort) || 0) + 1);
+            }
+        });
+
+        const primaryModel = Array.from(modelCounts.entries())
+            .sort((a, b) => b[1] - a[1])[0]?.[0] || GENAI_MODEL_FLASH;
+        const primaryEffort = Array.from(effortCounts.entries())
+            .sort((a, b) => b[1] - a[1])[0]?.[0] || EffortType.MEDIUM;
+
+        // Find final result node for confidence score
+        const finalNode = nodes[nodes.length - 1];
+        const confidenceScore = finalNode?.metadata?.confidenceScore;
+        const queryType = finalNode?.metadata?.queryType;
+        const hostParadigm = finalNode?.metadata?.hostParadigm;
 
         return {
-            nodes: nodes.map(node => ({
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            query,
+            summary: {
+                totalSteps: stats.totalNodes,
+                totalSources: allSources.length,
+                totalDuration: stats.totalDuration,
+                successRate: stats.successRate,
+                modelsUsed: Array.from(modelCounts.keys()),
+                errorCount: stats.errorNodes
+            },
+            metadata: {
+                sessionId,
+                startTime: new Date(this.graph.startTime).toISOString(),
+                endTime: new Date(this.graph.startTime + stats.totalDuration).toISOString(),
+                primaryModel,
+                primaryEffort,
+                queryType,
+                hostParadigm,
+                confidenceScore
+            },
+            steps: nodes.map(node => ({
                 id: node.id,
-                label: node.title,
-                type: node.type,
-                level: levelMap.get(node.id) || 0,
-                metadata: {
-                    ...node.metadata,
-                    duration: node.duration,
-                    timestamp: node.timestamp
-                }
+                type: node.data.type,
+                title: node.data.title,
+                content: typeof node.data.content === 'string'
+                    ? node.data.content
+                    : 'Complex content (see raw data)',
+                timestamp: node.data.timestamp,
+                duration: node.metadata?.processingTime,
+                sources: node.data.sources,
+                metadata: node.metadata
             })),
-            edges: this.graph.edges
+            graph: {
+                nodes: nodes.map(node => ({
+                    id: node.id,
+                    data: node.data,
+                    metadata: node.metadata
+                })),
+                edges: edges.map(edge => ({
+                    id: edge.id,
+                    source: edge.source,
+                    target: edge.target,
+                    type: edge.type
+                }))
+            },
+            sources: {
+                all: allSources,
+                byStep: sourcesByStep,
+                byDomain: sourcesByDomain
+            },
+            ...(functionCalls.length > 0 && { functionCalls })
         };
-    }
-
-    // Calculate hierarchical levels for nodes
-    private calculateNodeLevels(): Map<string, number> {
-        const levels = new Map<string, number>();
-        const visited = new Set<string>();
-
-        const calculateLevel = (nodeId: string, level: number) => {
-            if (visited.has(nodeId)) return;
-            visited.add(nodeId);
-            levels.set(nodeId, level);
-
-            const node = this.graph.nodes.get(nodeId);
-            if (node) {
-                node.children.forEach(childId => calculateLevel(childId, level + 1));
-            }
-        };
-
-        if (this.graph.rootNode) {
-            calculateLevel(this.graph.rootNode, 0);
-        }
-
-        return levels;
     }
 
     // Get the current graph state

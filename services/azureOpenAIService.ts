@@ -1,4 +1,5 @@
 import { EffortType, Citation } from '../types';
+import { RateLimiter, estimateTokens } from './rateLimiter';
 import { APIError, withRetry } from './errorHandler';
 
 export interface AzureOpenAIResponse {
@@ -18,9 +19,11 @@ export interface AzureOpenAIConfig {
 export class AzureOpenAIService {
   private static instance: AzureOpenAIService;
   private config: AzureOpenAIConfig;
+  private rateLimiter: RateLimiter;
 
   private constructor() {
     this.config = this.getConfig();
+    this.rateLimiter = RateLimiter.getInstance();
   }
 
   private getConfig(): AzureOpenAIConfig {
@@ -30,7 +33,7 @@ export class AzureOpenAIService {
                    (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_API_KEY);
     const deploymentName = import.meta.env.VITE_AZURE_OPENAI_DEPLOYMENT ||
                           (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_DEPLOYMENT) ||
-                          'o3-mini';
+                          'o3';
     // Updated API version for o3 support
     const apiVersion = import.meta.env.VITE_AZURE_OPENAI_API_VERSION ||
                       (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_API_VERSION) ||
@@ -170,11 +173,80 @@ export class AzureOpenAIService {
     });
   }
 
-  async generateText(
-    prompt: string,
-    effort: EffortType = EffortType.MEDIUM
-  ): Promise<AzureOpenAIResponse> {
-    return this.generateResponse(prompt, effort, true, 0.7, 32000);
+  async generateText(prompt: string, effort: EffortType): Promise<{ text: string; sources?: Citation[] }> {
+    // Estimate tokens for rate limiting
+    const estimatedPromptTokens = estimateTokens(prompt);
+    const estimatedCompletionTokens = 2000; // Conservative estimate
+    const totalEstimatedTokens = estimatedPromptTokens + estimatedCompletionTokens;
+
+    // Wait for rate limit capacity
+    await this.rateLimiter.waitForCapacity(totalEstimatedTokens);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.createChatCompletion({
+            messages: [{ role: 'user', content: prompt }],
+            reasoning_effort: this.mapEffortToReasoning(effort),
+            max_completion_tokens: 4096
+          });
+
+          return {
+            text: response.choices[0]?.message?.content || '',
+            sources: [] // Azure doesn't provide sources directly
+          };
+        } catch (error) {
+          // Enhanced error handling
+          if (this.isRateLimitError(error)) {
+            const retryAfter = this.extractRetryAfter(error);
+            throw new APIError(
+              `Azure OpenAI rate limit exceeded. Please wait ${retryAfter || 60} seconds.`,
+              'RATE_LIMIT',
+              true,
+              429
+            );
+          }
+
+          if (this.isQuotaError(error)) {
+            throw new APIError(
+              'Azure OpenAI quota exceeded for this period. Falling back to other models.',
+              'QUOTA_EXCEEDED',
+              false,
+              429
+            );
+          }
+
+          throw error;
+        }
+      },
+      {
+        maxRetries: 3,
+        initialDelay: 2000,
+        maxDelay: 60000,
+        backoffFactor: 3, // More aggressive backoff for rate limits
+        jitterMs: 1000
+      },
+      (attempt, error) => {
+        console.log(`Azure OpenAI retry attempt ${attempt}: ${error.message}`);
+      }
+    );
+  }
+
+  private isRateLimitError(error: any): boolean {
+    return error?.status === 429 ||
+           error?.response?.status === 429 ||
+           error?.message?.includes('rate limit');
+  }
+
+  private isQuotaError(error: any): boolean {
+    return error?.message?.includes('quota') ||
+           error?.error?.code === 'quota_exceeded';
+  }
+
+  private extractRetryAfter(error: any): number | null {
+    const retryAfter = error?.headers?.['retry-after'] ||
+                      error?.response?.headers?.['retry-after'];
+    return retryAfter ? parseInt(retryAfter, 10) : null;
   }
 
   async generateResponseWithTools(

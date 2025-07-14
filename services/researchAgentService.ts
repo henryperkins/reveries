@@ -90,6 +90,8 @@ export class ResearchAgentService {
   private functionCallingService: FunctionCallingService;
   private researchToolsService: ResearchToolsService;
   private contextEngineering: ContextEngineeringService;
+  private fallbackAttempts: Map<string, number> = new Map();
+  private readonly MAX_FALLBACK_ATTEMPTS = 2;
 
   private constructor() {
     // Currently only Gemini needs an SDK client. Grok is called via fetch.
@@ -177,62 +179,149 @@ export class ResearchAgentService {
   }
 
   /**
-   * Attempt fallback to alternative models with recursion prevention
+   * Attempt fallback to alternative models with improved loop prevention
    */
   private async attemptFallback(
     prompt: string,
     originalModel: ModelType,
     effort: EffortType,
-    attemptedModels: Set<ModelType> = new Set()
+    attemptedModels: Set<ModelType> = new Set(),
+    error?: Error
   ): Promise<{ text: string; sources?: Citation[] }> {
-    console.warn(`Attempting fallback from ${originalModel}`);
+    console.warn(`Attempting fallback from ${originalModel}:`, error?.message);
+
+    // Track fallback attempts to prevent loops
+    const fallbackKey = `${prompt.substring(0, 50)}_${Date.now()}`;
+    const attempts = this.fallbackAttempts.get(fallbackKey) || 0;
+
+    if (attempts >= this.MAX_FALLBACK_ATTEMPTS) {
+      this.fallbackAttempts.delete(fallbackKey);
+      throw new APIError(
+        'Maximum fallback attempts reached. Please try again later or check your API configuration.',
+        'MAX_FALLBACKS_EXCEEDED',
+        false
+      );
+    }
+
+    this.fallbackAttempts.set(fallbackKey, attempts + 1);
 
     // Prevent infinite recursion by tracking attempted models
     attemptedModels.add(originalModel);
 
-    // Define fallback chain
-    const fallbackChain: ModelType[] = [];
+    // Define fallback chain with availability checks
+    const fallbackChain: ModelType[] = this.buildFallbackChain(originalModel, attemptedModels);
 
-    if (originalModel === AZURE_O3_MODEL) {
-      fallbackChain.push(GROK_MODEL_4, GENAI_MODEL_FLASH);
-    } else if (originalModel === GROK_MODEL_4) {
-      fallbackChain.push(GENAI_MODEL_FLASH);
-    } else if (originalModel === GENAI_MODEL_FLASH) {
-      // Try Azure if available
-      if (AzureOpenAIService.isAvailable()) {
-        fallbackChain.push(AZURE_O3_MODEL);
-      }
-      fallbackChain.push(GROK_MODEL_4);
+    if (fallbackChain.length === 0) {
+      this.fallbackAttempts.delete(fallbackKey);
+      throw new APIError(
+        'No available fallback models. Please check your API keys configuration.',
+        'NO_AVAILABLE_MODELS',
+        false
+      );
     }
 
-    // Filter out already attempted models
-    const availableFallbacks = fallbackChain.filter(model => !attemptedModels.has(model));
-
-    if (availableFallbacks.length === 0) {
-      throw new APIError('All fallback models exhausted. Please try again later.', 'ALL_MODELS_FAILED', false);
-    }
-
-    for (const fallbackModel of availableFallbacks) {
+    // Try each fallback model
+    for (const fallbackModel of fallbackChain) {
       try {
         console.log(`Trying fallback model: ${fallbackModel}`);
 
-        // Use internal method to avoid recursion through main generateText
-        switch (fallbackModel) {
-          case GENAI_MODEL_FLASH:
-            return await this.generateTextWithGemini(prompt, fallbackModel, effort, true);
-          case GROK_MODEL_4:
-            return await this.generateTextWithGrokAndTools(prompt);
-          case AZURE_O3_MODEL:
-            return await this.generateTextWithAzureOpenAI(prompt, effort, false);
+        // Check if model is actually available
+        if (!this.isModelAvailable(fallbackModel)) {
+          console.warn(`${fallbackModel} is not available (missing API key)`);
+          attemptedModels.add(fallbackModel);
+          continue;
         }
-      } catch (error) {
-        console.warn(`Fallback to ${fallbackModel} failed:`, error);
+
+        // Direct call to avoid recursion through main generateText
+        const result = await this.generateTextDirect(prompt, fallbackModel, effort);
+
+        // Success! Clean up and return
+        this.fallbackAttempts.delete(fallbackKey);
+        return result;
+      } catch (fallbackError) {
+        console.warn(`Fallback to ${fallbackModel} failed:`, fallbackError);
         attemptedModels.add(fallbackModel);
+
+        // If it's another rate limit, wait longer before next attempt
+        if (fallbackError instanceof APIError && fallbackError.statusCode === 429) {
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
         continue;
       }
     }
 
-    throw new APIError('All models failed. Please try again later.', 'ALL_MODELS_FAILED', false);
+    this.fallbackAttempts.delete(fallbackKey);
+    throw new APIError(
+      `All models failed. Original error: ${error?.message || 'Unknown error'}`,
+      'ALL_MODELS_FAILED',
+      false
+    );
+  }
+
+  private buildFallbackChain(originalModel: ModelType, attemptedModels: Set<ModelType>): ModelType[] {
+    const allModels = [GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL];
+
+    // Remove original and attempted models
+    const availableModels = allModels.filter(
+      model => model !== originalModel && !attemptedModels.has(model)
+    );
+
+    // Prioritize based on original model
+    if (originalModel === AZURE_O3_MODEL) {
+      // Azure failed, try Gemini first (usually more reliable), then Grok
+      return [GENAI_MODEL_FLASH, GROK_MODEL_4].filter(m => availableModels.includes(m));
+    } else if (originalModel === GROK_MODEL_4) {
+      // Grok failed, try Gemini, then Azure
+      return [GENAI_MODEL_FLASH, AZURE_O3_MODEL].filter(m => availableModels.includes(m));
+    } else {
+      // Gemini failed, try Grok, then Azure
+      return [GROK_MODEL_4, AZURE_O3_MODEL].filter(m => availableModels.includes(m));
+    }
+  }
+
+  private isModelAvailable(model: ModelType): boolean {
+    switch (model) {
+      case GENAI_MODEL_FLASH:
+        return !!getGeminiApiKey();
+      case GROK_MODEL_4:
+        try {
+          return !!getGrokApiKey();
+        } catch {
+          return false;
+        }
+      case AZURE_O3_MODEL:
+        return AzureOpenAIService.isAvailable();
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Direct generation method to avoid recursion
+   */
+  private async generateTextDirect(
+    prompt: string,
+    model: ModelType,
+    effort: EffortType
+  ): Promise<{ text: string; sources?: Citation[] }> {
+    switch (model) {
+      case GENAI_MODEL_FLASH:
+        return await this.generateTextWithGemini(prompt, model, effort, true);
+
+      case GROK_MODEL_4:
+        const grokService = GrokService.getInstance();
+        const grokResult = await grokService.generateResponseWithLiveSearch(prompt, effort);
+        return {
+          text: grokResult.text,
+          sources: grokResult.sources || []
+        };
+
+      case AZURE_O3_MODEL:
+        return await this.generateTextWithAzureOpenAI(prompt, effort, false);
+
+      default:
+        throw new APIError(`Unsupported model: ${model}`, 'INVALID_MODEL', false);
+    }
   }
 
   /**
@@ -1312,11 +1401,12 @@ export class ResearchAgentService {
     const confidenceScore = this.calculateConfidenceScore(result);
     const learnedPatterns = this.getQuerySuggestions(query).length > 0;
 
+    // Ensure all metadata is included in the result
     result.confidenceScore = confidenceScore;
-         if (hostParadigm) {
-           result.hostParadigm = hostParadigm;
-         }
-         result.adaptiveMetadata = {
+    if (hostParadigm) {
+      result.hostParadigm = hostParadigm;
+    }
+    result.adaptiveMetadata = {
       ...result.adaptiveMetadata,
       cacheHit: false,
       learnedPatterns,
@@ -1327,8 +1417,25 @@ export class ResearchAgentService {
       dominantParadigm: contextDensity.dominantParadigm,
       phase: currentPhase,
       pyramidConfidence: pyramidClassification.confidence,
-      densities: contextDensity.densities
+      densities: contextDensity.densities,
+      recommendedTools,
+      toolsEnabled: useResearchTools
     };
+
+    // Track all search queries used
+    if (result.queries) {
+      result.adaptiveMetadata.searchQueries = result.queries;
+    }
+
+    // Track evaluation metadata
+    if (result.evaluationMetadata) {
+      result.adaptiveMetadata.evaluationMetadata = result.evaluationMetadata;
+    }
+
+    // Track function call history
+    if (this.functionCallingService.getExecutionHistory().length > 0) {
+      result.functionCallHistory = this.functionCallingService.getExecutionHistory();
+    }
 
     // Attempt self-healing if confidence is low
     if (confidenceScore < 0.4) {

@@ -5,10 +5,13 @@ import { UserCircleIcon, QuestionMarkCircleIcon } from '@heroicons/react/solid';
 
 import { ResearchAgentService } from '../services/researchAgentService';
 import { APIError } from '../services/errorHandler';
-import { ServiceCallConfig, ModelType, EffortType, ResearchStep, ResearchStepType } from '../types';
+import { ServiceCallConfig, ModelType, EffortType, ResearchStep, ResearchStepType, ResearchMetadata } from '../types';
 import { FunctionCallVisualizer } from './FunctionCallVisualizer';
 import { usePersistedState, useResearchSessions } from './hooks/usePersistedState';
 import { ToolUsageIndicator } from './ToolUsageIndicator';
+import { useErrorHandling } from '../hooks/useErrorHandling';
+import { RateLimiter } from '../services/rateLimiter';
+import { exportToJSON, exportToMarkdown, exportToCSV, downloadFile } from '../utils/exportUtils';
 
 const DEFAULT_MODEL: ModelType = 'gemini-2.5-flash';
 const DEFAULT_EFFORT: EffortType = EffortType.MEDIUM;
@@ -17,10 +20,11 @@ const App: React.FC = () => {
     const [currentQuery, setCurrentQuery] = useState<string>('');
     const [researchSteps, setResearchSteps] = useState<ResearchStep[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, handleError, clearError] = useErrorHandling();
     const [showGraph, setShowGraph] = useState<boolean>(false);
     const [showFunctionCalls, setShowFunctionCalls] = useState<boolean>(false);
     const [lastFunctionCallHistory, setLastFunctionCallHistory] = useState<FunctionCallHistory[]>([]);
+    const [rateLimitStats, setRateLimitStats] = useState<any>(null);
 
     const [selectedEffort, setSelectedEffort] = usePersistedState<EffortType>('effort', DEFAULT_EFFORT);
     const [selectedModel, setSelectedModel] = usePersistedState<ModelType>('model', DEFAULT_MODEL);
@@ -31,7 +35,7 @@ const App: React.FC = () => {
 
     const researchAgentService = ResearchAgentService.getInstance();
 
-    const addStep = useCallback((stepData: Omit<ResearchStep, 'id' | 'timestamp'>): string => {
+    const addStep = useCallback((stepData: Omit<ResearchStep, 'id' | 'timestamp'>, metadata?: ResearchMetadata): string => {
         const newStepId = Date.now().toString() + Math.random().toString();
         const newStep: ResearchStep = {
             ...stepData,
@@ -41,9 +45,10 @@ const App: React.FC = () => {
 
         setResearchSteps(prevSteps => [...prevSteps, newStep]);
 
-        // Add to graph
+        // Add to graph with metadata
         const parentId = graphManagerRef.current.getGraph().currentPath.slice(-1)[0];
         graphManagerRef.current.addNode(newStep, parentId, {
+            ...metadata,
             model: selectedModel,
             effort: selectedEffort
         });
@@ -51,7 +56,13 @@ const App: React.FC = () => {
         return newStepId;
     }, [selectedModel, selectedEffort]);
 
-    const updateStepContent = useCallback((stepId: string, newContent: string | React.ReactNode, newTitle?: string, newSources?: { name: string; url?: string }[]) => {
+    const updateStepContent = useCallback((
+        stepId: string,
+        newContent: string | React.ReactNode,
+        newTitle?: string,
+        newSources?: { name: string; url?: string }[],
+        additionalMetadata?: Partial<ResearchMetadata>
+    ) => {
         setResearchSteps(prevSteps => prevSteps.map(step =>
             step.id === stepId ? {
                 ...step,
@@ -63,12 +74,13 @@ const App: React.FC = () => {
             } : step
         ));
 
-        // Update graph node
+        // Update graph node with additional metadata
         const nodeId = `node-${stepId}`;
         const node = graphManagerRef.current.getGraph().nodes.get(nodeId);
         if (node) {
             node.metadata = {
                 ...node.metadata,
+                ...additionalMetadata,
                 sourcesCount: newSources?.length || 0
             };
         }
@@ -92,7 +104,7 @@ const App: React.FC = () => {
 
     const executeResearchWorkflow = useCallback(async (query: string) => {
         setIsLoading(true);
-        setError(null);
+        clearError();
         setResearchSteps([]);
 
         // Reset graph for new research
@@ -139,8 +151,31 @@ const App: React.FC = () => {
                         updateStepContent(currentProcessingStepId, message);
                     }
                 },
-                true // Enable function calling
+                true, // Enable function calling
+                true  // Enable research tools
             );
+
+            // Create final result step with all metadata
+            const finalStepId = addStep({
+                type: ResearchStepType.SYNTHESIS,
+                title: "Research Complete",
+                content: result.synthesis,
+                sources: result.sources,
+            }, {
+                queryType: result.queryType,
+                hostParadigm: result.hostParadigm,
+                confidenceScore: result.confidenceScore,
+                pyramidLayer: result.adaptiveMetadata?.pyramidLayer,
+                contextDensity: result.adaptiveMetadata?.contextDensity,
+                phase: result.adaptiveMetadata?.phase,
+                processingTime: result.adaptiveMetadata?.processingTime,
+                toolsUsed: result.toolsUsed,
+                recommendedTools: result.adaptiveMetadata?.recommendedTools,
+                functionCalls: result.functionCallHistory,
+                evaluationMetadata: result.evaluationMetadata,
+                sections: result.sections,
+                searchQueries: result.queries
+            });
 
             // Store function call history if available
             if (result.functionCallHistory) {
@@ -149,11 +184,17 @@ const App: React.FC = () => {
             }
 
             // After successful completion
+            const exportData = graphManagerRef.current.getExportData(query, sessionId);
             updateSession(sessionId, {
                 steps: researchSteps,
                 graphData: graphManagerRef.current.serialize(),
+                exportData,
                 completed: true
             });
+
+            // Get rate limit stats for display
+            const stats = RateLimiter.getInstance().getUsageStats();
+            setRateLimitStats(stats);
 
         } catch (e: any) {
             console.error("Error during research workflow execution:", e);
@@ -168,7 +209,7 @@ const App: React.FC = () => {
                 }
             }
 
-            setError(errorMessage);
+            handleError(errorMessage);
 
             if (currentProcessingStepId) {
                 markStepError(currentProcessingStepId, errorMessage, "Aberration in Loop");
@@ -190,7 +231,7 @@ const App: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [addStep, updateStepContent, markStepError, selectedModel, selectedEffort, researchAgentService, addSession, updateSession, researchSteps]);
+    }, [addStep, updateStepContent, markStepError, selectedModel, selectedEffort, researchAgentService, addSession, updateSession, researchSteps, handleError, clearError]);
 
     const handleQuerySubmit = useCallback((query: string) => {
         // Ignore empty queries
@@ -222,8 +263,39 @@ const App: React.FC = () => {
         return () => window.removeEventListener('keydown', handleKeyPress);
     }, [isLoading, handleQuerySubmit]);
 
+    const handleExport = useCallback((format: 'json' | 'markdown' | 'csv') => {
+        const exportData = graphManagerRef.current.getExportData(
+            currentQuery,
+            currentSessionIdRef.current || undefined
+        );
+
+        let content: string;
+        let filename: string;
+        let mimeType: string;
+
+        switch (format) {
+            case 'json':
+                content = exportToJSON(exportData);
+                filename = `research-${Date.now()}.json`;
+                mimeType = 'application/json';
+                break;
+            case 'markdown':
+                content = exportToMarkdown(exportData);
+                filename = `research-${Date.now()}.md`;
+                mimeType = 'text/markdown';
+                break;
+            case 'csv':
+                content = exportToCSV(exportData);
+                filename = `research-${Date.now()}.csv`;
+                mimeType = 'text/csv';
+                break;
+        }
+
+        downloadFile(content, filename, mimeType);
+    }, [currentQuery]);
+
     return (
-        <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col items-center py-8 px-4">
+        <div className="min-h-screen bg-gradient-to-b from-[#0a0e1a] to-[#1a1a2e] text-cyan-100 flex flex-col">
             <div className="w-full max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
                 <h1 className="text-2xl font-bold mb-4">Reveries Research Assistant</h1>
 
@@ -264,8 +336,37 @@ const App: React.FC = () => {
                 </div>
 
                 {error && (
-                    <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
-                        {error}
+                    <div className={`fixed top-4 right-4 max-w-md p-4 rounded-lg shadow-lg z-50 ${
+                      error.type === 'error' ? 'bg-red-900' :
+                      error.type === 'warning' ? 'bg-yellow-900' : 'bg-blue-900'
+                    }`}>
+                      <div className="flex items-start">
+                        <div className="flex-1">
+                          <p className="text-white">{error.message}</p>
+                          {error.action && (
+                            <button
+                              onClick={error.action.handler}
+                              className="mt-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded text-sm"
+                            >
+                              {error.action.label}
+                            </button>
+                          )}
+                        </div>
+                        <button
+                          onClick={clearError}
+                          className="ml-4 text-white/60 hover:text-white"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                )}
+
+                {/* Rate Limit Status (optional) */}
+                {rateLimitStats && (
+                    <div className="fixed bottom-4 right-4 bg-gray-900/80 p-3 rounded text-xs">
+                      <div>Token capacity: {Math.round(rateLimitStats.tokenCapacityPercent)}%</div>
+                      <div>Requests last minute: {rateLimitStats.requestsLastMinute}</div>
                     </div>
                 )}
 
@@ -383,12 +484,22 @@ const App: React.FC = () => {
                                     ))}
                                 </div>
                             </div>
-                        </div>
-    </div>
-            );
-};
 
-            export default App;
-
-// Look for the section that displays the research result
-// This should show how citations are rendered and the final message format
+                            {/* Add export buttons */}
+                            {researchSteps.length > 0 && (
+                                <div className="mt-4 flex gap-2">
+                                    <button
+                                        onClick={() => handleExport('json')}
+                                        className="px-3 py-1 bg-slate-600 hover:bg-slate-700 rounded text-sm"
+                                    >
+                                        Export JSON
+                                    </button>
+                                    <button
+                                        onClick={() => handleExport('markdown')}
+                                        className="px-3 py-1 bg-slate-600 hover:bg-slate-700 rounded text-sm"
+                                    >
+                                        Export Markdown
+                                    </button>
+                                    <button
+                                        onClick={() => handleExport('csv')}
+                                        className="px-3 py-1 bg-slate-600 hover:bg-slate-

@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_XAI_API_KEY': JSON.stringify(env.VITE_XAI_API_KEY || ''),
       'import.meta.env.VITE_AZURE_OPENAI_ENDPOINT': JSON.stringify(env.VITE_AZURE_OPENAI_ENDPOINT || ''),
       'import.meta.env.VITE_AZURE_OPENAI_API_KEY': mode === 'production' ? '""' : JSON.stringify(env.VITE_AZURE_OPENAI_API_KEY || ''),
-      'import.meta.env.VITE_AZURE_OPENAI_DEPLOYMENT': JSON.stringify(env.VITE_AZURE_OPENAI_DEPLOYMENT || 'o3-mini'),
+      'import.meta.env.VITE_AZURE_OPENAI_DEPLOYMENT': JSON.stringify(env.VITE_AZURE_OPENAI_DEPLOYMENT || 'o3'),
       'import.meta.env.VITE_AZURE_OPENAI_API_VERSION': JSON.stringify(env.VITE_AZURE_OPENAI_API_VERSION || '2024-10-01-preview'),
     },
     build: {

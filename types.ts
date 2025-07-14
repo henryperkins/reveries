@@ -3,7 +3,7 @@ import React from 'react';
 // Corrected model identifiers based on latest guidelines
 export const GENAI_MODEL_FLASH = 'gemini-2.5-flash';
 export const GROK_MODEL_4 = 'grok-4';
-export const AZURE_O3_MODEL = 'o3-mini'; // Azure OpenAI o3 model
+export const AZURE_O3_MODEL = 'o3'; // Azure OpenAI o3 model
 
 export enum ResearchStepType {
   USER_QUERY = 'USER_QUERY',
@@ -204,4 +204,107 @@ export interface ResearchAgentConfig {
   fallbackModels?: ModelType[];
   maxRetries?: number;
   timeoutMs?: number;
+}
+
+export interface ResearchMetadata {
+  model: ModelType;
+  effort: EffortType;
+  processingTime?: number;
+  sourcesCount?: number;
+  queryType?: QueryType;
+  hostParadigm?: HostParadigm;
+  pyramidLayer?: PyramidLayer;
+  contextDensity?: number;
+  phase?: ResearchPhase;
+  confidenceScore?: number;
+  selfHealed?: boolean;
+  healingStrategy?: string;
+  toolsUsed?: string[];
+  recommendedTools?: string[];
+  functionCalls?: Array<{
+    name: string;
+    arguments: any;
+    result: any;
+    timestamp: number;
+  }>;
+  errorDetails?: {
+    message: string;
+    code?: string;
+    retryable?: boolean;
+  };
+  searchQueries?: string[];
+  sections?: Array<{
+    topic: string;
+    description: string;
+    research?: string;
+    sources?: Citation[];
+  }>;
+  evaluationMetadata?: {
+    completeness?: number;
+    accuracy?: number;
+    clarity?: number;
+    quality?: 'good' | 'needs_improvement';
+    feedback?: string;
+  };
+}
+
+export interface ExportedResearchData {
+  version: string;
+  exportDate: string;
+  query: string;
+  summary: {
+    totalSteps: number;
+    totalSources: number;
+    totalDuration: number;
+    successRate: number;
+    modelsUsed: ModelType[];
+    errorCount: number;
+  };
+  metadata: {
+    sessionId?: string;
+    startTime: string;
+    endTime: string;
+    primaryModel: ModelType;
+    primaryEffort: EffortType;
+    queryType?: QueryType;
+    hostParadigm?: HostParadigm;
+    confidenceScore?: number;
+  };
+  steps: Array<{
+    id: string;
+    type: ResearchStepType;
+    title: string;
+    content: string;
+    timestamp: string;
+    duration?: number;
+    sources?: Citation[];
+    metadata?: ResearchMetadata;
+  }>;
+  graph: {
+    nodes: Array<{
+      id: string;
+      data: ResearchStep;
+      metadata?: ResearchMetadata;
+    }>;
+    edges: Array<{
+      id: string;
+      source: string;
+      target: string;
+      type: EdgeType;
+    }>;
+  };
+  sources: {
+    all: Citation[];
+    byStep: Record<string, Citation[]>;
+    byDomain: Record<string, Citation[]>;
+  };
+  functionCalls?: Array<{
+    step: string;
+    calls: Array<{
+      name: string;
+      arguments: any;
+      result: any;
+      timestamp: number;
+    }>;
+  }>;
 }
