@@ -163,36 +163,12 @@ export function exportResearchAsJSON(data: any, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-export function exportAsMarkdown(steps: ResearchStep[], query: string): string {
-  let markdown = `# Research Results\n\n`;
-  markdown += `**Query:** ${query}\n\n`;
-  markdown += `**Timestamp:** ${new Date().toISOString()}\n\n`;
-
-  steps.forEach((step, index) => {
-    markdown += `## ${index + 1}. ${step.title}\n\n`;
-    markdown += `_${step.timestamp}_\n\n`;
-
-    if (typeof step.content === 'string') {
-      markdown += `${step.content}\n\n`;
-    }
-
-    if (step.sources && step.sources.length > 0) {
-      markdown += `### Sources\n\n`;
-      step.sources.forEach(source => {
-        markdown += `- [${source.name}](${source.url || '#'})\n`;
-      });
-      markdown += '\n';
-    }
-  });
-
-  return markdown;
-}
 
 export function exportToJSON(data: ExportedResearchData): string {
   return JSON.stringify(data, null, 2);
 }
 
-export function exportToMarkdown(data: ExportedResearchData): string {
+export function exportToDetailedMarkdown(data: ExportedResearchData): string {
   let md = `# Research Report\n\n`;
   md += `**Query:** ${data.query}\n\n`;
   md += `**Date:** ${new Date(data.exportDate).toLocaleString()}\n\n`;
@@ -240,13 +216,13 @@ export function exportToMarkdown(data: ExportedResearchData): string {
     }
 
     if (step.metadata?.evaluationMetadata) {
-      const eval = step.metadata.evaluationMetadata;
+      const evaluation = step.metadata.evaluationMetadata;
       md += `**Evaluation:**\n`;
-      md += `- Completeness: ${(eval.completeness || 0) * 100}%\n`;
-      md += `- Accuracy: ${(eval.accuracy || 0) * 100}%\n`;
-      md += `- Clarity: ${(eval.clarity || 0) * 100}%\n`;
-      if (eval.feedback) {
-        md += `- Feedback: ${eval.feedback}\n`;
+      md += `- Completeness: ${(evaluation.completeness || 0) * 100}%\n`;
+      md += `- Accuracy: ${(evaluation.accuracy || 0) * 100}%\n`;
+      md += `- Clarity: ${(evaluation.clarity || 0) * 100}%\n`;
+      if (evaluation.feedback) {
+        md += `- Feedback: ${evaluation.feedback}\n`;
       }
       md += `\n`;
     }
@@ -303,20 +279,4 @@ export function exportToCSV(data: ExportedResearchData): string {
   return rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
 }
 
-export function downloadFile(content: string, filename: string, mimeType: string): void {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
 
-export function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${Math.floor(ms / 60000)}m ${((ms % 60000) / 1000).toFixed(0)}s`;
-}

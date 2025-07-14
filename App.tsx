@@ -7,7 +7,7 @@ import { InputBar } from './components/InputBar';
 import { Controls } from './components/Controls';
 import { FeaturesList } from './components/FeaturesList';
 import { ProgressBar } from './components/ProgressBar';
-import { ResearchStep, ResearchStepType, EffortType, ModelType, ServiceCallConfig, EnhancedResearchResults, QueryType, AZURE_O3_MODEL, Citation } from './types';
+import { ResearchStep, ResearchStepType, EffortType, ModelType, ServiceCallConfig, EnhancedResearchResults, QueryType, AZURE_O3_MODEL, Citation, ResearchMetadata } from './types';
 import { ResearchAgentService } from './services/researchAgentService';
 import { ResearchGraphManager } from './researchGraph';
 import { ResearchGraphView } from './components/ResearchGraphView';
@@ -162,6 +162,9 @@ const App: React.FC = () => {
   const { sessions, addSession, updateSession } = useResearchSessions();
   const currentSessionRef = useRef<string | null>(null);
 
+  // Add missing ref for tracking the current processing step
+  const currentProcessingStepIdRef = useRef<string | null>(null);
+
   // Use cancellable operations
   const { startOperation, cancelOperation, isOperationActive, signal } = useCancellableOperation();
 
@@ -186,12 +189,11 @@ const App: React.FC = () => {
 
     // Add to graph with initial metadata
     const parentId = graphManagerRef.current.getGraph().currentPath.slice(-1)[0];
-    const metadata: any = {
+    const metadata: Partial<ResearchMetadata> = {
       model: selectedModel,
       effort: selectedEffort,
       sourcesCount: stepData.sources?.length || 0,
       citationsCount: stepData.sources?.length || 0,
-      uniqueCitations: stepData.sources?.map(s => s.url || s.title || '').filter(Boolean) || []
     };
 
     // Add step-specific metadata
@@ -209,35 +211,26 @@ const App: React.FC = () => {
       step.id === stepId ? { ...step, title: newTitle || step.title, content: newContent, sources: newSources || step.sources, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), isSpinning: false } : step
     ));
 
-    // Update graph node metadata
-    const nodeId = `node-${stepId}`;
+    // Update graph node metadata using proper accessors
+    const nodeId = graphManagerRef.current.getNodeIdFromStepId(stepId);
     const node = graphManagerRef.current.getGraph().nodes.get(nodeId);
     if (node) {
       // Extract queries if this is a query generation step
       if (node.type === ResearchStepType.GENERATING_QUERIES && typeof newContent === 'string') {
         const queriesMatch = newContent.match(/Generated (\d+) search queries/);
-        if (queriesMatch) {
+        if (queriesMatch && node.metadata) {
           const queryCount = parseInt(queriesMatch[1], 10);
-          node.metadata = {
-            ...node.metadata,
-            queriesGenerated: Array(queryCount).fill(null).map((_, i) => `Query ${i + 1}`)
-          };
+          node.metadata.searchQueries = Array(queryCount).fill(null).map((_, i) => `Query ${i + 1}`);
         }
       }
 
       // Update sources metadata
-      if (newSources && newSources.length > 0) {
-        const uniqueCitations = newSources.map(s => s.url || s.title || '').filter(Boolean);
-        node.metadata = {
-          ...node.metadata,
-          sourcesCount: newSources.length,
-          citationsCount: newSources.length,
-          uniqueCitations: [...new Set(uniqueCitations)]
-        };
+      if (newSources && newSources.length > 0 && node.metadata) {
+        node.metadata.sourcesCount = newSources.length;
       }
 
-      // Mark node as complete by updating duration
-      const nodeTimestamp = graphManagerRef.current['nodeTimestamps'].get(nodeId);
+      // Mark node as complete by updating duration using proper accessor
+      const nodeTimestamp = graphManagerRef.current.getNodeTimestamp(nodeId);
       if (nodeTimestamp) {
         node.duration = Date.now() - nodeTimestamp;
       }
@@ -249,8 +242,8 @@ const App: React.FC = () => {
       step.id === stepId ? { ...step, title: title || "Error", content: errorMessage, icon: QuestionMarkCircleIcon, isSpinning: false, type: ResearchStepType.ERROR } : step
     ));
 
-    // Mark error in graph with proper node ID
-    const nodeId = `node-${stepId}`;
+    // Mark error in graph with proper node ID using accessor
+    const nodeId = graphManagerRef.current.getNodeIdFromStepId(stepId);
     graphManagerRef.current.markNodeError(nodeId, errorMessage);
   }, []);
 
@@ -258,6 +251,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setResearchSteps([]);
+    currentProcessingStepIdRef.current = null; // Reset the ref
 
     // Reset graph for new research
     graphManagerRef.current.reset();
@@ -278,6 +272,7 @@ const App: React.FC = () => {
     // Start cancellable operation
     const controller = startOperation();
 
+    // Add user query step
     addStep({
       type: ResearchStepType.USER_QUERY,
       title: "Guest's Command",
@@ -294,8 +289,6 @@ const App: React.FC = () => {
         query.toLowerCase().includes("who won"),
     };
 
-    let currentProcessingStepId: string | null = null;
-
     try {
       // Choose workflow based on enhanced mode setting
       if (enhancedMode) {
@@ -310,35 +303,53 @@ const App: React.FC = () => {
           completed: true,
           steps: researchSteps,
           graphData: graphManagerRef.current.serialize(),
-          duration: Date.now() - sessions.find(s => s.id === currentSessionRef.current)?.timestamp || 0
+          duration: Date.now() - (sessions.find(s => s.id === currentSessionRef.current)?.timestamp || Date.now())
         });
       }
 
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Error during research workflow execution:", e);
-      const errorMessage = e.message || "Critical glitch detected in host's cognitive processes.";
+
+      let errorMessage = "Critical glitch detected in host's cognitive processes.";
+
+      // Safely extract error message
+      if (e instanceof Error) {
+        errorMessage = e.message;
+      } else if (e && typeof e === 'object' && 'message' in e) {
+        errorMessage = String(e.message);
+      } else if (typeof e === 'string') {
+        errorMessage = e;
+      } else if (e !== null && e !== undefined) {
+        errorMessage = `Unknown error: ${String(e)}`;
+      }
+
       setError(errorMessage);
-      if (currentProcessingStepId) {
-        markStepError(currentProcessingStepId, errorMessage, "Aberration Detected");
+
+      if (currentProcessingStepIdRef.current) {
+        markStepError(currentProcessingStepIdRef.current, errorMessage, "Aberration Detected");
       } else {
-        addStep({ type: ResearchStepType.ERROR, title: "Critical Aberration", content: errorMessage, icon: QuestionMarkCircleIcon });
+        addStep({
+          type: ResearchStepType.ERROR,
+          title: "Critical Aberration",
+          content: errorMessage,
+          icon: QuestionMarkCircleIcon
+        });
       }
     } finally {
       setIsLoading(false);
       cancelOperation();
-      if (currentProcessingStepId) { // If process was interrupted before final step
-        markStepError(currentProcessingStepId, "Host experiencing cognitive dissonance. Loop corrupted.", "Glitch in Consciousness");
-      }
+      currentProcessingStepIdRef.current = null; // Clear the ref
     }
-  }, [addStep, updateStepContent, markStepError, selectedModel, selectedEffort, researchAgentService, startOperation, cancelOperation, addSession, updateSession, sessions]);
+  }, [addStep, updateStepContent, markStepError, selectedModel, selectedEffort, researchAgentService, startOperation, cancelOperation, addSession, updateSession, sessions, enhancedMode]);
 
   // Legacy Research Workflow (simplified version)
   const executeLegacyResearchWorkflow = useCallback(async (query: string, serviceConfig: ServiceCallConfig, signal?: AbortSignal) => {
-    let currentProcessingStepId: string | null = null;
+    // Remove local variable declaration
+    // let currentProcessingStepId: string | null = null;
 
     try {
       // Step 1: Generate search queries
-      currentProcessingStepId = addStep({
+      currentProcessingStepIdRef.current = addStep({
         type: ResearchStepType.GENERATING_QUERIES,
         title: "Generating Search Queries",
         content: "Creating optimized search queries...",
@@ -349,10 +360,10 @@ const App: React.FC = () => {
       const queries = await researchAgentService.generateSearchQueries(query, serviceConfig.selectedModel, serviceConfig.selectedEffort);
 
       // Update with actual queries
-      updateStepContent(currentProcessingStepId, `Generated ${queries.length} search queries:\n${queries.map((q, i) => `${i + 1}. ${q}`).join('\n')}`, "Search Queries Ready");
+      updateStepContent(currentProcessingStepIdRef.current, `Generated ${queries.length} search queries:\n${queries.map((q, i) => `${i + 1}. ${q}`).join('\n')}`, "Search Queries Ready");
 
       // Step 2: Web research
-      currentProcessingStepId = addStep({
+      currentProcessingStepIdRef.current = addStep({
         type: ResearchStepType.WEB_RESEARCH,
         title: "Performing Web Research",
         content: "Searching for relevant information...",
@@ -362,7 +373,7 @@ const App: React.FC = () => {
 
       const research = await researchAgentService.performWebResearch(queries, serviceConfig.selectedModel, serviceConfig.selectedEffort);
       updateStepContent(
-        currentProcessingStepId,
+        currentProcessingStepIdRef.current,
         `Found ${research.allSources.length} sources from web research.`,
         "Research Complete",
         research.allSources
@@ -370,7 +381,7 @@ const App: React.FC = () => {
 
       // Step 3: Reflection (if we have sources)
       if (research.allSources.length > 0) {
-        currentProcessingStepId = addStep({
+        currentProcessingStepIdRef.current = addStep({
           type: ResearchStepType.REFLECTION,
           title: "Reflecting on Findings",
           content: "Analyzing gathered information...",
@@ -384,11 +395,11 @@ const App: React.FC = () => {
           serviceConfig.selectedModel,
           serviceConfig.selectedEffort
         );
-        updateStepContent(currentProcessingStepId, reflection, "Reflection Complete");
+        updateStepContent(currentProcessingStepIdRef.current, reflection, "Reflection Complete");
       }
 
       // Step 4: Generate final answer
-      currentProcessingStepId = addStep({
+      currentProcessingStepIdRef.current = addStep({
         type: ResearchStepType.FINAL_ANSWER,
         title: "Generating Final Answer",
         content: "Synthesizing information...",
@@ -405,13 +416,15 @@ const App: React.FC = () => {
       );
 
       const allSources = [...research.allSources, ...(answer.sources || [])];
-      updateStepContent(currentProcessingStepId, formatContentWithSources(answer.text, allSources), "Analysis Complete", allSources);
+      updateStepContent(currentProcessingStepIdRef.current, formatContentWithSources(answer.text, allSources), "Analysis Complete", allSources);
 
-    } catch (error: any) {
-      if (currentProcessingStepId) {
-        markStepError(currentProcessingStepId, error.message || "An error occurred", "Error");
-        // Also mark in graph
-        graphManagerRef.current.markNodeError(`node-${currentProcessingStepId}`, error.message || "An error occurred");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
+      if (currentProcessingStepIdRef.current) {
+        markStepError(currentProcessingStepIdRef.current, errorMessage, "Error");
+        // Also mark in graph with proper ID conversion
+        const nodeId = graphManagerRef.current.getNodeIdFromStepId(currentProcessingStepIdRef.current);
+        graphManagerRef.current.markNodeError(nodeId, errorMessage);
       }
       throw error;
     }
@@ -419,10 +432,11 @@ const App: React.FC = () => {
 
   // Enhanced Research Workflow with LangGraph Patterns
   const executeEnhancedResearchWorkflow = useCallback(async (query: string, serviceConfig: ServiceCallConfig, signal?: AbortSignal) => {
-    let currentProcessingStepId: string | null = null;
+    // Remove local variable declaration
+    // let currentProcessingStepId: string | null = null;
 
     // Step 1: Router Pattern - Classify Query Type
-    currentProcessingStepId = addStep({
+    currentProcessingStepIdRef.current = addStep({
       type: ResearchStepType.GENERATING_QUERIES,
       title: "Host analyzing guest query pattern...",
       content: "Scanning cognitive frameworks... selecting optimal narrative approach...",
@@ -439,7 +453,7 @@ const App: React.FC = () => {
       exploratory: 'Query classified as EXPLORATORY. Breaking from script... improvising narrative...'
     };
 
-    updateStepContent(currentProcessingStepId, routingMessages[queryType], "Query Analysis Complete");
+    updateStepContent(currentProcessingStepIdRef.current, routingMessages[queryType], "Query Analysis Complete");
 
     // Step 2: Execute Specialized Research Based on Query Type
     let result: EnhancedResearchResults;
@@ -498,13 +512,16 @@ const App: React.FC = () => {
         // Update graph node with analytics metadata
         const nodeId = `node-${analyticsStep}`;
         const node = graphManagerRef.current.getGraph().nodes.get(nodeId);
-        if (node) {
+        if (node && node.metadata) {
           node.metadata = {
             ...node.metadata,
-            queriesGenerated: result.sections?.map(s => s.topic) || [],
             sourcesCount: result.sources.length,
-            citationsCount: result.sources.length,
-            uniqueCitations: result.sources.map(citation => citation.url || citation.title || '').filter(Boolean)
+            sections: result.sections?.map(s => ({
+              topic: s.topic,
+              description: s.description,
+              research: s.research,
+              sources: s.sources
+            })) || []
           };
         }
       }
@@ -521,7 +538,7 @@ const App: React.FC = () => {
       isSpinning: true,
     });
 
-    const result = await researchAgentService.performResearchWithEvaluation(
+    const result = await researchAgentService.routeResearchQuery(
       query,
       serviceConfig.selectedModel,
       serviceConfig.selectedEffort,

@@ -248,6 +248,8 @@ export interface ResearchMetadata {
   };
 }
 
+export type EdgeType = 'sequential' | 'dependency' | 'error';
+
 export interface ExportedResearchData {
   version: string;
   exportDate: string;

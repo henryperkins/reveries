@@ -104,15 +104,16 @@ const App: React.FC = () => {
 
     const executeResearchWorkflow = useCallback(async (query: string) => {
         setIsLoading(true);
-        clearError();
+        setError(null);
         setResearchSteps([]);
+        currentProcessingStepIdRef.current = null; // Reset the ref
 
         // Reset graph for new research
         graphManagerRef.current.reset();
 
         // Create new session
         const sessionId = `session-${Date.now()}`;
-        currentSessionIdRef.current = sessionId;
+        currentSessionRef.current = sessionId;
         addSession({
             id: sessionId,
             query,
@@ -137,8 +138,6 @@ const App: React.FC = () => {
                 query.toLowerCase().includes("who won"),
         };
 
-        let currentProcessingStepId: string | null = null;
-
         try {
             // Use enhanced router with function calling
             const result = await researchAgentService.routeResearchQuery(
@@ -147,8 +146,8 @@ const App: React.FC = () => {
                 selectedEffort,
                 (message) => {
                     // Update current step with progress message
-                    if (currentProcessingStepId) {
-                        updateStepContent(currentProcessingStepId, message);
+                    if (currentProcessingStepIdRef.current) {
+                        updateStepContent(currentProcessingStepIdRef.current, message);
                     }
                 },
                 true, // Enable function calling
@@ -196,27 +195,35 @@ const App: React.FC = () => {
             const stats = RateLimiter.getInstance().getUsageStats();
             setRateLimitStats(stats);
 
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error("Error during research workflow execution:", e);
-            let errorMessage = "An unexpected error occurred during the research process.";
 
+            let errorMessage = "An unexpected error occurred during the research process.";
+            let errorTitle = "Critical Aberration";
+
+            // Safely extract error message
             if (e instanceof APIError) {
                 errorMessage = e.message;
-
-                // Show retry option for retryable errors
                 if (e.retryable) {
                     errorMessage += " Click 'Submit' to retry.";
                 }
+            } else if (e instanceof Error) {
+                errorMessage = e.message;
+            } else if (e && typeof e === 'object' && 'message' in e) {
+                errorMessage = String(e.message);
+            } else if (typeof e === 'string') {
+                errorMessage = e;
             }
 
             handleError(errorMessage);
 
-            if (currentProcessingStepId) {
-                markStepError(currentProcessingStepId, errorMessage, "Aberration in Loop");
+            // Handle error step creation
+            if (currentProcessingStepIdRef.current) {
+                markStepError(currentProcessingStepIdRef.current, errorMessage, "Aberration in Loop");
             } else {
                 addStep({
                     type: ResearchStepType.ERROR,
-                    title: "Critical Aberration",
+                    title: errorTitle,
                     content: errorMessage,
                     icon: QuestionMarkCircleIcon
                 });
@@ -226,10 +233,12 @@ const App: React.FC = () => {
             updateSession(sessionId, {
                 steps: researchSteps,
                 graphData: graphManagerRef.current.serialize(),
-                completed: false
+                completed: false,
+                error: errorMessage
             });
         } finally {
             setIsLoading(false);
+            currentProcessingStepIdRef.current = null; // Clear the ref
         }
     }, [addStep, updateStepContent, markStepError, selectedModel, selectedEffort, researchAgentService, addSession, updateSession, researchSteps, handleError, clearError]);
 
@@ -502,4 +511,18 @@ const App: React.FC = () => {
                                     </button>
                                     <button
                                         onClick={() => handleExport('csv')}
-                                        className="px-3 py-1 bg-slate-600 hover:bg-slate-
+                                        className="px-3 py-1 bg-slate-600 hover:bg-slate-700 rounded text-sm"
+                                    >
+                                        Export CSV
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )
+                }
+            </div>
+        </div>
+    );
+};
+
+export default App;

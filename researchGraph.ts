@@ -1,4 +1,4 @@
-import { ResearchStep, ResearchStepType } from './types';
+import { ResearchStep, ResearchStepType, ModelType, EffortType, Citation, ExportedResearchData, GENAI_MODEL_FLASH, ResearchMetadata, EdgeType } from './types';
 
 export interface GraphNode {
     id: string;
@@ -9,15 +9,7 @@ export interface GraphNode {
     duration?: number;
     children: string[]; // IDs of child nodes
     parents: string[]; // IDs of parent nodes
-    metadata?: {
-        queriesGenerated?: string[];
-        sourcesCount?: number;
-        citationsCount?: number;
-        uniqueCitations?: string[];
-        errorMessage?: string;
-        model?: string;
-        effort?: string;
-    };
+    metadata?: ResearchMetadata;
 }
 
 export interface GraphEdge {
@@ -30,7 +22,7 @@ export interface GraphEdge {
 
 export interface ResearchGraph {
     nodes: Map<string, GraphNode>;
-    edges: GraphEdge[];
+    edges: Map<string, GraphEdge>;
     rootNode: string | null;
     currentPath: string[];
 }
@@ -39,16 +31,18 @@ export class ResearchGraphManager {
     private graph: ResearchGraph;
     private startTime: number;
     private nodeTimestamps: Map<string, number>;
+    private lastNodeTimestamp: number | null;
 
     constructor() {
         this.graph = {
             nodes: new Map(),
-            edges: [],
+            edges: new Map(),
             rootNode: null,
             currentPath: []
         };
         this.startTime = Date.now();
         this.nodeTimestamps = new Map();
+        this.lastNodeTimestamp = null;
     }
 
     /**
@@ -57,21 +51,28 @@ export class ResearchGraphManager {
     addNode(
         step: ResearchStep,
         parentId?: string | null,
-        metadata?: ResearchMetadata
-    ): ResearchGraphNode {
+        metadata?: Partial<GraphNode['metadata']>
+    ): GraphNode {
         const nodeId = `node-${step.id}`;
         const timestamp = Date.now();
 
         // Ensure metadata includes all available information
         const enrichedMetadata: ResearchMetadata = {
-            ...metadata,
+            model: GENAI_MODEL_FLASH,
+            effort: EffortType.MEDIUM,
             sourcesCount: step.sources?.length || 0,
-            processingTime: this.lastNodeTimestamp ? timestamp - this.lastNodeTimestamp : 0
+            processingTime: this.lastNodeTimestamp ? timestamp - this.lastNodeTimestamp : 0,
+            ...metadata
         };
 
-        const newNode: ResearchGraphNode = {
+        const newNode: GraphNode = {
             id: nodeId,
-            data: step,
+            stepId: step.id,
+            type: step.type,
+            title: step.title || '',
+            timestamp: new Date(timestamp).toISOString(),
+            children: [],
+            parents: parentId ? [parentId] : [],
             metadata: enrichedMetadata
         };
 
@@ -79,18 +80,38 @@ export class ResearchGraphManager {
         this.graph.currentPath.push(nodeId);
 
         if (parentId) {
-            const edgeId = `edge-${parentId}-${nodeId}`;
-            const edgeType: EdgeType = step.type === ResearchStepType.ERROR ? 'error' : 'sequential';
-            this.graph.edges.set(edgeId, {
-                id: edgeId,
-                source: parentId,
-                target: nodeId,
-                type: edgeType
-            });
+            this.addEdge(parentId, nodeId, step.type === ResearchStepType.ERROR ? 'error' : 'sequential');
+            const parentNode = this.graph.nodes.get(parentId);
+            if (parentNode) {
+                parentNode.children.push(nodeId);
+            }
+        } else {
+            this.graph.rootNode = nodeId;
         }
 
         this.lastNodeTimestamp = timestamp;
         return newNode;
+    }
+
+    /**
+     * Get timestamp for a specific node
+     */
+    public getNodeTimestamp(nodeId: string): number | undefined {
+        return this.nodeTimestamps.get(nodeId);
+    }
+
+    /**
+     * Set timestamp for a specific node
+     */
+    public setNodeTimestamp(nodeId: string, timestamp: number): void {
+        this.nodeTimestamps.set(nodeId, timestamp);
+    }
+
+    /**
+     * Get node ID with consistent prefix handling
+     */
+    public getNodeIdFromStepId(stepId: string): string {
+        return `node-${stepId}`;
     }
 
     // Public method to update node duration
@@ -103,9 +124,9 @@ export class ResearchGraphManager {
     }
 
     // Public method to update node metadata
-    updateNodeMetadata(nodeId: string, metadata: Partial<GraphNode['metadata']>): void {
+    updateNodeMetadata(nodeId: string, metadata: Partial<ResearchMetadata>): void {
         const node = this.graph.nodes.get(nodeId);
-        if (node) {
+        if (node && node.metadata) {
             node.metadata = { ...node.metadata, ...metadata };
         }
     }
@@ -120,14 +141,17 @@ export class ResearchGraphManager {
             label
         };
 
-        this.graph.edges.push(edge);
+        this.graph.edges.set(edge.id, edge);
     }
 
     // Mark a node as errored
     markNodeError(nodeId: string, errorMessage: string): void {
         const node = this.graph.nodes.get(nodeId);
-        if (node) {
-            node.metadata = { ...node.metadata, errorMessage };
+        if (node && node.metadata) {
+            node.metadata = {
+                ...node.metadata,
+                errorDetails: { message: errorMessage, retryable: false }
+            };
 
             // Add error edge to show where the error occurred
             const lastSuccessfulNode = this.getLastSuccessfulNode();
@@ -175,8 +199,14 @@ export class ResearchGraphManager {
         // Count unique citations across all nodes
         const allCitations = new Set<string>();
         nodes.forEach(node => {
-            if (node.metadata?.uniqueCitations) {
-                node.metadata.uniqueCitations.forEach(citation => allCitations.add(citation));
+            if (node.metadata?.sections) {
+                node.metadata.sections.forEach(section => {
+                    if (section.sources) {
+                        section.sources.forEach(source => {
+                            if (source.url) allCitations.add(source.url);
+                        });
+                    }
+                });
             }
         });
 
@@ -206,10 +236,19 @@ export class ResearchGraphManager {
         const seenUrls = new Set<string>();
 
         nodes.forEach(node => {
-            const sources = node.data.sources || [];
+            const sources: Citation[] = [];
+            // Get sources from metadata sections
+            if (node.metadata?.sections) {
+                node.metadata.sections.forEach(section => {
+                    if (section.sources) {
+                        sources.push(...section.sources);
+                    }
+                });
+            }
+
             sourcesByStep[node.id] = sources;
 
-            sources.forEach(source => {
+            sources.forEach((source: Citation) => {
                 if (source.url && !seenUrls.has(source.url)) {
                     seenUrls.add(source.url);
                     allSources.push(source);
@@ -221,7 +260,7 @@ export class ResearchGraphManager {
                             sourcesByDomain[domain] = [];
                         }
                         sourcesByDomain[domain].push(source);
-                    } catch (e) {
+                    } catch {
                         // Invalid URL, skip domain grouping
                     }
                 }
@@ -273,12 +312,12 @@ export class ResearchGraphManager {
                 totalDuration: stats.totalDuration,
                 successRate: stats.successRate,
                 modelsUsed: Array.from(modelCounts.keys()),
-                errorCount: stats.errorNodes
+                errorCount: stats.errorCount
             },
             metadata: {
                 sessionId,
-                startTime: new Date(this.graph.startTime).toISOString(),
-                endTime: new Date(this.graph.startTime + stats.totalDuration).toISOString(),
+                startTime: new Date(this.startTime).toISOString(),
+                endTime: new Date(this.startTime + stats.totalDuration).toISOString(),
                 primaryModel,
                 primaryEffort,
                 queryType,
@@ -287,22 +326,32 @@ export class ResearchGraphManager {
             },
             steps: nodes.map(node => ({
                 id: node.id,
-                type: node.data.type,
-                title: node.data.title,
-                content: typeof node.data.content === 'string'
-                    ? node.data.content
-                    : 'Complex content (see raw data)',
-                timestamp: node.data.timestamp,
+                type: node.type,
+                title: node.title,
+                content: node.title,
+                timestamp: node.timestamp,
                 duration: node.metadata?.processingTime,
-                sources: node.data.sources,
+                sources: sourcesByStep[node.id] || [],
                 metadata: node.metadata
             })),
             graph: {
-                nodes: nodes.map(node => ({
-                    id: node.id,
-                    data: node.data,
-                    metadata: node.metadata
-                })),
+                nodes: nodes.map(node => {
+                    // Create a ResearchStep-like object for compatibility
+                    const stepData: ResearchStep = {
+                        id: node.stepId,
+                        type: node.type,
+                        title: node.title,
+                        content: node.title,
+                        icon: () => null,
+                        timestamp: node.timestamp,
+                        sources: sourcesByStep[node.id] || []
+                    };
+                    return {
+                        id: node.id,
+                        data: stepData,
+                        metadata: node.metadata
+                    };
+                }),
                 edges: edges.map(edge => ({
                     id: edge.id,
                     source: edge.source,
@@ -324,11 +373,23 @@ export class ResearchGraphManager {
         return this.graph;
     }
 
+    // Export graph data for visualization
+    exportForVisualization() {
+        return {
+            nodes: Array.from(this.graph.nodes.values()).map(node => ({
+                id: node.id,
+                label: node.title,
+                type: node.type,
+            })),
+            edges: Array.from(this.graph.edges.values()),
+        };
+    }
+
     // Reset the graph
     reset(): void {
         this.graph = {
             nodes: new Map(),
-            edges: [],
+            edges: new Map(),
             rootNode: null,
             currentPath: []
         };
@@ -364,10 +425,11 @@ export class ResearchGraphManager {
     serialize(): string {
         return JSON.stringify({
             nodes: Array.from(this.graph.nodes.entries()),
-            edges: this.graph.edges,
+            edges: Array.from(this.graph.edges.entries()),
             rootNode: this.graph.rootNode,
             currentPath: this.graph.currentPath,
-            startTime: this.startTime
+            startTime: this.startTime,
+            lastNodeTimestamp: this.lastNodeTimestamp
         });
     }
 
@@ -377,10 +439,11 @@ export class ResearchGraphManager {
         const manager = new ResearchGraphManager();
 
         manager.graph.nodes = new Map(parsed.nodes);
-        manager.graph.edges = parsed.edges;
+        manager.graph.edges = new Map(parsed.edges);
         manager.graph.rootNode = parsed.rootNode;
         manager.graph.currentPath = parsed.currentPath;
         manager.startTime = parsed.startTime;
+        manager.lastNodeTimestamp = parsed.lastNodeTimestamp;
 
         return manager;
     }
