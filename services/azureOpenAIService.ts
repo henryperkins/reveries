@@ -31,9 +31,10 @@ export class AzureOpenAIService {
     const deploymentName = import.meta.env.VITE_AZURE_OPENAI_DEPLOYMENT ||
                           (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_DEPLOYMENT) ||
                           'o3-mini';
+    // Updated API version for o3 support
     const apiVersion = import.meta.env.VITE_AZURE_OPENAI_API_VERSION ||
                       (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_API_VERSION) ||
-                      '2024-10-01-preview';
+                      '2025-04-01-preview';
 
     if (!endpoint || !apiKey) {
       throw new APIError(
@@ -83,7 +84,8 @@ export class AzureOpenAIService {
           }
         ],
         temperature,
-        max_tokens: maxTokens,
+        // Use max_completion_tokens for o3 models
+        max_completion_tokens: maxTokens,
         response_format: { type: "text" }
       };
 
@@ -103,6 +105,17 @@ export class AzureOpenAIService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+
+        // Enhanced error handling for o3-specific errors
+        if (response.status === 400 && errorData.error?.code === 'invalid_api_version') {
+          throw new APIError(
+            'Azure OpenAI API version not supported. Please use 2025-04-01-preview or later for o3 models.',
+            'VERSION_ERROR',
+            false,
+            response.status
+          );
+        }
+
         throw new APIError(
           `Azure OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`,
           'API_ERROR',
@@ -129,6 +142,11 @@ export class AzureOpenAIService {
       // Extract reasoning content if available
       if (data.choices[0].message.reasoning_content) {
         result.reasoningContent = data.choices[0].message.reasoning_content;
+      }
+
+      // Extract token usage for o3 models
+      if (data.usage?.completion_tokens_details?.reasoning_tokens) {
+        console.log(`O3 reasoning tokens used: ${data.usage.completion_tokens_details.reasoning_tokens}`);
       }
 
       return result;
@@ -234,7 +252,8 @@ export class AzureOpenAIService {
     prompt: string,
     effort: EffortType = EffortType.MEDIUM,
     onChunk: (chunk: string) => void,
-    onComplete: () => void
+    onComplete: () => void,
+    onError?: (error: Error) => void
   ): Promise<void> {
     const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
 
@@ -251,70 +270,51 @@ export class AzureOpenAIService {
       ],
       stream: true,
       temperature: 0.7,
-      max_tokens: 2000
+      max_completion_tokens: 2000
     };
 
     if (this.config.deploymentName.includes('o3')) {
       requestBody.reasoning_effort = this.mapEffortToReasoning(effort);
     }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': this.config.apiKey
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      throw new APIError(
-        `Azure OpenAI streaming error: ${response.status}`,
-        'STREAM_ERROR',
-        true,
-        response.status
-      );
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new APIError('No response body available', 'STREAM_ERROR', false);
-    }
-
-    const decoder = new TextDecoder();
-    let buffer = '';
-
     try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': this.config.apiKey
+        },
+        body: JSON.stringify(requestBody)
+      });
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') {
-              onComplete();
-              return;
-            }
-
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                onChunk(content);
-              }
-            } catch (e) {
-              console.warn('Failed to parse streaming chunk:', e);
-            }
-          }
-        }
+      if (!response.ok) {
+        throw new APIError(
+          `Azure OpenAI streaming error: ${response.status}`,
+          'STREAM_ERROR',
+          true,
+          response.status
+        );
       }
-    } finally {
-      reader.releaseLock();
-    }
-  }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new APIError('No response body available', 'STREAM_ERROR', false);
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if
 }

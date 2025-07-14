@@ -106,13 +106,24 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     try {
       const textArea = document.createElement('textarea');
       textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
       document.body.appendChild(textArea);
+      textArea.focus();
       textArea.select();
-      document.execCommand('copy');
+
+      const successful = document.execCommand('copy');
       document.body.removeChild(textArea);
+
+      if (!successful) {
+        console.error('Fallback copy failed');
+        return false;
+      }
+
       return true;
     } catch (fallbackErr) {
-      console.error('Failed to copy to clipboard:', fallbackErr);
+      console.error('Both clipboard methods failed:', fallbackErr);
       return false;
     }
   }

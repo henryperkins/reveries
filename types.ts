@@ -164,3 +164,43 @@ export interface EnhancedResearchResults {
     densities?: Record<HouseParadigm, number>;
   };
 }
+
+// Add Azure OpenAI specific types
+export interface O3ChatCompletionRequest {
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+  maxCompletionTokens?: number;
+  reasoningEffort?: 'low' | 'medium' | 'high';
+  stream?: boolean;
+}
+
+export interface O3ChatCompletionResponse {
+  id: string;
+  content: string;
+  model: string;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    completion_tokens_details?: {
+      reasoning_tokens: number;
+    };
+  };
+  finishReason: string | null;
+}
+
+export interface AIModel {
+  id: string;
+  name: string;
+  provider: 'openai' | 'azure' | 'gemini' | 'grok';
+  capabilities: string[];
+  maxTokens: number;
+  contextWindow: number;
+  available?: boolean;
+}
+
+export interface ResearchAgentConfig {
+  selectedModel: ModelType;
+  fallbackModels?: ModelType[];
+  maxRetries?: number;
+  timeoutMs?: number;
+}

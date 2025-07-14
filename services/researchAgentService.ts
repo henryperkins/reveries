@@ -88,6 +88,92 @@ export class ResearchAgentService {
     return ResearchAgentService.instance;
   }
 
+  /**
+   * Generate text with appropriate model based on selection
+   */
+  async generateText(prompt: string, model: ModelType, effort: EffortType): Promise<{ text: string; sources?: Citation[] }> {
+    // Check error boundary
+    if (ErrorBoundary.shouldBlock()) {
+      throw new APIError('Too many errors occurred. Please try again later.', 'RATE_LIMIT', false);
+    }
+
+    try {
+      switch (model) {
+        case GENAI_MODEL_FLASH:
+          const geminiResult = await geminiService.generateContent(prompt, {
+            model: GENAI_MODEL_FLASH,
+            useSearch: true
+          });
+          return {
+            text: geminiResult.text,
+            sources: geminiResult.sources
+          };
+
+        case GROK_MODEL_4:
+          const grokService = GrokService.getInstance();
+          const grokResult = await grokService.generateResponseWithLiveSearch(prompt, effort);
+          return {
+            text: grokResult.text,
+            sources: grokResult.sources || []
+          };
+
+        case AZURE_O3_MODEL:
+          const azureService = AzureOpenAIService.getInstance();
+          const azureResult = await azureService.generateResponse(prompt, effort);
+          return {
+            text: azureResult.text,
+            sources: azureResult.sources || []
+          };
+
+        default:
+          throw new APIError(`Unsupported model: ${model}`, 'INVALID_MODEL', false);
+      }
+    } catch (error) {
+      ErrorBoundary.recordError();
+
+      // Attempt fallback for retryable errors
+      if (error instanceof APIError && error.isRetryable) {
+        return this.attemptFallback(prompt, model, effort);
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Attempt fallback to alternative models
+   */
+  private async attemptFallback(prompt: string, originalModel: ModelType, effort: EffortType): Promise<{ text: string; sources?: Citation[] }> {
+    console.warn(`Attempting fallback from ${originalModel}`);
+
+    // Define fallback chain
+    const fallbackChain: ModelType[] = [];
+
+    if (originalModel === AZURE_O3_MODEL) {
+      fallbackChain.push(GROK_MODEL_4, GENAI_MODEL_FLASH);
+    } else if (originalModel === GROK_MODEL_4) {
+      fallbackChain.push(GENAI_MODEL_FLASH);
+    } else if (originalModel === GENAI_MODEL_FLASH) {
+      // Try Azure if available
+      if (AzureOpenAIService.isAvailable()) {
+        fallbackChain.push(AZURE_O3_MODEL);
+      }
+      fallbackChain.push(GROK_MODEL_4);
+    }
+
+    for (const fallbackModel of fallbackChain) {
+      try {
+        console.log(`Trying fallback model: ${fallbackModel}`);
+        return await this.generateText(prompt, fallbackModel, effort);
+      } catch (error) {
+        console.warn(`Fallback to ${fallbackModel} failed:`, error);
+        continue;
+      }
+    }
+
+    throw new APIError('All models failed. Please try again later.', 'ALL_MODELS_FAILED', false);
+  }
+
   private async generateText(
     prompt: string,
     selectedModel: ModelType,

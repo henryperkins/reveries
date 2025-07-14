@@ -11,9 +11,21 @@ const isGrokAvailable = () => {
   }
 };
 
-// Check if Azure OpenAI is available - always false in browser
+// Check if Azure OpenAI is available - check for environment variables
 const isAzureOpenAIAvailable = () => {
-  return false; // Azure OpenAI is server-side only
+  try {
+    // In production, this should be determined server-side
+    if (typeof window !== 'undefined') {
+      // Browser environment - Azure OpenAI is never available client-side
+      return false;
+    }
+
+    // Server environment - check for API key
+    return !!(import.meta.env.VITE_AZURE_OPENAI_API_KEY ||
+             (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_API_KEY));
+  } catch {
+    return false;
+  }
 };
 
 // Default model selection logic
