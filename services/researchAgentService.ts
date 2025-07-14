@@ -331,6 +331,9 @@ export class ResearchAgentService {
     const result = await this.generateText(prompt, model, effort);
     const queries = result.text.split(',').map(q => q.trim()).filter(q => q.length > 0);
 
+    // Learn from this query
+    this.learnFromQuery(userQuery, 'exploratory', queries);
+
     return queries;
   }
 

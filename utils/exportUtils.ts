@@ -140,3 +140,39 @@ export function estimateReadingTime(text: string): string {
   const minutes = Math.ceil(words / wordsPerMinute);
   return `${minutes} min read`;
 }
+
+// New export utilities
+export function exportResearch(data: any, filename: string): void {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function exportAsMarkdown(steps: ResearchStep[], query: string): string {
+  let markdown = `# Research Results\n\n`;
+  markdown += `**Query:** ${query}\n\n`;
+  markdown += `**Timestamp:** ${new Date().toISOString()}\n\n`;
+
+  steps.forEach((step, index) => {
+    markdown += `## ${index + 1}. ${step.title}\n\n`;
+    markdown += `_${step.timestamp}_\n\n`;
+
+    if (typeof step.content === 'string') {
+      markdown += `${step.content}\n\n`;
+    }
+
+    if (step.sources && step.sources.length > 0) {
+      markdown += `### Sources\n\n`;
+      step.sources.forEach(source => {
+        markdown += `- [${source.name}](${source.url || '#'})\n`;
+      });
+      markdown += '\n';
+    }
+  });
+
+  return markdown;
+}

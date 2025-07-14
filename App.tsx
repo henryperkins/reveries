@@ -10,6 +10,7 @@ import { ProgressBar } from './components/ProgressBar';
 import { ResearchStep, ResearchStepType, EffortType, ModelType, ServiceCallConfig, EnhancedResearchResults, QueryType, AZURE_O3_MODEL } from './types';
 import { ResearchAgentService } from './services/researchAgentService';
 import { ResearchGraphManager } from './researchGraph';
+import { ResearchGraphView } from './components/ResearchGraphView';
 import { usePersistedState, useResearchSessions, useCancellableOperation } from './hooks/usePersistedState';
 import { exportResearch, copyToClipboard, formatDuration } from './utils/exportUtils';
 import { APIError, ErrorBoundary } from './services/errorHandler';
@@ -73,24 +74,30 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedEffort, setSelectedEffort] = useState<EffortType>(DEFAULT_EFFORT);
-  const [selectedModel, setSelectedModel] = useState<ModelType>(DEFAULT_MODEL);
-  const [enhancedMode, setEnhancedMode] = useState<boolean>(true);
+  // Add research graph management
+  const graphManagerRef = useRef<ResearchGraphManager>(new ResearchGraphManager());
+  const [showGraph, setShowGraph] = useState(false);
 
-  const researchAgentService = ResearchAgentService.getInstance();
+  // Use persisted state for settings
+  const [selectedEffort, setSelectedEffort] = usePersistedState<EffortType>('selectedEffort', DEFAULT_EFFORT);
+  const [selectedModel, setSelectedModel] = usePersistedState<ModelType>('selectedModel', DEFAULT_MODEL);
+  const [enhancedMode, setEnhancedMode] = usePersistedState<boolean>('enhancedMode', true);
+
+  // Use research sessions
+  const { sessions, addSession, updateSession } = useResearchSessions();
+  const currentSessionRef = useRef<string | null>(null);
+
+  // Use cancellable operations
+  const { startOperation, cancelOperation, isOperationActive, signal } = useCancellableOperation();
 
   // Number of automated stages after the user query step.
   const TOTAL_AUTOMATED_STEPS = 4; // queries, web research, reflection, final answer
 
-  const completedAutomatedSteps = researchSteps.filter(
-    (s) =>
-      s.type !== ResearchStepType.USER_QUERY &&
-      s.type !== ResearchStepType.ERROR &&
-      !s.isSpinning
-  ).length;
-
+  // Enhanced progress calculation with graph tracking
+  const completedAutomatedSteps = graphManagerRef.current.getGraph().nodes.size - 1; // Exclude user query
+  const totalSteps = enhancedMode ? 6 : 4; // More steps in enhanced mode
   const progressValue = isLoading
-    ? completedAutomatedSteps / TOTAL_AUTOMATED_STEPS
+    ? Math.min(completedAutomatedSteps / totalSteps, 0.95)
     : 1;
 
   const addStep = useCallback((stepData: Omit<ResearchStep, 'id' | 'timestamp'>): string => {
@@ -101,8 +108,16 @@ const App: React.FC = () => {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     };
     setResearchSteps(prevSteps => [...prevSteps, newStep]);
+
+    // Add to graph
+    const parentId = graphManagerRef.current.getGraph().currentPath.slice(-1)[0];
+    graphManagerRef.current.addNode(newStep, parentId, {
+      model: selectedModel,
+      effort: selectedEffort
+    });
+
     return newStepId;
-  }, []);
+  }, [selectedModel, selectedEffort]);
 
   const updateStepContent = useCallback((stepId: string, newContent: string | React.ReactNode, newTitle?: string, newSources?: { name: string; url?: string }[]) => {
     setResearchSteps(prevSteps => prevSteps.map(step =>
@@ -120,6 +135,25 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setResearchSteps([]);
+
+    // Reset graph for new research
+    graphManagerRef.current.reset();
+
+    // Create new session
+    const sessionId = Date.now().toString();
+    currentSessionRef.current = sessionId;
+    addSession({
+      id: sessionId,
+      query,
+      timestamp: Date.now(),
+      steps: [],
+      completed: false,
+      model: selectedModel,
+      effort: selectedEffort
+    });
+
+    // Start cancellable operation
+    const controller = startOperation();
 
     addStep({
       type: ResearchStepType.USER_QUERY,
@@ -142,9 +176,19 @@ const App: React.FC = () => {
     try {
       // Choose workflow based on enhanced mode setting
       if (enhancedMode) {
-        await executeEnhancedResearchWorkflow(query, serviceConfig);
+        await executeEnhancedResearchWorkflow(query, serviceConfig, controller.signal);
       } else {
-        await executeLegacyResearchWorkflow(query, serviceConfig);
+        await executeLegacyResearchWorkflow(query, serviceConfig, controller.signal);
+      }
+
+      // Mark session as completed
+      if (currentSessionRef.current) {
+        updateSession(currentSessionRef.current, {
+          completed: true,
+          steps: researchSteps,
+          graphData: graphManagerRef.current.serialize(),
+          duration: Date.now() - sessions.find(s => s.id === currentSessionRef.current)?.timestamp || 0
+        });
       }
 
     } catch (e: any) {
@@ -158,14 +202,15 @@ const App: React.FC = () => {
       }
     } finally {
       setIsLoading(false);
+      cancelOperation();
       if (currentProcessingStepId) { // If process was interrupted before final step
         markStepError(currentProcessingStepId, "Host experiencing cognitive dissonance. Loop corrupted.", "Glitch in Consciousness");
       }
     }
-  }, [addStep, updateStepContent, markStepError, selectedModel, selectedEffort, researchAgentService]);
+  }, [addStep, updateStepContent, markStepError, selectedModel, selectedEffort, researchAgentService, startOperation, cancelOperation, addSession, updateSession, sessions]);
 
   // Enhanced Research Workflow with LangGraph Patterns
-  const executeEnhancedResearchWorkflow = useCallback(async (query: string, serviceConfig: ServiceCallConfig) => {
+  const executeEnhancedResearchWorkflow = useCallback(async (query: string, serviceConfig: ServiceCallConfig, signal?: AbortSignal) => {
     let currentProcessingStepId: string | null = null;
 
     // Step 1: Router Pattern - Classify Query Type
@@ -177,7 +222,7 @@ const App: React.FC = () => {
       isSpinning: true,
     });
 
-    const queryType = await researchAgentService.classifyQuery(query, serviceConfig.selectedModel, serviceConfig.selectedEffort);
+    const queryType = await researchAgentService.classifyQuery(query, serviceConfig.selectedModel, serviceConfig.selectedEffort, signal);
 
     const routingMessages = {
       factual: 'Query classified as FACTUAL. Host accessing verified data repositories...',
@@ -193,14 +238,14 @@ const App: React.FC = () => {
 
     switch (queryType) {
       case 'analytical':
-        result = await executeAnalyticalResearch(query, serviceConfig);
+        result = await executeAnalyticalResearch(query, serviceConfig, signal);
         break;
       case 'comparative':
       case 'exploratory':
-        result = await executeComprehensiveResearch(query, serviceConfig);
+        result = await executeComprehensiveResearch(query, serviceConfig, signal);
         break;
       default: // factual
-        result = await executeFactualResearch(query, serviceConfig);
+        result = await executeFactualResearch(query, serviceConfig, signal);
     }
 
     // Step 3: Display Final Results
@@ -247,7 +292,7 @@ const App: React.FC = () => {
   }, [addStep, updateStepContent, researchAgentService]);
 
   // Analytical Research with Evaluator-Optimizer Pattern
-  const executeAnalyticalResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig): Promise<EnhancedResearchResults> => {
+  const executeAnalyticalResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig, signal?: AbortSignal): Promise<EnhancedResearchResults> => {
     let currentStepId = addStep({
       type: ResearchStepType.WEB_RESEARCH,
       title: "Deep Analysis Mode Activated...",
@@ -262,7 +307,8 @@ const App: React.FC = () => {
       serviceConfig.selectedEffort,
       (message: string) => {
         updateStepContent(currentStepId, message, "Deep Analysis in Progress...");
-      }
+      },
+      signal
     );
 
     const qualityInfo = result.evaluationMetadata ?
@@ -277,7 +323,7 @@ const App: React.FC = () => {
   }, [addStep, updateStepContent, researchAgentService]);
 
   // Comprehensive Research with Orchestrator-Worker Pattern
-  const executeComprehensiveResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig): Promise<EnhancedResearchResults> => {
+  const executeComprehensiveResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig, signal?: AbortSignal): Promise<EnhancedResearchResults> => {
     let currentStepId = addStep({
       type: ResearchStepType.WEB_RESEARCH,
       title: "Consciousness Fragmentation Initiated...",
@@ -292,7 +338,8 @@ const App: React.FC = () => {
       serviceConfig.selectedEffort,
       (message: string) => {
         updateStepContent(currentStepId, message, "Parallel Processing Active...");
-      }
+      },
+      signal
     );
 
     const sectionInfo = result.sections ?
@@ -307,7 +354,7 @@ const App: React.FC = () => {
   }, [addStep, updateStepContent, researchAgentService]);
 
   // Factual Research with Enhanced Source Verification
-  const executeFactualResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig): Promise<EnhancedResearchResults> => {
+  const executeFactualResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig, signal?: AbortSignal): Promise<EnhancedResearchResults> => {
     let currentStepId = addStep({
       type: ResearchStepType.WEB_RESEARCH,
       title: "Accessing Verified Memory Banks...",
@@ -323,7 +370,7 @@ const App: React.FC = () => {
       serviceConfig.selectedEffort
     );
 
-    const research = await researchAgentService.performWebResearch(queries, serviceConfig.selectedModel, serviceConfig.selectedEffort);
+    const research = await researchAgentService.performWebResearch(queries, serviceConfig.selectedModel, serviceConfig.selectedEffort, signal);
     const answer = await researchAgentService.generateFinalAnswer(query, research.aggregatedFindings, serviceConfig.selectedModel, false, serviceConfig.selectedEffort);
 
     updateStepContent(currentStepId,
@@ -351,10 +398,45 @@ const App: React.FC = () => {
     setIsLoading(false);
   }, []);
 
-  const exampleQuery = "What are the latest advancements in AI-powered research assistants?";
+  const handleExport = useCallback(() => {
+    const exportData = {
+      query: currentQuery,
+      steps: researchSteps,
+      graph: graphManagerRef.current.serialize(),
+      metadata: {
+        model: selectedModel,
+        effort: selectedEffort,
+        timestamp: new Date().toISOString(),
+        statistics: graphManagerRef.current.getStatistics()
+      }
+    };
+
+    exportResearch(exportData, `research-${Date.now()}.json`);
+  }, [currentQuery, researchSteps, selectedModel, selectedEffort]);
+
+  // Add keyboard shortcuts
   useEffect(() => {
-    // Set example query in input but don't auto-run to save API calls on every load.
-  }, []);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + Enter to submit
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        const input = document.querySelector('input[type="text"]') as HTMLInputElement;
+        if (input?.value && !isLoading) {
+          handleQuerySubmit(input.value);
+        }
+      }
+      // Ctrl/Cmd + G to show graph
+      if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
+        setShowGraph(prev => !prev);
+      }
+      // Escape to cancel operation
+      if (e.key === 'Escape' && isOperationActive()) {
+        cancelOperation();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleQuerySubmit, isLoading, isOperationActive, cancelOperation]);
 
   return (
     <div className="min-h-screen flex flex-col items-center py-8 px-4">
@@ -382,10 +464,65 @@ const App: React.FC = () => {
             onNewSearch={handleNewSearch}
             isLoading={isLoading}
           />
+
+          {/* Enhanced controls with new features */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Controls
+              selectedEffort={selectedEffort}
+              onEffortChange={setSelectedEffort}
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              onNewSearch={handleNewSearch}
+              isLoading={isLoading}
+            />
+
+            {/* Additional action buttons */}
+            <button
+              onClick={() => setShowGraph(true)}
+              disabled={researchSteps.length === 0}
+              className="px-4 py-2 bg-westworld-copper text-white rounded hover:bg-westworld-rust transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <ChartBarIcon className="w-5 h-5" />
+              View Graph
+            </button>
+
+            <button
+              onClick={handleExport}
+              disabled={researchSteps.length === 0}
+              className="px-4 py-2 bg-westworld-gold text-black rounded hover:bg-westworld-rust transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <ArrowDownTrayIcon className="w-5 h-5" />
+              Export
+            </button>
+
+            {isLoading && (
+              <button
+                onClick={cancelOperation}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center gap-2"
+              >
+                <XMarkIcon className="w-5 h-5" />
+                Cancel
+              </button>
+            )}
+          </div>
+
+          {/* Keyboard shortcuts hint */}
+          <div className="mt-2 text-xs text-westworld-rust">
+            <span className="font-westworld-mono">Ctrl+Enter</span> to submit •
+            <span className="font-westworld-mono"> Ctrl+G</span> to view graph •
+            <span className="font-westworld-mono"> Esc</span> to cancel
+          </div>
         </main>
 
         <FeaturesList />
-      </div>
+      </div
+
+      {/* Research Graph Visualization Modal */}
+      <ResearchGraphView
+        graphManager={graphManagerRef.current}
+        isOpen={showGraph}
+        onClose={() => setShowGraph(false)}
+      />
     </div>
   );
 };
