@@ -111,8 +111,3 @@ export interface EnhancedResearchResults {
     healingStrategy?: 'broader_search' | 'enhanced_detail' | 'alternative_model';
   };
 }
-    complexityScore?: number;
-    selfHealed?: boolean;
-    healingStrategy?: 'broader_search' | 'enhanced_detail' | 'alternative_model';
-  };
-}

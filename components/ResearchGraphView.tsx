@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ResearchGraphManager, getNodeColor, generateMermaidDiagram } from '../researchGraph';
-import { ResearchStepType } from '../types';
+import { ResearchGraphManager, generateMermaidDiagram } from '../researchGraph';
 import { ChartBarIcon, ArrowDownTrayIcon, XMarkIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowsPointingOutIcon } from './icons';
 import { GraphLayoutEngine, getNodeStyle } from '../utils/graphLayout';
 import { formatDuration } from '../utils/exportUtils';
@@ -130,15 +129,27 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
         node.x, node.y + node.height
       );
 
-      if (isHovered) {
-        // Lighter gradient on hover
-        gradient.addColorStop(0, style.background.replace('0%', '20%'));
-        gradient.addColorStop(1, style.background.replace('100%', '80%'));
-      } else {
-        const bgColors = style.background.match(/#[0-9a-f]{6}/gi) || ['#64748b', '#475569'];
-        gradient.addColorStop(0, bgColors[0]);
-        gradient.addColorStop(1, bgColors[1]);
-      }
+      // Extract the two hexadecimal colors defined in the background
+      // gradient string returned by getNodeStyle. We fall back to a pair
+      // of neutral slate colours if the regex fails for any reason.
+      const bgColors =
+        style.background.match(/#[0-9a-f]{6}/gi) || ['#64748b', '#475569'];
+
+      /**
+       * NOTE:
+       * `CanvasGradient.addColorStop()` expects a **single colour value**.
+       * The previous implementation attempted to pass the entire linear-gradient
+       * CSS string which causes a runtime `SyntaxError` in Chrome/Firefox:
+       *   "Failed to execute 'addColorStop' on 'CanvasGradient' …"
+       *
+       * We therefore explicitly pass only the hexadecimal colours extracted
+       * above. On hover we simply re-use the same colours (we could apply
+       * a lightening function, but keeping it simple avoids additional
+       * computation and still provides the correct visual feedback via
+       * the drop-shadow that is already rendered for hovered/selected nodes).
+       */
+      gradient.addColorStop(0, bgColors[0]);
+      gradient.addColorStop(1, bgColors[1]);
 
       // Draw rounded rectangle
       const radius = 8;

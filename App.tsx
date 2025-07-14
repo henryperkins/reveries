@@ -374,6 +374,7 @@ const App: React.FC = () => {
           };
         }
       }
+   }
   }, [addStep, updateStepContent, researchAgentService]);
 
   // Analytical Research with Evaluator-Optimizer Pattern

@@ -135,3 +135,27 @@ export const XMarkIcon: React.FC<SVGProps> = (props) => (
   </svg>
 );
 
+
+// Zoom In Icon
+export const MagnifyingGlassPlusIcon: React.FC<SVGProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 7.5v6m-3-3h6" />
+  </svg>
+);
+
+// Zoom Out Icon
+export const MagnifyingGlassMinusIcon: React.FC<SVGProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 10.5h6" />
+  </svg>
+);
+
+// Reset View Icon
+export const ArrowsPointingOutIcon: React.FC<SVGProps> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 3H5.25A2.25 2.25 0 0 0 3 5.25V9m0 6v3.75A2.25 2.25 0 0 0 5.25 21H9m6 0h3.75A2.25 2.25 0 0 0 21 18.75V15m0-6V5.25A2.25 2.25 0 0 0 18.75 3H15" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 7.5 21 3m-5.5 13.5L21 21M7.5 16.5 3 21m4.5-13.5L3 3" />
+  </svg>
+);
