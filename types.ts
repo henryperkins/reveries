@@ -53,11 +53,11 @@ export const effortOptions: { value: EffortType; label: string }[] = [
   { value: EffortType.HIGH, label: 'Effort: High' },
 ];
 
-// Updated modelOptions to include Azure O3
-export const modelOptions: { value: ModelType; label: string }[] = [
-  { value: GENAI_MODEL_FLASH, label: 'Model: 2.5 Flash' },
-  { value: GROK_MODEL_4, label: 'Model: Grok-4' },
-  { value: AZURE_O3_MODEL, label: 'Model: Azure O3' },
+// Updated modelOptions to include Azure O3 with availability info
+export const modelOptions: { value: ModelType; label: string; requiresKey?: boolean }[] = [
+  { value: GENAI_MODEL_FLASH, label: 'Model: Gemini 2.5 Flash' },
+  { value: GROK_MODEL_4, label: 'Model: Grok-4', requiresKey: true },
+  { value: AZURE_O3_MODEL, label: 'Model: Azure o3', requiresKey: true },
 ];
 
 export interface ResearchDataState {

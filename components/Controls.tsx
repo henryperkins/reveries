@@ -20,21 +20,24 @@ const MODEL_INFO = {
     description: 'Fast, efficient research with Google Search integration',
     icon: '⚡',
     features: ['Web search', 'Quick responses', 'Cost-effective'],
-    color: 'from-blue-500 to-indigo-600'
+    color: 'from-blue-500 to-indigo-600',
+    available: true // Always available
   },
   [GROK_MODEL_4]: {
     name: 'Grok 4',
     description: 'Advanced reasoning with real-time data access',
     icon: '🚀',
     features: ['Live search', 'Citations', 'Advanced analysis'],
-    color: 'from-purple-500 to-pink-600'
+    color: 'from-purple-500 to-pink-600',
+    available: GROK_AVAILABLE
   },
   [AZURE_O3_MODEL]: {
     name: 'Azure o3',
     description: 'Cutting-edge reasoning with deliberative processing',
     icon: '🧠',
     features: ['Deep reasoning', 'Complex analysis', 'High accuracy'],
-    color: 'from-green-500 to-teal-600'
+    color: 'from-green-500 to-teal-600',
+    available: AZURE_OPENAI_AVAILABLE
   }
 };
 
@@ -71,11 +74,10 @@ export const Controls: React.FC<ControlsProps> = ({
 }) => {
   const [showConfig, setShowConfig] = useState(false);
 
-  // Filter available models
-  const availableModels = Object.entries(MODEL_INFO).filter(([key]) => {
-    if (key === GROK_MODEL_4 && !GROK_AVAILABLE) return false;
-    if (key === AZURE_O3_MODEL && !AZURE_OPENAI_AVAILABLE) return false;
-    return true;
+  // Filter available models - updated logic
+  const availableModels = Object.entries(MODEL_INFO).filter(([key, info]) => {
+    // Show all models that are marked as available
+    return info.available;
   });
 
   return (

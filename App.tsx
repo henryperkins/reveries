@@ -23,6 +23,17 @@ import {
 } from './components/icons';
 
 const formatContentWithSources = (text: string, sources?: Citation[]): React.ReactNode => {
+  // Handle empty or invalid text
+  if (!text || text.trim() === '') {
+    return (
+      <div className="prose prose-sm max-w-none">
+        <p className="text-westworld-rust/60 italic">
+          The host consciousness experienced a disruption. No narrative was generated.
+        </p>
+      </div>
+    );
+  }
+
   const mainContent = (
     <div className="prose prose-sm max-w-none">
       <ReactMarkdown

@@ -21,18 +21,17 @@ const isGeminiAvailable = () => {
   }
 };
 
-// Check if Azure OpenAI is available - check for environment variables
+// Check if Azure OpenAI is available - updated to check for client-side env vars
 const isAzureOpenAIAvailable = () => {
   try {
-    // In production, this should be determined server-side
-    if (typeof window !== 'undefined') {
-      // Browser environment - Azure OpenAI is never available client-side
-      return false;
-    }
+    // Check for environment variables in both client and server contexts
+    const hasClientKey = !!(import.meta.env.VITE_AZURE_OPENAI_API_KEY &&
+                           import.meta.env.VITE_AZURE_OPENAI_ENDPOINT);
+    const hasServerKey = !!(typeof process !== 'undefined' &&
+                           process.env?.AZURE_OPENAI_API_KEY &&
+                           process.env?.AZURE_OPENAI_ENDPOINT);
 
-    // Server environment - check for API key
-    return !!(import.meta.env.VITE_AZURE_OPENAI_API_KEY ||
-             (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_API_KEY));
+    return hasClientKey || hasServerKey;
   } catch {
     return false;
   }

@@ -56,7 +56,18 @@ export class AzureOpenAIService {
 
   public static isAvailable(): boolean {
     try {
-      return !!(typeof process !== 'undefined' && process.env?.AZURE_OPENAI_API_KEY);
+      // Check for both client-side (VITE_) and server-side env vars
+      const hasClientVars = !!(
+        import.meta.env.VITE_AZURE_OPENAI_API_KEY &&
+        import.meta.env.VITE_AZURE_OPENAI_ENDPOINT
+      );
+      const hasServerVars = !!(
+        typeof process !== 'undefined' &&
+        process.env?.AZURE_OPENAI_API_KEY &&
+        process.env?.AZURE_OPENAI_ENDPOINT
+      );
+
+      return hasClientVars || hasServerVars;
     } catch {
       return false;
     }

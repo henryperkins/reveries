@@ -30,13 +30,26 @@ export interface GeminiServiceOptions {
 }
 
 const getGeminiApiKey = (): string => {
-  // Try Vite environment variables first (client-side)
-  const viteApiKey = typeof import !== 'undefined' && import.meta?.env?.VITE_GEMINI_API_KEY;
+  /**
+   * We need to support three execution contexts:
+   *
+   * 1. Browser bundle built by Vite                    → `import.meta.env.VITE_GEMINI_API_KEY`
+   * 2. Browser dev-server (unbundled)                  → `window.__VITE_IMPORT_META_ENV__.VITE_GEMINI_API_KEY`
+   * 3. Node / SSR / tests                              → `process.env.GEMINI_API_KEY` **or** `process.env.VITE_GEMINI_API_KEY`
+   *
+   * We therefore probe all three locations in priority order.
+   */
+  const clientKey =
+    // Bundled / production builds
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) ||
+    // Dev-server global shim
+    (typeof window !== 'undefined' && (window as any).__VITE_IMPORT_META_ENV__?.VITE_GEMINI_API_KEY);
 
-  // Try Node.js environment variables (server-side)
-  const nodeApiKey = (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY);
+  const serverKey =
+    (typeof process !== 'undefined' &&
+      (process.env?.GEMINI_API_KEY || process.env?.VITE_GEMINI_API_KEY));
 
-  const apiKey = viteApiKey || nodeApiKey;
+  const apiKey = clientKey || serverKey;
 
   if (!apiKey) {
     throw new Error(
