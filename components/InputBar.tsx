@@ -34,7 +34,7 @@ const EXAMPLE_QUERIES = [
     icon: "💡",
     queries: [
       {
-        text: "Explain how large language models work with current examples",
+        text: "Explain how transformer models revolutionized NLP",
         complexity: "medium",
         tags: ["AI", "explainer"]
       },
@@ -148,6 +148,7 @@ export const InputBar: React.FC<InputBarProps> = ({ onQuerySubmit, isLoading, in
               border-2 rounded-xl
               text-westworld-rust placeholder-westworld-rust/50
               transition-all duration-300
+              font-sans text-base
               ${isFocused ? 'border-westworld-gold shadow-lg' : 'border-westworld-tan/30 hover:border-westworld-tan/50'}
               ${isLoading ? 'opacity-60 cursor-not-allowed' : ''}
               focus:outline-none focus:bg-white
@@ -196,7 +197,7 @@ export const InputBar: React.FC<InputBarProps> = ({ onQuerySubmit, isLoading, in
 
       {/* Elegant example queries section - conditionally rendered */}
       {showExamples && (
-        <div className="mt-12 relative">
+        <div className="mt-12 relative animate-fadeIn">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <SparklesIcon className="w-5 h-5 text-westworld-gold" />

@@ -13,27 +13,31 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({ step }) => {
   const getStepStyles = (type: ResearchStepType) => {
     const styles = {
       [ResearchStepType.USER_QUERY]: {
-        iconColor: 'text-accent',
-        borderColor: 'border-accent/30',
-        bgGradient: 'from-accent/5 to-transparent',
+        iconColor: 'text-westworld-gold',
+        borderColor: 'border-westworld-gold/30',
+        bgGradient: 'from-westworld-gold/5 to-transparent',
+        glowColor: 'shadow-westworld-glow',
         animate: true
       },
       [ResearchStepType.FINAL_ANSWER]: {
-        iconColor: 'text-accent animate-pulse-soft',
-        borderColor: 'border-accent/40',
-        bgGradient: 'from-accent/10 to-transparent',
+        iconColor: 'text-westworld-gold animate-pulse-soft',
+        borderColor: 'border-westworld-gold/40',
+        bgGradient: 'from-westworld-gold/10 to-transparent',
+        glowColor: 'shadow-westworld-glow',
         animate: false
       },
       [ResearchStepType.ERROR]: {
-        iconColor: 'text-red-500',
-        borderColor: 'border-red-300',
-        bgGradient: 'from-red-50 to-transparent',
+        iconColor: 'text-westworld-rust',
+        borderColor: 'border-westworld-rust/50',
+        bgGradient: 'from-westworld-rust/10 to-transparent',
+        glowColor: '',
         animate: false
       },
       default: {
-        iconColor: 'text-accent-dark',
-        borderColor: 'border-border',
-        bgGradient: 'from-surface to-transparent',
+        iconColor: 'text-westworld-darkbrown',
+        borderColor: 'border-westworld-darkbrown/20',
+        bgGradient: 'from-westworld-darkbrown/5 to-transparent',
+        glowColor: '',
         animate: false
       }
     };
@@ -46,26 +50,44 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({ step }) => {
   return (
     <div className={`
       research-step-card
-      bg-gradient-to-r ${stepStyles.bgGradient}
-      border ${stepStyles.borderColor}
+      relative overflow-hidden
+      bg-gradient-to-br ${stepStyles.bgGradient}
+      border-l-4 ${stepStyles.borderColor}
+      rounded-lg p-6
       ${stepStyles.animate ? 'animate-glow' : ''}
+      ${stepStyles.glowColor}
+      transition-all duration-300 ease-out
+      hover:translate-x-1 hover:shadow-xl
       group
     `}>
-      <div className="flex gap-4">
+      {/* Background pattern for visual interest - adapted to Westworld aesthetic */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 20% 80%, var(--westworld-gold) 0%, transparent 50%),
+                           radial-gradient(circle at 80% 20%, var(--westworld-darkbrown) 0%, transparent 50%)`,
+        }} />
+      </div>
+
+      <div className="relative flex gap-4">
         <div className={`
-          shrink-0 w-8 h-8 ${stepStyles.iconColor}
-          transition-transform duration-200 group-hover:scale-110
+          shrink-0 w-10 h-10 ${stepStyles.iconColor}
+          transition-all duration-300 group-hover:scale-110 group-hover:rotate-3
           ${step.isSpinning ? 'animate-spin' : ''}
         `}>
           <IconComponent />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-medium text-text-primary mb-2">
-            {step.title}
+          <h3 className="text-lg font-semibold text-westworld-darkbrown mb-3 flex items-center justify-between">
+            <span>{step.title}</span>
+            {step.type === ResearchStepType.FINAL_ANSWER && (
+              <span className="text-xs px-2 py-1 bg-westworld-gold/20 text-westworld-darkbrown rounded-full font-medium">
+                Narrative Complete
+              </span>
+            )}
           </h3>
-          <div className="text-text-secondary space-y-2">
+          <div className="text-westworld-rust space-y-3">
             {typeof step.content === 'string' ? (
-              <div className="prose prose-sm max-w-none">
+              <div className="prose prose-sm max-w-none prose-headings:text-westworld-darkbrown prose-a:text-westworld-gold hover:prose-a:text-westworld-rust">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {step.content}
                 </ReactMarkdown>
@@ -74,8 +96,34 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({ step }) => {
               step.content
             )}
           </div>
+
+          {/* Sources section with Westworld-themed styling */}
+          {step.sources && step.sources.length > 0 && (
+            <div className="mt-4 p-3 bg-westworld-darkbrown/5 rounded-md border border-westworld-gold/20">
+              <p className="text-xs font-medium text-westworld-gold mb-2 uppercase tracking-wide">
+                Memory Fragments ({step.sources.length})
+              </p>
+              <ul className="space-y-1">
+                {step.sources.slice(0, 3).map((source, idx) => (
+                  <li key={idx} className="text-xs text-westworld-rust hover:text-westworld-gold transition-colors">
+                    <a href={source.url} target="_blank" rel="noopener noreferrer"
+                       className="flex items-center gap-1 group/link">
+                      <span className="opacity-50 group-hover/link:opacity-100">→</span>
+                      <span className="truncate">{source.name || source.url}</span>
+                    </a>
+                  </li>
+                ))}
+                {step.sources.length > 3 && (
+                  <li className="text-xs text-westworld-rust italic">
+                    +{step.sources.length - 3} more fragments
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+
           {step.timestamp && (
-            <p className="text-xs text-text-muted mt-3 font-mono">
+            <p className="text-xs text-westworld-rust mt-4 font-mono opacity-60 group-hover:opacity-100 transition-opacity">
               {step.timestamp}
             </p>
           )}

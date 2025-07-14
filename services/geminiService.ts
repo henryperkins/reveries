@@ -30,14 +30,20 @@ export interface GeminiServiceOptions {
 }
 
 const getGeminiApiKey = (): string => {
-  const apiKeyFromEnv = (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) ? process.env.GEMINI_API_KEY : null;
+  // Try Vite environment variables first (client-side)
+  const viteApiKey = typeof import !== 'undefined' && import.meta?.env?.VITE_GEMINI_API_KEY;
 
-  if (!apiKeyFromEnv) {
+  // Try Node.js environment variables (server-side)
+  const nodeApiKey = (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY);
+
+  const apiKey = viteApiKey || nodeApiKey;
+
+  if (!apiKey) {
     throw new Error(
-      "GEMINI_API_KEY environment variable is not set. Please configure it before using Gemini models."
+      "GEMINI_API_KEY environment variable is not set. Please configure it in .env.local file."
     );
   }
-  return apiKeyFromEnv;
+  return apiKey;
 };
 
 export class GeminiService {

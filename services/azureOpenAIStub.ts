@@ -1,26 +1,68 @@
 /* Browser stub: always reports "not available". Only the methods that are
    referenced from the client-side code are included. */
 
-import type { EffortType, Citation } from '../types';
+import { EffortType, Citation } from '../types';
+import { APIError } from './errorHandler';
+
+export interface AzureOpenAIResponse {
+  text: string;
+  sources?: Citation[];
+  reasoningEffort?: string;
+  reasoningContent?: string;
+}
 
 export class AzureOpenAIService {
-  static isAvailable(): boolean {
+  private static instance: AzureOpenAIService;
+
+  private constructor() {
+    throw new APIError(
+      'Azure OpenAI is not available in browser builds. Please use the server API.',
+      'NOT_AVAILABLE',
+      false
+    );
+  }
+
+  public static getInstance(): AzureOpenAIService {
+    throw new APIError(
+      'Azure OpenAI is not available in browser builds. Please use the server API.',
+      'NOT_AVAILABLE',
+      false
+    );
+  }
+
+  public static isAvailable(): boolean {
     return false;
   }
 
-  // keep the signature but never used in the stub
-  static getInstance(): AzureOpenAIService {
-    throw new Error('AzureOpenAIService is not available in the browser.');
+  async generateResponse(): Promise<AzureOpenAIResponse> {
+    throw new APIError(
+      'Azure OpenAI is not available in browser builds',
+      'NOT_AVAILABLE',
+      false
+    );
   }
 
-  // dummy match for getConfig() references in type-only positions
-  /* eslint-disable @typescript-eslint/no-empty-function */
-  private constructor() {}
-  /* eslint-enable */
-}
+  async generateText(): Promise<AzureOpenAIResponse> {
+    throw new APIError(
+      'Azure OpenAI is not available in browser builds',
+      'NOT_AVAILABLE',
+      false
+    );
+  }
 
-/* Type helpers so that existing `import type { AzureOpenAIResponse }` keeps working. */
-export type AzureOpenAIResponse = {
-  text: string;
-  sources?: Citation[];
-};
+  async generateResponseWithTools(): Promise<AzureOpenAIResponse> {
+    throw new APIError(
+      'Azure OpenAI is not available in browser builds',
+      'NOT_AVAILABLE',
+      false
+    );
+  }
+
+  async streamResponse(): Promise<void> {
+    throw new APIError(
+      'Azure OpenAI is not available in browser builds',
+      'NOT_AVAILABLE',
+      false
+    );
+  }
+}

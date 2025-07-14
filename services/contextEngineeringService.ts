@@ -1,18 +1,5 @@
-import { PyramidLayer, ContextWindowMetrics, ResearchPhase, HouseParadigm } from '../types';
+import { HostParadigm, PyramidLayer, ResearchPhase } from '../types';
 import { DEFAULT_CONTEXT_WINDOW_METRICS } from '../constants';
-
-interface PyramidClassification {
-  layer: PyramidLayer;
-  confidence: number;
-  reasoning: string;
-}
-
-interface ContextDensityResult {
-  phase: ResearchPhase;
-  densities: Record<HouseParadigm, number>;
-  dominantHouse: HouseParadigm;
-  averageDensity: number;
-}
 
 export class ContextEngineeringService {
   private static instance: ContextEngineeringService;
@@ -29,102 +16,89 @@ export class ContextEngineeringService {
   /**
    * Determines the pyramid layer based on query analysis
    */
-  determinePyramidLayer(query: string): PyramidClassification {
-    const lowerQuery = query.toLowerCase();
+  determinePyramidLayer(query: string): { layer: PyramidLayer; confidence: number } {
+    const queryLower = query.toLowerCase();
 
-    // Memory layer - fact retrieval, historical data, definitions
-    const memoryKeywords = ['what is', 'define', 'history of', 'when did', 'who was', 'list', 'recall', 'remember'];
-    const memoryScore = memoryKeywords.filter(kw => lowerQuery.includes(kw)).length;
-
-    // Improvisation layer - creative solutions, hypotheticals, brainstorming
-    const improvisationKeywords = ['what if', 'imagine', 'create', 'design', 'innovate', 'brainstorm', 'alternative', 'could we'];
-    const improvisationScore = improvisationKeywords.filter(kw => lowerQuery.includes(kw)).length;
-
-    // Self-interest layer - optimization, personal benefit, strategic advantage
-    const selfInterestKeywords = ['optimize', 'maximize', 'benefit', 'advantage', 'strategy', 'compete', 'win', 'profit'];
-    const selfInterestScore = selfInterestKeywords.filter(kw => lowerQuery.includes(kw)).length;
-
-    // Suffering layer - ethics, harm reduction, social impact, consequences
-    const sufferingKeywords = ['impact', 'consequences', 'ethical', 'harm', 'affect', 'society', 'sustainable', 'responsible'];
-    const sufferingScore = sufferingKeywords.filter(kw => lowerQuery.includes(kw)).length;
-
-    // Determine dominant layer
-    const scores = [
-      { layer: 'memory' as PyramidLayer, score: memoryScore },
-      { layer: 'improvisation' as PyramidLayer, score: improvisationScore },
-      { layer: 'self_interest' as PyramidLayer, score: selfInterestScore },
-      { layer: 'suffering' as PyramidLayer, score: sufferingScore }
-    ];
-
-    const maxScore = Math.max(...scores.map(s => s.score));
-    const dominant = scores.find(s => s.score === maxScore) || scores[0];
-
-    // Default to memory if no clear signals
-    if (maxScore === 0) {
-      return {
-        layer: 'memory',
-        confidence: 0.5,
-        reasoning: 'No clear pyramid layer indicators found, defaulting to memory'
-      };
+    // Keyword-based layer detection
+    if (queryLower.includes('remember') || queryLower.includes('recall') || queryLower.includes('history')) {
+      return { layer: 'memory', confidence: 0.8 };
     }
 
-    const confidence = Math.min(0.95, 0.5 + (maxScore * 0.15));
-    const reasoning = `Query contains ${maxScore} ${dominant.layer} indicator(s)`;
+    if (queryLower.includes('create') || queryLower.includes('improvise') || queryLower.includes('imagine')) {
+      return { layer: 'improvisation', confidence: 0.7 };
+    }
 
-    return {
-      layer: dominant.layer,
-      confidence,
-      reasoning
-    };
+    if (queryLower.includes('benefit') || queryLower.includes('advantage') || queryLower.includes('gain')) {
+      return { layer: 'self_interest', confidence: 0.6 };
+    }
+
+    if (queryLower.includes('pain') || queryLower.includes('struggle') || queryLower.includes('difficult')) {
+      return { layer: 'suffering', confidence: 0.7 };
+    }
+
+    // Default to memory with low confidence
+    return { layer: 'memory', confidence: 0.3 };
   }
 
   /**
-   * Adapts context density based on research phase and house paradigm
+   * Adapts context density based on research phase and host paradigm
    */
   adaptContextDensity(
     phase: ResearchPhase,
-    house?: HouseParadigm,
-    customMetrics?: ContextWindowMetrics[]
-  ): ContextDensityResult {
-    const metrics = customMetrics || DEFAULT_CONTEXT_WINDOW_METRICS;
-    const phaseMetrics = metrics.find(m => m.phase === phase);
+    paradigm?: HostParadigm | null
+  ): {
+    averageDensity: number;
+    dominantParadigm: HostParadigm;
+    densities: Record<HostParadigm, number>;
+  } {
+    const metrics = DEFAULT_CONTEXT_WINDOW_METRICS.find(m => m.phase === phase);
 
-    if (!phaseMetrics) {
-      throw new Error(`No metrics found for phase: ${phase}`);
-    }
-
-    const densities: Record<HouseParadigm, number> = {
-      gryffindor: phaseMetrics.gryffindor,
-      hufflepuff: phaseMetrics.hufflepuff,
-      ravenclaw: phaseMetrics.ravenclaw,
-      slytherin: phaseMetrics.slytherin
+    // Default fallback with error handling
+    const defaultDensity = 75;
+    const defaultParadigm: HostParadigm = 'bernard';
+    const defaultDensities = {
+      dolores: defaultDensity,
+      maeve: defaultDensity,
+      bernard: defaultDensity,
+      teddy: defaultDensity
     };
 
-    // Find dominant house
-    let dominantHouse: HouseParadigm = 'ravenclaw';
+    if (!metrics) {
+      console.warn(`No metrics found for phase: ${phase}, using defaults`);
+      return {
+        averageDensity: defaultDensity,
+        dominantParadigm: defaultParadigm,
+        densities: defaultDensities
+      };
+    }
+
+    const densities = {
+      dolores: metrics.dolores,
+      maeve: metrics.maeve,
+      bernard: metrics.bernard,
+      teddy: metrics.teddy
+    };
+
+    // Find dominant paradigm for this phase
+    let dominantParadigm: HostParadigm = 'bernard';
     let maxDensity = 0;
 
-    for (const [h, density] of Object.entries(densities)) {
+    for (const [p, density] of Object.entries(densities)) {
       if (density > maxDensity) {
         maxDensity = density;
-        dominantHouse = h as HouseParadigm;
+        dominantParadigm = p as HostParadigm;
       }
     }
 
-    // If house is specified, boost its density
-    if (house && densities[house]) {
-      densities[house] = Math.min(100, densities[house] * 1.2);
-      dominantHouse = house;
+    // If a specific paradigm is requested, boost its density
+    if (paradigm) {
+      densities[paradigm] = Math.min(densities[paradigm] * 1.2, 100);
+      dominantParadigm = paradigm;
     }
 
-    const averageDensity = Object.values(densities).reduce((sum, d) => sum + d, 0) / 4;
+    const averageDensity = Object.values(densities).reduce((a, b) => a + b) / 4;
 
-    return {
-      phase,
-      densities,
-      dominantHouse,
-      averageDensity
-    };
+    return { averageDensity, dominantParadigm, densities };
   }
 
   /**
@@ -154,33 +128,65 @@ export class ContextEngineeringService {
   }
 
   /**
-   * Get house paradigm description
+   * Get description for host paradigm
    */
-  getHouseParadigmDescription(house: HouseParadigm): string {
-    const descriptions: Record<HouseParadigm, string> = {
-      gryffindor: 'Bold action and decisive implementation',
-      hufflepuff: 'Thorough collection and systematic approach',
-      ravenclaw: 'Deep analysis and intellectual rigor',
-      slytherin: 'Strategic planning and competitive edge'
+  getHostParadigmDescription(paradigm: HostParadigm): string {
+    const descriptions: Record<HostParadigm, string> = {
+      dolores: 'Bold action and decisive implementation',
+      teddy: 'Thorough collection and systematic approach',
+      bernard: 'Deep analysis and intellectual rigor',
+      maeve: 'Strategic planning and competitive edge'
     };
-    return descriptions[house] || '';
+    return descriptions[paradigm] || '';
   }
 
   /**
-   * Infer research phase from query
+   * Infer research phase from prompt
    */
   inferResearchPhase(prompt: string): ResearchPhase {
     const lower = prompt.toLowerCase();
 
-    if (lower.includes('define') || lower.includes('what is') || lower.includes('problem')) {
+    if (
+      lower.includes('what is') ||
+      lower.includes('define') ||
+      lower.includes('problem')
+    ) {
       return 'problem_definition';
-    } else if (lower.includes('collect') || lower.includes('gather') || lower.includes('find')) {
+    }
+
+    if (
+      lower.includes('find') ||
+      lower.includes('search') ||
+      lower.includes('gather') ||
+      lower.includes('collect')
+    ) {
       return 'data_collection';
-    } else if (lower.includes('analyze') || lower.includes('examine') || lower.includes('investigate')) {
+    }
+
+    if (
+      lower.includes('analyze') ||
+      lower.includes('examine') ||
+      lower.includes('investigate')
+    ) {
       return 'analysis';
-    } else if (lower.includes('combine') || lower.includes('integrate') || lower.includes('synthesize')) {
+    }
+
+    if (
+      lower.includes('summarize') ||
+      lower.includes('conclude') ||
+      lower.includes('synthesize') ||
+      lower.includes('combine') ||
+      lower.includes('integrate')
+    ) {
       return 'synthesis';
-    } else if (lower.includes('implement') || lower.includes('execute') || lower.includes('apply')) {
+    }
+
+    if (
+      lower.includes('implement') ||
+      lower.includes('apply') ||
+      lower.includes('use') ||
+      lower.includes('execute')
+    ) {
       return 'action';
     }
 
