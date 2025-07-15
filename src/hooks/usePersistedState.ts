@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 // Change this import to use the alias
 import { DatabaseService } from 'databaseService';
-import { ResearchStep, ResearchMetadata, ModelType, EffortType, HostParadigm, ParadigmProbabilities } from '../types';
+import { ResearchStep } from '../types';
 
 export interface ResearchSession {
   id: string;

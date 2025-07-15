@@ -1,19 +1,19 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { ResearchAgentService } from '@/services/researchAgentService'
 import { ResearchGraphManager } from '@/researchGraph'
-import { Header, Controls, InputBar, ResearchArea, ProgressBar, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar } from '@/components'
+import { Header, Controls, InputBar, ResearchArea, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar } from '@/components'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
-import { GENAI_MODEL_FLASH, ResearchStep, ResearchStepType, EffortType, HostParadigm, ParadigmProbabilities } from '@/types'
+import { ResearchStep, ResearchStepType, EffortType, HostParadigm, ParadigmProbabilities, ModelType } from '@/types'
 import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
+import { DEFAULT_MODEL } from '@/constants'
 import '@/App.css'
-import { ResearchStepCard } from './components/ResearchStepCard';
 
 const App: React.FC = () => {
   const [research, setResearch] = usePersistedState<ResearchStep[]>('reveries_research', [])
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [currentModel, setCurrentModel] = useState(GENAI_MODEL_FLASH)
+  const [currentModel, setCurrentModel] = useState<ModelType>(DEFAULT_MODEL)
   const [showGraph, setShowGraph] = useState(false)
   const [enhancedMode, setEnhancedMode] = useState(false)
   const [effort, setEffort] = useState<EffortType>(EffortType.LOW)
@@ -54,7 +54,7 @@ const App: React.FC = () => {
       }, 200)
 
       // Process with research agent
-      const result = await researchAgent.generateText(input, currentModel as typeof GENAI_MODEL_FLASH, effort)
+      const result = await researchAgent.generateText(input, currentModel, effort)
 
       clearInterval(progressInterval)
       setProgress(100)
@@ -75,7 +75,7 @@ const App: React.FC = () => {
 
       // Update node metadata with processing info
       graphManager.updateNodeMetadata(rootNode.id, {
-        model: currentModel as typeof GENAI_MODEL_FLASH,
+        model: currentModel,
         effort: effort,
         sourcesCount: result.sources?.length || 0
       })
@@ -149,76 +149,71 @@ const App: React.FC = () => {
   }, [isLoading, progress])
 
   return (
-    <div className="app flex flex-col min-h-screen bg-gradient-to-br from-westworld-cream to-westworld-beige text-westworld-black">
+    <div className="app min-h-screen bg-gradient-to-br from-westworld-cream to-westworld-beige text-westworld-black">
       <Header />
 
-      <main className="flex-1 container mx-auto px-4 py-8 overflow-y-auto scrollbar-westworld">
-        <div className="max-w-4xl mx-auto">
-          <Controls
-            selectedEffort={effort}
-            onEffortChange={setEffort}
-            selectedModel={currentModel as typeof GENAI_MODEL_FLASH}
-            onModelChange={setCurrentModel}
-            onNewSearch={handleClear}
-            onExport={research.length > 0 ? handleExport : undefined}
-            onToggleGraph={graphManager.getNodes().length > 0 ? handleToggleGraph : undefined}
-            isLoading={isLoading}
-            enhancedMode={enhancedMode}
-            onEnhancedModeChange={handleEnhancedModeChange}
-          />
+      <main className="container mx-auto px-4 py-8 scrollbar-westworld">
+        <Controls
+          selectedEffort={effort}
+          onEffortChange={setEffort}
+          selectedModel={currentModel}
+          onModelChange={setCurrentModel}
+          onNewSearch={handleClear}
+          onExport={research.length > 0 ? handleExport : undefined}
+          onToggleGraph={graphManager.getNodes().length > 0 ? handleToggleGraph : undefined}
+          isLoading={isLoading}
+          enhancedMode={enhancedMode}
+          onEnhancedModeChange={handleEnhancedModeChange}
+        />
 
-          {error && (
-            <div className="my-4">
-              <ErrorDisplay error={error.message} onDismiss={clearError} />
+        {error && (
+          <ErrorDisplay error={error.message} onDismiss={clearError} />
+        )}
+
+        <ResearchGraphView graphManager={graphManager} isOpen={showGraph} onClose={handleToggleGraph} />
+
+        <div className="space-y-6">
+          {/* Show paradigm UI when detected */}
+          {paradigm && paradigmProbabilities && !isLoading && (
+            <div className="animate-fade-in">
+              <ParadigmIndicator
+                paradigm={paradigm}
+                probabilities={paradigmProbabilities}
+                confidence={Math.max(...Object.values(paradigmProbabilities))}
+              />
             </div>
           )}
 
-          <ResearchGraphView graphManager={graphManager} isOpen={showGraph} onClose={handleToggleGraph} />
-
-          <div className="space-y-6 mt-6">
-            {/* Show paradigm UI when detected */}
-            {paradigm && paradigmProbabilities && !isLoading && (
-              <div className="animate-fade-in">
-                <ParadigmIndicator
-                  paradigm={paradigm}
-                  probabilities={paradigmProbabilities}
-                  confidence={Math.max(...Object.values(paradigmProbabilities))}
-                />
-              </div>
-            )}
-
-            {/* Show context density during processing */}
-            {isLoading && contextDensities && (
-              <div className="animate-slide-up">
-                <ContextDensityBar
-                  densities={contextDensities}
-                  dominantContext="analytical"
-                  phase="analyzing"
-                  showLabels={true}
-                />
-              </div>
-            )}
-
-            <div className="research-container">
-              <ResearchArea steps={research} />
+          {/* Show context density during processing */}
+          {isLoading && contextDensities && (
+            <div className="animate-slide-up">
+              <ContextDensityBar
+                densities={contextDensities}
+                dominantContext="analytical"
+                phase="analyzing"
+                showLabels={true}
+              />
             </div>
+          )}
+
+          <div className="research-container flex flex-col">
+            <ResearchArea steps={research} />
           </div>
         </div>
-      </main>
 
-      <footer className="w-full p-4 bg-white/50 backdrop-blur-sm border-t border-black/10">
         {isLoading && (
-          <div className="mb-2">
-            <ProgressBar value={progress / 100} />
+          <div className="progress-bar-container">
+            <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
           </div>
         )}
-        <div className="max-w-4xl mx-auto">
+
+        <div className="input-bar">
           <InputBar
             onQuerySubmit={handleSubmit}
             isLoading={isLoading}
           />
         </div>
-      </footer>
+      </main>
     </div>
   )
 }

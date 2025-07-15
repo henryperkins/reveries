@@ -1,4 +1,4 @@
-import { ResearchStep, ResearchSource, Citation } from '../types';
+import { ResearchStep, ResearchSource } from '../types';
 
 export interface SessionInfo {
   title?: string;

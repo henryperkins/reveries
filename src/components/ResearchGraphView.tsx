@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ResearchGraphManager, getNodeColor, generateMermaidDiagram } from '../researchGraph';
+import { ResearchGraphManager, generateMermaidDiagram } from '../researchGraph';
 import { ChartBarIcon, ArrowDownTrayIcon, XMarkIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowsPointingOutIcon } from './icons';
 import { GraphLayoutEngine, getNodeStyle } from '../utils/graphLayout';
 import { formatDuration } from '../utils/exportUtils';
@@ -11,13 +11,7 @@ interface ResearchGraphViewProps {
 }
 
 export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManager, isOpen, onClose }) => {
-  // Early return if graphManager is somehow null (type system should prevent this)
-  if (!graphManager) {
-    console.error('ResearchGraphView requires a valid graphManager instance')
-    return null
-  }
-
-  const [stats, setStats] = useState(() => graphManager.getStatistics());
+  const [stats, setStats] = useState(() => graphManager?.getStatistics() || { nodes: 0, edges: 0, depth: 0 });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -27,6 +21,12 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
 
   const layoutEngine = useRef(new GraphLayoutEngine());
+
+  // Early return after hooks (this is safe)
+  if (!graphManager) {
+    console.error('ResearchGraphView requires a valid graphManager instance')
+    return null
+  }
 
   useEffect(() => {
     if (!isOpen) return;

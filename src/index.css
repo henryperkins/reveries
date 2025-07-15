@@ -11,6 +11,18 @@
     --color-surface: theme('colors.westworld.cream');
     --color-text: theme('colors.westworld.black');
     --color-text-secondary: theme('colors.westworld.darkbrown');
+
+    /* Define Westworld color variables for CSS usage */
+    --color-westworld-cream: #FAFAFA;
+    --color-westworld-beige: #F5E6D3;
+    --color-westworld-tan: #D2B48C;
+    --color-westworld-brown: #A0522D;
+    --color-westworld-darkbrown: #654321;
+    --color-westworld-black: #1A1A1A;
+    --color-westworld-gold: #D4AF37;
+    --color-westworld-rust: #8B4513;
+    --color-westworld-copper: #B87333;
+    --color-westworld-white: #FFFFFF;
 }
 
 @layer base {
@@ -131,10 +143,10 @@
 }
 
 .input-field {
-background-color: var(--color-surface);
-border: 2px solid rgba(210, 180, 140, 0.3);
-color: var(--color-text);
-font-size: 1rem;
+    background-color: var(--color-surface);
+    border: 2px solid rgba(210, 180, 140, 0.3);
+    color: var(--color-text);
+    font-size: 1rem;
 }
 
 .input-field::placeholder {
@@ -215,7 +227,7 @@ font-size: 1rem;
         }
     }
 
-    @keyframes pulseSoft {
+    @keyframes pulse-soft {
 
         0%,
         100% {
@@ -224,6 +236,20 @@ font-size: 1rem;
 
         50% {
             opacity: 0.8;
+        }
+    }
+
+    @keyframes glow {
+        0% {
+            box-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+        }
+
+        50% {
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.8), 0 0 30px rgba(212, 175, 55, 0.6);
+        }
+
+        100% {
+            box-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
         }
     }
 
@@ -264,15 +290,7 @@ font-size: 1rem;
     }
 }
 
-/* Remove custom font face - use system fonts unless font files are provided */
-.font-westworld {
-    font-family: 'Georgia', 'Times New Roman', serif;
-    letter-spacing: 0.025em;
-}
-
-.font-westworld-mono {
-    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
-}
+/* Remove duplicate color utility classes since Tailwind generates them */
 
 /* Utility classes for Westworld colors */
 .bg-westworld-cream {
