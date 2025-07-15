@@ -83,94 +83,134 @@ export class AzureOpenAIService {
     temperature: number = 0.7,
     maxTokens: number = 32000
   ): Promise<AzureOpenAIResponse> {
-    return withRetry(async () => {
-      const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
+    console.log('generateResponse called with:', { prompt: prompt.substring(0, 100), effort, useReasoningEffort });
+    try {
+      return await withRetry(async () => {
+        const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
 
-      const requestBody: any = {
-        messages: [
-          {
-            role: "system",
-            content: "You are a helpful AI research assistant. Provide comprehensive, accurate responses with appropriate detail."
+        const requestBody: any = {
+          messages: [
+            {
+              role: "system",
+              content: "You are a helpful AI research assistant. Provide comprehensive, accurate responses with appropriate detail."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          // Use max_completion_tokens for o3 models
+          max_completion_tokens: maxTokens,
+          response_format: { type: "text" }
+        };
+
+        // Only add temperature for non-o3 models
+        if (!this.config.deploymentName.includes('o3')) {
+          requestBody.temperature = temperature;
+        }
+
+        // Add reasoning effort for o3 models
+        if (useReasoningEffort && this.config.deploymentName.includes('o3')) {
+          requestBody.reasoning_effort = this.mapEffortToReasoning(effort);
+        }
+
+        console.log('Making Azure OpenAI request to:', url);
+        console.log('Request body:', requestBody);
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': this.config.apiKey
           },
-          {
-            role: "user",
-            content: prompt
+          body: JSON.stringify(requestBody)
+        });
+        
+        console.log('Azure OpenAI response status:', response.status);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+
+          // Enhanced error handling for o3-specific errors
+          if (response.status === 400 && errorData.error?.code === 'invalid_api_version') {
+            throw new APIError(
+              'Azure OpenAI API version not supported. Please use 2025-04-01-preview or later for o3 models.',
+              'VERSION_ERROR',
+              false,
+              response.status
+            );
           }
-        ],
-        // Use max_completion_tokens for o3 models
-        max_completion_tokens: maxTokens,
-        response_format: { type: "text" }
-      };
 
-      // Only add temperature for non-o3 models
-      if (!this.config.deploymentName.includes('o3')) {
-        requestBody.temperature = temperature;
-      }
+          // Extract retry-after header for rate limits
+          let retryAfter: number | undefined;
+          if (response.status === 429) {
+            const retryAfterHeader = response.headers.get('retry-after');
+            if (retryAfterHeader) {
+              retryAfter = parseInt(retryAfterHeader, 10);
+              console.log(`Rate limit hit. Retry after ${retryAfter} seconds`);
+            }
+          }
 
-      // Add reasoning effort for o3 models
-      if (useReasoningEffort && this.config.deploymentName.includes('o3')) {
-        requestBody.reasoning_effort = this.mapEffortToReasoning(effort);
-      }
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'api-key': this.config.apiKey
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-
-        // Enhanced error handling for o3-specific errors
-        if (response.status === 400 && errorData.error?.code === 'invalid_api_version') {
-          throw new APIError(
-            'Azure OpenAI API version not supported. Please use 2025-04-01-preview or later for o3 models.',
-            'VERSION_ERROR',
-            false,
+          const error = new APIError(
+            `Azure OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`,
+            response.status === 429 ? 'RATE_LIMIT' : 'API_ERROR',
+            response.status === 429 || response.status >= 500,
             response.status
+          );
+          
+          // Attach retry-after to error for smarter retry handling
+          if (retryAfter) {
+            (error as any).retryAfter = retryAfter;
+          }
+          
+          throw error;
+        }
+
+        const data = await response.json();
+        console.log('Azure OpenAI API response:', data);
+
+        if (!data.choices?.[0]?.message?.content) {
+          console.error('Empty or invalid response structure:', data);
+          throw new APIError(
+            'Empty response from Azure OpenAI API',
+            'EMPTY_RESPONSE',
+            true
           );
         }
 
-        throw new APIError(
-          `Azure OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`,
-          'API_ERROR',
-          response.status === 429 || response.status >= 500,
-          response.status
-        );
-      }
+        const result: AzureOpenAIResponse = {
+          text: data.choices[0].message.content,
+          reasoningEffort: requestBody.reasoning_effort
+        };
 
-      const data = await response.json();
+        // Extract reasoning content if available
+        if (data.choices[0].message.reasoning_content) {
+          result.reasoningContent = data.choices[0].message.reasoning_content;
+        }
 
-      if (!data.choices?.[0]?.message?.content) {
-        throw new APIError(
-          'Empty response from Azure OpenAI API',
-          'EMPTY_RESPONSE',
-          true
-        );
-      }
+        // Extract token usage for o3 models
+        if (data.usage?.completion_tokens_details?.reasoning_tokens) {
+          console.log(`O3 reasoning tokens used: ${data.usage.completion_tokens_details.reasoning_tokens}`);
+        }
 
-      const result: AzureOpenAIResponse = {
-        text: data.choices[0].message.content,
-        reasoningEffort: requestBody.reasoning_effort
-      };
-
-      // Extract reasoning content if available
-      if (data.choices[0].message.reasoning_content) {
-        result.reasoningContent = data.choices[0].message.reasoning_content;
-      }
-
-      // Extract token usage for o3 models
-      if (data.usage?.completion_tokens_details?.reasoning_tokens) {
-        console.log(`O3 reasoning tokens used: ${data.usage.completion_tokens_details.reasoning_tokens}`);
-      }
-
-      return result;
-    }, 3, (attempt, error) => {
+        return result;
+    }, {
+      maxRetries: 3,
+      initialDelay: 1000,
+      maxDelay: 30000,
+      backoffFactor: 2
+    }, (attempt, error) => {
       console.warn(`Azure OpenAI retry attempt ${attempt}:`, error.message);
     });
+    } catch (error) {
+      console.error('Error in generateResponse:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        code: error instanceof APIError ? error.code : undefined
+      });
+      throw error;
+    }
   }
 
   async generateText(prompt: string, effort: EffortType): Promise<{ text: string; sources?: Citation[] }> {
@@ -295,12 +335,30 @@ export class AzureOpenAIService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new APIError(
+        
+        // Extract retry-after header for rate limits
+        let retryAfter: number | undefined;
+        if (response.status === 429) {
+          const retryAfterHeader = response.headers.get('retry-after');
+          if (retryAfterHeader) {
+            retryAfter = parseInt(retryAfterHeader, 10);
+            console.log(`Rate limit hit. Retry after ${retryAfter} seconds`);
+          }
+        }
+        
+        const error = new APIError(
           `Azure OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`,
-          'API_ERROR',
+          response.status === 429 ? 'RATE_LIMIT' : 'API_ERROR',
           response.status === 429 || response.status >= 500,
           response.status
         );
+        
+        // Attach retry-after to error for smarter retry handling
+        if (retryAfter) {
+          (error as any).retryAfter = retryAfter;
+        }
+        
+        throw error;
       }
 
       let data = await response.json();
@@ -383,12 +441,29 @@ export class AzureOpenAIService {
       });
 
       if (!response.ok) {
-        throw new APIError(
-          `Azure OpenAI streaming error: ${response.status}`,
-          'STREAM_ERROR',
-          true,
+        const errorData = await response.json().catch(() => ({}));
+        
+        // Extract retry-after header for rate limits
+        let retryAfter: number | undefined;
+        if (response.status === 429) {
+          const retryAfterHeader = response.headers.get('retry-after');
+          if (retryAfterHeader) {
+            retryAfter = parseInt(retryAfterHeader, 10);
+          }
+        }
+        
+        const error = new APIError(
+          `Azure OpenAI streaming error: ${response.status} - ${errorData.error?.message || response.statusText}`,
+          response.status === 429 ? 'RATE_LIMIT' : 'STREAM_ERROR',
+          response.status === 429 || response.status >= 500,
           response.status
         );
+        
+        if (retryAfter) {
+          (error as any).retryAfter = retryAfter;
+        }
+        
+        throw error;
       }
 
       const reader = response.body?.getReader();

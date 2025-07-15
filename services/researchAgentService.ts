@@ -134,6 +134,10 @@ export class ResearchAgentService {
             model: GENAI_MODEL_FLASH,
             useSearch: true
           });
+          console.log('Gemini service result:', geminiResult);
+          if (!geminiResult || !geminiResult.text) {
+            throw new Error('Gemini service returned invalid response');
+          }
           return {
             text: geminiResult.text,
             sources: geminiResult.sources?.map(s => ({
@@ -156,8 +160,22 @@ export class ResearchAgentService {
             console.warn('Azure OpenAI not available, falling back to Gemini');
             return this.generateText(prompt, GENAI_MODEL_FLASH, effort);
           }
-          const azureService = AzureOpenAIService.getInstance();
+          console.log('Getting Azure OpenAI service instance...');
+          let azureService;
+          try {
+            azureService = AzureOpenAIService.getInstance();
+            console.log('Azure service instance created successfully');
+          } catch (serviceError) {
+            console.error('Error creating Azure service instance:', serviceError);
+            throw serviceError;
+          }
+          
+          console.log('Calling Azure OpenAI service...');
           const azureResult = await azureService.generateResponse(prompt, effort);
+          console.log('Azure OpenAI result:', azureResult);
+          if (!azureResult || !azureResult.text) {
+            throw new Error('Azure OpenAI service returned invalid response');
+          }
           return {
             text: azureResult.text,
             sources: azureResult.sources || []

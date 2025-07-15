@@ -23,12 +23,20 @@ export class RequestQueue {
    * Submit a promise-returning task to be executed under concurrency control.
    */
   static execute<T>(task: () => Promise<T>): Promise<T> {
+    console.log('RequestQueue.execute called');
     return new Promise<T>((resolve, reject) => {
       const runTask = () => {
+        console.log('RequestQueue running task');
         RequestQueue.activeCount++;
         task()
-          .then(result => resolve(result))
-          .catch(err => reject(err))
+          .then(result => {
+            console.log('RequestQueue task succeeded');
+            resolve(result);
+          })
+          .catch(err => {
+            console.log('RequestQueue task failed:', err);
+            reject(err);
+          })
           .finally(() => {
             RequestQueue.activeCount--;
             RequestQueue.dequeue();

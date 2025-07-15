@@ -84,8 +84,12 @@ export async function withRetry<T>(
 
   for (let attempt = 0; attempt < config.maxRetries; attempt++) {
     try {
-      return await RequestQueue.execute(fn);
+      console.log(`withRetry attempt ${attempt + 1}/${config.maxRetries}`);
+      const result = await RequestQueue.execute(fn);
+      console.log('withRetry success');
+      return result;
     } catch (error) {
+      console.log('withRetry error:', error);
       lastError = error instanceof Error ? error : new Error(String(error));
       ErrorBoundary.recordError(lastError);
 

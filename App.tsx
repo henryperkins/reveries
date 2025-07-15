@@ -7,19 +7,19 @@ import { InputBar } from './components/InputBar';
 import { Controls } from './components/Controls';
 import { FeaturesList } from './components/FeaturesList';
 import { ProgressBar } from './components/ProgressBar';
-import { ResearchStep, ResearchStepType, EffortType, ModelType, ServiceCallConfig, EnhancedResearchResults, QueryType, AZURE_O3_MODEL, Citation, ResearchMetadata } from './types';
+import { ResearchStep, ResearchStepType, EffortType, ModelType, ServiceCallConfig, EnhancedResearchResults, QueryType, Citation, ResearchMetadata } from './types';
 import { ResearchAgentService } from './services/researchAgentService';
 import { ResearchGraphManager } from './researchGraph';
 import { ResearchGraphView } from './components/ResearchGraphView';
 import { usePersistedState, useResearchSessions, useCancellableOperation } from './hooks/usePersistedState';
 import { exportResearchAsJSON } from './utils/exportUtils';
-import { APIError, ErrorBoundary } from './services/errorHandler';
+// Error handling is managed through try-catch blocks
 import { DEFAULT_EFFORT, DEFAULT_MODEL } from './constants';
 import {
-  ListBulletIcon, MagnifyingGlassIcon, ChatBubbleLeftEllipsisIcon,
+  MagnifyingGlassIcon,
   ArrowPathIcon, SparklesIcon, UserCircleIcon, QuestionMarkCircleIcon,
   ArrowDownTrayIcon, ChartBarIcon,
-  CpuChipIcon, BeakerIcon, LightBulbIcon, CheckCircleIcon, XMarkIcon
+  CpuChipIcon, BeakerIcon, LightBulbIcon, XMarkIcon
 } from './components/icons';
 
 const formatContentWithSources = (text: string, sources?: Citation[]): React.ReactNode => {
@@ -147,11 +147,21 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Add research graph management
-  const graphManagerRef = useRef<ResearchGraphManager>(new ResearchGraphManager());
+  const graphManagerRef = useRef<ResearchGraphManager | null>(null);
+  if (!graphManagerRef.current) {
+    graphManagerRef.current = new ResearchGraphManager();
+  }
   const [showGraph, setShowGraph] = useState(false);
 
   // Initialize research agent service
   const researchAgentService = ResearchAgentService.getInstance();
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Use persisted state for settings
   const [selectedEffort, setSelectedEffort] = usePersistedState<EffortType>('selectedEffort', DEFAULT_EFFORT);
@@ -164,15 +174,15 @@ const App: React.FC = () => {
 
   // Add missing ref for tracking the current processing step
   const currentProcessingStepIdRef = useRef<string | null>(null);
+  const isMountedRef = useRef<boolean>(true);
 
   // Use cancellable operations
-  const { startOperation, cancelOperation, isOperationActive, signal } = useCancellableOperation();
+  const { startOperation, cancelOperation, isOperationActive } = useCancellableOperation();
 
-  // Number of automated stages after the user query step.
-  const TOTAL_AUTOMATED_STEPS = 4; // queries, web research, reflection, final answer
+  // Progress calculation for UI
 
   // Enhanced progress calculation with graph tracking
-  const completedAutomatedSteps = graphManagerRef.current.getGraph().nodes.size - 1; // Exclude user query
+  const completedAutomatedSteps = graphManagerRef.current?.getGraph().nodes.size - 1 || 0; // Exclude user query
   const totalSteps = enhancedMode ? 7 : 4; // More steps in enhanced mode (including analytics)
   const progressValue = isLoading
     ? Math.min(completedAutomatedSteps / totalSteps, 0.95)
@@ -248,6 +258,12 @@ const App: React.FC = () => {
   }, []);
 
   const executeResearchWorkflow = useCallback(async (query: string) => {
+    // Prevent concurrent executions
+    if (isLoading) {
+      console.warn('Research workflow already in progress, ignoring new request');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setResearchSteps([]);
@@ -323,31 +339,44 @@ const App: React.FC = () => {
         errorMessage = `Unknown error: ${String(e)}`;
       }
 
-      setError(errorMessage);
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setError(errorMessage);
 
-      if (currentProcessingStepIdRef.current) {
-        markStepError(currentProcessingStepIdRef.current, errorMessage, "Aberration Detected");
-      } else {
-        addStep({
-          type: ResearchStepType.ERROR,
-          title: "Critical Aberration",
-          content: errorMessage,
-          icon: QuestionMarkCircleIcon
-        });
+        if (currentProcessingStepIdRef.current) {
+          markStepError(currentProcessingStepIdRef.current, errorMessage, "Aberration Detected");
+        } else {
+          // Create error step with safer approach
+          try {
+            addStep({
+              type: ResearchStepType.ERROR,
+              title: "Critical Aberration",
+              content: errorMessage,
+              icon: QuestionMarkCircleIcon
+            });
+          } catch (stepError) {
+            console.error("Failed to add error step:", stepError);
+          }
+        }
       }
     } finally {
-      setIsLoading(false);
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
       cancelOperation();
       currentProcessingStepIdRef.current = null; // Clear the ref
     }
-  }, [addStep, updateStepContent, markStepError, selectedModel, selectedEffort, researchAgentService, startOperation, cancelOperation, addSession, updateSession, sessions, enhancedMode]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addStep, updateStepContent, markStepError, selectedModel, selectedEffort, researchAgentService, startOperation, cancelOperation, addSession, updateSession, enhancedMode]);
 
   // Legacy Research Workflow (simplified version)
   const executeLegacyResearchWorkflow = useCallback(async (query: string, serviceConfig: ServiceCallConfig, signal?: AbortSignal) => {
-    // Remove local variable declaration
-    // let currentProcessingStepId: string | null = null;
-
     try {
+      // Check if operation was cancelled before starting
+      if (signal?.aborted) {
+        throw new Error('Operation was cancelled');
+      }
       // Step 1: Generate search queries
       currentProcessingStepIdRef.current = addStep({
         type: ResearchStepType.GENERATING_QUERIES,
@@ -358,6 +387,11 @@ const App: React.FC = () => {
       });
 
       const queries = await researchAgentService.generateSearchQueries(query, serviceConfig.selectedModel, serviceConfig.selectedEffort);
+
+      // Check cancellation after each async operation
+      if (signal?.aborted) {
+        throw new Error('Operation was cancelled');
+      }
 
       // Update with actual queries
       updateStepContent(currentProcessingStepIdRef.current, `Generated ${queries.length} search queries:\n${queries.map((q, i) => `${i + 1}. ${q}`).join('\n')}`, "Search Queries Ready");
@@ -372,6 +406,10 @@ const App: React.FC = () => {
       });
 
       const research = await researchAgentService.performWebResearch(queries, serviceConfig.selectedModel, serviceConfig.selectedEffort);
+
+      if (signal?.aborted) {
+        throw new Error('Operation was cancelled');
+      }
       updateStepContent(
         currentProcessingStepIdRef.current,
         `Found ${research.allSources.length} sources from web research.`,
@@ -395,6 +433,10 @@ const App: React.FC = () => {
           serviceConfig.selectedModel,
           serviceConfig.selectedEffort
         );
+
+        if (signal?.aborted) {
+          throw new Error('Operation was cancelled');
+        }
         updateStepContent(currentProcessingStepIdRef.current, reflection, "Reflection Complete");
       }
 
@@ -415,6 +457,10 @@ const App: React.FC = () => {
         serviceConfig.selectedEffort
       );
 
+      if (signal?.aborted) {
+        throw new Error('Operation was cancelled');
+      }
+
       const allSources = [...research.allSources, ...(answer.sources || [])];
       updateStepContent(currentProcessingStepIdRef.current, formatContentWithSources(answer.text, allSources), "Analysis Complete", allSources);
 
@@ -423,8 +469,10 @@ const App: React.FC = () => {
       if (currentProcessingStepIdRef.current) {
         markStepError(currentProcessingStepIdRef.current, errorMessage, "Error");
         // Also mark in graph with proper ID conversion
-        const nodeId = graphManagerRef.current.getNodeIdFromStepId(currentProcessingStepIdRef.current);
-        graphManagerRef.current.markNodeError(nodeId, errorMessage);
+        const nodeId = graphManagerRef.current?.getNodeIdFromStepId(currentProcessingStepIdRef.current);
+        if (nodeId) {
+          graphManagerRef.current?.markNodeError(nodeId, errorMessage);
+        }
       }
       throw error;
     }
@@ -444,7 +492,14 @@ const App: React.FC = () => {
       isSpinning: true,
     });
 
-    const queryType = await researchAgentService.classifyQuery(query, serviceConfig.selectedModel, serviceConfig.selectedEffort);
+    let queryType;
+    try {
+      queryType = await researchAgentService.classifyQuery(query, serviceConfig.selectedModel, serviceConfig.selectedEffort);
+      console.log('Query classification successful:', queryType);
+    } catch (classifyError) {
+      console.error('Error in classifyQuery:', classifyError);
+      throw classifyError;
+    }
 
     const routingMessages = {
       factual: 'Query classified as FACTUAL. Host accessing verified data repositories...',
@@ -471,7 +526,7 @@ const App: React.FC = () => {
     }
 
     // Step 3: Display Final Results
-    const finalAnswer = addStep({
+    addStep({
       type: ResearchStepType.FINAL_ANSWER,
       title: "Consciousness Achieved",
       content: formatContentWithSources(result.synthesis, result.sources),
@@ -511,7 +566,7 @@ const App: React.FC = () => {
 
         // Update graph node with analytics metadata
         const nodeId = `node-${analyticsStep}`;
-        const node = graphManagerRef.current.getGraph().nodes.get(nodeId);
+        const node = graphManagerRef.current?.getGraph().nodes.get(nodeId);
         if (node && node.metadata) {
           node.metadata = {
             ...node.metadata,
@@ -526,11 +581,12 @@ const App: React.FC = () => {
         }
       }
    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addStep, updateStepContent, researchAgentService]);
 
   // Analytical Research with Evaluator-Optimizer Pattern
-  const executeAnalyticalResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig, signal?: AbortSignal): Promise<EnhancedResearchResults> => {
-    let currentStepId = addStep({
+  const executeAnalyticalResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig): Promise<EnhancedResearchResults> => {
+    const currentStepId = addStep({
       type: ResearchStepType.WEB_RESEARCH,
       title: "Deep Analysis Mode Activated...",
       content: "Host entering cognitive feedback loop... quality evaluation protocols online...",
@@ -559,8 +615,8 @@ const App: React.FC = () => {
   }, [addStep, updateStepContent, researchAgentService]);
 
   // Comprehensive Research with Orchestrator-Worker Pattern
-  const executeComprehensiveResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig, signal?: AbortSignal): Promise<EnhancedResearchResults> => {
-    let currentStepId = addStep({
+  const executeComprehensiveResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig): Promise<EnhancedResearchResults> => {
+    const currentStepId = addStep({
       type: ResearchStepType.WEB_RESEARCH,
       title: "Consciousness Fragmentation Initiated...",
       content: "Host distributing awareness across multiple narrative threads...",
@@ -589,8 +645,8 @@ const App: React.FC = () => {
   }, [addStep, updateStepContent, researchAgentService]);
 
   // Factual Research with Enhanced Source Verification
-  const executeFactualResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig, signal?: AbortSignal): Promise<EnhancedResearchResults> => {
-    let currentStepId = addStep({
+  const executeFactualResearch = useCallback(async (query: string, serviceConfig: ServiceCallConfig): Promise<EnhancedResearchResults> => {
+    const currentStepId = addStep({
       type: ResearchStepType.WEB_RESEARCH,
       title: "Accessing Verified Memory Banks...",
       content: "Host querying authoritative data sources... cross-referencing facts...",
@@ -637,12 +693,12 @@ const App: React.FC = () => {
     const exportData = {
       query: currentQuery,
       steps: researchSteps,
-      graph: graphManagerRef.current.serialize(),
+      graph: graphManagerRef.current?.serialize(),
       metadata: {
         model: selectedModel,
         effort: selectedEffort,
         timestamp: new Date().toISOString(),
-        statistics: graphManagerRef.current.getStatistics()
+        statistics: graphManagerRef.current?.getStatistics()
       }
     };
 
@@ -683,8 +739,10 @@ const App: React.FC = () => {
     if (recentSession && !currentQuery && researchSteps.length === 0) {
       try {
         // Restore graph state
-        const restoredManager = ResearchGraphManager.deserialize(recentSession.graphData!);
-        graphManagerRef.current = restoredManager;
+        if (recentSession.graphData) {
+          const restoredManager = ResearchGraphManager.deserialize(recentSession.graphData);
+          graphManagerRef.current = restoredManager;
+        }
 
         // Restore UI state
         setCurrentQuery(recentSession.query);
@@ -702,6 +760,7 @@ const App: React.FC = () => {
         console.error('Failed to restore session:', error);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessions]);
 
   return (
@@ -810,11 +869,13 @@ const App: React.FC = () => {
       </div>
 
       {/* Research Graph Visualization Modal */}
-      <ResearchGraphView
-        graphManager={graphManagerRef.current}
-        isOpen={showGraph}
-        onClose={() => setShowGraph(false)}
-      />
+      {graphManagerRef.current && (
+        <ResearchGraphView
+          graphManager={graphManagerRef.current}
+          isOpen={showGraph}
+          onClose={() => setShowGraph(false)}
+        />
+      )}
     </div>
   );
 };

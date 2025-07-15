@@ -1,4 +1,4 @@
-import { ResearchStep, ResearchStepType, ModelType, EffortType, Citation, ExportedResearchData, GENAI_MODEL_FLASH, ResearchMetadata, EdgeType } from './types';
+import { ResearchStep, ResearchStepType, ModelType, EffortType, Citation, ExportedResearchData, GENAI_MODEL_FLASH, ResearchMetadata } from './types';
 
 export interface GraphNode {
     id: string;
@@ -79,6 +79,9 @@ export class ResearchGraphManager {
         this.graph.nodes.set(nodeId, newNode);
         this.graph.currentPath.push(nodeId);
 
+        // 🔑 start timing immediately
+        this.nodeTimestamps.set(nodeId, timestamp);
+
         if (parentId) {
             this.addEdge(parentId, nodeId, step.type === ResearchStepType.ERROR ? 'error' : 'sequential');
             const parentNode = this.graph.nodes.get(parentId);
@@ -117,10 +120,8 @@ export class ResearchGraphManager {
     // Public method to update node duration
     updateNodeDuration(nodeId: string): void {
         const node = this.graph.nodes.get(nodeId);
-        const startTime = this.nodeTimestamps.get(nodeId);
-        if (node && startTime) {
-            node.duration = Date.now() - startTime;
-        }
+        const startedAt = this.getNodeTimestamp(nodeId);
+        if (node && startedAt) node.duration = Date.now() - startedAt;
     }
 
     // Public method to update node metadata
@@ -328,7 +329,7 @@ export class ResearchGraphManager {
                 id: node.id,
                 type: node.type,
                 title: node.title,
-                content: node.title,
+                content: (node as any).content ?? node.title,
                 timestamp: node.timestamp,
                 duration: node.metadata?.processingTime,
                 sources: sourcesByStep[node.id] || [],
@@ -341,7 +342,7 @@ export class ResearchGraphManager {
                         id: node.stepId,
                         type: node.type,
                         title: node.title,
-                        content: node.title,
+                        content: (node as any).content ?? node.title,
                         icon: () => null,
                         timestamp: node.timestamp,
                         sources: sourcesByStep[node.id] || []
