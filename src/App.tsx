@@ -4,15 +4,16 @@ import { ResearchGraphManager } from '@/researchGraph'
 import { Header, Controls, InputBar, ResearchArea, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar } from '@/components'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
-import { GENAI_MODEL_FLASH, ResearchStep, ResearchStepType, EffortType, HostParadigm, ParadigmProbabilities } from '@/types'
+import { ResearchStep, ResearchStepType, EffortType, HostParadigm, ParadigmProbabilities, ModelType } from '@/types'
 import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
+import { DEFAULT_MODEL } from '@/constants'
 import '@/App.css'
 
 const App: React.FC = () => {
   const [research, setResearch] = usePersistedState<ResearchStep[]>('reveries_research', [])
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [currentModel, setCurrentModel] = useState(GENAI_MODEL_FLASH)
+  const [currentModel, setCurrentModel] = useState<ModelType>(DEFAULT_MODEL)
   const [showGraph, setShowGraph] = useState(false)
   const [enhancedMode, setEnhancedMode] = useState(false)
   const [effort, setEffort] = useState<EffortType>(EffortType.LOW)
@@ -53,7 +54,7 @@ const App: React.FC = () => {
       }, 200)
 
       // Process with research agent
-      const result = await researchAgent.generateText(input, currentModel as typeof GENAI_MODEL_FLASH, effort)
+      const result = await researchAgent.generateText(input, currentModel, effort)
 
       clearInterval(progressInterval)
       setProgress(100)
@@ -74,7 +75,7 @@ const App: React.FC = () => {
 
       // Update node metadata with processing info
       graphManager.updateNodeMetadata(rootNode.id, {
-        model: currentModel as typeof GENAI_MODEL_FLASH,
+        model: currentModel,
         effort: effort,
         sourcesCount: result.sources?.length || 0
       })
@@ -155,7 +156,7 @@ const App: React.FC = () => {
         <Controls
           selectedEffort={effort}
           onEffortChange={setEffort}
-          selectedModel={currentModel as typeof GENAI_MODEL_FLASH}
+          selectedModel={currentModel}
           onModelChange={setCurrentModel}
           onNewSearch={handleClear}
           onExport={research.length > 0 ? handleExport : undefined}
@@ -166,9 +167,7 @@ const App: React.FC = () => {
         />
 
         {error && (
-          <div className="error-display">
-            <ErrorDisplay error={error.message} onDismiss={clearError} />
-          </div>
+          <ErrorDisplay error={error.message} onDismiss={clearError} />
         )}
 
         <ResearchGraphView graphManager={graphManager} isOpen={showGraph} onClose={handleToggleGraph} />

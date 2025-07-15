@@ -37,7 +37,7 @@ main {
     @apply fixed bottom-0 left-0 right-0 z-30;
     @apply bg-westworld-cream/95 backdrop-blur-sm;
     @apply border-t border-westworld-tan/30 p-4;
-    @apply shadow-[0_-5px_20px_rgba(0, 0, 0, 0.1)];
+    @apply shadow-[0_-5px_20px_rgba(0,0,0,0.1)];
 }
 
 /* Fix component visibility and z-index stacking */
@@ -109,9 +109,7 @@ button:active:not(:disabled) {
 
 /* Error display styling */
 .error-display {
-    @apply animate-slideUp;
-    @apply bg-westworld-rust/10 border border-westworld-rust;
-    @apply rounded-lg p-4 mb-4 text-westworld-rust;
+    @apply animate-slideUp mb-4;
 }
 
 /* Responsive adjustments */
@@ -132,49 +130,6 @@ button:active:not(:disabled) {
 
 /* Print styles */
 @media print {
-
-    .input-bar,
-    .progress-bar-container,
-    button {
-        display: none !important;
-    }
-
-    main {
-        padding-bottom: 0;
-    }
-
-    .research-container {
-        box-shadow: none;
-        border: 1px solid #ddd;
-    }
-}
-}
-
-padding: 1rem;
-margin-bottom: 1rem;
-color: var(--color-westworld-rust);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    main {
-        padding-bottom: 140px;
-        /* More space on mobile */
-    }
-
-    .research-container {
-        padding: 1rem;
-    }
-
-    .modal-content {
-        max-width: 95vw;
-        max-height: 95vh;
-    }
-}
-
-/* Print styles */
-@media print {
-
     .input-bar,
     .progress-bar-container,
     button {

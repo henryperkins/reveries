@@ -458,7 +458,7 @@ export class AzureOpenAIService {
         requestBody.reasoning_effort = this.mapEffortToReasoning(effort);
       }
 
-      let response = await fetch(url, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -495,7 +495,7 @@ export class AzureOpenAIService {
         throw error;
       }
 
-      let data = await response.json();
+      const data = await response.json();
       const assistantMessage = data.choices?.[0]?.message;
 
       if (assistantMessage) {

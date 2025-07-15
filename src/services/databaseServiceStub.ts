@@ -17,7 +17,7 @@ export class DatabaseService {
 
   private constructor() {
     if (typeof window !== 'undefined') {
-      // eslint-disable-next-line no-console
+
       console.info('Using DatabaseService stub (browser mode)');
     }
   }
