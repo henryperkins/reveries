@@ -1,0 +1,16 @@
+import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import { ResearchGraphManager, ResearchStep, ResearchStepType, generateMermaidDiagram } from '@/researchGraph'
+import { ResearchAgentService } from '@/services/researchAgentService'
+import { ContextEngineeringService } from '@/services/contextEngineeringService'
+import { Header } from '@/components/Header'
+import { ResearchInput } from '@/components/ResearchInput'
+import { ResearchSteps } from '@/components/ResearchSteps'
+import { ExportOptions } from '@/components/ExportOptions'
+import { ModelSelector } from '@/components/ModelSelector'
+import { usePersistedState } from '@/hooks/usePersistedState'
+import { useErrorHandling } from '@/hooks/useErrorHandling'
+import { ErrorDisplay } from '@/components/ErrorDisplay'
+import { GENAI_MODEL_FLASH } from '@/types'
+import '@/App.css'
+
+// ...rest of the existing App.tsx code...

@@ -30,3 +30,13 @@ dist-ssr
 *.sln
 *.sw?
 actions-runner/
+
+# Build artifacts
+dist/
+vite.log
+*.tar.gz
+
+# GitHub Actions runner
+actions-runner/
+_diag/
+_work/

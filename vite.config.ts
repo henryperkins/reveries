@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     resolve: {
       alias: {
+        '@': path.resolve(__dirname, './src'),
         // Use stub for browser builds
         './azureOpenAIService': mode === 'production'
           ? path.resolve(__dirname, './services/azureOpenAIStub.ts')
