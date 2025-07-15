@@ -1,4 +1,5 @@
 import { HostParadigm, PyramidLayer, ResearchPhase } from '../types';
+import type { ContextLayer } from '../types';
 import { DEFAULT_CONTEXT_WINDOW_METRICS } from '../constants';
 
 export class ContextEngineeringService {
@@ -128,6 +129,13 @@ export class ContextEngineeringService {
   }
 
   /**
+   * Quick helper to check if a given layer is first for a paradigm
+   */
+  isFirstLayer(paradigm: HostParadigm, layer: ContextLayer): boolean {
+    return this.getLayerSequence(paradigm)[0] === layer;
+  }
+
+  /**
    * Get description for host paradigm
    */
   getHostParadigmDescription(paradigm: HostParadigm): string {
@@ -138,6 +146,37 @@ export class ContextEngineeringService {
       maeve: 'Strategic planning and competitive edge'
     };
     return descriptions[paradigm] || '';
+  }
+
+  /**
+   * Return preferred ordering of context-manipulation layers for a paradigm.
+   * This allows callers to pipeline Write / Select / Compress / Isolate steps
+   * in a host-specific way that matches the design in the Four Hosts
+   * infographics.
+   */
+  getLayerSequence(paradigm: HostParadigm): ContextLayer[] {
+    const sequences: Record<HostParadigm, ContextLayer[]> = {
+      // Dolores focuses on decisive action – write initial reveries, then
+      // select supporting context, compress feedback loops, finally isolate
+      // urgent interventions.
+      dolores: ['write', 'select', 'compress', 'isolate'],
+
+      // Teddy values protection & collaboration – write perspectives, select
+      // tools, run tasks in isolation early, compress last.
+      teddy: ['write', 'select', 'isolate', 'compress'],
+
+      // Bernard is analytical – first gather (select) rigorous sources, write
+      // structured notes, compress summaries, optionally isolate heavy
+      // analysis.
+      bernard: ['select', 'write', 'compress', 'isolate'],
+
+      // Maeve seeks leverage – start by isolating high-impact sub-agents,
+      // then select leverage points, compress narratives, and write closing
+      // updates.
+      maeve: ['isolate', 'select', 'compress', 'write']
+    };
+
+    return sequences[paradigm];
   }
 
   /**

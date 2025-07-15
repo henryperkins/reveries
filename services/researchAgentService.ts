@@ -24,6 +24,7 @@ import {
 } from "../types";
 
 import { mapHostToHouse } from '../utils/houseMappings';
+import { ParadigmClassifier } from './paradigmClassifier';
 
 /**
  * Generic provider-agnostic response structure we use internally.
@@ -1519,38 +1520,16 @@ export class ResearchAgentService {
    */
   private async determineHostParadigm(
     query: string,
-    queryType: QueryType,
-    model: ModelType,
-    effort: EffortType
+    _queryType: QueryType,
+    _model: ModelType,
+    _effort: EffortType
   ): Promise<HostParadigm | null> {
-    const paradigmPrompt = `
-      Analyze this guest query and determine if it strongly aligns with one of these host paradigms:
-
-      1. "dolores" - Bold Action: Focuses on decisive implementation, awakening to change, breaking free from loops
-         Keywords: action, change, awaken, freedom, implement, decisive
-
-      2. "teddy" - Thorough Collection: Emphasizes systematic gathering, loyal persistence, protective consistency
-         Keywords: collect, gather, systematic, thorough, loyal, persistent
-
-      3. "bernard" - Deep Analysis: Pursues intellectual rigor, pattern recognition, architectural understanding
-         Keywords: analyze, understand, patterns, framework, architecture, rigor
-
-      4. "maeve" - Strategic Planning: Seeks competitive edge, narrative control, calculated improvements
-         Keywords: strategy, control, optimize, edge, calculate, improve
-
-      Query: "${query}"
-
-      If the query strongly matches one paradigm, return just the paradigm name.
-      If no strong match, return "none".
-    `;
-
-    const result = await this.generateText(paradigmPrompt, model, effort);
-    const paradigm = result.text.trim().toLowerCase();
-
-    if (['dolores', 'teddy', 'bernard', 'maeve'].includes(paradigm)) {
-      return paradigm as HostParadigm;
-    }
-    return null;
+    // Temporarily use ParadigmClassifier stub (sync). When an ML model is
+    // available this method can become fully async again.
+    const classifier = ParadigmClassifier.getInstance();
+    const probs = classifier.classify(query);
+    const dominant = classifier.dominant(probs);
+    return dominant.length > 0 ? dominant[0] : null;
   }
 
   /**

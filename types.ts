@@ -212,6 +212,17 @@ export interface AIModel {
   available?: boolean;
 }
 
+// Context manipulation layers (Write/Select/Compress/Isolate)
+export type ContextLayer = 'write' | 'select' | 'compress' | 'isolate';
+
+// Probability distribution over the four research paradigms
+export interface ParadigmProbabilities {
+  dolores: number;
+  teddy: number;
+  bernard: number;
+  maeve: number;
+}
+
 export interface ResearchAgentConfig {
   selectedModel: ModelType;
   fallbackModels?: ModelType[];
