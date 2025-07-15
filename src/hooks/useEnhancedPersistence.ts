@@ -22,7 +22,7 @@ export function useEnhancedPersistence(sessionId: string) {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        await databaseService.getRecentSessions(1);
+        await databaseService.getRecentSessions(sessionId, 1);
         setPersistenceState(prev => ({ ...prev, isConnected: true }));
       } catch (error) {
         console.warn('Database not available, using localStorage fallback');

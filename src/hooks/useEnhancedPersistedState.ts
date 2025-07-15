@@ -153,7 +153,20 @@ export function useResearchSessions() {
 
         // Add sources if available
         if (step.sources && step.sources.length > 0) {
-          await databaseService.addResearchSources(session.id, step.id, step.sources);
+          // Convert Citations to ResearchSources ensuring all required fields
+          const researchSources = step.sources.map(source => ({
+            id: crypto.randomUUID(),
+            name: source.name || 'Untitled Source',
+            url: source.url,
+            snippet: source.snippet || '',
+            title: source.title || '',
+            authors: source.authors || [],
+            year: source.year || 0,
+            published: source.published || '',
+            accessed: source.accessed || new Date().toISOString(),
+            relevanceScore: source.relevanceScore || 0
+          }));
+          await databaseService.addResearchSources(session.id, step.id, researchSources);
         }
       }
 
