@@ -1,19 +1,21 @@
-// Core UI Components
-export { default as Header } from './Header'
-export { default as Controls } from './Controls'
-export { default as InputBar } from './InputBar'
-export { default as ResearchArea } from './ResearchArea'
-export { default as ResearchStep } from './ResearchStep'
-export { default as ProgressBar } from './ProgressBar'
-export { default as ResearchGraphView } from './ResearchGraphView'
-export { default as FunctionCallVisualizer } from './FunctionCallVisualizer'
+// Core UI Components (named exports)
+export { Header } from './Header'
+export { Controls } from './Controls'
+export { InputBar } from './InputBar'
+export { ResearchArea } from './ResearchArea'
+export { ResearchStepCard } from './ResearchStepCard'
+export { ProgressBar } from './ProgressBar'
+export { ResearchGraphView } from './ResearchGraphView'
+export { FunctionCallVisualizer } from './FunctionCallVisualizer'
 
-// Active UI Components
-export { default as SessionManager } from './SessionManager'
+// Individually implemented active UI Components
 export { default as ErrorDisplay } from './ErrorDisplay'
-export { default as ModelSelector } from './ModelSelector'
-export { default as ExportOptions } from './ExportOptions'
-export { default as ParadigmDashboard } from './ParadigmDashboard'
+
+// Future components (to be implemented)
+// export { SessionManager } from './SessionManager'
+// export { ModelSelector } from './ModelSelector'
+// export { ExportOptions } from './ExportOptions'
+// export { ParadigmDashboard } from './ParadigmDashboard'
 
 // Icons
 export * from './icons'
