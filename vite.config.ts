@@ -12,8 +12,8 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, './src'),
         // Use stub for browser builds
         './azureOpenAIService': mode === 'production'
-          ? path.resolve(__dirname, './services/azureOpenAIStub.ts')
-          : path.resolve(__dirname, './services/azureOpenAIService.ts'),
+          ? path.resolve(__dirname, './src/services/azureOpenAIStub.ts')
+          : path.resolve(__dirname, './src/services/azureOpenAIService.ts'),
       },
     },
     define: {
@@ -29,7 +29,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'ai-services': ['./services/geminiService', './services/grokService', './services/azureOpenAIService'],
+            'ai-services': ['./src/services/geminiService', './src/services/grokService', './src/services/azureOpenAIService'],
           },
         },
       },

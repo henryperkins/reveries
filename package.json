@@ -9,11 +9,13 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "preview": "vite preview",
-    "clean:duplicates": "rm -rf components/App.tsx src/components/App.tsx components/hooks/usePersistedState.ts"
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist node_modules/.vite",
+    "clean:all": "npm run clean && rm -rf node_modules package-lock.json"
   },
   "dependencies": {
     "@google/genai": "^1.9.0",
-    "@google/generative-ai": "^0.24.1",
+    "@google/generative-ai": "0.23.0",
     "@tailwindcss/vite": "^4.1.11",
     "eslint": "^9.31.0",
     "node-fetch": "^3.3.2",

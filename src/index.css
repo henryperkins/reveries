@@ -1,441 +1,108 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-  /* Simplified color palette with semantic naming */
-  --color-background: #f8f6f1;
-  /* cream */
-  --color-surface: #e8e0d5;
-  /* beige */
-  --color-border: #c8b8a8;
-  /* tan */
-  --color-text-primary: #1a1a1a;
-  /* black */
-  --color-text-secondary: #5a4a3a;
-  /* dark brown */
-  --color-text-muted: #8b7355;
-  /* brown */
-  --color-accent: #d4a574;
-  /* gold */
-  --color-accent-dark: #a0522d;
-  /* rust */
-
-  /* Map to existing westworld colors for compatibility */
-  --color-westworld-cream: var(--color-background);
-  --color-westworld-beige: var(--color-surface);
-  --color-westworld-tan: var(--color-border);
-  --color-westworld-brown: var(--color-text-muted);
-  --color-westworld-darkbrown: var(--color-text-secondary);
-  --color-westworld-black: var(--color-text-primary);
-  --color-westworld-gold: var(--color-accent);
-  --color-westworld-rust: var(--color-accent-dark);
-
-  /* Enhanced text effects */
-  --text-shadow-subtle: 0 1px 2px rgba(26, 26, 26, 0.1);
-  --text-shadow-glow: 0 0 20px rgba(212, 165, 116, 0.4);
-  --text-shadow-dramatic: 2px 2px 4px rgba(26, 26, 26, 0.3);
-
-  /* Interactive transitions */
-  --transition-fast: 150ms ease;
-  --transition-base: 200ms ease;
-  --transition-slow: 300ms ease;
-
-  --font-family-serif: Georgia, serif;
-  --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-family-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
-
-  --spacing-0: 0px;
-  --spacing-1: 0.25rem;
-  --spacing-2: 0.5rem;
-  --spacing-3: 0.75rem;
-  --spacing-4: 1rem;
-  --spacing-5: 1.25rem;
-  --spacing-6: 1.5rem;
-  --spacing-8: 2rem;
-  --spacing-10: 2.5rem;
-  --spacing-12: 3rem;
-
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
-  --radius-full: 9999px;
-
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 1.875rem;
-  --font-size-4xl: 2.25rem;
-  --font-size-5xl: 3rem;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  --shadow-glow: 0 0 30px rgba(212, 165, 116, 0.3);
-
-  /* Z-index scale */
-  --z-base: 0;
-  --z-dropdown: 1000;
-  --z-sticky: 1020;
-  --z-fixed: 1030;
-  --z-modal-backdrop: 1040;
-  --z-modal: 1050;
-  --z-popover: 1060;
-  --z-tooltip: 1070;
-}
-
-/* Global styles */
-* {
-  box-sizing: border-box;
-}
-
-body {
-  font-family: var(--font-family-sans);
-  color: var(--color-text-primary);
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Typography utilities */
-.font-serif {
-  font-family: var(--font-family-serif);
-}
-
-.font-sans {
-  font-family: var(--font-family-sans);
-}
-
-.font-mono {
-  font-family: var(--font-family-mono);
-}
-
-/* Animation utilities */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(-100%);
-  }
-
-  to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes pulse-soft {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.7;
-  }
-}
-
-@keyframes glow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(212, 165, 116, 0.3);
-  }
-
-  50% {
-    box-shadow: 0 0 40px rgba(212, 165, 116, 0.5);
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.5s ease-out;
-}
-
-.animate-slideIn {
-  animation: slideIn 0.3s ease-out;
-}
-
-.animate-pulse-soft {
-  animation: pulse-soft 2s ease-in-out infinite;
-}
-
-.animate-glow {
-  animation: glow 3s ease-in-out infinite;
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--color-surface);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-accent-dark);
-}
-
-/* Focus styles */
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-/* Selection */
-::selection {
-  background: var(--color-accent);
-  color: var(--color-background);
+:root {
+    --westworld-gold: #D4AF37;
+    --westworld-rust: #8B4513;
+    --westworld-copper: #B87333;
+    --westworld-beige: #F5E6D3;
+    --westworld-tan: #D2B48C;
+    --westworld-black: #1A1A1A;
+    --westworld-white: #FAFAFA;
 }
 
 @layer base {
+    body {
+        @apply text-westworld-black bg-westworld-beige antialiased;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
 
-  /* Simplified base styles */
-  body {
-    @apply bg-background text-text-primary;
-    font-family: system-ui, -apple-system, sans-serif;
-    line-height: 1.6;
-  }
+    /* Improve focus states for better accessibility */
+    *:focus {
+        @apply outline-none ring-2 ring-westworld-gold ring-offset-2 ring-offset-white;
+    }
 
-  /* Clean typography hierarchy */
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-serif text-text-primary;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-  }
+    /* Smooth scrolling */
+    html {
+        scroll-behavior: smooth;
+    }
 
-  h1 {
-    @apply text-4xl font-bold mb-6;
-  }
-
-  h2 {
-    @apply text-3xl font-semibold mb-4;
-  }
-
-  h3 {
-    @apply text-2xl font-medium mb-3;
-  }
-
-  /* Enhanced code blocks */
-  pre {
-    @apply bg-text-primary text-background p-4 rounded-lg overflow-x-auto;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-    transition: box-shadow var(--transition-base);
-  }
-
-  pre:hover {
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2);
-  }
-
-  code {
-    @apply bg-surface text-text-secondary px-1.5 py-0.5 rounded text-sm;
-    font-family: 'Courier New', monospace;
-  }
-
-  /* Clean link styles */
-  a {
-    @apply text-accent-dark underline-offset-2 hover:text-accent transition-colors;
-    transition-duration: var(--transition-fast);
-  }
-
-  /* Improved prose styles */
-  .prose {
-    @apply max-w-none;
-  }
-
-  .prose p {
-    @apply mb-4 text-text-secondary leading-relaxed;
-  }
-
-  .prose ul,
-  .prose ol {
-    @apply mb-4 ml-6 space-y-2;
-  }
-
-  .prose li {
-    @apply text-text-secondary;
-  }
-
-  .prose blockquote {
-    @apply border-l-4 border-accent pl-4 py-2 mb-4 italic text-text-muted;
-    background: linear-gradient(to right, var(--color-surface), transparent);
-  }
-
-  /* Improved focus states */
-  :focus-visible {
-    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-background;
-  }
-
-  /* Smooth scrolling with scroll margin */
-  * {
-    scroll-margin-top: 2rem;
-  }
-
-  /* Selection colors */
-  ::selection {
-    @apply bg-accent/30 text-text-primary;
-  }
+    /* Better text selection */
+    ::selection {
+        @apply bg-westworld-gold/30 text-westworld-rust;
+    }
 }
 
 @layer components {
 
-  /* Interactive input styles */
-  .reverie-input {
-    @apply w-full bg-surface border-2 border-border rounded-lg px-4 py-3;
-    @apply text-text-primary placeholder-text-muted;
-    @apply transition-all duration-[var(--transition-base)];
-    @apply focus:border-accent focus:bg-background focus:shadow-md;
-    @apply hover:border-accent/50;
-  }
-
-  /* Enhanced button styles */
-  .reverie-button {
-    @apply inline-flex items-center justify-center gap-2;
-    @apply bg-accent text-text-primary px-6 py-3 rounded-lg font-medium;
-    @apply transition-all duration-[var(--transition-base)];
-    @apply hover:bg-accent-dark hover:shadow-lg hover:scale-[1.02];
-    @apply active:scale-[0.98] active:shadow-sm;
-    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
-  }
-
-  /* Card with hover effects */
-  .reverie-card {
-    @apply bg-surface rounded-lg p-6 shadow-sm;
-    @apply border border-border/20;
-    @apply transition-all duration-[var(--transition-slow)];
-    @apply hover:shadow-xl hover:border-accent/30 hover:translate-y-[-2px];
-  }
-
-  /* Research step cards with entrance animation */
-  .research-step-card {
-    @apply bg-surface rounded-lg p-6 shadow-sm;
-    @apply border border-border/20;
-    @apply transition-all duration-[var(--transition-slow)];
-    @apply hover:shadow-xl hover:border-accent/30 hover:translate-y-[-2px];
-    animation: slideIn var(--transition-slow) ease-out;
-  }
-
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
+    /* Enhanced button styles */
+    .btn-primary {
+        @apply px-4 py-2.5 bg-westworld-gold text-black rounded-lg font-medium hover:bg-westworld-copper hover:text-white transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 active:shadow-inner;
     }
 
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Westworld title with refined glow */
-  .westworld-title {
-    @apply text-text-primary;
-    text-shadow: var(--text-shadow-glow);
-    transition: text-shadow var(--transition-slow);
-  }
-
-  .westworld-title:hover {
-    text-shadow: 0 0 30px rgba(212, 165, 116, 0.6);
-  }
-
-  /* Simplified glow animation */
-  .animate-glow {
-    animation: glow 3s ease-in-out infinite;
-  }
-
-  @keyframes glow {
-
-    0%,
-    100% {
-      filter: brightness(1);
-      text-shadow: 0 0 20px rgba(212, 165, 116, 0.4);
+    .btn-secondary {
+        @apply px-4 py-2.5 bg-westworld-copper text-white rounded-lg font-medium hover:bg-westworld-rust transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 active:shadow-inner;
     }
 
-    50% {
-      filter: brightness(1.1);
-      text-shadow: 0 0 30px rgba(212, 165, 116, 0.7);
-    }
-  }
-
-  /* Loading states */
-  .loading-shimmer {
-    @apply relative overflow-hidden;
-  }
-
-  .loading-shimmer::after {
-    content: '';
-    @apply absolute inset-0;
-    background: linear-gradient(90deg,
-        transparent,
-        rgba(212, 165, 116, 0.2),
-        transparent);
-    animation: shimmer 2s infinite;
-  }
-
-  @keyframes shimmer {
-    0% {
-      transform: translateX(-100%);
+    /* Card component */
+    .card {
+        @apply bg-white/90 backdrop-blur-sm shadow-lg rounded-xl border border-westworld-tan/20 p-6 hover:shadow-xl transition-shadow duration-200;
     }
 
-    100% {
-      transform: translateX(100%);
+    /* Input styling */
+    .input-field {
+        @apply w-full px-4 py-3 bg-white/80 backdrop-blur-sm border border-westworld-tan/30 rounded-lg text-westworld-rust placeholder-westworld-rust/50 focus:border-westworld-gold focus:bg-white transition-all duration-200;
     }
-  }
+
+    /* Loading animation */
+    .animate-shimmer {
+        @apply animate-pulse bg-gradient-to-r from-westworld-tan/20 via-westworld-gold/20 to-westworld-tan/20;
+        background-size: 200% 100%;
+        animation: shimmer 2s ease-in-out infinite;
+    }
 }
 
-/* Custom scrollbar */
 @layer utilities {
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-accent) var(--color-surface);
-  }
 
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
+    /* Custom animations */
+    @keyframes shimmer {
+        0% {
+            background-position: -200% 0;
+        }
 
-  .scrollbar-thin::-webkit-scrollbar-track {
-    @apply bg-surface rounded-full;
-  }
+        100% {
+            background-position: 200% 0;
+        }
+    }
 
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-accent rounded-full;
-    @apply hover:bg-accent-dark;
-  }
+    /* Westworld-themed scrollbar */
+    .scrollbar-westworld::-webkit-scrollbar {
+        @apply w-2;
+    }
+
+    .scrollbar-westworld::-webkit-scrollbar-track {
+        @apply bg-westworld-tan/20 rounded-full;
+    }
+
+    .scrollbar-westworld::-webkit-scrollbar-thumb {
+        @apply bg-westworld-copper rounded-full hover:bg-westworld-rust;
+    }
 }
 
-/* Responsive touch targets */
-@media (pointer: coarse) {
+/* Custom font imports */
+@font-face {
+    font-family: 'Westworld';
+    src: url('/fonts/westworld.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
 
-  .reverie-button,
-  .reverie-input {
-    min-height: 44px;
-  }
+.font-westworld {
+    font-family: 'Westworld', 'Georgia', serif;
+}
+
+.font-westworld-mono {
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
 }
