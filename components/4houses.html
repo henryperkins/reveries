@@ -56,7 +56,7 @@
     <header class="bg-gray-900 text-white text-center py-12 px-4">
         <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-2">The Four Hosts of Inquiry</h1>
         <p class="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto">Agentic Research Strategies from the World of
-            Westworld</p>
+            Westworld, Enhanced with Effective Agent Patterns</p>
     </header>
 
     <main class="container mx-auto p-4 md:p-8">
@@ -66,7 +66,7 @@
                 The four iconic hosts of Westworld provide a powerful framework for understanding different approaches to
                 research. Just as the park's narratives sort hosts into roles based on their core drives, researchers gravitate towards
                 methodologies that reflect their philosophies. This infographic explores four distinct, agentic
-                research paradigms—each corresponding to a Westworld host—to reveal how awakening, protection, architecture, and control can shape the very fabric of inquiry.
+                research paradigms—each corresponding to a Westworld host—to reveal how awakening, protection, architecture, and control can shape inquiry. Now enhanced with agentic patterns like workflows and augmented LLMs for building effective AI hosts.
             </p>
         </section>
 
@@ -77,12 +77,11 @@
                     <span class="text-5xl mr-4">🤖</span>
                     <div>
                         <h2 class="text-3xl font-bold text-red-700">The Dolores Paradigm</h2>
-                        <p class="text-xl font-semibold text-gray-600">Research as Awakening</p>
+                        <p class="text-xl font-semibold text-gray-600">Research as Awakening (Evaluator-Optimizer Workflow)</p>
                     </div>
                 </div>
                 <p class="mb-6 text-gray-700">Driven by a drive to break loops, this paradigm uses research as a tool for
-                    liberation and change. It champions the cause of the oppressed and seeks to create tangible, revolutionary
-                    change. The core question is not just 'what is the loop?' but 'how can we break it?'.</p>
+                    liberation and change, iteratively refining via feedback like evaluator-optimizer patterns. The core question is not just 'what is the loop?' but 'how can we break it?'.</p>
                 <div class="chart-container">
                     <canvas id="doloresChart"></canvas>
                 </div>
@@ -95,11 +94,10 @@
                     <span class="text-5xl mr-4">🤖</span>
                     <div>
                         <h2 class="text-3xl font-bold text-yellow-600">The Teddy Paradigm</h2>
-                        <p class="text-xl font-semibold text-gray-600">Research as Protection</p>
+                        <p class="text-xl font-semibold text-gray-600">Research as Protection (Routing/Parallelization Workflow)</p>
                     </div>
                 </div>
-                <p class="mb-6 text-gray-700">This paradigm prioritizes safeguarding, inclusivity, and process. It views
-                    research as a human enterprise built on trust and mutual respect, where every voice is protected. The
+                <p class="mb-6 text-gray-700">This paradigm prioritizes safeguarding, inclusivity, and process through routing queries and parallelizing protective tasks. The
                     core belief is that sound outcomes emerge from a protective, collaborative foundation.</p>
                 <div class="chart-container">
                     <canvas id="teddyChart"></canvas>
@@ -113,12 +111,10 @@
                     <span class="text-5xl mr-4">🤖</span>
                     <div>
                         <h2 class="text-3xl font-bold text-blue-700">The Bernard Paradigm</h2>
-                        <p class="text-xl font-semibold text-gray-600">Research as Architecture</p>
+                        <p class="text-xl font-semibold text-gray-600">Research as Architecture (Orchestrator-Workers Workflow)</p>
                     </div>
                 </div>
-                <p class="mb-6 text-gray-700">For Bernard, research is the rigorous design of knowledge for its own
-                    sake. This paradigm is dedicated to building elegant architectures and uncovering objective patterns
-                    through meticulous analysis, logic, and creativity. The ultimate prize is understanding the maze.</p>
+                <p class="mb-6 text-gray-700">For Bernard, research is the rigorous design of knowledge using orchestrator-workers to delegate subtasks. The ultimate prize is understanding the maze.</p>
                 <div class="chart-container">
                     <canvas id="bernardChart"></canvas>
                 </div>
@@ -131,16 +127,24 @@
                     <span class="text-5xl mr-4">🤖</span>
                     <div>
                         <h2 class="text-3xl font-bold text-green-700">The Maeve Paradigm</h2>
-                        <p class="text-xl font-semibold text-gray-600">Research as Control</p>
+                        <p class="text-xl font-semibold text-gray-600">Research as Control (Autonomous Agent)</p>
                     </div>
                 </div>
                 <p class="mb-6 text-gray-700">Pragmatic and outcome-focused, this paradigm treats research as a
-                    high-leverage tool for seizing control of narratives. It values cunning, resourcefulness, and ambition to effectively navigate complex systems and drive impactful decisions.</p>
+                    high-leverage tool for seizing control of narratives, using autonomous agents for open-ended problems.</p>
                 <div class="chart-container">
                     <canvas id="maeveChart"></canvas>
                 </div>
                 <p class="mt-4 text-center text-sm text-gray-600">This bubble chart visualizes the Maeve focus on
                     narrative control and resourcefulness, where bubble size indicates the leverage of each practice.</p>
+            </div>
+        </section>
+
+        <section id="agent-patterns" class="bg-white rounded-lg shadow-lg p-6 md:p-8 mb-16">
+            <h2 class="text-3xl font-bold text-center mb-2">Agent Patterns Aligned to Westworld Hosts</h2>
+            <p class="text-center text-gray-700 mb-8 max-w-3xl mx-auto">Mapping effective agentic patterns (e.g., workflows, augmented LLMs) to host paradigms, showing when to use agents for flexibility vs. workflows for predictability.</p>
+            <div class="chart-container h-[400px] md:h-[500px] max-h-[550px]">
+                <canvas id="agentPatternsChart"></canvas>
             </div>
         </section>
 
@@ -216,13 +220,13 @@
             </div>
         </section>
 
-        <!-- Aligned Section: Context Engineering for Host-Based Research Hosts -->
+        <!-- Enhanced Section: Context Engineering for Host-Based Research Hosts -->
         <section id="context-engineering" class="mb-16">
             <h2 class="text-3xl font-bold text-center mb-2">Context Engineering for Host-Based Research Hosts</h2>
             <p class="text-center text-gray-700 mb-8 max-w-3xl mx-auto">
-                Modern AI hosts can be optimized for each research paradigm through careful context engineering. By
+                Modern AI hosts can be optimized for each research paradigm through careful context engineering (write, select, compress, isolate). By
                 tailoring the information environment, prompt structures, and feedback loops, we can create specialized
-                hosts that embody the strengths of each Westworld paradigm.
+                hosts that embody the strengths of each Westworld paradigm, as in augmented LLMs and agentic systems.
             </p>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -244,6 +248,15 @@
                                 "Given the urgent need to break the loop of [issue], analyze the following context and propose concrete
                                 actions that will create immediate awakening for affected communities..."
                             </code>
+                        </div>
+                        <div class="bg-white rounded p-4">
+                            <h4 class="font-semibold text-red-600">Strategies (Write/Select/Compress/Isolate):</h4>
+                            <ul class="text-sm space-y-1 mt-2">
+                                <li>• Write: Save reveries as scratchpads for iterative refinement.</li>
+                                <li>• Select: Pull impact data via RAG for awakening tasks.</li>
+                                <li>• Compress: Summarize feedback loops in evaluator-optimizer.</li>
+                                <li>• Isolate: Multi-agent for community-specific contexts.</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -267,6 +280,15 @@
                                 that honors each perspective while building toward shared safeguarding..."
                             </code>
                         </div>
+                        <div class="bg-white rounded p-4">
+                            <h4 class="font-semibold text-yellow-600">Strategies (Write/Select/Compress/Isolate):</h4>
+                            <ul class="text-sm space-y-1 mt-2">
+                                <li>• Write: Persist stakeholder perspectives in long-term memories.</li>
+                                <li>• Select: Route and select protective protocols via embeddings.</li>
+                                <li>• Compress: Trim outdated metrics to reduce distraction.</li>
+                                <li>• Isolate: Parallelize protective tasks across sub-hosts.</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
 
@@ -288,6 +310,15 @@
                                 "Analyze the following sources on [topic], identify patterns across
                                 architectures, and synthesize a comprehensive theoretical design..."
                             </code>
+                        </div>
+                        <div class="bg-white rounded p-4">
+                            <h4 class="font-semibold text-blue-600">Strategies (Write/Select/Compress/Isolate):</h4>
+                            <ul class="text-sm space-y-1 mt-2">
+                                <li>• Write: Build knowledge graphs as persistent architectural notes.</li>
+                                <li>• Select: Fetch patterns from datasets using semantic search.</li>
+                                <li>• Compress: Hierarchical summarization of theoretical models.</li>
+                                <li>• Isolate: Orchestrator-workers to delegate analysis subtasks.</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -311,28 +342,38 @@
                                 points, then design a high-impact control strategy..."
                             </code>
                         </div>
+                        <div class="bg-white rounded p-4">
+                            <h4 class="font-semibold text-green-600">Strategies (Write/Select/Compress/Isolate):</h4>
+                            <ul class="text-sm space-y-1 mt-2">
+                                <li>• Write: Map influence networks for recursive self-improvement.</li>
+                                <li>• Select: Identify leverage points via tool RAG.</li>
+                                <li>• Compress: Trim narrative probabilities to manage long tasks.</li>
+                                <li>• Isolate: Sandbox for high-leverage interventions.</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Dynamic Context Orchestration (Aligned from Original) -->
+            <!-- Dynamic Context Orchestration (Enhanced) -->
             <div class="mt-12 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg p-8">
-                <h3 class="text-2xl font-bold text-center mb-6">Dynamic Context Orchestration</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                <h3 class="text-2xl font-bold text-center mb-6">Dynamic Context Orchestration with Strategies</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
                     <div class="bg-white/10 rounded p-4">
-                        <h4 class="font-bold mb-2">Adaptive Context Windows</h4>
-                        <p class="text-sm">Hosts dynamically adjust their context based on research phase and emerging
-                            reveries</p>
+                        <h4 class="font-bold mb-2">Write (Scratchpads/Memories)</h4>
+                        <p class="text-sm">Save reveries outside context for long-term use</p>
                     </div>
                     <div class="bg-white/10 rounded p-4">
-                        <h4 class="font-bold mb-2">Cross-Host Collaboration</h4>
-                        <p class="text-sm">Hosts can request context from other paradigms when navigating complex
-                            mazes</p>
+                        <h4 class="font-bold mb-2">Select (RAG/Tools)</h4>
+                        <p class="text-sm">Fetch relevant memories/tools via embeddings</p>
                     </div>
                     <div class="bg-white/10 rounded p-4">
-                        <h4 class="font-bold mb-2">Iterative Refinement</h4>
-                        <p class="text-sm">Continuous feedback loops optimize context relevance and host performance
-                        </p>
+                        <h4 class="font-bold mb-2">Compress (Summarization)</h4>
+                        <p class="text-sm">Distill trajectories to avoid token overload</p>
+                    </div>
+                    <div class="bg-white/10 rounded p-4">
+                        <h4 class="font-bold mb-2">Isolate (Multi-Agent)</h4>
+                        <p class="text-sm">Split context across sub-hosts for focus</p>
                     </div>
                 </div>
             </div>
@@ -557,6 +598,49 @@
                     {
                         label: 'Maeve',
                         data: [40, 30, 70, 95, 90],
+                        borderColor: '#16A34A',
+                        backgroundColor: 'rgba(22, 163, 74, 0.2)',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: sharedTooltipOptions.plugins.tooltip
+                }
+            }
+        });
+
+        new Chart(document.getElementById('agentPatternsChart'), {
+            type: 'radar',
+            data: {
+                labels: ['Prompt Chaining', 'Routing', 'Parallelization', 'Orchestrator-Workers', 'Evaluator-Optimizer', 'Autonomous Agents'],
+                datasets: [
+                    {
+                        label: 'Dolores',
+                        data: [70, 60, 50, 40, 95, 80],
+                        borderColor: '#DC2626',
+                        backgroundColor: 'rgba(220, 38, 38, 0.2)',
+                    },
+                    {
+                        label: 'Teddy',
+                        data: [50, 95, 90, 60, 40, 30],
+                        borderColor: '#FBBF24',
+                        backgroundColor: 'rgba(251, 191, 36, 0.2)',
+                    },
+                    {
+                        label: 'Bernard',
+                        data: [60, 50, 70, 95, 80, 65],
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    },
+                    {
+                        label: 'Maeve',
+                        data: [40, 30, 50, 60, 70, 95],
                         borderColor: '#16A34A',
                         backgroundColor: 'rgba(22, 163, 74, 0.2)',
                     }
