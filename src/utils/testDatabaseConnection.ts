@@ -22,8 +22,10 @@ async function testDatabaseConnection() {
     const testSessionId = `test-${Date.now()}`;
     await databaseService.saveResearchSession(
       testSessionId,
-      'Test Session',
-      'Testing database connectivity'
+      {
+        title: 'Test Session',
+        description: 'Testing database connectivity'
+      }
     );
     console.log('✓ Write operation successful');
 

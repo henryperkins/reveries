@@ -140,10 +140,10 @@ const App: React.FC = () => {
     if (!isLoading) return null
     const base = progress / 100
     return {
-      gryffindor: Math.floor(base * 25 + Math.random() * 10),
-      hufflepuff: Math.floor(base * 20 + Math.random() * 10),
-      ravenclaw: Math.floor(base * 35 + Math.random() * 10),
-      slytherin: Math.floor(base * 20 + Math.random() * 10)
+      narrative: Math.floor(base * 25 + Math.random() * 10),
+      analytical: Math.floor(base * 35 + Math.random() * 10),
+      memory: Math.floor(base * 20 + Math.random() * 10),
+      adaptive: Math.floor(base * 20 + Math.random() * 10)
     }
   }, [isLoading, progress])
 
@@ -190,7 +190,7 @@ const App: React.FC = () => {
             <div className="animate-slide-up">
               <ContextDensityBar
                 densities={contextDensities}
-                dominantHouse="ravenclaw"
+                dominantContext="analytical"
                 phase="analyzing"
                 showLabels={true}
               />

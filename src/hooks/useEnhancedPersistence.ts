@@ -72,7 +72,7 @@ export function useEnhancedPersistence(sessionId: string) {
     // Try to save to database if connected
     if (persistenceState.isConnected) {
       try {
-        await databaseService.saveResearchStep(sessionId, step, parentId, embedding);
+        await databaseService.saveResearchStep(sessionId, step, parentId);
         setPersistenceState(prev => ({
           ...prev,
           isSyncing: false,
@@ -96,7 +96,7 @@ export function useEnhancedPersistence(sessionId: string) {
   const saveResearchGraph = useCallback(async (graphManager: ResearchGraphManager) => {
     const graphData = {
       nodes: Array.from(graphManager.getNodes().values()),
-      edges: Array.from(graphManager.getEdges().values()),
+      edges: [], // TODO: Add getEdges() method to ResearchGraphManager
       statistics: graphManager.getStatistics(),
     };
 
@@ -165,8 +165,7 @@ export function useEnhancedPersistence(sessionId: string) {
         if (localSession) {
           await databaseService.saveResearchSession(
             sessionId,
-            localSession.title,
-            localSession.description
+            localSession
           );
         }
 

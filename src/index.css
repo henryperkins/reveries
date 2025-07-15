@@ -116,7 +116,7 @@
     }
 
     .scrollbar-westworld::-webkit-scrollbar-thumb {
-        @apply bg-westworld-copper rounded-full border-2 border-transparent bg-clip-padding-box hover:bg-westworld-rust;
+        @apply bg-westworld-copper rounded-full border-2 border-transparent bg-clip-padding hover:bg-westworld-rust;
     }
 }
 
@@ -130,6 +130,7 @@
     font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
 }
 
+.input-field {
 background-color: var(--color-surface);
 border: 2px solid rgba(210, 180, 140, 0.3);
 color: var(--color-text);
@@ -177,7 +178,6 @@ font-size: 1rem;
 .modal-content {
     @apply bg-white rounded-xl shadow-2xl max-w-6xl max-h-[90vh] overflow-hidden;
     animation: slideUp 0.3s ease-out;
-}
 }
 
 @layer utilities {

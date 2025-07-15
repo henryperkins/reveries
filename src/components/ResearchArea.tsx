@@ -44,8 +44,6 @@ export const ResearchArea: React.FC<ResearchAreaProps> = ({ steps }) => {
           <ResearchStepCard
             key={step.id}
             step={step}
-            isLast={idx === steps.length - 1}
-            index={idx}
           />
         ))}
       </div>

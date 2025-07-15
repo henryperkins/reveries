@@ -73,7 +73,7 @@ export const SemanticSearch: React.FC<SemanticSearchProps> = ({
                   {step.query}
                 </div>
                 <div className="text-xs text-gray-600 mt-1 line-clamp-2">
-                  {step.metadata?.summary || step.content.substring(0, 100)}...
+                  {step.metadata?.summary || (typeof step.content === 'string' ? step.content.substring(0, 100) : String(step.content).substring(0, 100))}...
                 </div>
                 <div className="text-xs text-indigo-600 mt-1">
                   Similarity: {Math.round((1 - (step.metadata?.distance || 0)) * 100)}%

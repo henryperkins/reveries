@@ -318,7 +318,7 @@ export class DatabaseService {
 
           const params = [step.id];
           step.sources.forEach(source => {
-            params.push(source.name, source.url, source.snippet || null, source.relevanceScore || null);
+            params.push(source.name || '', source.url, source.snippet || '', (source.relevanceScore || 0).toString());
           });
 
           await client.query(

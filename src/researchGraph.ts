@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResearchStep, ResearchStepType, ModelType, EffortType, Citation, ExportedResearchData, GENAI_MODEL_FLASH, ResearchMetadata } from './types';
+import { ResearchStep, ResearchState, ResearchStepType, ModelType, EffortType, Citation, ExportedResearchData, GENAI_MODEL_FLASH, ResearchMetadata } from './types';
+import { ResearchAgentService } from './services/researchAgentService';
 
 export interface GraphNode {
     id: string;
@@ -472,20 +473,20 @@ export class ResearchGraphManager {
     async findSimilarNodes(
         nodeId: string,
         threshold = 0.8
-    ): Promise<{ node: ResearchNode; similarity: number }[]> {
+    ): Promise<{ node: GraphNode; similarity: number }[]> {
         const node = this.graph.nodes.get(nodeId);
-        if (!node || !node.content) return [];
+        if (!node) return [];
 
-        const agentService = new ResearchAgentService();
-        const similarSteps = await agentService.semanticSearch(node.content);
+        const agentService = ResearchAgentService.getInstance();
+        const similarSteps = await agentService.semanticSearch(node.title);
 
         return similarSteps
-            .filter(step => step.id !== nodeId)
-            .map(step => ({
-                node: this.graph.nodes.get(step.id)!,
-                similarity: 1 - (step.metadata?.distance || 0),
+            .filter((step: ResearchState) => step.query !== nodeId)
+            .map((step: ResearchState) => ({
+                node: this.graph.nodes.get(step.query)!,
+                similarity: 1 - (step.evaluation?.completeness || 0),
             }))
-            .filter(result => result.similarity >= threshold);
+            .filter((result: { node: GraphNode; similarity: number }) => result.similarity >= threshold);
     }
 }
 

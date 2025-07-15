@@ -13,14 +13,18 @@ async function initializeDatabase() {
 
       await databaseService.saveResearchSession(
         'sample-session-1',
-        'AI Ethics Research',
-        'Exploring ethical implications of artificial intelligence'
+        {
+          title: 'AI Ethics Research',
+          description: 'Exploring ethical implications of artificial intelligence'
+        }
       );
 
       await databaseService.saveResearchSession(
         'sample-session-2',
-        'Climate Change Solutions',
-        'Researching innovative approaches to combat climate change'
+        {
+          title: 'Climate Change Solutions',
+          description: 'Researching innovative approaches to combat climate change'
+        }
       );
 
       console.log('✅ Sample data inserted successfully!');

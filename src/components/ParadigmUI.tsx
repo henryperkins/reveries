@@ -19,7 +19,11 @@ const PARADIGM_STYLES = {
   theoretical: { bg: 'bg-indigo-50',    border: 'border-indigo-200',    text: 'text-indigo-700' },
   creative:    { bg: 'bg-pink-50',      border: 'border-pink-200',      text: 'text-pink-700' },
   diagnostic:  { bg: 'bg-cyan-50',      border: 'border-cyan-200',      text: 'text-cyan-700' },
-  evaluative:  { bg: 'bg-emerald-50',   border: 'border-emerald-200',   text: 'text-emerald-700' }
+  evaluative:  { bg: 'bg-emerald-50',   border: 'border-emerald-200',   text: 'text-emerald-700' },
+  dolores:     { bg: 'bg-yellow-50',    border: 'border-yellow-200',    text: 'text-yellow-700' },
+  teddy:       { bg: 'bg-red-50',       border: 'border-red-200',       text: 'text-red-700' },
+  bernard:     { bg: 'bg-gray-50',      border: 'border-gray-200',      text: 'text-gray-700' },
+  maeve:       { bg: 'bg-violet-50',    border: 'border-violet-200',    text: 'text-violet-700' }
 } as const;
 
 /** Rich labels and emoji avatars for each host paradigm */

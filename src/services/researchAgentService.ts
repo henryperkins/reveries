@@ -32,10 +32,10 @@ import { SelectLayerService } from './contextLayers/selectLayer';
 import { CompressLayerService } from './contextLayers/compressLayer';
 import { IsolateLayerService } from './contextLayers/isolateLayer';
 import { Pool } from 'pg';
-import { ChatOpenAI } from 'langchain/chat_models/openai';
-import { OpenAIEmbeddings } from '@langchain/openai';
-import { PGVectorStore } from '@langchain/community/vectorstores/pgvector';
-import { AzureOpenAI } from '@azure/openai';
+// import { ChatOpenAI } from 'langchain/chat_models/openai';
+// import { OpenAIEmbeddings } from '@langchain/openai';
+// import { PGVectorStore } from '@langchain/community/vectorstores/pgvector';
+// import { AzureOpenAI } from '@azure/openai';
 
 /**
  * Generic provider-agnostic response structure we use internally.
@@ -118,7 +118,7 @@ export class ResearchAgentService {
   private selectLayer = SelectLayerService.getInstance();
   private compressLayer = CompressLayerService.getInstance();
   private isolateLayer = IsolateLayerService.getInstance();
-  private vectorStore: PGVectorStore | null = null;
+  private vectorStore: any | null = null;
   private pool: Pool | null = null;
 
   private constructor() {
@@ -161,40 +161,43 @@ export class ResearchAgentService {
         : false,
     });
 
-    const embeddings = new OpenAIEmbeddings({
-      azureOpenAIApiKey: process.env.AZURE_OPENAI_API_KEY,
-      azureOpenAIApiInstanceName: process.env.AZURE_OPENAI_ENDPOINT,
-      azureOpenAIApiDeploymentName: process.env.AZURE_OPENAI_EMBEDDING_MODEL,
-      azureOpenAIApiVersion: '2023-05-15',
-    });
+    // Vector store initialization disabled - requires proper LangChain setup
+    // const embeddings = new OpenAIEmbeddings({
+    //   azureOpenAIApiKey: process.env.AZURE_OPENAI_API_KEY,
+    //   azureOpenAIApiInstanceName: process.env.AZURE_OPENAI_ENDPOINT,
+    //   azureOpenAIApiDeploymentName: process.env.AZURE_OPENAI_EMBEDDING_MODEL,
+    //   azureOpenAIApiVersion: '2023-05-15',
+    // });
 
-    this.vectorStore = await PGVectorStore.initialize(embeddings, {
-      postgresConnectionOptions: this.pool,
-      tableName: 'research_embeddings',
-      columns: {
-        idColumnName: 'id',
-        vectorColumnName: 'embedding',
-        contentColumnName: 'content',
-        metadataColumnName: 'metadata',
-      },
-    });
+    // this.vectorStore = await PGVectorStore.initialize(embeddings, {
+    //   postgresConnectionOptions: this.pool,
+    //   tableName: 'research_embeddings',
+    //   columns: {
+    //     idColumnName: 'id',
+    //     vectorColumnName: 'embedding',
+    //     contentColumnName: 'content',
+    //     metadataColumnName: 'metadata',
+    //   },
+    // });
   }
 
-  async semanticSearch(query: string, sessionId?: string): Promise<ResearchStep[]> {
+  async semanticSearch(query: string, sessionId?: string): Promise<ResearchState[]> {
     if (!this.vectorStore) return [];
 
-    const results = await this.vectorStore.similaritySearch(query, 5, {
-      session_id: sessionId,
-    });
+    // Vector store search disabled - requires proper LangChain setup
+    // const results = await this.vectorStore.similaritySearch(query, 5, {
+    //   session_id: sessionId,
+    // });
 
-    return results.map(doc => ({
-      id: doc.metadata?.step_id || '',
-      type: doc.metadata?.type || 'search',
-      query: doc.metadata?.query || '',
-      content: doc.pageContent,
-      sources: doc.metadata?.sources || [],
-      metadata: doc.metadata,
-    }));
+    // return results.map(doc => ({
+    //   id: doc.metadata?.step_id || '',
+    //   type: doc.metadata?.type || 'search',
+    //   query: doc.metadata?.query || '',
+    //   content: doc.pageContent,
+    //   sources: doc.metadata?.sources || [],
+    //   metadata: doc.metadata,
+    // }));
+    return [];
   }
 
   async generateWithAzureOpenAI(
@@ -203,44 +206,45 @@ export class ResearchAgentService {
       temperature?: number;
       maxTokens?: number;
     } = {}
-  ): Promise<{ text: string; sources: ResearchSource[] }> {
+  ): Promise<{ text: string; sources: Citation[] }> {
     if (!this.azureOpenAI) {
       throw new Error('Azure OpenAI not configured');
     }
 
     const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4';
-    const response = await this.azureOpenAI.createCompletion({
-      model: deploymentName,
+    const response = await this.azureOpenAI.generateResponse(
       prompt,
-      temperature: options.temperature || 0.7,
-      max_tokens: options.maxTokens || 1000,
-    });
+      EffortType.MEDIUM,
+      true,
+      options.temperature || 0.7,
+      options.maxTokens || 1000
+    );
 
     return {
-      text: response.choices[0]?.text || '',
-      sources: [], // Azure OpenAI doesn't provide sources by default
+      text: response.text || '',
+      sources: response.sources || [],
     };
   }
 
-  async storeResearchStep(
-    step: ResearchStep,
+  async storeResearchState(
+    step: ResearchState,
     sessionId: string,
     parentId?: string
   ): Promise<void> {
     if (!this.vectorStore) return;
 
-    await this.vectorStore.addDocuments([{
-      pageContent: step.content,
-      metadata: {
-        step_id: step.id,
-        session_id: sessionId,
-        parent_id: parentId,
-        type: step.type,
-        query: step.query,
-        sources: step.sources,
-        ...step.metadata,
-      },
-    }]);
+    // Vector store document addition disabled - requires proper LangChain setup
+    // await this.vectorStore.addDocuments([{
+    //   pageContent: step.synthesis,
+    //   metadata: {
+    //     step_id: step.query,
+    //     session_id: sessionId,
+    //     parent_id: parentId,
+    //     type: step.queryType || 'unknown',
+    //     query: step.query,
+    //     sources: step.searchResults || [],
+    //   },
+    // }]);
   }
 
   /**
