@@ -1,5 +1,4 @@
-import { researchAgentService } from '../services/researchAgentService';
-import { ModelType } from '../types';
+import { ResearchAgentService } from '../services/researchAgentService';
 
 interface HealthCheckResult {
   component: string;
@@ -11,7 +10,8 @@ export async function runComponentHealthCheck(): Promise<HealthCheckResult[]> {
   const results: HealthCheckResult[] = [];
 
   // Check AI services
-  const availableModels = researchAgentService.getAvailableModels();
+  const availableModels =
+    ResearchAgentService.getInstance().getAvailableModels();
 
   if (availableModels.length === 0) {
     results.push({

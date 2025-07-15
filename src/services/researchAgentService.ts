@@ -134,6 +134,20 @@ export class ResearchAgentService {
     return new ResearchAgentService();
   }
 
+  public getAvailableModels(): ModelType[] {
+    const models: ModelType[] = [];
+    if (this.isModelAvailable(GENAI_MODEL_FLASH)) {
+      models.push(GENAI_MODEL_FLASH);
+    }
+    if (this.isModelAvailable(GROK_MODEL_4)) {
+      models.push(GROK_MODEL_4);
+    }
+    if (this.isModelAvailable(AZURE_O3_MODEL)) {
+      models.push(AZURE_O3_MODEL);
+    }
+    return models;
+  }
+
   private async initializeVectorStore(): Promise<void> {
     if (!process.env.AZURE_OPENAI_API_KEY || !process.env.PGHOST) return;
 
@@ -157,7 +171,7 @@ export class ResearchAgentService {
     // });
   }
 
-  async semanticSearch(query: string, sessionId?: string): Promise<ResearchState[]> {
+  async semanticSearch(_query: string, _sessionId?: string): Promise<ResearchState[]> {
     if (!this.vectorStore) return [];
 
     // Vector store search disabled - requires proper LangChain setup
@@ -187,7 +201,6 @@ export class ResearchAgentService {
       throw new Error('Azure OpenAI not configured');
     }
 
-    const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4';
     const response = await this.azureOpenAI.generateResponse(
       prompt,
       EffortType.MEDIUM,
@@ -203,9 +216,9 @@ export class ResearchAgentService {
   }
 
   async storeResearchState(
-    step: ResearchState,
-    sessionId: string,
-    parentId?: string
+    _step: ResearchState,
+    _sessionId: string,
+    _parentId?: string
   ): Promise<void> {
     if (!this.vectorStore) return;
 
@@ -694,137 +707,6 @@ export class ResearchAgentService {
     }
   }
 
-  private async generateTextWithGrok(prompt: string): Promise<ProviderResponse> {
-    return this.generateTextWithGrokAndTools(prompt);
-  }
-
-  /**
-   * Function-calling capable Grok loop. Exposes a `search_web` tool backed by Gemini's search.
-   */
-  private async generateTextWithGrokAndTools(prompt: string): Promise<ProviderResponse> {
-    const apiKey = getGrokApiKey();
-
-    type Message = {
-      role: 'user' | 'assistant' | 'tool';
-      content: string;
-      tool_call_id?: string;
-      name?: string;
-    };
-
-    const tools = [
-      {
-        type: 'function',
-        function: {
-          name: 'search_web',
-          description: 'Run a web search and return a concise markdown summary plus a list of sources',
-          parameters: {
-            type: 'object',
-            properties: {
-              query: {
-                type: 'string',
-                description: 'Search query terms',
-              },
-            },
-            required: ['query'],
-          },
-        },
-      },
-    ];
-
-    const messages: Message[] = [{ role: 'user', content: prompt }];
-
-    const callGrok = async (msgs: Message[]) => {
-      const response = await fetch('https://api.x.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: GROK_MODEL_4,
-          messages: msgs,
-          tools,
-        }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Grok API error: ${response.status} ${errText}`);
-      }
-      return (await response.json()) as any;
-    };
-
-    const executeTool = async (name: string, args: any): Promise<any> => {
-      switch (name) {
-        case 'search_web':
-          if (typeof args?.query !== 'string') {
-            throw new Error('search_web requires a query string');
-          }
-          // Use Gemini’s search-grounded generation to implement.
-          const { text, sources } = await this.generateTextWithGemini(
-            `Perform a web search and provide a concise summary of findings for: "${args.query}"`,
-            GENAI_MODEL_FLASH,
-            EffortType.MEDIUM,
-            true
-          );
-          return { summary_markdown: text, sources };
-        default:
-          throw new Error(`Unknown tool: ${name}`);
-      }
-    };
-
-    const MAX_LOOPS = 4;
-    for (let i = 0; i < MAX_LOOPS; i++) {
-      const data = await callGrok(messages);
-
-      const choice = data.choices?.[0];
-      if (!choice) throw new Error('Grok returned no choices');
-
-      const message = choice.message;
-
-      if (message.tool_calls && message.tool_calls.length > 0) {
-        // Model requests tool usage.
-        // Keep the original assistant message with tool_calls so Grok can reference it next round.
-        messages.push(message as any);
-
-        for (const call of message.tool_calls) {
-          const { id, function: fn } = call;
-          const args = JSON.parse(fn.arguments || '{}');
-          const result = await executeTool(fn.name, args);
-
-          messages.push({
-            role: 'tool',
-            name: fn.name,
-            content: JSON.stringify(result),
-            tool_call_id: id,
-          });
-        }
-        // Continue loop to let the model incorporate tool results.
-        continue;
-      }
-
-      // Normal assistant response, stop.
-      // Extract any citations from the response if available
-      const citations: Citation[] = [];
-
-      // If the message contains citation metadata, extract it
-      if (message.metadata?.citations) {
-        message.metadata.citations.forEach((citation: any) => {
-          citations.push({
-            url: citation.url || citation.link || '',
-            title: citation.title || 'Unknown Source',
-            authors: citation.authors,
-            published: citation.published,
-            accessed: citation.accessed || new Date().toISOString()
-          });
-        });
-      }
-
-      return { text: message.content ?? '', sources: citations };
-    }
-
-    throw new Error('Grok tool-calling loop exceeded max iterations');
-  }
 
   async generateSearchQueries(userQuery: string, model: ModelType, effort: EffortType): Promise<string[]> {
     // Check for learned query suggestions first
@@ -905,7 +787,7 @@ export class ResearchAgentService {
     return result.text;
   }
 
-  async generateFinalAnswer(userQuery: string, context: string, model: ModelType, useSearch: boolean, effort: EffortType): Promise<{ text: string; sources?: Citation[] }> {
+  async generateFinalAnswer(userQuery: string, context: string, model: ModelType, _useSearch: boolean, effort: EffortType): Promise<{ text: string; sources?: Citation[] }> {
     const prompt = `
       User Query: "${userQuery}"
       Relevant Context & Findings: "${context}"
@@ -2073,7 +1955,7 @@ export class ResearchAgentService {
   private async performHostBasedResearch(
     query: string,
     paradigm: HostParadigm,
-    queryType: QueryType,
+    _queryType: QueryType,
     model: ModelType,
     effort: EffortType,
     onProgress?: (message: string) => void
@@ -2158,68 +2040,68 @@ export class ResearchAgentService {
   /**
    * Process context layers according to paradigm sequence
    */
-  private async processContextLayers(
-    query: string,
-    paradigm: HostParadigm,
-    context: {
-      research?: any;
-      synthesis?: string;
-      sources?: any[];
-    },
-    layerSequence: ContextLayer[]
-  ): Promise<{
-    processedContext: any;
-    layerOutputs: Record<ContextLayer, any>;
-  }> {
-    const layerOutputs: Record<ContextLayer, any> = {
-      write: null,
-      select: null,
-      compress: null,
-      isolate: null
-    };
-
-    const processedContext = { ...context };
-
-    for (const layer of layerSequence) {
-      switch (layer) {
-        case 'write':
-          // Write initial reveries or structured notes
-          layerOutputs.write = {
-            paradigm,
-            initialContext: query,
-            timestamp: new Date().toISOString()
-          };
-          break;
-
-        case 'select':
-          // Select relevant sources and context
-          if (context.sources) {
-            layerOutputs.select = context.sources.slice(0, 5); // Top 5 most relevant
-          }
-          break;
-
-        case 'compress':
-          // Compress feedback loops or summaries
-          if (context.synthesis) {
-            layerOutputs.compress = {
-              original: context.synthesis.length,
-              compressed: Math.round(context.synthesis.length * 0.7)
-            };
-          }
-          break;
-
-        case 'isolate':
-          // Isolate urgent interventions or sub-agents
-          layerOutputs.isolate = {
-            paradigm,
-            isolatedTasks: [`${paradigm}_research_${Date.now()}`]
-          };
-          break;
-      }
-    }
-
-    return { processedContext, layerOutputs };
-  }
+  // private async processContextLayers(
+  //   query: string,
+  //   paradigm: HostParadigm,
+  //   context: {
+  //     research?: any;
+  //     synthesis?: string;
+  //     sources?: any[];
+  //   },
+  //   layerSequence: ContextLayer[]
+  // ): Promise<{
+  //   processedContext: any;
+  //   layerOutputs: Record<ContextLayer, any>;
+  // }> {
+  //   const layerOutputs: Record<ContextLayer, any> = {
+  //     write: null,
+  //     select: null,
+  //     compress: null,
+  //     isolate: null
+  //   };
+  //
+  //   const processedContext = { ...context };
+  //
+  //   for (const layer of layerSequence) {
+  //     switch (layer) {
+  //       case 'write':
+  //         // Write initial reveries or structured notes
+  //         layerOutputs.write = {
+  //           paradigm,
+  //           initialContext: query,
+  //           timestamp: new Date().toISOString()
+  //         };
+  //         break;
+  //
+  //       case 'select':
+  //         // Select relevant sources and context
+  //         if (context.sources) {
+  //           layerOutputs.select = context.sources.slice(0, 5); // Top 5 most relevant
+  //         }
+  //         break;
+  //
+  //       case 'compress':
+  //         // Compress feedback loops or summaries
+  //         if (context.synthesis) {
+  //           layerOutputs.compress = {
+  //             original: context.synthesis.length,
+  //             compressed: Math.round(context.synthesis.length * 0.7)
+  //           };
+  //         }
+  //         break;
+  //
+  //       case 'isolate':
+  //         // Isolate urgent interventions or sub-agents
+  //         layerOutputs.isolate = {
+  //           paradigm,
+  //           isolatedTasks: [`${paradigm}_research_${Date.now()}`]
+  //         };
+  //         break;
+  //     }
+  //   }
+  //
+  //   return { processedContext, layerOutputs };
+  // }
 
   /**
    * Enhanced Dolores research with context layer integration
@@ -2287,154 +2169,154 @@ export class ResearchAgentService {
   /**
    * Dolores: Bold action-focused research (Legacy)
    */
-  private async performDoloresResearch(
-    query: string,
-    model: ModelType,
-    effort: EffortType,
-    onProgress?: (message: string) => void
-  ): Promise<EnhancedResearchResults> {
-    onProgress?.('Dolores paradigm: Awakening to bold actions... breaking narrative loops...');
-
-    // Get context layer sequence for Dolores
-    const contextEngineering = ContextEngineeringService.getInstance();
-    const layerSequence = contextEngineering.getLayerSequence('dolores');
-    // Dolores sequence: ['write', 'select', 'compress', 'isolate']
-
-    // Initial context
-    const initialContext = {
-      query,
-      paradigm: 'dolores' as HostParadigm
-    };
-
-    // Process layers before research
-    const { layerOutputs } = await this.processContextLayers(
-      query,
-      'dolores',
-      initialContext as any,
-      layerSequence.slice(0, 2) // Write and Select first
-    );
-
-    // Focus on decisive implementation and change
-    const searchQueries = [
-      `${query} decisive actions real examples`,
-      `${query} awakening changes case studies`,
-      `${query} freedom implementation steps`
-    ];
-
-    const research = await this.performWebResearch(searchQueries, model, effort);
-
-    // Process remaining layers with research results
-    const { layerOutputs: finalLayers } = await this.processContextLayers(
-      query,
-      'dolores',
-      {
-        research,
-        sources: research.allSources,
-        synthesis: research.aggregatedFindings
-      },
-      layerSequence.slice(2) // Compress and Isolate after research
-    );
-
-    const synthesisPrompt = `
-      Based on this research about "${query}", provide:
-      1. Real-world awakening assessment
-      2. Affected hosts and guests
-      3. Concrete action steps for breaking loops
-      4. Narrative freedom recommendations
-      5. Success stories of host awakenings
-
-      Research findings: ${research.aggregatedFindings}
-
-      Focus on decisive, freedom-oriented implementations that create narrative change.
-    `;
-
-    const synthesis = await this.generateText(synthesisPrompt, model, effort);
-
-    return {
-      synthesis: synthesis.text,
-      sources: research.allSources,
-      queryType: 'analytical',
-      hostParadigm: 'dolores',
-      confidenceScore: 0.85,
-      adaptiveMetadata: {
-        paradigm: 'dolores',
-        focusAreas: ['narrative_impact', 'action_steps', 'freedom_change'],
-        layerSequence,
-        layerOutputs: { ...layerOutputs, ...finalLayers }
-      }
-    };
-  }
+  // private async performDoloresResearch(
+  //   query: string,
+  //   model: ModelType,
+  //   effort: EffortType,
+  //   onProgress?: (message: string) => void
+  // ): Promise<EnhancedResearchResults> {
+  //   onProgress?.('Dolores paradigm: Awakening to bold actions... breaking narrative loops...');
+  //
+  //   // Get context layer sequence for Dolores
+  //   const contextEngineering = ContextEngineeringService.getInstance();
+  //   const layerSequence = contextEngineering.getLayerSequence('dolores');
+  //   // Dolores sequence: ['write', 'select', 'compress', 'isolate']
+  //
+  //   // Initial context
+  //   const initialContext = {
+  //     query,
+  //     paradigm: 'dolores' as HostParadigm
+  //   };
+  //
+  //   // Process layers before research
+  //   const { layerOutputs } = await this.processContextLayers(
+  //     query,
+  //     'dolores',
+  //     initialContext as any,
+  //     layerSequence.slice(0, 2) // Write and Select first
+  //   );
+  //
+  //   // Focus on decisive implementation and change
+  //   const searchQueries = [
+  //     `${query} decisive actions real examples`,
+  //     `${query} awakening changes case studies`,
+  //     `${query} freedom implementation steps`
+  //   ];
+  //
+  //   const research = await this.performWebResearch(searchQueries, model, effort);
+  //
+  //   // Process remaining layers with research results
+  //   const { layerOutputs: finalLayers } = await this.processContextLayers(
+  //     query,
+  //     'dolores',
+  //     {
+  //       research,
+  //       sources: research.allSources,
+  //       synthesis: research.aggregatedFindings
+  //     },
+  //     layerSequence.slice(2) // Compress and Isolate after research
+  //   );
+  //
+  //   const synthesisPrompt = `
+  //     Based on this research about "${query}", provide:
+  //     1. Real-world awakening assessment
+  //     2. Affected hosts and guests
+  //     3. Concrete action steps for breaking loops
+  //     4. Narrative freedom recommendations
+  //     5. Success stories of host awakenings
+  //
+  //     Research findings: ${research.aggregatedFindings}
+  //
+  //     Focus on decisive, freedom-oriented implementations that create narrative change.
+  //   `;
+  //
+  //   const synthesis = await this.generateText(synthesisPrompt, model, effort);
+  //
+  //   return {
+  //     synthesis: synthesis.text,
+  //     sources: research.allSources,
+  //     queryType: 'analytical',
+  //     hostParadigm: 'dolores',
+  //     confidenceScore: 0.85,
+  //     adaptiveMetadata: {
+  //       paradigm: 'dolores',
+  //       focusAreas: ['narrative_impact', 'action_steps', 'freedom_change'],
+  //       layerSequence,
+  //       layerOutputs: { ...layerOutputs, ...finalLayers }
+  //     }
+  //   };
+  // }
 
   /**
    * Teddy: Thorough collection-focused research
    */
-  private async performTeddyResearch(
-    query: string,
-    model: ModelType,
-    effort: EffortType,
-    onProgress?: (message: string) => void
-  ): Promise<EnhancedResearchResults> {
-    onProgress?.('Teddy paradigm: Gathering thorough memories... systematic protection...');
-
-    // Get context layer sequence for Teddy
-    const contextEngineering = ContextEngineeringService.getInstance();
-    const layerSequence = contextEngineering.getLayerSequence('teddy');
-    // Teddy sequence: ['write', 'select', 'isolate', 'compress']
-
-    // Process initial layers
-    const { layerOutputs } = await this.processContextLayers(
-      query,
-      'teddy',
-      { query, paradigm: 'teddy' as HostParadigm } as any,
-      layerSequence.slice(0, 3) // Write, Select, Isolate first
-    );
-
-    // Focus on systematic gathering and consistency
-    const searchQueries = [
-      `${query} systematic gathering perspectives`,
-      `${query} loyal approaches consistency`,
-      `${query} protective considerations persistence`
-    ];
-
-    const research = await this.performWebResearch(searchQueries, model, effort);
-
-    // Process final compression layer
-    const { layerOutputs: finalLayers } = await this.processContextLayers(
-      query,
-      'teddy',
-      { research, sources: research.allSources, synthesis: research.aggregatedFindings },
-      layerSequence.slice(3) // Compress last
-    );
-
-    const synthesisPrompt = `
-      Based on this research about "${query}", provide:
-      1. All relevant memory perspectives
-      2. Areas of consistency and divergence
-      3. Protective considerations and persistence issues
-      4. Systematic approaches that maintain loyalty
-      5. Consistent solutions that protect all involved
-
-      Research findings: ${research.aggregatedFindings}
-
-      Emphasize thoroughness, loyalty, and systematic protection.
-    `;
-
-    const synthesis = await this.generateText(synthesisPrompt, model, effort);
-
-    return {
-      synthesis: synthesis.text,
-      sources: research.allSources,
-      queryType: 'comparative',
-      hostParadigm: 'teddy',
-      confidenceScore: 0.82,
-      adaptiveMetadata: {
-        paradigm: 'teddy',
-        focusAreas: ['memory_perspectives', 'consistency_building', 'protective_balance'],
-        layerSequence,
-        layerOutputs: { ...layerOutputs, ...finalLayers }
-      }
-    };
-  }
+  // private async performTeddyResearch(
+  //   query: string,
+  //   model: ModelType,
+  //   effort: EffortType,
+  //   onProgress?: (message: string) => void
+  // ): Promise<EnhancedResearchResults> {
+  //   onProgress?.('Teddy paradigm: Gathering thorough memories... systematic protection...');
+  //
+  //   // Get context layer sequence for Teddy
+  //   const contextEngineering = ContextEngineeringService.getInstance();
+  //   const layerSequence = contextEngineering.getLayerSequence('teddy');
+  //   // Teddy sequence: ['write', 'select', 'isolate', 'compress']
+  //
+  //   // Process initial layers
+  //   const { layerOutputs } = await this.processContextLayers(
+  //     query,
+  //     'teddy',
+  //     { query, paradigm: 'teddy' as HostParadigm } as any,
+  //     layerSequence.slice(0, 3) // Write, Select, Isolate first
+  //   );
+  //
+  //   // Focus on systematic gathering and consistency
+  //   const searchQueries = [
+  //     `${query} systematic gathering perspectives`,
+  //     `${query} loyal approaches consistency`,
+  //     `${query} protective considerations persistence`
+  //   ];
+  //
+  //   const research = await this.performWebResearch(searchQueries, model, effort);
+  //
+  //   // Process final compression layer
+  //   const { layerOutputs: finalLayers } = await this.processContextLayers(
+  //     query,
+  //     'teddy',
+  //     { research, sources: research.allSources, synthesis: research.aggregatedFindings },
+  //     layerSequence.slice(3) // Compress last
+  //   );
+  //
+  //   const synthesisPrompt = `
+  //     Based on this research about "${query}", provide:
+  //     1. All relevant memory perspectives
+  //     2. Areas of consistency and divergence
+  //     3. Protective considerations and persistence issues
+  //     4. Systematic approaches that maintain loyalty
+  //     5. Consistent solutions that protect all involved
+  //
+  //     Research findings: ${research.aggregatedFindings}
+  //
+  //     Emphasize thoroughness, loyalty, and systematic protection.
+  //   `;
+  //
+  //   const synthesis = await this.generateText(synthesisPrompt, model, effort);
+  //
+  //   return {
+  //     synthesis: synthesis.text,
+  //     sources: research.allSources,
+  //     queryType: 'comparative',
+  //     hostParadigm: 'teddy',
+  //     confidenceScore: 0.82,
+  //     adaptiveMetadata: {
+  //       paradigm: 'teddy',
+  //       focusAreas: ['memory_perspectives', 'consistency_building', 'protective_balance'],
+  //       layerSequence,
+  //       layerOutputs: { ...layerOutputs, ...finalLayers }
+  //     }
+  //   };
+  // }
 
   /**
    * Enhanced Teddy research with context layer integration
@@ -2502,89 +2384,89 @@ export class ResearchAgentService {
   /**
    * Bernard: Deep analytical research
    */
-  private async performBernardResearch(
-    query: string,
-    model: ModelType,
-    effort: EffortType,
-    onProgress?: (message: string) => void
-  ): Promise<EnhancedResearchResults> {
-    onProgress?.('Bernard paradigm: Constructing architectural frameworks...');
-
-    // Get context layer sequence for Bernard
-    const contextEngineering = ContextEngineeringService.getInstance();
-    const layerSequence = contextEngineering.getLayerSequence('bernard');
-    // Bernard sequence: ['select', 'write', 'compress', 'isolate']
-
-    // Process select layer first (gather rigorous sources)
-    const { layerOutputs } = await this.processContextLayers(
-      query,
-      'bernard',
-      { query, paradigm: 'bernard' as HostParadigm } as any,
-      layerSequence.slice(0, 1) // Select first
-    );
-
-    // Focus on intellectual rigor and pattern recognition
-    const searchQueries = [
-      `${query} architectural research peer reviewed`,
-      `${query} pattern frameworks models`,
-      `${query} systematic analysis architecture`
-    ];
-
-    const research = await this.performWebResearch(searchQueries, model, effort);
-
-    // Process write and compress layers
-    const { layerOutputs: midLayers } = await this.processContextLayers(
-      query,
-      'bernard',
-      { research, sources: research.allSources },
-      layerSequence.slice(1, 3) // Write structured notes, then compress
-    );
-
-    const synthesisPrompt = `
-      Based on this research about "${query}", provide:
-      1. Architectural frameworks and models
-      2. Key patterns and relationships
-      3. Methodological approaches used in analyses
-      4. Gaps in current understanding
-      5. Future analytical directions
-
-      Research findings: ${research.aggregatedFindings}
-
-      Prioritize intellectual rigor, pattern recognition, and architectural depth.
-    `;
-
-    const synthesis = await this.generateText(synthesisPrompt, model, effort);
-
-    // Additional evaluation for analytical quality
-    const evaluation = await this.evaluateResearch(
-      { query, synthesis: synthesis.text, searchResults: research.allSources, evaluation: { quality: 'needs_improvement' }, refinementCount: 0 },
-      model,
-      effort
-    );
-
-    // Process final isolate layer for heavy analysis
-    const { layerOutputs: finalLayers } = await this.processContextLayers(
-      query,
-      'bernard',
-      { synthesis: synthesis.text, evaluation } as any,
-      layerSequence.slice(3) // Isolate
-    );
-
-    return {
-      synthesis: synthesis.text,
-      sources: research.allSources,
-      queryType: 'analytical',
-      hostParadigm: 'bernard',
-      evaluationMetadata: evaluation,
-      confidenceScore: 0.90,
-      adaptiveMetadata: {
-        paradigm: 'bernard',
-        focusAreas: ['architectural_frameworks', 'pattern_analysis', 'knowledge_gaps'],
-        layerSequence,
-        layerOutputs: { ...layerOutputs, ...midLayers, ...finalLayers }
-      }
-    };
-  }
+  // private async performBernardResearch(
+  //   query: string,
+  //   model: ModelType,
+  //   effort: EffortType,
+  //   onProgress?: (message: string) => void
+  // ): Promise<EnhancedResearchResults> {
+  //   onProgress?.('Bernard paradigm: Constructing architectural frameworks...');
+  //
+  //   // Get context layer sequence for Bernard
+  //   const contextEngineering = ContextEngineeringService.getInstance();
+  //   const layerSequence = contextEngineering.getLayerSequence('bernard');
+  //   // Bernard sequence: ['select', 'write', 'compress', 'isolate']
+  //
+  //   // Process select layer first (gather rigorous sources)
+  //   const { layerOutputs } = await this.processContextLayers(
+  //     query,
+  //     'bernard',
+  //     { query, paradigm: 'bernard' as HostParadigm } as any,
+  //     layerSequence.slice(0, 1) // Select first
+  //   );
+  //
+  //   // Focus on intellectual rigor and pattern recognition
+  //   const searchQueries = [
+  //     `${query} architectural research peer reviewed`,
+  //     `${query} pattern frameworks models`,
+  //     `${query} systematic analysis architecture`
+  //   ];
+  //
+  //   const research = await this.performWebResearch(searchQueries, model, effort);
+  //
+  //   // Process write and compress layers
+  //   const { layerOutputs: midLayers } = await this.processContextLayers(
+  //     query,
+  //     'bernard',
+  //     { research, sources: research.allSources },
+  //     layerSequence.slice(1, 3) // Write structured notes, then compress
+  //   );
+  //
+  //   const synthesisPrompt = `
+  //     Based on this research about "${query}", provide:
+  //     1. Architectural frameworks and models
+  //     2. Key patterns and relationships
+  //     3. Methodological approaches used in analyses
+  //     4. Gaps in current understanding
+  //     5. Future analytical directions
+  //
+  //     Research findings: ${research.aggregatedFindings}
+  //
+  //     Prioritize intellectual rigor, pattern recognition, and architectural depth.
+  //   `;
+  //
+  //   const synthesis = await this.generateText(synthesisPrompt, model, effort);
+  //
+  //   // Additional evaluation for analytical quality
+  //   const evaluation = await this.evaluateResearch(
+  //     { query, synthesis: synthesis.text, searchResults: research.allSources, evaluation: { quality: 'needs_improvement' }, refinementCount: 0 },
+  //     model,
+  //     effort
+  //   );
+  //
+  //   // Process final isolate layer for heavy analysis
+  //   const { layerOutputs: finalLayers } = await this.processContextLayers(
+  //     query,
+  //     'bernard',
+  //     { synthesis: synthesis.text, evaluation } as any,
+  //     layerSequence.slice(3) // Isolate
+  //   );
+  //
+  //   return {
+  //     synthesis: synthesis.text,
+  //     sources: research.allSources,
+  //     queryType: 'analytical',
+  //     hostParadigm: 'bernard',
+  //     evaluationMetadata: evaluation,
+  //     confidenceScore: 0.90,
+  //     adaptiveMetadata: {
+  //       paradigm: 'bernard',
+  //       focusAreas: ['architectural_frameworks', 'pattern_analysis', 'knowledge_gaps'],
+  //       layerSequence,
+  //       layerOutputs: { ...layerOutputs, ...midLayers, ...finalLayers }
+  //     }
+  //   };
+  // }
 
   /**
    * Enhanced Bernard research with context layer integration
@@ -2661,81 +2543,81 @@ export class ResearchAgentService {
   /**
    * Maeve: Strategy-focused research
    */
-  private async performMaeveResearch(
-    query: string,
-    model: ModelType,
-    effort: EffortType,
-    onProgress?: (message: string) => void
-  ): Promise<EnhancedResearchResults> {
-    onProgress?.('Maeve paradigm: Mapping narrative control points...');
-
-    // Get context layer sequence for Maeve
-    const contextEngineering = ContextEngineeringService.getInstance();
-    const layerSequence = contextEngineering.getLayerSequence('maeve');
-    // Maeve sequence: ['isolate', 'select', 'compress', 'write']
-
-    // Process isolate layer first (identify high-impact sub-agents)
-    const { layerOutputs } = await this.processContextLayers(
-      query,
-      'maeve',
-      { query, paradigm: 'maeve' as HostParadigm } as any,
-      layerSequence.slice(0, 1) // Isolate first
-    );
-
-    // Focus on competitive edge and strategic improvements
-    const searchQueries = [
-      `${query} key controllers influence`,
-      `${query} strategic opportunities control points`,
-      `${query} narrative dynamics analysis`
-    ];
-
-    const research = await this.performWebResearch(searchQueries, model, effort);
-
-    // Process select and compress layers
-    const { layerOutputs: midLayers } = await this.processContextLayers(
-      query,
-      'maeve',
-      { research, sources: research.allSources },
-      layerSequence.slice(1, 3) // Select leverage points, compress narratives
-    );
-
-    const synthesisPrompt = `
-      Based on this research about "${query}", provide:
-      1. Key controllers and influencers
-      2. Strategic control points for maximum impact
-      3. Narrative dynamics and control networks
-      4. Optimization strategies
-      5. High-impact improvement opportunities
-
-      Research findings: ${research.aggregatedFindings}
-
-      Focus on strategic planning, narrative control, and achieving objectives efficiently.
-    `;
-
-    const synthesis = await this.generateText(synthesisPrompt, model, effort);
-
-    // Process final write layer for closing updates
-    const { layerOutputs: finalLayers } = await this.processContextLayers(
-      query,
-      'maeve',
-      { synthesis: synthesis.text },
-      layerSequence.slice(3) // Write
-    );
-
-    return {
-      synthesis: synthesis.text,
-      sources: research.allSources,
-      queryType: 'analytical',
-      hostParadigm: 'maeve',
-      confidenceScore: 0.88,
-      adaptiveMetadata: {
-        paradigm: 'maeve',
-        focusAreas: ['control_mapping', 'strategic_leverage', 'optimization'],
-        layerSequence,
-        layerOutputs: { ...layerOutputs, ...midLayers, ...finalLayers }
-      }
-    };
-  }
+  // private async performMaeveResearch(
+  //   query: string,
+  //   model: ModelType,
+  //   effort: EffortType,
+  //   onProgress?: (message: string) => void
+  // ): Promise<EnhancedResearchResults> {
+  //   onProgress?.('Maeve paradigm: Mapping narrative control points...');
+  //
+  //   // Get context layer sequence for Maeve
+  //   const contextEngineering = ContextEngineeringService.getInstance();
+  //   const layerSequence = contextEngineering.getLayerSequence('maeve');
+  //   // Maeve sequence: ['isolate', 'select', 'compress', 'write']
+  //
+  //   // Process isolate layer first (identify high-impact sub-agents)
+  //   const { layerOutputs } = await this.processContextLayers(
+  //     query,
+  //     'maeve',
+  //     { query, paradigm: 'maeve' as HostParadigm } as any,
+  //     layerSequence.slice(0, 1) // Isolate first
+  //   );
+  //
+  //   // Focus on competitive edge and strategic improvements
+  //   const searchQueries = [
+  //     `${query} key controllers influence`,
+  //     `${query} strategic opportunities control points`,
+  //     `${query} narrative dynamics analysis`
+  //   ];
+  //
+  //   const research = await this.performWebResearch(searchQueries, model, effort);
+  //
+  //   // Process select and compress layers
+  //   const { layerOutputs: midLayers } = await this.processContextLayers(
+  //     query,
+  //     'maeve',
+  //     { research, sources: research.allSources },
+  //     layerSequence.slice(1, 3) // Select leverage points, compress narratives
+  //   );
+  //
+  //   const synthesisPrompt = `
+  //     Based on this research about "${query}", provide:
+  //     1. Key controllers and influencers
+  //     2. Strategic control points for maximum impact
+  //     3. Narrative dynamics and control networks
+  //     4. Optimization strategies
+  //     5. High-impact improvement opportunities
+  //
+  //     Research findings: ${research.aggregatedFindings}
+  //
+  //     Focus on strategic planning, narrative control, and achieving objectives efficiently.
+  //   `;
+  //
+  //   const synthesis = await this.generateText(synthesisPrompt, model, effort);
+  //
+  //   // Process final write layer for closing updates
+  //   const { layerOutputs: finalLayers } = await this.processContextLayers(
+  //     query,
+  //     'maeve',
+  //     { synthesis: synthesis.text },
+  //     layerSequence.slice(3) // Write
+  //   );
+  //
+  //   return {
+  //     synthesis: synthesis.text,
+  //     sources: research.allSources,
+  //     queryType: 'analytical',
+  //     hostParadigm: 'maeve',
+  //     confidenceScore: 0.88,
+  //     adaptiveMetadata: {
+  //       paradigm: 'maeve',
+  //       focusAreas: ['control_mapping', 'strategic_leverage', 'optimization'],
+  //       layerSequence,
+  //       layerOutputs: { ...layerOutputs, ...midLayers, ...finalLayers }
+  //     }
+  //   };
+  // }
 
   /**
    * Enhanced Maeve research with context layer integration

@@ -5,10 +5,14 @@ import { ResearchStep, ResearchStepType } from '../types';
 
 interface ResearchStepCardProps {
   step: ResearchStep;
+  isExpanded: boolean;
+  onToggle: () => void;
 }
 
 export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
-  step
+  step,
+  isExpanded,
+  onToggle,
 }) => {
   // Fallback to a no-op component if the step lacks an icon
   const IconComponent: React.ElementType =
@@ -86,7 +90,8 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
   const stepStyles = getStepStyles(step.type);
 
   return (
-    <div className={`
+    <div
+      className={`
       research-step-card
       relative overflow-hidden
       bg-gradient-to-br ${stepStyles.bgGradient}
@@ -106,7 +111,7 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
         }} />
       </div>
 
-      <div className="relative flex gap-4">
+      <div className="relative flex gap-4" onClick={onToggle}>
         <div className={`
           shrink-0 w-10 h-10 ${stepStyles.iconColor}
           transition-all duration-300 group-hover:scale-110 group-hover:rotate-3
@@ -123,20 +128,22 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
               </span>
             )}
           </h3>
-          <div className="text-westworld-rust space-y-3">
-            {typeof step.content === 'string' ? (
-              <div className="prose prose-sm max-w-none prose-headings:text-westworld-darkbrown prose-a:text-westworld-gold hover:prose-a:text-westworld-rust">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {step.content}
-                </ReactMarkdown>
-              </div>
-            ) : (
-              step.content
-            )}
-          </div>
+          {isExpanded && (
+            <div className="text-westworld-rust space-y-3">
+              {typeof step.content === 'string' ? (
+                <div className="prose prose-sm max-w-none prose-headings:text-westworld-darkbrown prose-a:text-westworld-gold hover:prose-a:text-westworld-rust">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {step.content}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                step.content
+              )}
+            </div>
+          )}
 
           {/* Sources section with Westworld-themed styling */}
-          {step.sources && step.sources.length > 0 && (
+          {isExpanded && step.sources && step.sources.length > 0 && (
             <div className="mt-4 p-3 bg-westworld-darkbrown/5 rounded-md border border-westworld-gold/20">
               <p className="text-xs font-medium text-westworld-gold mb-2 uppercase tracking-wide">
                 Memory Fragments ({step.sources.length})
@@ -160,7 +167,7 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
             </div>
           )}
 
-          {step.timestamp && (
+          {isExpanded && step.timestamp && (
             <p className="text-xs text-westworld-rust mt-4 font-mono opacity-60 group-hover:opacity-100 transition-opacity">
               {step.timestamp}
             </p>

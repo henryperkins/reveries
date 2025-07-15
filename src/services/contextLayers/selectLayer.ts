@@ -75,7 +75,7 @@ export class SelectLayerService {
   }
 
   async selectSources(
-    query: string,
+    _query: string,
     sources: Citation[],
     paradigm: HostParadigm,
     k: number

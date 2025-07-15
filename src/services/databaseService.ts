@@ -281,7 +281,7 @@ export class DatabaseService {
         await client.query('BEGIN');
 
         // Generate embedding and summary in database
-        const aiResult = await client.query(`
+        await client.query(`
           WITH step_ai AS (
             SELECT
               generate_embedding($1) as embedding,
@@ -314,7 +314,7 @@ export class DatabaseService {
 
         // Save sources
         if (step.sources && step.sources.length > 0) {
-          const values = step.sources.map((source, index) =>
+          const _values = step.sources.map((_source, index) =>
             `($1, $${2 + index * 4}, $${3 + index * 4}, $${4 + index * 4}, $${5 + index * 4})`
           ).join(', ');
 
@@ -325,7 +325,7 @@ export class DatabaseService {
 
           await client.query(
             `INSERT INTO research_sources (step_id, name, url, snippet, relevance_score)
-             VALUES ${values}`,
+             VALUES ${_values}`,
             params
           );
         }

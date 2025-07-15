@@ -55,12 +55,12 @@ export class ResearchToolsService {
         },
         required: ['query']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Implementation would use search APIs with filters
         return {
           results: [],
           totalFound: 0,
-          filters: args
+          filters: _args
         };
       }
     });
@@ -89,11 +89,11 @@ export class ResearchToolsService {
         },
         required: ['query']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would integrate with academic APIs
         return {
           papers: [],
-          database: args.database || 'all'
+          database: _args.database || 'all'
         };
       }
     });
@@ -114,7 +114,7 @@ export class ResearchToolsService {
         },
         required: ['query']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would search through indexed local content
         return {
           files: [],
@@ -139,10 +139,10 @@ export class ResearchToolsService {
         },
         required: ['data', 'analysisType']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would perform actual statistical calculations
         return {
-          analysis: args.analysisType,
+          analysis: _args.analysisType,
           results: {}
         };
       }
@@ -193,10 +193,10 @@ export class ResearchToolsService {
         },
         required: ['claim']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would check against fact-checking databases
         return {
-          claim: args.claim,
+          claim: _args.claim,
           verdict: 'unverified',
           sources: []
         };
@@ -220,11 +220,11 @@ export class ResearchToolsService {
         },
         required: ['data', 'chartType']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would generate chart configuration
         return {
           chartConfig: {},
-          chartType: args.chartType
+          chartType: _args.chartType
         };
       }
     });
@@ -248,7 +248,7 @@ export class ResearchToolsService {
         },
         required: ['text']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would use NER models
         return {
           entities: []
@@ -273,11 +273,11 @@ export class ResearchToolsService {
         },
         required: ['text']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would generate summaries
         return {
           summary: '',
-          style: args.style || 'paragraph'
+          style: _args.style || 'paragraph'
         };
       }
     });
@@ -298,7 +298,7 @@ export class ResearchToolsService {
         },
         required: ['documents']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would extract relationships
         return {
           nodes: [],
@@ -504,7 +504,7 @@ export class ResearchToolsService {
     return citation;
   }
 
-  private formatMLA(title: string, authors: string[], year: string | number, url: string): string {
+  private formatMLA(title: string, authors: string[], _year: string | number, url: string): string {
     const authorText = authors.length > 0 ?
       (authors.length === 1 ? authors[0] :
        authors.length === 2 ? `${authors[0]} and ${authors[1]}` :
@@ -521,7 +521,7 @@ export class ResearchToolsService {
     return citation;
   }
 
-  private formatChicago(title: string, authors: string[], year: string | number, url: string): string {
+  private formatChicago(title: string, authors: string[], _year: string | number, url: string): string {
     const authorText = authors.length > 0 ?
       (authors.length === 1 ? authors[0] :
        authors.length === 2 ? `${authors[0]} and ${authors[1]}` :

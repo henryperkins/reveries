@@ -20,10 +20,14 @@ import { GROK_AVAILABLE, AZURE_OPENAI_AVAILABLE } from '../constants';
 /*                                   TYPES                                    */
 /* -------------------------------------------------------------------------- */
 
+import { EffortType } from '../types';
+
 interface ControlsProps {
   /* research parameters */
   selectedModel: ModelType;
   onModelChange: (model: ModelType) => void;
+  selectedEffort: EffortType;
+  onEffortChange: (effort: EffortType) => void;
 
   /* actions */
   onNewSearch: () => void;
@@ -76,6 +80,8 @@ const MODEL_INFO = {
 export const Controls: React.FC<ControlsProps> = ({
   selectedModel,
   onModelChange,
+  // selectedEffort,
+  // onEffortChange,
   onNewSearch,
   onStart,
   onClear,
