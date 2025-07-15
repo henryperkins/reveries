@@ -19,8 +19,11 @@ import {
   ResearchState,
   EnhancedResearchResults,
   Citation,
-  HostParadigm
+  HostParadigm,
+  HouseParadigm
 } from "../types";
+
+import { mapHostToHouse } from '../utils/houseMappings';
 
 /**
  * Generic provider-agnostic response structure we use internally.
@@ -1450,10 +1453,17 @@ export class ResearchAgentService {
     const confidenceScore = this.calculateConfidenceScore(result);
     const learnedPatterns = this.getQuerySuggestions(query).length > 0;
 
+    // Map host paradigm to Hogwarts house for downstream analytics / UI that
+    // may prefer the four-house vocabulary.
+    const houseParadigm: HouseParadigm | undefined = hostParadigm
+      ? mapHostToHouse(hostParadigm)
+      : undefined;
+
     // Ensure all metadata is included in the result
     result.confidenceScore = confidenceScore;
     if (hostParadigm) {
       result.hostParadigm = hostParadigm;
+      result.houseParadigm = houseParadigm;
     }
     result.adaptiveMetadata = {
       ...result.adaptiveMetadata,
@@ -1464,6 +1474,9 @@ export class ResearchAgentService {
       pyramidLayer: pyramidClassification.layer,
       contextDensity: contextDensity.averageDensity,
       dominantParadigm: contextDensity.dominantParadigm,
+      dominantHouse: contextDensity.dominantParadigm
+        ? mapHostToHouse(contextDensity.dominantParadigm)
+        : undefined,
       phase: currentPhase,
       pyramidConfidence: pyramidClassification.confidence,
       densities: contextDensity.densities,

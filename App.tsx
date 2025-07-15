@@ -181,9 +181,23 @@ const App: React.FC = () => {
 
   // Progress calculation for UI
 
-  // Enhanced progress calculation with graph tracking
-  const completedAutomatedSteps = graphManagerRef.current?.getGraph().nodes.size - 1 || 0; // Exclude user query
-  const totalSteps = enhancedMode ? 7 : 4; // More steps in enhanced mode (including analytics)
+  // Dynamic progress calculation:
+  // We treat the number of “completed” automated steps (all graph nodes except the
+  // initial USER_QUERY) as the numerator. The denominator is the completed steps
+  // plus **one additional step still in progress**. This keeps the bar moving
+  // smoothly without guessing the exact total for every workflow variant and
+  // avoids getting stuck at ~43 % when fewer steps are executed than the previous
+  // hard-coded total of 7.
+  //
+  // completedAutomatedSteps = 0  → 0 %
+  // completedAutomatedSteps = 1  → 50 %
+  // completedAutomatedSteps = 2  → 66 %
+  // completedAutomatedSteps = 3  → 75 % … etc.
+  const completedAutomatedSteps = Math.max(
+    (graphManagerRef.current?.getGraph().nodes.size || 1) - 1,
+    0
+  ); // Exclude the initial USER_QUERY node
+  const totalSteps = completedAutomatedSteps + 1; // Always assume at least one remaining
   const progressValue = isLoading
     ? Math.min(completedAutomatedSteps / totalSteps, 0.95)
     : 1;
@@ -312,7 +326,7 @@ const App: React.FC = () => {
     try {
       // Choose workflow based on enhanced mode setting
       if (enhancedMode) {
-        await executeEnhancedResearchWorkflow(query, serviceConfig, controller.signal);
+        await executeEnhancedResearchWorkflow(query, serviceConfig);
       } else {
         await executeLegacyResearchWorkflow(query, serviceConfig, controller.signal);
       }
@@ -483,7 +497,7 @@ const App: React.FC = () => {
   }, [addStep, updateStepContent, markStepError, researchAgentService]);
 
   // Enhanced Research Workflow with LangGraph Patterns
-  const executeEnhancedResearchWorkflow = useCallback(async (query: string, serviceConfig: ServiceCallConfig, signal?: AbortSignal) => {
+  const executeEnhancedResearchWorkflow = useCallback(async (query: string, serviceConfig: ServiceCallConfig) => {
     // Remove local variable declaration
     // let currentProcessingStepId: string | null = null;
 

@@ -114,6 +114,13 @@ export interface FunctionCallHistory {
 export type HostParadigm = 'dolores' | 'teddy' | 'bernard' | 'maeve';
 
 /**
+ * Hogwarts-style research paradigms introduced by the “Four Houses of Inquiry”
+ * infographic. They are conceptually isomorphic to the Westworld host
+ * paradigms and therefore can be derived via a 1-to-1 mapping.
+ */
+export type HouseParadigm = 'gryffindor' | 'hufflepuff' | 'ravenclaw' | 'slytherin';
+
+/**
  * Arnold's Pyramid of Consciousness layers, used for deeper cognitive analysis.
  */
 export type PyramidLayer = 'memory' | 'improvisation' | 'self_interest' | 'suffering';
@@ -140,6 +147,7 @@ export interface EnhancedResearchResults {
   sources: Citation[];
   queryType?: QueryType;
   hostParadigm?: HostParadigm;
+  houseParadigm?: HouseParadigm;
   sections?: ResearchSection[];
   evaluationMetadata?: ResearchState['evaluation'];
   refinementCount?: number;
@@ -160,8 +168,13 @@ export interface EnhancedResearchResults {
     pyramidLayer?: PyramidLayer;
     contextDensity?: number;
     dominantParadigm?: HostParadigm;
+
+    /* Hogwarts house representation */
+    dominantHouse?: HouseParadigm;
+
     phase?: ResearchPhase;
     pyramidConfidence?: number;
+    /* densities keyed by host paradigm */
     densities?: Record<HostParadigm, number>;
   };
 }

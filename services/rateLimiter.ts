@@ -33,10 +33,20 @@ export class RateLimiter {
 
   static getInstance(): RateLimiter {
     if (!RateLimiter.instance) {
+      // Support both Node (server) and Vite (browser) environments
+      const env: Record<string, string | undefined> = {
+        ...(typeof process !== 'undefined'
+          ? (process.env as Record<string, string | undefined>)
+          : {}),
+        ...(typeof import.meta !== 'undefined'
+          ? ((import.meta as unknown as { env: Record<string, string | undefined> }).env)
+          : {})
+      };
+
       RateLimiter.instance = new RateLimiter({
-        maxTokensPerMinute: Number(process.env.AZURE_OAI_MAX_TPM) || 20000,
-        maxRequestsPerMinute: Number(process.env.AZURE_OAI_MAX_RPM) || 300,
-        burstCapacity: Number(process.env.AZURE_OAI_BURST_TOKENS) || 6000,
+        maxTokensPerMinute: Number(env.AZURE_OAI_MAX_TPM) || 20000,
+        maxRequestsPerMinute: Number(env.AZURE_OAI_MAX_RPM) || 300,
+        burstCapacity: Number(env.AZURE_OAI_BURST_TOKENS) || 6000,
       });
     }
     return RateLimiter.instance;

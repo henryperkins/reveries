@@ -92,6 +92,7 @@ export class AzureOpenAIService {
         const totalEstimatedTokens = estimatedPromptTokens + estimatedCompletionTokens;
         await this.rateLimiter.waitForCapacity(totalEstimatedTokens);
 
+        let data: any;
         const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
 
         const requestBody: any = {
@@ -188,7 +189,7 @@ export class AzureOpenAIService {
           throw error;
         }
 
-        const data = await response.json();
+        data = await response.json();
         console.log('Azure OpenAI API response:', data);
 
         if (!data.choices?.[0]?.message?.content) {
@@ -239,32 +240,99 @@ export class AzureOpenAIService {
    * Polls Azure OpenAI "background task" endpoint until completion.
    * Ref: https://learn.microsoft.com/azure/ai-foundry/openai/how-to/responses#background-tasks
    */
-  private async pollBackgroundTask(operationUrl: string): Promise<any> {
+  /**
+   * Polls the Azure background-task endpoint until completion, following
+   * guidance from MS docs:
+   * https://learn.microsoft.com/azure/ai-foundry/openai/how-to/responses#background-tasks
+   *
+   * Behaviour:
+   *   • Honors `retry-after` header when provided
+   *   • Uses exponential back-off capped at 60 s when header missing
+   *   • Parses JSON body for a `status` field (`notStarted`, `running`,
+   *     `succeeded`, `failed`, `cancelled`)
+   *   • Aborts after `timeoutMs` (default 10 min)
+   */
+  private async pollBackgroundTask(
+    operationUrl: string,
+    timeoutMs = 10 * 60 * 1000,
+  ): Promise<any> {
+    const startTime = Date.now();
+    let backoffMs = 1000;          // initial back-off = 1 s
+    const maxBackoffMs = 60_000;   // cap back-off at 60 s
     let attempt = 0;
+
     while (true) {
       attempt++;
+
+      // Abort if we exceed the timeout window
+      if (Date.now() - startTime > timeoutMs) {
+        throw new APIError(
+          `Background task polling timed out after ${timeoutMs / 1000}s`,
+          'BACKGROUND_TASK_TIMEOUT',
+          false,
+          504,
+        );
+      }
+
       const resp = await fetch(operationUrl, {
         method: 'GET',
         headers: { 'api-key': this.config.apiKey },
       });
 
-      // 202 ⇒ still processing
+      // 202 → still processing, no body
       if (resp.status === 202) {
-        const retryAfter = parseInt(resp.headers.get('retry-after') ?? '2', 10);
-        console.log(`Background task pending (attempt ${attempt}) – waiting ${retryAfter}s`);
-        await new Promise(r => setTimeout(r, retryAfter * 1000));
+        const retryAfter = parseInt(resp.headers.get('retry-after') ?? '0', 10);
+        const waitMs = (retryAfter > 0 ? retryAfter * 1000 : backoffMs);
+        console.log(`Background task 202 (attempt ${attempt}) – waiting ${waitMs / 1000}s`);
+        await new Promise(r => setTimeout(r, waitMs));
+        backoffMs = Math.min(backoffMs * 2, maxBackoffMs);
         continue;
       }
 
-      // 200-level ⇒ done
+      // 200-level → body with status
       if (resp.ok) {
-        return await resp.json();
+        const body: any = await resp.json().catch(() => ({}));
+        const status = (body?.status ?? '').toString().toLowerCase();
+
+        switch (status) {
+          case 'notstarted':
+          case 'running': {
+            const retryAfter = parseInt(resp.headers.get('retry-after') ?? '0', 10);
+            const waitMs = (retryAfter > 0 ? retryAfter * 1000 : backoffMs);
+            console.log(`Background task ${status} (attempt ${attempt}) – waiting ${waitMs / 1000}s`);
+            await new Promise(r => setTimeout(r, waitMs));
+            backoffMs = Math.min(backoffMs * 2, maxBackoffMs);
+            continue;
+          }
+
+          case 'succeeded':
+            return body;
+
+          case 'failed':
+          case 'cancelled':
+          case 'canceled': // some SDKs spell it this way
+            throw new APIError(
+              `Background task ${status}`,
+              'BACKGROUND_TASK_ERROR',
+              false,
+              500,
+            );
+
+          default:
+            // Unknown status → treat as failure
+            throw new APIError(
+              `Unrecognized background-task status: ${status || '(empty)'}`,
+              'BACKGROUND_TASK_ERROR',
+              false,
+              500,
+            );
+        }
       }
 
-      // Any other status ⇒ failure
-      const body = await resp.text();
+      // Any non-OK HTTP code ⇒ failure
+      const textBody = await resp.text();
       throw new APIError(
-        `Background task polling failed (${resp.status}): ${body}`,
+        `Background task polling failed (${resp.status}): ${textBody}`,
         'BACKGROUND_TASK_ERROR',
         resp.status >= 500,
         resp.status,
