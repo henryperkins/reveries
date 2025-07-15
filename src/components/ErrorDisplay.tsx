@@ -23,7 +23,7 @@ interface ErrorDisplayProps {
  * -------
  * <ErrorDisplay error={error} onDismiss={() => setError(null)} />
  */
-const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onDismiss }) => (
+export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onDismiss }) => (
   <div className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-red-50 to-red-100/60 border border-red-300 shadow">
     <span className="shrink-0 mt-1 text-red-600">
       <XMarkIcon className="w-5 h-5" />
@@ -44,4 +44,4 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onDismiss }) => (
   </div>
 )
 
-export default ErrorDisplay
+/* renamed to named export */

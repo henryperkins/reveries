@@ -9,7 +9,11 @@ export { ResearchGraphView } from './ResearchGraphView'
 export { FunctionCallVisualizer } from './FunctionCallVisualizer'
 
 // Individually implemented active UI Components
-export { default as ErrorDisplay } from './ErrorDisplay'
+export { ErrorDisplay } from './ErrorDisplay'
+export { FeaturesList } from './FeaturesList'
+export { ContextDensityBar } from './ContextDensityBar'
+export { ParadigmUI } from './ParadigmUI'
+export { ToolUsageIndicator } from './ToolUsageIndicator'
 
 // Future components (to be implemented)
 // export { SessionManager } from './SessionManager'

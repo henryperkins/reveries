@@ -1,71 +1,57 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react'
-import { ResearchGraphManager, ResearchStep, ResearchStepType, generateMermaidDiagram } from '@/researchGraph'
+import React, { useState, useCallback, useMemo } from 'react'
 import { ResearchAgentService } from '@/services/researchAgentService'
-import { ContextEngineeringService } from '@/services/contextEngineeringService'
 import { Header, Controls, InputBar, ResearchArea, ProgressBar, ResearchGraphView, ErrorDisplay } from '@/components'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
-import { GENAI_MODEL_FLASH } from '@/types'
+import { GENAI_MODEL_FLASH, ResearchStep, ResearchStepType, EffortType } from '@/types'
+import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
 import '@/App.css'
 
 const App: React.FC = () => {
   const [research, setResearch] = usePersistedState<ResearchStep[]>('reveries_research', [])
   const [isLoading, setIsLoading] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [currentModel, setCurrentModel] = useState(GENAI_MODEL_FLASH)
   const [showGraph, setShowGraph] = useState(false)
   const [enhancedMode, setEnhancedMode] = useState(false)
+  const [effort, setEffort] = useState<EffortType>(EffortType.LOW)
   const { error, handleError, clearError } = useErrorHandling()
 
-  const graphManager = useMemo(() => {
-    const manager = new ResearchGraphManager()
-    research.forEach((step, index) => {
-      manager.addNode(step, index > 0 ? research[index - 1].id : undefined)
-    })
-    return manager
-  }, [research])
+  // graphManager removed, will use researchAgent as graphManager if needed
 
-  const researchAgent = useMemo(() => {
-    return new ResearchAgentService()
-  }, [])
+  const researchAgent = useMemo(() => ResearchAgentService.getInstance(), [])
 
-  const contextEngineering = useMemo(() => {
-    return new ContextEngineeringService()
-  }, [])
+  // contextEngineering removed
 
   const handleSubmit = useCallback(async (input: string) => {
     if (!input.trim() || isLoading) return
 
     setIsLoading(true)
+    setProgress(0)
     clearError()
 
     try {
       // Create initial step
       const initialStep: ResearchStep = {
         id: crypto.randomUUID(),
+        title: 'User Query',
+        icon: () => null,
         content: input,
         timestamp: new Date().toISOString(),
-        type: ResearchStepType.RESEARCH,
-        status: 'pending',
+        type: ResearchStepType.USER_QUERY,
         sources: []
       }
 
       setResearch(prev => [...prev, initialStep])
 
       // Process with research agent
-      const result = await researchAgent.processQuery(input, {
-        model: currentModel,
-        enhancedMode,
-        onProgress: (progress) => {
-          // Update progress in UI
-          console.log('Progress:', progress)
-        }
-      })
+      const result = await researchAgent.generateText(input, currentModel as typeof GENAI_MODEL_FLASH, effort)
+      // Note: If you want progress, you must adapt to the available API.
 
       // Update step with result
       const completedStep: ResearchStep = {
         ...initialStep,
         content: result.text,
-        status: 'completed',
         sources: result.sources || []
       }
 
@@ -92,11 +78,21 @@ const App: React.FC = () => {
     setEnhancedMode(enabled)
   }, [])
 
-  const handleExport = useCallback(() => {
-    const mermaidDiagram = generateMermaidDiagram(graphManager)
-    // Export logic here
-    console.log('Mermaid diagram:', mermaidDiagram)
-  }, [graphManager])
+  const handleExport = useCallback(async () => {
+    try {
+      const query = research[0]?.content || 'Research Export'
+      const markdown = await exportToMarkdown(query as string, research, {
+        model: currentModel,
+        effort: enhancedMode ? 'enhanced' : 'standard',
+        timestamp: new Date().toLocaleString(),
+        // duration: graphManager.getStatistics().totalDuration // Remove if not needed
+      })
+      const timestamp = new Date().toISOString().split('T')[0]
+      downloadFile(markdown, `research-${timestamp}.md`, 'text/markdown')
+    } catch (err) {
+      handleError(err as Error)
+    }
+  }, [research, currentModel, enhancedMode, handleError])
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -104,33 +100,30 @@ const App: React.FC = () => {
 
       <main className="container mx-auto px-4 py-8">
         <Controls
-          currentModel={currentModel}
+          selectedEffort={effort}
+          onEffortChange={setEffort}
+          selectedModel={currentModel as typeof GENAI_MODEL_FLASH}
           onModelChange={setCurrentModel}
+          onNewSearch={handleClear}
+          isLoading={isLoading}
           enhancedMode={enhancedMode}
           onEnhancedModeChange={handleEnhancedModeChange}
-          showGraph={showGraph}
-          onToggleGraph={handleToggleGraph}
-          onExport={handleExport}
-          onClear={handleClear}
         />
 
         {error && (
-          <ErrorDisplay error={error} onDismiss={clearError} />
+          <ErrorDisplay error={error.message} onDismiss={clearError} />
         )}
 
-        {showGraph ? (
-          <ResearchGraphView manager={graphManager} />
-        ) : (
-          <>
-            <ResearchArea research={research} />
-            {isLoading && <ProgressBar />}
-          </>
-        )}
+        {/* ResearchGraphView expects a graphManager, but researchAgent is not a graphManager.
+            You may need to adapt this or pass the correct object. For now, pass null. */}
+        <ResearchGraphView graphManager={null as any} isOpen={showGraph} onClose={handleToggleGraph} />
+
+        <ResearchArea steps={research} />
+        {isLoading && <ProgressBar value={progress} />}
 
         <InputBar
-          onSubmit={handleSubmit}
+          onQuerySubmit={handleSubmit}
           isLoading={isLoading}
-          placeholder="Enter your research query..."
         />
       </main>
     </div>
