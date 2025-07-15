@@ -8,10 +8,10 @@ export { ResearchArea } from './ResearchArea';
 export { ResearchGraphView } from './ResearchGraphView';
 export { ResearchStepCard } from './ResearchStepCard';
 export { ContextDensityBar } from './ContextDensityBar';
-export { ParadigmIndicator } from './ParadigmUI';
+export { ParadigmIndicator } from './ParadigmIndicator';
+export { ErrorBoundary } from './ErrorBoundary';
 
 // Export icons separately
 export * as Icons from './icons';
 
-// Prototype components are in ./prototype/
 // Prototype components are in ./prototype/
