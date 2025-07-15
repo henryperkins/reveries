@@ -149,73 +149,76 @@ const App: React.FC = () => {
   }, [isLoading, progress])
 
   return (
-    <div className="app min-h-screen bg-gradient-to-br from-westworld-cream to-westworld-beige text-westworld-black">
+    <div className="app flex flex-col min-h-screen bg-gradient-to-br from-westworld-cream to-westworld-beige text-westworld-black">
       <Header />
 
-      <main className="container mx-auto px-4 py-8 scrollbar-westworld">
-        <Controls
-          selectedEffort={effort}
-          onEffortChange={setEffort}
-          selectedModel={currentModel as typeof GENAI_MODEL_FLASH}
-          onModelChange={setCurrentModel}
-          onNewSearch={handleClear}
-          onExport={research.length > 0 ? handleExport : undefined}
-          onToggleGraph={graphManager.getNodes().length > 0 ? handleToggleGraph : undefined}
-          isLoading={isLoading}
-          enhancedMode={enhancedMode}
-          onEnhancedModeChange={handleEnhancedModeChange}
-        />
+      <main className="flex-1 container mx-auto px-4 py-8 overflow-y-auto scrollbar-westworld">
+        <div className="max-w-4xl mx-auto">
+          <Controls
+            selectedEffort={effort}
+            onEffortChange={setEffort}
+            selectedModel={currentModel as typeof GENAI_MODEL_FLASH}
+            onModelChange={setCurrentModel}
+            onNewSearch={handleClear}
+            onExport={research.length > 0 ? handleExport : undefined}
+            onToggleGraph={graphManager.getNodes().length > 0 ? handleToggleGraph : undefined}
+            isLoading={isLoading}
+            enhancedMode={enhancedMode}
+            onEnhancedModeChange={handleEnhancedModeChange}
+          />
 
-        {error && (
-          <div className="error-display">
-            <ErrorDisplay error={error.message} onDismiss={clearError} />
-          </div>
-        )}
-
-        <ResearchGraphView graphManager={graphManager} isOpen={showGraph} onClose={handleToggleGraph} />
-
-        <div className="space-y-6">
-          {/* Show paradigm UI when detected */}
-          {paradigm && paradigmProbabilities && !isLoading && (
-            <div className="animate-fade-in">
-              <ParadigmIndicator
-                paradigm={paradigm}
-                probabilities={paradigmProbabilities}
-                confidence={Math.max(...Object.values(paradigmProbabilities))}
-              />
+          {error && (
+            <div className="my-4">
+              <ErrorDisplay error={error.message} onDismiss={clearError} />
             </div>
           )}
 
-          {/* Show context density during processing */}
-          {isLoading && contextDensities && (
-            <div className="animate-slide-up">
-              <ContextDensityBar
-                densities={contextDensities}
-                dominantContext="analytical"
-                phase="analyzing"
-                showLabels={true}
-              />
-            </div>
-          )}
+          <ResearchGraphView graphManager={graphManager} isOpen={showGraph} onClose={handleToggleGraph} />
 
-          <div className="research-container">
-            <ResearchArea steps={research} />
+          <div className="space-y-6 mt-6">
+            {/* Show paradigm UI when detected */}
+            {paradigm && paradigmProbabilities && !isLoading && (
+              <div className="animate-fade-in">
+                <ParadigmIndicator
+                  paradigm={paradigm}
+                  probabilities={paradigmProbabilities}
+                  confidence={Math.max(...Object.values(paradigmProbabilities))}
+                />
+              </div>
+            )}
+
+            {/* Show context density during processing */}
+            {isLoading && contextDensities && (
+              <div className="animate-slide-up">
+                <ContextDensityBar
+                  densities={contextDensities}
+                  dominantContext="analytical"
+                  phase="analyzing"
+                  showLabels={true}
+                />
+              </div>
+            )}
+
+            <div className="research-container">
+              <ResearchArea steps={research} />
+            </div>
           </div>
         </div>
+      </main>
 
+      <footer className="w-full p-4 bg-white/50 backdrop-blur-sm border-t border-black/10">
         {isLoading && (
-          <div className="progress-bar-container">
-            <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
+          <div className="mb-2">
+            <ProgressBar value={progress / 100} />
           </div>
         )}
-
-        <div className="input-bar">
+        <div className="max-w-4xl mx-auto">
           <InputBar
             onQuerySubmit={handleSubmit}
             isLoading={isLoading}
           />
         </div>
-      </main>
+      </footer>
     </div>
   )
 }

@@ -26,27 +26,31 @@ export const ResearchArea: React.FC<ResearchAreaProps> = ({ steps }) => {
         </div>
       ) : (
         <>
-          {steps.map(step => (
-            <ResearchStepCard
-              key={step.id}
-              step={step}
-              isExpanded={expandedSteps.has(step.id)}
-              onToggle={() => toggleStep(step.id)}
-            />
-          ))}
-
-          {steps[steps.length - 1]?.type === ResearchStepType.FINAL_ANSWER && (
-            <div className="mt-8 p-6 bg-gradient-to-r from-westworld-gold/10 to-transparent rounded-lg border-l-4 border-westworld-gold">
-              <h3 className="text-xl font-bold text-westworld-darkbrown mb-2">
-                Research Complete
-              </h3>
+          {steps.map((step, index) => {
+            const isFinalAnswer = step.type === ResearchStepType.FINAL_ANSWER && index === steps.length - 1;
+            if (isFinalAnswer) {
+              return (
+                <div key={step.id} className="mt-8 p-6 bg-gradient-to-r from-westworld-gold/10 to-transparent rounded-lg border-l-4 border-westworld-gold">
+                  <h3 className="text-xl font-bold text-westworld-darkbrown mb-2">
+                    Research Complete
+                  </h3>
+                  <ResearchStepCard
+                    step={step}
+                    isExpanded
+                    onToggle={() => {}}
+                  />
+                </div>
+              );
+            }
+            return (
               <ResearchStepCard
-                step={steps[steps.length - 1]}
-                isExpanded
-                onToggle={() => {}}
+                key={step.id}
+                step={step}
+                isExpanded={expandedSteps.has(step.id)}
+                onToggle={() => toggleStep(step.id)}
               />
-            </div>
-          )}
+            );
+          })}
         </>
       )}
     </div>

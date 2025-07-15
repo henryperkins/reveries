@@ -34,10 +34,6 @@ main {
 
 /* Progress bar container styling */
 .progress-bar-container {
-    position: fixed;
-    bottom: 80px;
-    left: 0;
-    right: 0;
     height: 4px;
     background-color: rgba(210, 180, 140, 0.2);
     z-index: 30;
@@ -52,10 +48,6 @@ main {
 
 /* Input bar positioning */
 .input-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
     background-color: rgba(250, 250, 250, 0.95);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);

@@ -2201,7 +2201,7 @@ export class ResearchAgentService {
       isolate: null
     };
 
-    let processedContext = { ...context };
+    const processedContext = { ...context };
 
     for (const layer of layerSequence) {
       switch (layer) {
