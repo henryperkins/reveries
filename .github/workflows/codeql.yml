@@ -21,7 +21,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'javascript-typescript' ]
+        # CodeQL automatically handles TypeScript when using 'javascript'
+        language: [ 'javascript' ]
 
     steps:
     - name: Checkout repository
@@ -30,8 +31,14 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
+
+    # Quick check to ensure Node version requirements are met
+    - name: Verify Node.js version
+      run: |
+        node -e "const v=process.versions.node.split('.')[0]; 
+        if(v<20){console.error('Node ≥20 required'); process.exit(1)}"
 
     - name: Install dependencies
       run: npm ci

@@ -40,6 +40,10 @@
     "typescript-eslint": "^8.36.0",
     "vite": "^7.0.0"
   },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "engineStrict": true,
   "description": "This contains everything you need to run your app locally.",
   "main": "eslint.config.js",
   "keywords": [],
