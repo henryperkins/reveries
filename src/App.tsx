@@ -7,6 +7,7 @@ import { useErrorHandling } from '@/hooks/useErrorHandling'
 import { GENAI_MODEL_FLASH, ResearchStep, ResearchStepType, EffortType, HostParadigm, ParadigmProbabilities } from '@/types'
 import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
 import '@/App.css'
+import { ResearchStepCard } from './components/ResearchStepCard';
 
 const App: React.FC = () => {
   const [research, setResearch] = usePersistedState<ResearchStep[]>('reveries_research', [])

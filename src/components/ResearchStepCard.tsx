@@ -2,13 +2,24 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ResearchStep, ResearchStepType } from '../types';
+import { formatDuration } from '../utils/exportUtils';
 
 interface ResearchStepCardProps {
   step: ResearchStep;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onNavigate?: (stepId: string) => void;
 }
 
-export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({ step }) => {
-  const IconComponent = step.icon;
+export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
+  step,
+  isExpanded,
+  onToggle,
+  onNavigate
+}) => {
+  // Fallback to a no-op component if the step lacks an icon
+  const IconComponent: React.ElementType =
+    (step.icon ?? (() => null)) as React.ElementType;
 
   const getStepStyles = (type: ResearchStepType) => {
     const styles: Record<ResearchStepType, {

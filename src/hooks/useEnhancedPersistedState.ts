@@ -27,7 +27,7 @@ export function usePersistedState<T>(
   useEffect(() => {
     const checkDatabase = async () => {
       try {
-        if (process.env.VITE_ENABLE_DATABASE_PERSISTENCE === 'true') {
+        if (import.meta.env.VITE_ENABLE_DATABASE_PERSISTENCE === 'true') {
           const db = DatabaseService.getInstance();
           const isConnected = await db.isConnected();
 
@@ -99,7 +99,7 @@ export function useResearchSessions() {
   useEffect(() => {
     const initDatabase = async () => {
       try {
-        if (process.env.VITE_ENABLE_DATABASE_PERSISTENCE === 'true') {
+        if (import.meta.env.VITE_ENABLE_DATABASE_PERSISTENCE === 'true') {
           const db = DatabaseService.getInstance();
           const connected = await db.isConnected();
 
@@ -314,7 +314,7 @@ export function useDatabaseHealth() {
 
   const checkHealth = useCallback(async () => {
     try {
-      if (process.env.VITE_ENABLE_DATABASE_PERSISTENCE === 'true') {
+      if (import.meta.env.VITE_ENABLE_DATABASE_PERSISTENCE === 'true') {
         const db = DatabaseService.getInstance();
         const connected = await db.isConnected();
         setIsHealthy(connected);
