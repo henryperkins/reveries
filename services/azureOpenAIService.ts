@@ -81,11 +81,17 @@ export class AzureOpenAIService {
     effort: EffortType = EffortType.MEDIUM,
     useReasoningEffort: boolean = true,
     temperature: number = 0.7,
-    maxTokens: number = 32000
+    maxTokens: number = 4096
   ): Promise<AzureOpenAIResponse> {
     console.log('generateResponse called with:', { prompt: prompt.substring(0, 100), effort, useReasoningEffort });
     try {
       return await withRetry(async () => {
+        // Wait for rate-limit capacity before dispatching the request
+        const estimatedPromptTokens = estimateTokens(prompt);
+        const estimatedCompletionTokens = maxTokens;
+        const totalEstimatedTokens = estimatedPromptTokens + estimatedCompletionTokens;
+        await this.rateLimiter.waitForCapacity(totalEstimatedTokens);
+
         const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
 
         const requestBody: any = {
@@ -116,7 +122,7 @@ export class AzureOpenAIService {
 
         console.log('Making Azure OpenAI request to:', url);
         console.log('Request body:', requestBody);
-        
+
         const response = await fetch(url, {
           method: 'POST',
           headers: {
@@ -125,8 +131,23 @@ export class AzureOpenAIService {
           },
           body: JSON.stringify(requestBody)
         });
-        
+
         console.log('Azure OpenAI response status:', response.status);
+
+        // ── Background-task shortcut ─────────────────────────────
+        if (response.status === 202) {
+          const operationUrl = response.headers.get('operation-location');
+          if (!operationUrl) {
+            throw new APIError(
+              'Azure returned 202 but no operation-location header.',
+              'BACKGROUND_TASK_ERROR',
+              false,
+              500,
+            );
+          }
+          console.log(`Background task started → polling ${operationUrl}`);
+          data = await this.pollBackgroundTask(operationUrl);
+        } else
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -147,7 +168,8 @@ export class AzureOpenAIService {
             const retryAfterHeader = response.headers.get('retry-after');
             if (retryAfterHeader) {
               retryAfter = parseInt(retryAfterHeader, 10);
-              console.log(`Rate limit hit. Retry after ${retryAfter} seconds`);
+              console.log(`Rate limit hit. Retry after ${retryAfter}s`);
+              this.rateLimiter.penalize(retryAfter);     // NEW: slow down callers
             }
           }
 
@@ -157,12 +179,12 @@ export class AzureOpenAIService {
             response.status === 429 || response.status >= 500,
             response.status
           );
-          
+
           // Attach retry-after to error for smarter retry handling
           if (retryAfter) {
             (error as any).retryAfter = retryAfter;
           }
-          
+
           throw error;
         }
 
@@ -213,10 +235,47 @@ export class AzureOpenAIService {
     }
   }
 
+  /**
+   * Polls Azure OpenAI "background task" endpoint until completion.
+   * Ref: https://learn.microsoft.com/azure/ai-foundry/openai/how-to/responses#background-tasks
+   */
+  private async pollBackgroundTask(operationUrl: string): Promise<any> {
+    let attempt = 0;
+    while (true) {
+      attempt++;
+      const resp = await fetch(operationUrl, {
+        method: 'GET',
+        headers: { 'api-key': this.config.apiKey },
+      });
+
+      // 202 ⇒ still processing
+      if (resp.status === 202) {
+        const retryAfter = parseInt(resp.headers.get('retry-after') ?? '2', 10);
+        console.log(`Background task pending (attempt ${attempt}) – waiting ${retryAfter}s`);
+        await new Promise(r => setTimeout(r, retryAfter * 1000));
+        continue;
+      }
+
+      // 200-level ⇒ done
+      if (resp.ok) {
+        return await resp.json();
+      }
+
+      // Any other status ⇒ failure
+      const body = await resp.text();
+      throw new APIError(
+        `Background task polling failed (${resp.status}): ${body}`,
+        'BACKGROUND_TASK_ERROR',
+        resp.status >= 500,
+        resp.status,
+      );
+    }
+  }
+
   async generateText(prompt: string, effort: EffortType): Promise<{ text: string; sources?: Citation[] }> {
     // Estimate tokens for rate limiting
     const estimatedPromptTokens = estimateTokens(prompt);
-    const estimatedCompletionTokens = 2000; // Conservative estimate
+    const estimatedCompletionTokens = 4096; // Align with default max tokens
     const totalEstimatedTokens = estimatedPromptTokens + estimatedCompletionTokens;
 
     // Wait for rate limit capacity
@@ -295,6 +354,11 @@ export class AzureOpenAIService {
     effort: EffortType = EffortType.MEDIUM
   ): Promise<AzureOpenAIResponse> {
     return withRetry(async () => {
+      // Guard against Azure rate limits
+      const estimatedPromptTokens = estimateTokens(prompt);
+      const estimatedCompletionTokens = 4096; // align with max_completion_tokens in body
+      await this.rateLimiter.waitForCapacity(estimatedPromptTokens + estimatedCompletionTokens);
+
       const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
 
       const messages = [
@@ -335,7 +399,7 @@ export class AzureOpenAIService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        
+
         // Extract retry-after header for rate limits
         let retryAfter: number | undefined;
         if (response.status === 429) {
@@ -345,19 +409,19 @@ export class AzureOpenAIService {
             console.log(`Rate limit hit. Retry after ${retryAfter} seconds`);
           }
         }
-        
+
         const error = new APIError(
           `Azure OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`,
           response.status === 429 ? 'RATE_LIMIT' : 'API_ERROR',
           response.status === 429 || response.status >= 500,
           response.status
         );
-        
+
         // Attach retry-after to error for smarter retry handling
         if (retryAfter) {
           (error as any).retryAfter = retryAfter;
         }
-        
+
         throw error;
       }
 
@@ -404,6 +468,8 @@ export class AzureOpenAIService {
     onComplete: () => void,
     onError?: (error: Error) => void
   ): Promise<void> {
+    // Throttle streaming calls as well
+    await this.rateLimiter.waitForCapacity(estimateTokens(prompt) + 4096);
     const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
 
     const requestBody: any = {
@@ -442,7 +508,7 @@ export class AzureOpenAIService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        
+
         // Extract retry-after header for rate limits
         let retryAfter: number | undefined;
         if (response.status === 429) {
@@ -451,18 +517,18 @@ export class AzureOpenAIService {
             retryAfter = parseInt(retryAfterHeader, 10);
           }
         }
-        
+
         const error = new APIError(
           `Azure OpenAI streaming error: ${response.status} - ${errorData.error?.message || response.statusText}`,
           response.status === 429 ? 'RATE_LIMIT' : 'STREAM_ERROR',
           response.status === 429 || response.status >= 500,
           response.status
         );
-        
+
         if (retryAfter) {
           (error as any).retryAfter = retryAfter;
         }
-        
+
         throw error;
       }
 

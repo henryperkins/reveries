@@ -1,9 +1,9 @@
-import { RequestQueue } from './requestQueue';
 
 export interface RateLimitConfig {
   maxTokensPerMinute: number;
   maxRequestsPerMinute: number;
   burstCapacity: number;
+  penaltySeconds?: number; // optional initial penalty
 }
 
 export class RateLimiter {
@@ -11,6 +11,7 @@ export class RateLimiter {
   private tokenBucket: number;
   private requestBucket: number;
   private lastRefill: number;
+  private blockedUntil = 0; // epoch-ms until which we are paused
   private config: RateLimitConfig;
   private requestHistory: { timestamp: number; tokens: number }[] = [];
 
@@ -21,20 +22,35 @@ export class RateLimiter {
     this.lastRefill = Date.now();
   }
 
+  /**
+   * Apply a penalty window (e.g., server Retry-After). All callers will pause
+   * until the specified number of seconds has elapsed.
+   */
+  penalize(seconds: number): void {
+    const until = Date.now() + seconds * 1000;
+    this.blockedUntil = Math.max(this.blockedUntil, until);
+  }
+
   static getInstance(): RateLimiter {
     if (!RateLimiter.instance) {
-      // Azure S0 tier limits
       RateLimiter.instance = new RateLimiter({
-        maxTokensPerMinute: 40000, // S0 tier limit
-        maxRequestsPerMinute: 60,  // Conservative estimate
-        burstCapacity: 10000       // Allow short bursts
+        maxTokensPerMinute: Number(process.env.AZURE_OAI_MAX_TPM) || 20000,
+        maxRequestsPerMinute: Number(process.env.AZURE_OAI_MAX_RPM) || 300,
+        burstCapacity: Number(process.env.AZURE_OAI_BURST_TOKENS) || 6000,
       });
     }
     return RateLimiter.instance;
   }
 
   async waitForCapacity(estimatedTokens: number): Promise<void> {
-    const now = Date.now();
+    let now = Date.now();
+    // If we've been explicitly penalized, wait until unblocked
+    if (now < this.blockedUntil) {
+      const waitMs = this.blockedUntil - now;
+      console.log(`RateLimiter penalized: waiting ${Math.round(waitMs / 1000)}s`);
+      await new Promise(r => setTimeout(r, waitMs));
+      now = Date.now();
+    }
     this.refillBuckets(now);
 
     // Clean old history

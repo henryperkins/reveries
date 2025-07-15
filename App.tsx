@@ -198,20 +198,20 @@ const App: React.FC = () => {
     setResearchSteps(prevSteps => [...prevSteps, newStep]);
 
     // Add to graph with initial metadata
-    const parentId = graphManagerRef.current.getGraph().currentPath.slice(-1)[0];
+    let parentId: string | undefined = undefined;
+    if (graphManagerRef.current) {
+      const graph = graphManagerRef.current.getGraph();
+      parentId = graph.currentPath.slice(-1)[0];
+    }
     const metadata: Partial<ResearchMetadata> = {
       model: selectedModel,
       effort: selectedEffort,
       sourcesCount: stepData.sources?.length || 0,
-      citationsCount: stepData.sources?.length || 0,
     };
-
-    // Add step-specific metadata
-    if (stepData.type === ResearchStepType.GENERATING_QUERIES) {
-      metadata.queriesGenerated = [];
+    // No citationsCount or queriesGenerated, not in ResearchMetadata
+    if (graphManagerRef.current) {
+      graphManagerRef.current.addNode(newStep, parentId, metadata);
     }
-
-    graphManagerRef.current.addNode(newStep, parentId, metadata);
 
     return newStepId;
   }, [selectedModel, selectedEffort]);
@@ -222,27 +222,27 @@ const App: React.FC = () => {
     ));
 
     // Update graph node metadata using proper accessors
-    const nodeId = graphManagerRef.current.getNodeIdFromStepId(stepId);
-    const node = graphManagerRef.current.getGraph().nodes.get(nodeId);
-    if (node) {
-      // Extract queries if this is a query generation step
-      if (node.type === ResearchStepType.GENERATING_QUERIES && typeof newContent === 'string') {
-        const queriesMatch = newContent.match(/Generated (\d+) search queries/);
-        if (queriesMatch && node.metadata) {
-          const queryCount = parseInt(queriesMatch[1], 10);
-          node.metadata.searchQueries = Array(queryCount).fill(null).map((_, i) => `Query ${i + 1}`);
+    if (graphManagerRef.current) {
+      const nodeId = graphManagerRef.current.getNodeIdFromStepId(stepId);
+      const node = graphManagerRef.current.getGraph().nodes.get(nodeId);
+      if (node) {
+        // Extract queries if this is a query generation step
+        if (node.type === ResearchStepType.GENERATING_QUERIES && typeof newContent === 'string') {
+          const queriesMatch = newContent.match(/Generated (\d+) search queries/);
+          if (queriesMatch && node.metadata) {
+            const queryCount = parseInt(queriesMatch[1], 10);
+            node.metadata.searchQueries = Array(queryCount).fill(null).map((_, i) => `Query ${i + 1}`);
+          }
         }
-      }
-
-      // Update sources metadata
-      if (newSources && newSources.length > 0 && node.metadata) {
-        node.metadata.sourcesCount = newSources.length;
-      }
-
-      // Mark node as complete by updating duration using proper accessor
-      const nodeTimestamp = graphManagerRef.current.getNodeTimestamp(nodeId);
-      if (nodeTimestamp) {
-        node.duration = Date.now() - nodeTimestamp;
+        // Update sources metadata
+        if (newSources && newSources.length > 0 && node.metadata) {
+          node.metadata.sourcesCount = newSources.length;
+        }
+        // Mark node as complete by updating duration using proper accessor
+        const nodeTimestamp = graphManagerRef.current.getNodeTimestamp(nodeId);
+        if (nodeTimestamp) {
+          node.duration = Date.now() - nodeTimestamp;
+        }
       }
     }
   }, []);
@@ -253,8 +253,10 @@ const App: React.FC = () => {
     ));
 
     // Mark error in graph with proper node ID using accessor
-    const nodeId = graphManagerRef.current.getNodeIdFromStepId(stepId);
-    graphManagerRef.current.markNodeError(nodeId, errorMessage);
+    if (graphManagerRef.current) {
+      const nodeId = graphManagerRef.current.getNodeIdFromStepId(stepId);
+      graphManagerRef.current.markNodeError(nodeId, errorMessage);
+    }
   }, []);
 
   const executeResearchWorkflow = useCallback(async (query: string) => {
@@ -270,7 +272,9 @@ const App: React.FC = () => {
     currentProcessingStepIdRef.current = null; // Reset the ref
 
     // Reset graph for new research
-    graphManagerRef.current.reset();
+    if (graphManagerRef.current) {
+      graphManagerRef.current.reset();
+    }
 
     // Create new session
     const sessionId = Date.now().toString();
@@ -318,7 +322,7 @@ const App: React.FC = () => {
         updateSession(currentSessionRef.current, {
           completed: true,
           steps: researchSteps,
-          graphData: graphManagerRef.current.serialize(),
+          graphData: graphManagerRef.current ? graphManagerRef.current.serialize() : undefined,
           duration: Date.now() - (sessions.find(s => s.id === currentSessionRef.current)?.timestamp || Date.now())
         });
       }
@@ -515,14 +519,14 @@ const App: React.FC = () => {
 
     switch (queryType) {
       case 'analytical':
-        result = await executeAnalyticalResearch(query, serviceConfig, signal);
+        result = await executeAnalyticalResearch(query, serviceConfig);
         break;
       case 'comparative':
       case 'exploratory':
-        result = await executeComprehensiveResearch(query, serviceConfig, signal);
+        result = await executeComprehensiveResearch(query, serviceConfig);
         break;
       default: // factual
-        result = await executeFactualResearch(query, serviceConfig, signal);
+        result = await executeFactualResearch(query, serviceConfig);
     }
 
     // Step 3: Display Final Results

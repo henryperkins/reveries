@@ -66,6 +66,12 @@ sequenceDiagram
 * **Streaming**: `streamResponse()` uses `reader.read()` to push deltas to the UI.
 * **Tool-Calls**: `generateResponseWithTools()` returns `toolCalls` payload when assistant responded with tool invocations.
 
+### Background Tasks
+As of 2025-04-01-preview, Azure may return **202 Accepted** with an
+`operation-location` header for long-running jobs.  
+Our client now polls this URL (respecting `retry-after`) and penalizes the
+global `RateLimiter` to avoid flooding the service.
+
 ---
 
 ## 5. Client ↔ Server Contract

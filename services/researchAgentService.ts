@@ -169,7 +169,7 @@ export class ResearchAgentService {
             console.error('Error creating Azure service instance:', serviceError);
             throw serviceError;
           }
-          
+
           console.log('Calling Azure OpenAI service...');
           const azureResult = await azureService.generateResponse(prompt, effort);
           console.log('Azure OpenAI result:', azureResult);
@@ -300,7 +300,11 @@ export class ResearchAgentService {
   private isModelAvailable(model: ModelType): boolean {
     switch (model) {
       case GENAI_MODEL_FLASH:
-        return !!getGeminiApiKey();
+        try {
+          return !!getGeminiApiKey();
+        } catch {
+          return false;
+        }
       case GROK_MODEL_4:
         try {
           return !!getGrokApiKey();
@@ -506,11 +510,31 @@ export class ResearchAgentService {
         }
       }
 
-      const text = response.response.text();
+      let text = '';
 
-      if (!text) {
+      try {
+        // Try multiple ways to extract text from the response
+        if (response.response && typeof response.response.text === 'function') {
+          text = response.response.text();
+        } else if (response.response?.candidates?.[0]?.content?.parts) {
+          const parts = response.response.candidates[0].content.parts;
+          text = parts
+            .filter((p: any) => p.text && typeof p.text === 'string')
+            .map((p: any) => p.text)
+            .join('\n')
+            .trim();
+        } else if (response.response?.text) {
+          text = response.response.text;
+        }
+      } catch (textError) {
+        console.error('Error extracting text from Gemini response:', textError);
+        console.error('Response structure:', JSON.stringify(response, null, 2));
+      }
+
+      if (!text || text.trim() === '') {
+        console.error('No text found in Gemini response. Response structure:', JSON.stringify(response, null, 2));
         throw new APIError(
-          "Empty response from Gemini API",
+          "Empty response from Gemini API - no text content found",
           "EMPTY_RESPONSE",
           true
         );
@@ -518,7 +542,7 @@ export class ResearchAgentService {
 
       let sources: Citation[] = [];
 
-      if (useSearch && response.response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+      if (useSearch && response.response?.candidates?.[0]?.groundingMetadata?.groundingChunks) {
         const chunks = response.response.candidates[0].groundingMetadata.groundingChunks;
         sources = chunks
           .filter((chunk: any) => chunk.web && chunk.web.uri)
@@ -1414,6 +1438,13 @@ export class ResearchAgentService {
       }
     }
 
+    // Get tool recommendations
+    const recommendedTools = this.researchToolsService.recommendToolsForQuery(query, queryType);
+
+    if (recommendedTools.length > 0 && useResearchTools) {
+      onProgress?.(`Host identified ${recommendedTools.length} specialized subroutines for this query...`);
+    }
+
     // Add context engineering metadata to result
     const processingTime = Date.now() - startTime;
     const confidenceScore = this.calculateConfidenceScore(result);
@@ -1440,19 +1471,11 @@ export class ResearchAgentService {
       toolsEnabled: useResearchTools
     };
 
-    // Track all search queries used
-    if (result.queries) {
-      result.adaptiveMetadata.searchQueries = result.queries;
-    }
-
-    // Track evaluation metadata
-    if (result.evaluationMetadata) {
-      result.adaptiveMetadata.evaluationMetadata = result.evaluationMetadata;
-    }
-
-    // Track function call history
-    if (this.functionCallingService.getExecutionHistory().length > 0) {
-      result.functionCallHistory = this.functionCallingService.getExecutionHistory();
+    // Enhanced result with tool usage information
+    if (result.toolsUsed) {
+      result.toolsUsed = [...result.toolsUsed, ...recommendedTools];
+    } else {
+      result.toolsUsed = recommendedTools;
     }
 
     // Attempt self-healing if confidence is low
@@ -1474,21 +1497,6 @@ export class ResearchAgentService {
         // Fall through to standard routing
       }
     }
-
-    // Get tool recommendations
-    const recommendedTools = this.researchToolsService.recommendToolsForQuery(query, queryType);
-
-    if (recommendedTools.length > 0 && useResearchTools) {
-      onProgress?.(`Host identified ${recommendedTools.length} specialized subroutines for this query...`);
-    }
-
-    // Enhanced result with tool usage information
-    result.toolsUsed = recommendedTools;
-    result.adaptiveMetadata = {
-      ...result.adaptiveMetadata,
-      recommendedTools,
-      toolsEnabled: useResearchTools
-    };
 
     return result;
   }

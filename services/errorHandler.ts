@@ -118,6 +118,13 @@ export async function withRetry<T>(
         // Check for Retry-After header hint
         const retryAfter = (error as any).retryAfter;
         const rateLimitDelay = retryAfter ? retryAfter * 1000 : delay * 2;
+        // Inform the RateLimiter so future callers respect server hint
+        if (retryAfter) {
+          try {
+            const { RateLimiter } = await import('./rateLimiter');
+            RateLimiter.getInstance().penalize(retryAfter);
+          } catch {}
+        }
 
         if (onRetry) {
           onRetry(attempt + 1, lastError);

@@ -1,16 +1,25 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { Tool, SchemaType, Schema } from "@google/generative-ai";
 import { GENAI_MODEL_FLASH } from "../types";
 
 export interface GeminiFunctionCall {
   name: string;
-  parameters: Record<string, any>;
+  parameters: {
+    type: SchemaType;
+    properties: Record<string, {
+      type: string;
+      description: string;
+      enum?: string[];
+    }>;
+    required: string[];
+  };
 }
 
 export interface GeminiFunction {
   name: string;
   description: string;
   parameters: {
-    type: "object";
+    type: string; // Should match SchemaType from SDK
     properties: Record<string, {
       type: string;
       description: string;
@@ -41,9 +50,9 @@ const getGeminiApiKey = (): string => {
    */
   const clientKey =
     // Bundled / production builds
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) ||
+    (typeof import.meta !== 'undefined' && (import.meta.env?.VITE_GEMINI_API_KEY)) ||
     // Dev-server global shim
-    (typeof window !== 'undefined' && (window as any).__VITE_IMPORT_META_ENV__?.VITE_GEMINI_API_KEY);
+    (typeof window !== 'undefined' && ((window as { __VITE_IMPORT_META_ENV__?: { VITE_GEMINI_API_KEY?: string } }).__VITE_IMPORT_META_ENV__?.VITE_GEMINI_API_KEY));
 
   const serverKey =
     (typeof process !== 'undefined' &&
@@ -75,7 +84,6 @@ export class GeminiService {
     sources?: { name: string; url?: string }[];
   }> {
     const {
-      model = GENAI_MODEL_FLASH,
       thinkingBudget,
       temperature,
       maxOutputTokens,
@@ -84,7 +92,7 @@ export class GeminiService {
     } = options;
 
     // Generation config only contains generation parameters
-    const generationConfig: any = {};
+  const generationConfig: Record<string, unknown> = {};
 
     // Configure thinking
     if (typeof thinkingBudget === 'number') {
@@ -100,10 +108,10 @@ export class GeminiService {
     }
 
     // Tools array - separate from generationConfig
-    const tools: any[] = [];
+  const tools: Tool[] = [];
 
     if (useSearch) {
-      tools.push({ googleSearch: {} });
+      tools.push({ googleSearch: {} } as Tool);
     }
 
     if (functions && functions.length > 0) {
@@ -111,53 +119,100 @@ export class GeminiService {
         functionDeclarations: functions.map(fn => ({
           name: fn.name,
           description: fn.description,
-          parameters: fn.parameters
+          parameters: {
+            type: fn.parameters.type as SchemaType,
+            properties: Object.fromEntries(
+              Object.entries(fn.parameters.properties).map(([key, value]) => {
+                // Ensure each property matches Schema type
+                if (value.enum) {
+                  return [key, {
+                    type: value.type,
+                    description: value.description,
+                    enum: value.enum,
+                    format: "enum"
+                  } as Schema];
+                }
+                return [key, {
+                  type: value.type,
+                  description: value.description
+                } as Schema];
+              })
+            ),
+            required: fn.parameters.required
+          }
         }))
       });
     }
 
     try {
       // Create the request body with proper structure
-      const requestBody: any = {
+      const requestBody = {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig,
+        ...(tools.length > 0 ? { tools } : {})
       };
 
-      // Add tools at the top level if any exist
-      if (tools.length > 0) {
-        requestBody.tools = tools;
+      const geminiModel = this.geminiAI.getGenerativeModel({ model: options.model || GENAI_MODEL_FLASH });
+      const response = await geminiModel.generateContent(requestBody);
+
+      console.log('Raw Gemini response:', response);
+
+  let text = '';
+
+      try {
+        // Method 1: Try the standard text() method
+        if (response.response && typeof response.response.text === 'function') {
+          text = response.response.text();
+        }
+        // Method 2: Try extracting from candidates structure
+        else if (response.response?.candidates?.[0]?.content?.parts) {
+          const parts = response.response.candidates[0].content.parts as Array<{ text?: string }>;
+          text = parts
+            .filter((p) => p.text && typeof p.text === 'string')
+            .map((p) => p.text as string)
+            .join('\n')
+            .trim();
+        }
+        // Method 3: Check if text is directly accessible
+        else if (response.response?.text && typeof response.response.text === 'string') {
+          text = response.response.text;
+        }
+      } catch (textError) {
+        console.error('Error extracting text from response:', textError);
+        console.error('Response structure:', JSON.stringify(response, null, 2));
       }
 
-      const model = this.geminiAI.getGenerativeModel({ model: options.model || GENAI_MODEL_FLASH });
-      const response = await model.generateContent(requestBody);
+      console.log('Extracted text:', text);
 
-      const text = (response as any).text ?? '';
+      if (!text || text.trim() === '') {
+        console.error('No text found in response. Response structure:', JSON.stringify(response, null, 2));
+        throw new Error('Empty response from Gemini API - no text content found');
+      }
       const functionCalls: GeminiFunctionCall[] = [];
       const sources: { name: string; url?: string }[] = [];
 
       // Extract function calls if present
-      if ((response as any).candidates?.[0]?.content?.parts) {
-        const parts = (response as any).candidates[0].content.parts;
-
+      if (response.response?.candidates?.[0]?.content?.parts) {
+        const parts = response.response.candidates[0].content.parts as Array<{ functionCall?: { name: string; args?: Record<string, unknown> } }>;
         for (const part of parts) {
           if (part.functionCall) {
             functionCalls.push({
               name: part.functionCall.name,
-              parameters: part.functionCall.args || {}
+              parameters: part.functionCall.args as GeminiFunctionCall['parameters'] || {}
             });
           }
         }
       }
 
       // Extract sources from grounding metadata
-      if (useSearch && (response as any).candidates?.[0]?.groundingMetadata?.groundingChunks) {
-        const chunks = (response as any).candidates[0].groundingMetadata.groundingChunks;
+      if (useSearch && response.response?.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+        const chunks = response.response.candidates[0].groundingMetadata.groundingChunks as Array<{ web?: { uri?: string; title?: string } }>;
         sources.push(
           ...chunks
-            .filter((chunk: any) => chunk.web && chunk.web.uri)
-            .map((chunk: any) => ({
-              name: chunk.web.title || 'Web Source',
-              url: chunk.web.uri
+            .filter((chunk) => chunk.web && chunk.web.uri)
+            .map((chunk) => ({
+              name: chunk.web?.title || 'Web Source',
+              url: chunk.web?.uri
             }))
         );
       }
@@ -187,7 +242,6 @@ export class GeminiService {
       ...options,
       functions
     });
-
     return {
       text: result.text,
       functionCalls: result.functionCalls || [],
@@ -221,7 +275,6 @@ export class GeminiService {
       ...options,
       useSearch: true
     });
-
     return {
       text: result.text,
       sources: result.sources || []
