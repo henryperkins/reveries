@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useState } from 'react';
 import { ResearchStep, ResearchSource } from '../types';
 import { ResearchGraphManager } from '../researchGraph';
-import { databaseService } from '../services/databaseService';
+import { databaseService } from 'databaseService';
 
 interface PersistenceState {
   isConnected: boolean;

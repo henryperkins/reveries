@@ -28,6 +28,12 @@
     "paths": {
       "@/*": [
         "src/*"
+      ],
+      "databaseService": [
+        "src/services/databaseServiceStub.ts"
+      ],
+      "azureOpenAIService": [
+        "src/services/azureOpenAIService.ts"
       ]
     }
   },

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ResearchStep, ModelType, EffortType } from '../types';
-import { DatabaseService } from '../database/DatabaseService';
+import { DatabaseService } from 'databaseService';
 
 export interface ResearchSession {
   id: string;

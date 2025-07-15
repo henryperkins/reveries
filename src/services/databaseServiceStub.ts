@@ -1,44 +1,44 @@
 import { ResearchStep, ResearchSource, ResearchParadigm } from '../types';
 
-// Stub implementation for browser environment
-class DatabaseServiceStub {
+export class DatabaseService {
+  private static instance: DatabaseService | null = null;
+
+  // Stub implementation - no database connection
+  private constructor() {
+    console.log('Using DatabaseService stub (browser mode)');
+  }
+
+  static getInstance(): DatabaseService {
+    if (!this.instance) {
+      this.instance = new DatabaseService();
+    }
+    return this.instance;
+  }
+
   async initialize(): Promise<void> {
-    console.log('Database service stub - no database in browser');
-  }
-
-  async saveResearchStep(sessionId: string, step: ResearchStep): Promise<void> {
     // No-op in browser
+    return Promise.resolve();
   }
 
-  async getResearchSteps(sessionId: string): Promise<ResearchStep[]> {
-    return [];
+  async saveResearchState(key: string, state: any): Promise<void> {
+    // Use localStorage as fallback in browser
+    try {
+      localStorage.setItem(`reveries_${key}`, JSON.stringify(state));
+    } catch (error) {
+      console.error('Failed to save to localStorage:', error);
+    }
   }
 
-  async saveResearchSources(sessionId: string, sources: ResearchSource[]): Promise<void> {
-    // No-op in browser
+  async loadResearchState(key: string): Promise<any | null> {
+    // Use localStorage as fallback in browser
+    try {
+      const stored = localStorage.getItem(`reveries_${key}`);
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      console.error('Failed to load from localStorage:', error);
+      return null;
+    }
   }
-
-  async getResearchSources(sessionId: string): Promise<ResearchSource[]> {
-    return [];
-  }
-
-  async saveResearchParadigm(sessionId: string, paradigm: ResearchParadigm): Promise<void> {
-    // No-op in browser
-  }
-
-  async getResearchParadigm(sessionId: string): Promise<ResearchParadigm | null> {
-    return null;
-  }
-
-  async clearSession(sessionId: string): Promise<void> {
-    // No-op in browser
-  }
-
-  async getAllSessions(): Promise<string[]> {
-    return [];
-  }
-
-  async deleteSession(sessionId: string): Promise<void> {
     // No-op in browser
   }
 }
