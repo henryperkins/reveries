@@ -1,51 +1,152 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ResearchStep } from '../types';
+import { DatabaseService } from '../database/DatabaseService';
+import { ResearchStep, ResearchMetadata, ModelType, EffortType, HostParadigm, ParadigmProbabilities } from '../types';
 
+export interface ResearchSession {
+  id: string;
+  query: string;
+  timestamp: number;
+  steps: ResearchStep[];
+  graphData?: string;
+  completed: boolean;
+  duration?: number;
+  model?: string;
+  effort?: string;
+}
+
+// Enhanced hook that uses PostgreSQL for persistence
 export function usePersistedState<T>(
   key: string,
   defaultValue: T,
   version: number = 1
 ): [T, React.Dispatch<React.SetStateAction<T>>, () => void] {
   const storageKey = `reveries_${key}_v${version}`;
+  const [state, setState] = useState<T>(defaultValue);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize state from localStorage
-  const [state, setState] = useState<T>(() => {
-    try {
-      const item = window.localStorage.getItem(storageKey);
-      if (item) {
-        const parsed = JSON.parse(item);
-        // Validate the data structure if needed
-        return parsed.data as T;
-      }
-    } catch (error) {
-      console.error(`Error loading persisted state for ${key}:`, error);
-    }
-    return defaultValue;
-  });
-
-  // Persist state changes
+  // Initialize state from localStorage (fallback) or database
   useEffect(() => {
-    try {
-      const dataToStore = {
-        data: state,
-        timestamp: Date.now(),
-        version
-      };
-      window.localStorage.setItem(storageKey, JSON.stringify(dataToStore));
-    } catch (error) {
-      console.error(`Error persisting state for ${key}:`, error);
-    }
-  }, [state, storageKey, version]);
+    const initializeState = async () => {
+      try {
+        const dbService = DatabaseService.getInstance();
+        const isConnected = await dbService.isConnected();
+
+        if (isConnected && key === 'research' && typeof window !== 'undefined') {
+          // Try to get user preferences from database
+          const sessionId = window.sessionStorage.getItem('user_session_id') || 'default-session';
+          const preferences = await dbService.getUserPreferences(sessionId);
+
+          if (preferences && preferences[key]) {
+            setState(preferences[key] as T);
+            setIsInitialized(true);
+            return;
+          }
+        }
+
+        // Fallback to localStorage
+        if (typeof window !== 'undefined') {
+          const item = window.localStorage.getItem(storageKey);
+          if (item) {
+            const parsed = JSON.parse(item);
+            setState(parsed.data as T);
+          }
+        }
+      } catch (error) {
+        console.warn(`Error loading persisted state for ${key}:`, error);
+        // Fallback to localStorage
+        try {
+          if (typeof window !== 'undefined') {
+            const item = window.localStorage.getItem(storageKey);
+            if (item) {
+              const parsed = JSON.parse(item);
+              setState(parsed.data as T);
+            }
+          }
+        } catch (fallbackError) {
+          console.error(`Error loading from localStorage for ${key}:`, fallbackError);
+        }
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+
+    initializeState();
+  }, [key, storageKey]);
+
+  // Persist state changes to both database and localStorage
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const persistState = async () => {
+      try {
+        const dbService = DatabaseService.getInstance();
+        const isConnected = await dbService.isConnected();
+
+        if (isConnected && typeof window !== 'undefined') {
+          const sessionId = window.sessionStorage.getItem('user_session_id') || 'default-session';
+
+          // Save to database
+          await dbService.updateUserPreferences(sessionId, { [key]: state });
+        }
+
+        // Also save to localStorage as backup
+        if (typeof window !== 'undefined') {
+          const dataToStore = {
+            data: state,
+            timestamp: Date.now(),
+            version
+          };
+          window.localStorage.setItem(storageKey, JSON.stringify(dataToStore));
+        }
+      } catch (error) {
+        console.warn(`Error persisting state for ${key}:`, error);
+        // Fallback to localStorage only
+        try {
+          if (typeof window !== 'undefined') {
+            const dataToStore = {
+              data: state,
+              timestamp: Date.now(),
+              version
+            };
+            window.localStorage.setItem(storageKey, JSON.stringify(dataToStore));
+          }
+        } catch (fallbackError) {
+          console.error(`Error persisting to localStorage for ${key}:`, fallbackError);
+        }
+      }
+    };
+
+    persistState();
+  }, [state, storageKey, version, key, isInitialized]);
 
   // Clear persisted state
-  const clearState = useCallback(() => {
+  const clearState = useCallback(async () => {
     try {
-      window.localStorage.removeItem(storageKey);
+      const dbService = DatabaseService.getInstance();
+      const isConnected = await dbService.isConnected();
+
+      if (isConnected && typeof window !== 'undefined') {
+        const sessionId = window.sessionStorage.getItem('user_session_id') || 'default-session';
+        await dbService.updateUserPreferences(sessionId, { [key]: defaultValue });
+      }
+
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(storageKey);
+      }
       setState(defaultValue);
     } catch (error) {
       console.error(`Error clearing persisted state for ${key}:`, error);
+      // Fallback to localStorage
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(storageKey);
+        }
+        setState(defaultValue);
+      } catch (fallbackError) {
+        console.error(`Error clearing localStorage for ${key}:`, fallbackError);
+      }
     }
-  }, [storageKey, defaultValue]);
+  }, [storageKey, defaultValue, key]);
 
   return [state, setState, clearState];
 }

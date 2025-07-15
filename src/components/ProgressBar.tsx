@@ -20,7 +20,14 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ value }) => {
         </span>
       </div>
 
-      <div className="relative w-full h-3 bg-westworld-tan/20 rounded-full overflow-hidden shadow-inner">
+      <div
+        className="relative w-full h-3 bg-westworld-tan/20 rounded-full overflow-hidden shadow-inner"
+        role="progressbar"
+        aria-valuenow={percentage}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Progress"
+      >
         <div
           className="absolute inset-y-0 left-0 bg-gradient-to-r from-westworld-gold to-westworld-copper rounded-full transition-all duration-500 ease-out shadow-sm"
           style={{ width: `${percentage}%` }}

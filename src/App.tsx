@@ -148,10 +148,10 @@ const App: React.FC = () => {
   }, [isLoading, progress])
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="app min-h-screen bg-gradient-to-br from-westworld-cream to-westworld-beige text-westworld-black">
       <Header />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 scrollbar-westworld">
         <Controls
           selectedEffort={effort}
           onEffortChange={setEffort}
@@ -166,40 +166,54 @@ const App: React.FC = () => {
         />
 
         {error && (
-          <ErrorDisplay error={error.message} onDismiss={clearError} />
+          <div className="error-display">
+            <ErrorDisplay error={error.message} onDismiss={clearError} />
+          </div>
         )}
 
         <ResearchGraphView graphManager={graphManager} isOpen={showGraph} onClose={handleToggleGraph} />
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Show paradigm UI when detected */}
           {paradigm && paradigmProbabilities && !isLoading && (
-            <ParadigmIndicator
-              paradigm={paradigm}
-              probabilities={paradigmProbabilities}
-              confidence={Math.max(...Object.values(paradigmProbabilities))}
-            />
+            <div className="animate-fade-in">
+              <ParadigmIndicator
+                paradigm={paradigm}
+                probabilities={paradigmProbabilities}
+                confidence={Math.max(...Object.values(paradigmProbabilities))}
+              />
+            </div>
           )}
 
           {/* Show context density during processing */}
           {isLoading && contextDensities && (
-            <ContextDensityBar
-              densities={contextDensities}
-              dominantHouse="ravenclaw"
-              phase="analyzing"
-              showLabels={true}
-            />
+            <div className="animate-slide-up">
+              <ContextDensityBar
+                densities={contextDensities}
+                dominantHouse="ravenclaw"
+                phase="analyzing"
+                showLabels={true}
+              />
+            </div>
           )}
 
-          <ResearchArea steps={research} />
+          <div className="research-container">
+            <ResearchArea steps={research} />
+          </div>
         </div>
 
-        {isLoading && <ProgressBar value={progress} />}
+        {isLoading && (
+          <div className="progress-bar-container">
+            <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
+          </div>
+        )}
 
-        <InputBar
-          onQuerySubmit={handleSubmit}
-          isLoading={isLoading}
-        />
+        <div className="input-bar">
+          <InputBar
+            onQuerySubmit={handleSubmit}
+            isLoading={isLoading}
+          />
+        </div>
       </main>
     </div>
   )

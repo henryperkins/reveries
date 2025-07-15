@@ -31,6 +31,10 @@ import { WriteLayerService } from './contextLayers/writeLayer';
 import { SelectLayerService } from './contextLayers/selectLayer';
 import { CompressLayerService } from './contextLayers/compressLayer';
 import { IsolateLayerService } from './contextLayers/isolateLayer';
+import { Pool } from 'pg';
+import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
+import { PGVectorStore } from 'langchain/vectorstores/pgvector';
+import { AzureOpenAI } from '@azure/openai';
 
 /**
  * Generic provider-agnostic response structure we use internally.
@@ -88,6 +92,12 @@ const getGrokApiKey = (): string => {
   return apiKey;
 };
 
+interface AzureAIConfig {
+  endpoint: string;
+  apiKey: string;
+  deploymentName: string;
+  embeddingModel: string;
+}
 
 export class ResearchAgentService {
   private static instance: ResearchAgentService;
@@ -107,6 +117,8 @@ export class ResearchAgentService {
   private selectLayer = SelectLayerService.getInstance();
   private compressLayer = CompressLayerService.getInstance();
   private isolateLayer = IsolateLayerService.getInstance();
+  private vectorStore: PGVectorStore | null = null;
+  private pool: Pool | null = null;
 
   private constructor() {
     // Currently only Gemini needs an SDK client. Grok is called via fetch.
@@ -124,6 +136,7 @@ export class ResearchAgentService {
     this.functionCallingService = FunctionCallingService.getInstance();
     this.researchToolsService = ResearchToolsService.getInstance();
     this.contextEngineering = ContextEngineeringService.getInstance();
+    this.initializeVectorStore();
   }
 
   public static getInstance(): ResearchAgentService {
@@ -131,6 +144,102 @@ export class ResearchAgentService {
       ResearchAgentService.instance = new ResearchAgentService();
     }
     return ResearchAgentService.instance;
+  }
+
+  private async initializeVectorStore(): Promise<void> {
+    if (!process.env.AZURE_OPENAI_API_KEY || !process.env.PGHOST) return;
+
+    this.pool = new Pool({
+      host: process.env.PGHOST,
+      port: parseInt(process.env.PGPORT || '5432'),
+      database: process.env.PGDATABASE,
+      user: process.env.PGUSER,
+      password: process.env.PGPASSWORD,
+      ssl: process.env.PGHOST?.includes('database.azure.com')
+        ? { rejectUnauthorized: false }
+        : false,
+    });
+
+    const embeddings = new OpenAIEmbeddings({
+      azureOpenAIApiKey: process.env.AZURE_OPENAI_API_KEY,
+      azureOpenAIApiInstanceName: process.env.AZURE_OPENAI_ENDPOINT,
+      azureOpenAIApiDeploymentName: process.env.AZURE_OPENAI_EMBEDDING_MODEL,
+      azureOpenAIApiVersion: '2023-05-15',
+    });
+
+    this.vectorStore = await PGVectorStore.initialize(embeddings, {
+      postgresConnectionOptions: this.pool,
+      tableName: 'research_embeddings',
+      columns: {
+        idColumnName: 'id',
+        vectorColumnName: 'embedding',
+        contentColumnName: 'content',
+        metadataColumnName: 'metadata',
+      },
+    });
+  }
+
+  async semanticSearch(query: string, sessionId?: string): Promise<ResearchStep[]> {
+    if (!this.vectorStore) return [];
+
+    const results = await this.vectorStore.similaritySearch(query, 5, {
+      session_id: sessionId,
+    });
+
+    return results.map(doc => ({
+      id: doc.metadata?.step_id || '',
+      type: doc.metadata?.type || 'search',
+      query: doc.metadata?.query || '',
+      content: doc.pageContent,
+      sources: doc.metadata?.sources || [],
+      metadata: doc.metadata,
+    }));
+  }
+
+  async generateWithAzureOpenAI(
+    prompt: string,
+    options: {
+      temperature?: number;
+      maxTokens?: number;
+    } = {}
+  ): Promise<{ text: string; sources: ResearchSource[] }> {
+    if (!this.azureOpenAI) {
+      throw new Error('Azure OpenAI not configured');
+    }
+
+    const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4';
+    const response = await this.azureOpenAI.createCompletion({
+      model: deploymentName,
+      prompt,
+      temperature: options.temperature || 0.7,
+      max_tokens: options.maxTokens || 1000,
+    });
+
+    return {
+      text: response.choices[0]?.text || '',
+      sources: [], // Azure OpenAI doesn't provide sources by default
+    };
+  }
+
+  async storeResearchStep(
+    step: ResearchStep,
+    sessionId: string,
+    parentId?: string
+  ): Promise<void> {
+    if (!this.vectorStore) return;
+
+    await this.vectorStore.addDocuments([{
+      pageContent: step.content,
+      metadata: {
+        step_id: step.id,
+        session_id: sessionId,
+        parent_id: parentId,
+        type: step.type,
+        query: step.query,
+        sources: step.sources,
+        ...step.metadata,
+      },
+    }]);
   }
 
   /**

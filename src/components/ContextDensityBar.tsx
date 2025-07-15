@@ -1,68 +1,74 @@
 import React from 'react';
-import { HouseParadigm } from '../types';
+import { motion } from 'framer-motion';
 
 interface ContextDensityBarProps {
-  densities: Record<HouseParadigm, number>;
-  dominantHouse: HouseParadigm;
-  phase: string;
+  densities: {
+    narrative: number;
+    analytical: number;
+    memory: number;
+    adaptive: number;
+  };
+  dominantContext: 'narrative' | 'analytical' | 'memory' | 'adaptive';
+  phase: 'initializing' | 'analyzing' | 'synthesizing' | 'finalizing';
   showLabels?: boolean;
 }
 
-const houseColors: Record<HouseParadigm, string> = {
-  gryffindor: '#740001',
-  hufflepuff: '#FFD800',
-  ravenclaw: '#0E1A40',
-  slytherin: '#1A472A'
-};
-
-const houseLabels: Record<HouseParadigm, string> = {
-  gryffindor: 'G',
-  hufflepuff: 'H',
-  ravenclaw: 'R',
-  slytherin: 'S'
+const CONTEXT_INFO = {
+  narrative: { color: '#D4AF37', label: 'Narrative', icon: '📖' },
+  analytical: { color: '#B87333', label: 'Analytical', icon: '🔍' },
+  memory: { color: '#8B4513', label: 'Memory', icon: '💭' },
+  adaptive: { color: '#654321', label: 'Adaptive', icon: '🔄' }
 };
 
 export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
   densities,
-  dominantHouse,
+  dominantContext,
   phase,
   showLabels = false
 }) => {
-  const houses: HouseParadigm[] = ['gryffindor', 'hufflepuff', 'ravenclaw', 'slytherin'];
-  const total = Object.values(densities).reduce((sum, d) => sum + d, 0);
+  const maxDensity = Math.max(...Object.values(densities));
 
   return (
-    <div className="w-full">
-      <div className="flex h-3 rounded overflow-hidden shadow-inner bg-gray-200">
-        {houses.map((house) => {
-          const percentage = (densities[house] / total) * 100;
-          const isDominant = house === dominantHouse;
+    <div className="w-full space-y-2">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-medium text-westworld-darkbrown">
+          Context Analysis - {phase.charAt(0).toUpperCase() + phase.slice(1)}
+        </h3>
+        <span className="text-xs text-westworld-darkbrown/60">
+          Dominant: {CONTEXT_INFO[dominantContext].label}
+        </span>
+      </div>
+
+      <div className="space-y-3">
+        {Object.entries(densities).map(([context, density]) => {
+          const contextKey = context as keyof typeof CONTEXT_INFO;
+          const info = CONTEXT_INFO[contextKey];
+          const percentage = maxDensity > 0 ? (density / maxDensity) * 100 : 0;
 
           return (
-            <div
-              key={house}
-              className={`
-                relative transition-all duration-300
-                ${isDominant ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
-              `}
-              style={{
-                width: `${percentage}%`,
-                backgroundColor: houseColors[house],
-                opacity: isDominant ? 1 : 0.7
-              }}
-              title={`${house}: ${densities[house]}%`}
-            >
-              {showLabels && percentage > 10 && (
-                <span className="absolute inset-0 flex items-center justify-center text-xs text-white font-bold">
-                  {houseLabels[house]}
-                </span>
+            <div key={context} className="space-y-1">
+              {showLabels && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1 text-westworld-darkbrown">
+                    <span>{info.icon}</span>
+                    <span>{info.label}</span>
+                  </span>
+                  <span className="text-westworld-darkbrown/60">{density}%</span>
+                </div>
               )}
+
+              <div className="h-2 bg-westworld-tan/20 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: info.color }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${percentage}%` }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                />
+              </div>
             </div>
           );
         })}
-      </div>
-      <div className="mt-1 text-xs text-gray-500">
-        Phase: {phase.replace(/_/g, ' ')} • Dominant: {dominantHouse}
       </div>
     </div>
   );

@@ -1,78 +1,78 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MagnifyingGlassIcon, SparklesIcon, ChevronLeftIcon, ChevronRightIcon } from './icons';
+import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 
 interface InputBarProps {
-  onQuerySubmit: (query: string) => void;
-  isLoading: boolean;
-  initialQuery?: string;
+  onSubmit: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
 }
 
-const EXAMPLE_QUERIES = [
-  {
-    category: "Research & Analysis",
-    icon: "🔬",
-    queries: [
-      {
-        text: "What are the latest breakthroughs in quantum computing?",
-        complexity: "medium",
-        tags: ["technology", "science"]
-      },
-      {
-        text: "Compare different approaches to sustainable energy storage",
-        complexity: "high",
-        tags: ["environment", "comparative"]
-      },
-      {
-        text: "Analyze the impact of remote work on urban planning",
-        complexity: "high",
-        tags: ["society", "analysis"]
-      }
-    ]
-  },
-  {
-    category: "Technology & Innovation",
-    icon: "💡",
-    queries: [
-      {
-        text: "Explain how transformer models revolutionized NLP",
-        complexity: "medium",
-        tags: ["AI", "explainer"]
-      },
-      {
-        text: "What are the emerging trends in biotechnology for 2024?",
-        complexity: "medium",
-        tags: ["biotech", "trends"]
-      },
-      {
-        text: "How is AI being used in climate change research?",
-        complexity: "high",
-        tags: ["AI", "climate"]
-      }
-    ]
-  },
-  {
-    category: "Complex Topics",
-    icon: "🧩",
-    queries: [
-      {
-        text: "What are the philosophical implications of consciousness in AI?",
-        complexity: "very-high",
-        tags: ["philosophy", "AI"]
-      },
-      {
-        text: "Trace the evolution of cryptocurrency regulation globally",
-        complexity: "high",
-        tags: ["crypto", "regulation"]
-      },
-      {
-        text: "How do different cultures approach end-of-life care?",
-        complexity: "high",
-        tags: ["culture", "healthcare"]
-      }
-    ]
-  }
-];
+export const InputBar: React.FC<InputBarProps> = ({
+  onSubmit,
+  placeholder = "Enter your research question...",
+  disabled = false
+}) => {
+  const [value, setValue] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [value]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (value.trim() && !disabled) {
+      onSubmit(value.trim());
+      setValue('');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="w-full">
+      <div className="relative flex items-end gap-2 p-4 bg-westworld-cream rounded-xl
+                    border-2 border-westworld-tan/30 focus-within:border-westworld-gold
+                    transition-colors duration-200">
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          disabled={disabled}
+          className="flex-1 bg-transparent resize-none outline-none text-westworld-black
+                   placeholder:text-westworld-darkbrown/60 min-h-[24px] max-h-[200px]"
+          rows={1}
+          aria-label="Research question input"
+        />
+        <button
+          type="submit"
+          disabled={!value.trim() || disabled}
+          className="p-2 rounded-lg bg-westworld-gold text-westworld-black
+                   hover:bg-westworld-copper hover:text-westworld-white
+                   disabled:opacity-50 disabled:cursor-not-allowed
+                   transition-all duration-200 transform active:scale-95"
+          aria-label="Submit research question"
+        >
+          <PaperAirplaneIcon className="w-5 h-5" />
+        </button>
+      </div>
+      <p className="mt-2 text-xs text-westworld-darkbrown/60">
+        Press Enter to submit, Shift+Enter for new line
+      </p>
+    </form>
+  );
+};
 export const InputBar: React.FC<InputBarProps> = ({ onQuerySubmit, isLoading, initialQuery = "" }) => {
   const [inputValue, setInputValue] = useState<string>(initialQuery);
   const [isFocused, setIsFocused] = useState(false);

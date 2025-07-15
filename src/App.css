@@ -1,5 +1,190 @@
 /* App.css */
 .app {
     min-height: 100vh;
-    background: linear-gradient(to bottom, #000000, #1a1a1a);
+    background: linear-gradient(135deg, var(--color-westworld-cream) 0%, var(--color-westworld-beige) 100%);
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* Main container spacing */
+main {
+    @apply scrollbar-westworld;
+    min-height: calc(100vh - 80px);
+    /* Account for header */
+    padding-bottom: 120px;
+    /* Space for input bar */
+}
+
+/* Research container improvements */
+.research-container {
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    /* Safari support */
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(210, 180, 140, 0.2);
+    transition: all 0.3s ease;
+}
+
+.research-container:hover {
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Progress bar container styling */
+.progress-bar-container {
+    position: fixed;
+    bottom: 80px;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background-color: rgba(210, 180, 140, 0.2);
+    z-index: 30;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-westworld-gold), var(--color-westworld-copper));
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+}
+
+/* Input bar positioning */
+.input-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(250, 250, 250, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(210, 180, 140, 0.3);
+    padding: 1rem;
+    z-index: 30;
+    box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Fix component visibility and z-index stacking */
+.card,
+.input-field,
+.btn-primary,
+.btn-secondary {
+    position: relative;
+    z-index: 1;
+}
+
+/* Modal and overlay improvements */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+    background-color: var(--color-westworld-white);
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+    animation: slideUp 0.3s ease-out;
+}
+
+/* Ensure proper text contrast */
+.text-westworld-black {
+    color: var(--color-westworld-black) !important;
+}
+
+.text-westworld-white {
+    color: var(--color-westworld-white) !important;
+}
+
+/* Fix button states */
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+button:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+/* Research step styling */
+.research-step {
+    @apply animate-fade-in;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 0.75rem;
+    border: 1px solid rgba(210, 180, 140, 0.2);
+    transition: all 0.3s ease;
+}
+
+.research-step:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading states */
+.loading-skeleton {
+    @apply animate-shimmer;
+    background-color: rgba(210, 180, 140, 0.1);
+    border-radius: 0.5rem;
+    height: 100px;
+    margin-bottom: 1rem;
+}
+
+/* Error display styling */
+.error-display {
+    @apply animate-slide-up;
+    background-color: rgba(139, 69, 19, 0.1);
+    border: 1px solid var(--color-westworld-rust);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    color: var(--color-westworld-rust);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    main {
+        padding-bottom: 140px;
+        /* More space on mobile */
+    }
+
+    .research-container {
+        padding: 1rem;
+    }
+
+    .modal-content {
+        max-width: 95vw;
+        max-height: 95vh;
+    }
+}
+
+/* Print styles */
+@media print {
+
+    .input-bar,
+    .progress-bar-container,
+    button {
+        display: none !important;
+    }
+
+    main {
+        padding-bottom: 0;
+    }
+
+    .research-container {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
 }

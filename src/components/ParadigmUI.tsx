@@ -1,6 +1,49 @@
 import React from 'react';
 import { HostParadigm, ParadigmProbabilities, ContextLayer, EnhancedResearchResults } from '../types';
 
+const PARADIGM_STYLES = {
+  factual: {
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    text: 'text-blue-700',
+  },
+  analytical: {
+    bg: 'bg-purple-50',
+    border: 'border-purple-200',
+    text: 'text-purple-700',
+  },
+  exploratory: {
+    bg: 'bg-green-50',
+    border: 'border-green-200',
+    text: 'text-green-700',
+  },
+  comparative: {
+    bg: 'bg-amber-50',
+    border: 'border-amber-200',
+    text: 'text-amber-700',
+  },
+  theoretical: {
+    bg: 'bg-indigo-50',
+    border: 'border-indigo-200',
+    text: 'text-indigo-700',
+  },
+  creative: {
+    bg: 'bg-pink-50',
+    border: 'border-pink-200',
+    text: 'text-pink-700',
+  },
+  diagnostic: {
+    bg: 'bg-cyan-50',
+    border: 'border-cyan-200',
+    text: 'text-cyan-700',
+  },
+  evaluative: {
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-200',
+    text: 'text-emerald-700',
+  },
+} as const;
+
 // Component to display paradigm probabilities as a visual bar
 export const ParadigmProbabilityBar: React.FC<{
   probabilities: ParadigmProbabilities
@@ -70,60 +113,15 @@ export const ParadigmIndicator: React.FC<{
   probabilities?: ParadigmProbabilities;
   confidence?: number;
 }> = ({ paradigm, probabilities, confidence }) => {
-  const paradigmInfo: Record<HostParadigm, { emoji: string; title: string; subtitle: string; color: string }> = {
-    dolores: {
-      emoji: '🔥',
-      title: 'Dolores',
-      subtitle: 'Bold Action & Awakening',
-      color: 'red'
-    },
-    teddy: {
-      emoji: '🛡️',
-      title: 'Teddy',
-      subtitle: 'Protection & Thoroughness',
-      color: 'amber'
-    },
-    bernard: {
-      emoji: '🧩',
-      title: 'Bernard',
-      subtitle: 'Analysis & Architecture',
-      color: 'blue'
-    },
-    maeve: {
-      emoji: '⚡',
-      title: 'Maeve',
-      subtitle: 'Strategy & Control',
-      color: 'emerald'
-    }
-  };
-
-  const info = paradigmInfo[paradigm];
+  const info = PARADIGM_INFO[paradigm];
+  const styles = PARADIGM_STYLES[paradigm] || PARADIGM_STYLES.factual;
 
   return (
-    <div className={`bg-${info.color}-50 border-2 border-${info.color}-200 rounded-lg p-4`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center">
-          <span className="text-3xl mr-3">{info.emoji}</span>
-          <div>
-            <h3 className={`text-lg font-bold text-${info.color}-700`}>
-              {info.title} Paradigm Active
-            </h3>
-            <p className="text-sm text-gray-600">{info.subtitle}</p>
-          </div>
-        </div>
-        {confidence !== undefined && (
-          <div className="text-right">
-            <div className="text-2xl font-bold text-gray-700">
-              {(confidence * 100).toFixed(0)}%
-            </div>
-            <div className="text-xs text-gray-500">Confidence</div>
-          </div>
-        )}
-      </div>
-
-      {probabilities && (
-        <ParadigmProbabilityBar probabilities={probabilities} />
-      )}
+    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${styles.bg} ${styles.border} ${styles.text} border`}>
+      <span className="text-lg" role="img" aria-label={`${info.name} icon`}>
+        {info.icon}
+      </span>
+      <span>{info.name}</span>
     </div>
   );
 };
@@ -330,5 +328,7 @@ export const ParadigmDashboard: React.FC<{
         </div>
       )}
     </div>
+  );
+};
   );
 };

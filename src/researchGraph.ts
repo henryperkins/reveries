@@ -468,6 +468,25 @@ export class ResearchGraphManager {
 
         return manager;
     }
+
+    async findSimilarNodes(
+        nodeId: string,
+        threshold = 0.8
+    ): Promise<{ node: ResearchNode; similarity: number }[]> {
+        const node = this.graph.nodes.get(nodeId);
+        if (!node || !node.content) return [];
+
+        const agentService = new ResearchAgentService();
+        const similarSteps = await agentService.semanticSearch(node.content);
+
+        return similarSteps
+            .filter(step => step.id !== nodeId)
+            .map(step => ({
+                node: this.graph.nodes.get(step.id)!,
+                similarity: 1 - (step.metadata?.distance || 0),
+            }))
+            .filter(result => result.similarity >= threshold);
+    }
 }
 
 // Helper function to determine node color based on type

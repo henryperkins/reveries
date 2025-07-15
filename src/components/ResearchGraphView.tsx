@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ResearchGraphManager, generateMermaidDiagram } from '../researchGraph';
+import { ResearchGraphManager, getNodeColor, generateMermaidDiagram } from '../researchGraph';
 import { ChartBarIcon, ArrowDownTrayIcon, XMarkIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowsPointingOutIcon } from './icons';
 import { GraphLayoutEngine, getNodeStyle } from '../utils/graphLayout';
 import { formatDuration } from '../utils/exportUtils';

@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # Local PostgreSQL - Optional (comment out if using Azure PostgreSQL)
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: reveries-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: reveries
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: reveries-app
+    ports:
+      - "5173:5173"
+    environment:
+      - PGHOST=postgres
+      - PGPORT=5432
+      - PGDATABASE=reveries
+      - PGUSER=postgres
+      - PGPASSWORD=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+      VITE_XAI_API_KEY: ${VITE_XAI_API_KEY}
+      VITE_AZURE_OPENAI_API_KEY: ${VITE_AZURE_OPENAI_API_KEY}
+      VITE_AZURE_OPENAI_ENDPOINT: ${VITE_AZURE_OPENAI_ENDPOINT}
+      VITE_AZURE_OPENAI_DEPLOYMENT: ${VITE_AZURE_OPENAI_DEPLOYMENT}
+      VITE_AZURE_OPENAI_API_VERSION: ${VITE_AZURE_OPENAI_API_VERSION}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - reveries-network
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  postgres_data:
+
+
+networks:
+  reveries-network:
+    driver: bridge
