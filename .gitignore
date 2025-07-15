@@ -40,3 +40,4 @@ vite.log
 actions-runner/
 _diag/
 _work/
+.env
