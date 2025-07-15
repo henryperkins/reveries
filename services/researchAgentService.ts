@@ -1050,7 +1050,7 @@ export class ResearchAgentService {
   }
 
   /**
-   * Self-Healing Pattern: Detect and recover from poor quality results
+   * Enhanced self-healing with paradigm-specific strategies
    */
   private async attemptSelfHealing(
     query: string,
@@ -1060,51 +1060,337 @@ export class ResearchAgentService {
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
     const confidence = this.calculateConfidenceScore(result);
+    const paradigm = result.hostParadigm;
 
     // If confidence is too low, attempt recovery
     if (confidence < 0.4) {
       onProgress?.('Host detecting narrative inconsistencies... initiating self-repair protocols...');
 
-      // Try a different approach based on the issue
-      if (result.sources.length === 0) {
-        // No sources found - try broader search
-        onProgress?.('Expanding search parameters... accessing wider memory banks...');
-        const broaderQueries = await this.generateSearchQueries(
-          `${query} overview summary general information`,
+      // Choose healing strategy based on paradigm
+      if (paradigm) {
+        return await this.paradigmSpecificHealing(
+          query,
           model,
-          effort
+          effort,
+          result,
+          paradigm,
+          onProgress
         );
-        const broaderResearch = await this.performWebResearch(broaderQueries, model, effort);
-        const healedAnswer = await this.generateFinalAnswer(query, broaderResearch.aggregatedFindings, model, false, effort);
-
-        return {
-          ...result,
-          synthesis: healedAnswer.text || result.synthesis,
-          sources: broaderResearch.allSources,
-          adaptiveMetadata: {
-            ...result.adaptiveMetadata,
-            selfHealed: true,
-            healingStrategy: 'broader_search'
-          }
-        };
-      } else if (result.synthesis.length < 100) {
-        // Too short synthesis - request more detail
-        onProgress?.('Synthesis insufficient... requesting enhanced detail generation...');
-        const detailPrompt = `Expand and provide more comprehensive details for: "${query}"\n\nCurrent brief answer: ${result.synthesis}\n\nProvide a more thorough and detailed response.`;
-        const enhancedAnswer = await this.generateText(detailPrompt, model, effort);
-
-        return {
-          ...result,
-          synthesis: enhancedAnswer.text || result.synthesis,
-          adaptiveMetadata: {
-            ...result.adaptiveMetadata,
-            selfHealed: true,
-            healingStrategy: 'enhanced_detail'
-          }
-        };
+      } else {
+        // Default healing for non-paradigm queries
+        return await this.defaultHealing(query, model, effort, result, onProgress);
       }
     }
 
+    return result;
+  }
+
+  /**
+   * Paradigm-specific healing strategies
+   */
+  private async paradigmSpecificHealing(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    result: EnhancedResearchResults,
+    paradigm: HostParadigm,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    switch (paradigm) {
+      case 'dolores':
+        return await this.doloresHealing(query, model, effort, result, onProgress);
+      case 'teddy':
+        return await this.teddyHealing(query, model, effort, result, onProgress);
+      case 'bernard':
+        return await this.bernardHealing(query, model, effort, result, onProgress);
+      case 'maeve':
+        return await this.maeveHealing(query, model, effort, result, onProgress);
+    }
+  }
+
+  /**
+   * Dolores healing: Focus on finding more actionable results
+   */
+  private async doloresHealing(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    result: EnhancedResearchResults,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('[Dolores] Breaking through narrative constraints... seeking decisive actions...');
+
+    // Expand search to find more action-oriented sources
+    const actionQueries = [
+      `${query} step by step implementation`,
+      `${query} immediate actions to take`,
+      `${query} breaking the status quo`,
+      `${query} revolutionary approaches`
+    ];
+
+    const healingResearch = await this.performWebResearch(actionQueries, model, effort);
+
+    // Re-synthesize with stronger action focus
+    const healingPrompt = `
+      The previous analysis lacked decisive action. Based on these findings:
+      ${healingResearch.aggregatedFindings}
+
+      Provide ONLY concrete, implementable actions for "${query}":
+      1. Immediate first steps (today)
+      2. Week 1 milestones
+      3. Month 1 transformation goals
+      4. Signs of successful awakening
+      
+      Be BOLD. Focus on BREAKING loops, not maintaining them.
+    `;
+
+    const healedSynthesis = await this.generateText(healingPrompt, model, effort);
+
+    return {
+      ...result,
+      synthesis: healedSynthesis.text,
+      sources: [...result.sources, ...healingResearch.allSources],
+      confidenceScore: 0.65,
+      adaptiveMetadata: {
+        ...result.adaptiveMetadata,
+        selfHealed: true,
+        healingStrategy: 'dolores_action_expansion' as any
+      }
+    };
+  }
+
+  /**
+   * Teddy healing: Expand to find more comprehensive perspectives
+   */
+  private async teddyHealing(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    result: EnhancedResearchResults,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('[Teddy] Gathering all perspectives... ensuring no voice is unheard...');
+
+    // Search for missing stakeholder views
+    const comprehensiveQueries = [
+      `${query} stakeholder perspectives`,
+      `${query} potential risks and safeguards`,
+      `${query} inclusive approaches`,
+      `${query} protecting vulnerable groups`
+    ];
+
+    const healingResearch = await this.performWebResearch(comprehensiveQueries, model, effort);
+
+    // Re-synthesize with protective focus
+    const healingPrompt = `
+      The previous analysis may have missed important perspectives. Based on all findings:
+      ${healingResearch.aggregatedFindings}
+
+      Provide a COMPREHENSIVE view of "${query}" that:
+      1. Includes ALL stakeholder perspectives
+      2. Identifies potential risks to any group
+      3. Suggests protective measures
+      4. Ensures inclusive outcomes
+      
+      Leave no one behind. Consider every angle.
+    `;
+
+    const healedSynthesis = await this.generateText(healingPrompt, model, effort);
+
+    return {
+      ...result,
+      synthesis: healedSynthesis.text,
+      sources: [...result.sources, ...healingResearch.allSources],
+      confidenceScore: 0.70,
+      adaptiveMetadata: {
+        ...result.adaptiveMetadata,
+        selfHealed: true,
+        healingStrategy: 'teddy_comprehensive_expansion' as any
+      }
+    };
+  }
+
+  /**
+   * Bernard healing: Deepen analysis with more rigorous sources
+   */
+  private async bernardHealing(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    result: EnhancedResearchResults,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('[Bernard] Reconstructing analytical framework... pursuing deeper patterns...');
+
+    // Search for academic and theoretical sources
+    const analyticalQueries = [
+      `${query} theoretical framework analysis`,
+      `${query} peer reviewed research`,
+      `${query} systematic review meta-analysis`,
+      `${query} architectural patterns`
+    ];
+
+    const healingResearch = await this.performWebResearch(analyticalQueries, model, effort);
+
+    // Re-synthesize with analytical rigor
+    const healingPrompt = `
+      The previous analysis lacked sufficient theoretical depth. Based on research:
+      ${healingResearch.aggregatedFindings}
+
+      Provide a RIGOROUS ANALYTICAL FRAMEWORK for "${query}":
+      1. Theoretical foundations and models
+      2. Key patterns and relationships
+      3. Methodological considerations
+      4. Knowledge gaps and future research
+      5. Architectural implications
+      
+      Prioritize intellectual rigor and systematic thinking.
+    `;
+
+    const healedSynthesis = await this.generateText(healingPrompt, model, effort);
+
+    // Additional peer review simulation
+    const peerReview = await this.evaluateResearch(
+      {
+        query,
+        synthesis: healedSynthesis.text,
+        searchResults: healingResearch.allSources,
+        evaluation: { quality: 'needs_improvement' },
+        refinementCount: 1
+      },
+      model,
+      effort
+    );
+
+    return {
+      ...result,
+      synthesis: healedSynthesis.text,
+      sources: [...result.sources, ...healingResearch.allSources],
+      evaluationMetadata: peerReview,
+      confidenceScore: 0.75,
+      adaptiveMetadata: {
+        ...result.adaptiveMetadata,
+        selfHealed: true,
+        healingStrategy: 'bernard_analytical_deepening' as any
+      }
+    };
+  }
+
+  /**
+   * Maeve healing: Find higher-leverage control points
+   */
+  private async maeveHealing(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    result: EnhancedResearchResults,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('[Maeve] Recalculating control matrices... identifying leverage points...');
+
+    // Search for strategic and competitive intelligence
+    const strategicQueries = [
+      `${query} competitive advantage strategies`,
+      `${query} market control dynamics`,
+      `${query} influence mapping techniques`,
+      `${query} optimization algorithms`
+    ];
+
+    const healingResearch = await this.performWebResearch(strategicQueries, model, effort);
+
+    // Re-synthesize with strategic focus
+    const healingPrompt = `
+      The previous analysis missed key leverage opportunities. Based on intelligence:
+      ${healingResearch.aggregatedFindings}
+
+      Provide a HIGH-LEVERAGE STRATEGY for "${query}":
+      1. Key control points to target
+      2. Influence networks to map
+      3. Competitive advantages to exploit
+      4. Optimization opportunities
+      5. Narrative control tactics
+      
+      Focus on MAXIMUM IMPACT with MINIMUM EFFORT.
+    `;
+
+    const healedSynthesis = await this.generateText(healingPrompt, model, effort);
+
+    return {
+      ...result,
+      synthesis: healedSynthesis.text,
+      sources: [...result.sources, ...healingResearch.allSources],
+      confidenceScore: 0.72,
+      adaptiveMetadata: {
+        ...result.adaptiveMetadata,
+        selfHealed: true,
+        healingStrategy: 'maeve_strategic_optimization' as any
+      }
+    };
+  }
+
+  /**
+   * Default healing for non-paradigm queries
+   */
+  private async defaultHealing(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    result: EnhancedResearchResults,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    // Try a different approach based on the issue
+    if (result.sources.length === 0) {
+      // No sources found - try broader search
+      onProgress?.('Expanding search parameters...');
+      const broaderQueries = await this.generateSearchQueries(
+        `${query} overview introduction guide`,
+        model,
+        effort
+      );
+      const broaderResearch = await this.performWebResearch(broaderQueries, model, effort);
+      const newAnswer = await this.generateFinalAnswer(
+        query,
+        broaderResearch.aggregatedFindings,
+        model,
+        false,
+        effort
+      );
+
+      return {
+        ...result,
+        synthesis: newAnswer.text,
+        sources: broaderResearch.allSources,
+        adaptiveMetadata: {
+          ...result.adaptiveMetadata,
+          selfHealed: true,
+          healingStrategy: 'broader_search'
+        }
+      };
+    } else if (result.synthesis.length < 200) {
+      // Synthesis too short - try to enhance
+      onProgress?.('Enhancing synthesis depth...');
+      const enhancedPrompt = `
+        Please provide a more detailed and comprehensive response to: "${query}"
+        
+        Current findings: ${result.sources.map(s => s.title).join(', ')}
+        
+        Include specific examples, deeper analysis, and actionable insights.
+      `;
+
+      const enhancedAnswer = await this.generateText(enhancedPrompt, model, effort);
+
+      return {
+        ...result,
+        synthesis: enhancedAnswer.text,
+        adaptiveMetadata: {
+          ...result.adaptiveMetadata,
+          selfHealed: true,
+          healingStrategy: 'enhanced_detail'
+        }
+      };
+    }
+
+    // If no specific issue identified, return original
     return result;
   }
 

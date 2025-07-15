@@ -159,12 +159,15 @@ export interface EnhancedResearchResults {
     processingTime?: number;
     complexityScore?: number;
     selfHealed?: boolean;
-    healingStrategy?: 'broader_search' | 'enhanced_detail' | 'alternative_model';
+    healingStrategy?: 'broader_search' | 'enhanced_detail' | 'alternative_model' | 'dolores_action_expansion' | 'teddy_comprehensive_expansion' | 'bernard_analytical_deepening' | 'maeve_strategic_optimization';
     paradigm?: HostParadigm;
     focusAreas?: string[];
     recommendedTools?: string[];
     toolsEnabled?: boolean;
     toolEnhanced?: boolean;
+    /* runtime tracking */
+    toolsUsed?: string[];
+    layerSequence?: ContextLayer[];
     pyramidLayer?: PyramidLayer;
     contextDensity?: number;
     dominantParadigm?: HostParadigm;
@@ -176,6 +179,13 @@ export interface EnhancedResearchResults {
     pyramidConfidence?: number;
     /* densities keyed by host paradigm */
     densities?: Record<HostParadigm, number>;
+    /* NEW paradigm-aware tracking */
+    paradigmProbabilities?: ParadigmProbabilities;
+    contextLayers?: {
+      executed: ContextLayer[];
+      results: Record<string, any>;
+    };
+    currentContextLayer?: ContextLayer;
   };
 }
 
@@ -245,6 +255,13 @@ export interface ResearchMetadata {
   healingStrategy?: string;
   toolsUsed?: string[];
   recommendedTools?: string[];
+  /* NEW paradigm-aware tracking */
+  paradigmProbabilities?: ParadigmProbabilities;
+  contextLayer?: ContextLayer;
+  contextLayers?: {
+    executed: ContextLayer[];
+    results: Record<string, any>;
+  };
   functionCalls?: Array<{
     name: string;
     arguments: any;

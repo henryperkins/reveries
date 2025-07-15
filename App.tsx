@@ -7,9 +7,11 @@ import { InputBar } from './components/InputBar';
 import { Controls } from './components/Controls';
 import { FeaturesList } from './components/FeaturesList';
 import { ProgressBar } from './components/ProgressBar';
-import { ResearchStep, ResearchStepType, EffortType, ModelType, ServiceCallConfig, EnhancedResearchResults, QueryType, Citation, ResearchMetadata } from './types';
+import { ResearchStep, ResearchStepType, EffortType, ModelType, ServiceCallConfig, EnhancedResearchResults, QueryType, Citation, ResearchMetadata, HostParadigm, ContextLayer } from './types';
 import { ResearchAgentService } from './services/researchAgentService';
+import { ContextEngineeringService } from './services/contextEngineeringService';
 import { ResearchGraphManager } from './researchGraph';
+import { ParadigmDashboard } from './components/ParadigmUI';
 import { ResearchGraphView } from './components/ResearchGraphView';
 import { usePersistedState, useResearchSessions, useCancellableOperation } from './hooks/usePersistedState';
 import { exportResearchAsJSON } from './utils/exportUtils';
@@ -153,8 +155,16 @@ const App: React.FC = () => {
   }
   const [showGraph, setShowGraph] = useState(false);
 
-  // Initialize research agent service
+  // Initialize research agent service and context engineering
   const researchAgentService = ResearchAgentService.getInstance();
+  const contextEngineering = ContextEngineeringService.getInstance();
+  
+  // State for paradigm information
+  const [currentParadigm, setCurrentParadigm] = useState<HostParadigm | null>(null);
+  const [paradigmProbabilities, setParadigmProbabilities] = useState<any>(null);
+  const [contextLayers, setContextLayers] = useState<ContextLayer[]>([]);
+  const [currentContextLayer, setCurrentContextLayer] = useState<ContextLayer | null>(null);
+  const [researchResult, setResearchResult] = useState<EnhancedResearchResults | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -498,8 +508,12 @@ const App: React.FC = () => {
 
   // Enhanced Research Workflow with LangGraph Patterns
   const executeEnhancedResearchWorkflow = useCallback(async (query: string, serviceConfig: ServiceCallConfig) => {
-    // Remove local variable declaration
-    // let currentProcessingStepId: string | null = null;
+    // Reset paradigm state for new query
+    setCurrentParadigm(null);
+    setParadigmProbabilities(null);
+    setContextLayers([]);
+    setCurrentContextLayer(null);
+    setResearchResult(null);
 
     // Step 1: Router Pattern - Classify Query Type
     currentProcessingStepIdRef.current = addStep({
@@ -528,20 +542,69 @@ const App: React.FC = () => {
 
     updateStepContent(currentProcessingStepIdRef.current, routingMessages[queryType], "Query Analysis Complete");
 
-    // Step 2: Execute Specialized Research Based on Query Type
-    let result: EnhancedResearchResults;
+    // Step 2: Execute Full Research with Paradigm Detection
+    const currentStepId = addStep({
+      type: ResearchStepType.WEB_RESEARCH,
+      title: "Initiating paradigm-aware research...",
+      content: "Host consciousness activating... detecting optimal research paradigm...",
+      icon: BeakerIcon,
+      isSpinning: true,
+    });
 
-    switch (queryType) {
-      case 'analytical':
-        result = await executeAnalyticalResearch(query, serviceConfig);
-        break;
-      case 'comparative':
-      case 'exploratory':
-        result = await executeComprehensiveResearch(query, serviceConfig);
-        break;
-      default: // factual
-        result = await executeFactualResearch(query, serviceConfig);
+    // Use the enhanced routeResearchQuery method which handles paradigm detection
+    const result = await researchAgentService.routeResearchQuery(
+      query,
+      serviceConfig.selectedModel,
+      serviceConfig.selectedEffort,
+      (message: string) => {
+        updateStepContent(currentStepId, message, "Research in Progress...");
+      },
+      true, // useFunctionCalling
+      true  // useResearchTools
+    );
+
+    // Store result for UI display
+    setResearchResult(result);
+
+    // Extract paradigm information
+    if (result.hostParadigm) {
+      setCurrentParadigm(result.hostParadigm);
+      setContextLayers(contextEngineering.getLayerSequence(result.hostParadigm));
     }
+
+    if (result.adaptiveMetadata?.paradigmProbabilities) {
+      setParadigmProbabilities(result.adaptiveMetadata.paradigmProbabilities);
+    }
+
+    if (result.adaptiveMetadata?.currentContextLayer) {
+      setCurrentContextLayer(result.adaptiveMetadata.currentContextLayer);
+    }
+
+    // Update step with paradigm information
+    let paradigmInfo = '';
+    if (result.hostParadigm) {
+      const paradigmNames = {
+        dolores: 'Dolores (Bold Action)',
+        teddy: 'Teddy (Protection)',
+        bernard: 'Bernard (Analysis)',
+        maeve: 'Maeve (Strategy)'
+      };
+      paradigmInfo = `\n\n**Host Paradigm:** ${paradigmNames[result.hostParadigm]}`;
+      
+      if (result.adaptiveMetadata?.paradigmProbabilities) {
+        const probs = result.adaptiveMetadata.paradigmProbabilities;
+        paradigmInfo += `\n**Paradigm Probabilities:** Dolores ${(probs.dolores * 100).toFixed(1)}%, Teddy ${(probs.teddy * 100).toFixed(1)}%, Bernard ${(probs.bernard * 100).toFixed(1)}%, Maeve ${(probs.maeve * 100).toFixed(1)}%`;
+      }
+    }
+
+    if (result.adaptiveMetadata?.selfHealed) {
+      paradigmInfo += `\n**Self-Healing Applied:** ${result.adaptiveMetadata.healingStrategy}`;
+    }
+
+    updateStepContent(currentStepId, 
+      `Research complete with paradigm-aware processing.${paradigmInfo}`, 
+      "Paradigm-Aware Research Complete"
+    );
 
     // Step 3: Display Final Results
     addStep({
@@ -882,6 +945,22 @@ const App: React.FC = () => {
             </div>
           </div>
         </main>
+
+        {/* Paradigm Dashboard - shows after research to visualize paradigm insights */}
+        {currentParadigm && (
+          <div className="mt-8">
+            <ParadigmDashboard
+              paradigm={currentParadigm}
+              probabilities={paradigmProbabilities}
+              metadata={currentParadigm ? {
+                ...(researchResult?.adaptiveMetadata || {}),
+                ...(researchResult?.confidenceScore !== undefined ? { confidenceScore: researchResult.confidenceScore } : {})
+              } : undefined}
+              layers={contextLayers}
+              currentLayer={currentContextLayer}
+            />
+          </div>
+        )}
 
         <FeaturesList />
       </div>
