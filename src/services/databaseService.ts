@@ -1,7 +1,11 @@
-import pg from 'pg';
-import { ResearchStep, ResearchSource, ResearchParadigm } from '../types';
-
-const { Pool } = pg;
+import { Pool, PoolClient } from 'pg';
+import {
+  ResearchStep,
+  ResearchSection,
+  ResearchSource,
+  ModelType,
+  HostParadigm
+} from '../types';
 
 interface DatabaseConfig {
   host: string;
@@ -23,7 +27,9 @@ interface AzureAIConfig {
 }
 
 export class DatabaseService {
-  private pool: pg.Pool | null = null;
+  private static instance: DatabaseService;
+  private pool: Pool | null = null;
+  private isConnected = false;
   private config: DatabaseConfig;
   private aiConfig: AzureAIConfig;
   private retryCount = 3;
@@ -64,8 +70,9 @@ export class DatabaseService {
 
     this.pool = new Pool(this.config);
 
-    this.pool.on('error', (err) => {
-      console.error('Unexpected error on idle client', err);
+    this.pool.on('error', (err: Error) => {
+      console.error('Unexpected database error:', err);
+      this.isConnected = false;
     });
 
     // Test connection
@@ -338,13 +345,23 @@ export class DatabaseService {
     });
   }
 
-  async getResearchSession(sessionId: string): Promise<any> {
+  async getResearchSession(sessionId: string): Promise<ResearchSection | null> {
     return this.executeWithRetry(async () => {
       const result = await this.pool!.query(
         'SELECT * FROM research_sessions WHERE session_id = $1',
         [sessionId]
       );
-      return result.rows[0];
+
+      if (!result.rows[0]) return null;
+
+      const row = result.rows[0];
+      return {
+        topic: row.title,
+        title: row.title,
+        content: row.description || '',
+        description: row.description || '',
+        timestamp: new Date(row.created_at).toISOString()
+      };
     });
   }
 
@@ -366,28 +383,29 @@ export class DatabaseService {
       );
 
       const steps = await Promise.all(
-        stepsResult.rows.map(async (row) => {
+        stepsResult.rows.map(async (row: any) => {
           const sourcesResult = await this.pool!.query(
-            'SELECT * FROM research_sources WHERE step_id = $1',
+            `SELECT * FROM research_sources
+             WHERE step_id = $1
+             ORDER BY created_at`,
             [row.step_id]
           );
 
           return {
             id: row.step_id,
-            type: row.type,
-            title: row.title || 'Research Step',
-            icon: () => null,
-            query: row.query,
+            type: row.type || 'research',
+            title: row.query,
             content: row.content,
-            sources: sourcesResult.rows.map(source => ({
+            modelType: row.metadata?.modelType as ModelType,
+            sources: sourcesResult.rows.map((source: any) => ({
               name: source.name,
               url: source.url,
               snippet: source.snippet,
-              relevanceScore: source.relevance_score,
+              relevance: source.relevance_score
             })),
-            metadata: row.metadata,
-            timestamp: row.created_at,
-          };
+            timestamp: new Date(row.created_at).toISOString(),
+            metadata: row.metadata
+          } as Omit<ResearchStep, 'icon'> as ResearchStep;
         })
       );
 
@@ -407,16 +425,14 @@ export class DatabaseService {
         [embeddingStr, limit]
       );
 
-      return result.rows.map(row => ({
+      return result.rows.map((row: any) => ({
         id: row.step_id,
-        type: row.type,
-        title: row.title || 'Research Step',
-        icon: () => null,
-        query: row.query,
+        type: row.type || 'research',
+        title: row.query,
         content: row.content,
-        metadata: { ...row.metadata, distance: row.distance },
-        timestamp: row.created_at,
-      }));
+        timestamp: new Date(row.created_at).toISOString(),
+        metadata: { ...row.metadata, distance: row.distance }
+      } as Omit<ResearchStep, 'icon'> as ResearchStep));
     });
   }
 
@@ -488,20 +504,15 @@ export class DatabaseService {
         params
       );
 
-      return result.rows.map(row => ({
+      return result.rows.map((row: any) => ({
         id: row.step_id,
-        type: row.type,
-        title: row.title || 'Research Step',
-        icon: () => null,
-        query: row.query,
+        type: row.type || 'research',
+        title: row.query,
         content: row.content,
-        metadata: {
-          ...row.metadata,
-          distance: row.distance,
-          summary: row.summary
-        },
-        timestamp: row.created_at,
-      }));
+        modelType: row.metadata?.modelType as ModelType,
+        timestamp: new Date(row.created_at).toISOString(),
+        metadata: { ...row.metadata, distance: row.distance, summary: row.summary }
+      } as Omit<ResearchStep, 'icon'> as ResearchStep));
     });
   }
 
@@ -524,7 +535,9 @@ export class DatabaseService {
 
         // Combine summaries for insight generation
         const combinedContent = stepsResult.rows
-          .map(row => row.summary || row.content.substring(0, 500))
+          .filter((row: any) => row.paradigm !== null)
+          .map((row: any) => row.summary || row.content.substring(0, 500))
+          .filter(Boolean)
           .join('\n\n');
 
         // Generate insights using Azure OpenAI
@@ -619,3 +632,4 @@ export class DatabaseService {
 }
 
 export const databaseService = new DatabaseService();
+

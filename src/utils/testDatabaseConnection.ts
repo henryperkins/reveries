@@ -32,8 +32,11 @@ async function testDatabaseConnection() {
     // Test read operation
     console.log('\n3. Testing read operation...');
     const session = await databaseService.getResearchSession(testSessionId);
-    console.log('✓ Read operation successful');
-    console.log(`  Retrieved session: ${session.title}`);
+    if (session) {
+      console.log(`  Retrieved session: ${session.topic}`);
+    } else {
+      console.log('  No session found');
+    }
 
     // Test recent sessions query
     console.log('\n4. Testing query operation...');
