@@ -1,19 +1,27 @@
 import { ResearchStep, ResearchStepType, ResearchGraphManager, ExportedResearchData } from '../types';
 
+export function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
+  const minutes = Math.floor(ms / 60000)
+  const seconds = Math.floor((ms % 60000) / 1000)
+  return `${minutes}m ${seconds}s`
+}
+
 export async function exportToMarkdown(
   query: string,
   steps: ResearchStep[],
-  metadata?: { model: string; effort: string; timestamp: string; duration?: number }
+  metadata?: Record<string, any>
 ): Promise<string> {
-  let markdown = `# Research Report\n\n`;
-  markdown += `**Query:** ${query}\n\n`;
+  let markdown = `# Research: ${query}\n\n`;
 
   if (metadata) {
-    markdown += `**Date:** ${metadata.timestamp}\n`;
+    markdown += `## Metadata\n\n`;
+    markdown += `**Generated:** ${metadata.timestamp}\n`;
     markdown += `**Model:** ${metadata.model}\n`;
     markdown += `**Effort:** ${metadata.effort}\n`;
     if (metadata.duration) {
-      markdown += `**Duration:** ${(metadata.duration / 1000).toFixed(1)}s\n`;
+      markdown += `**Duration:** ${formatDuration(metadata.duration)}\n`;
     }
     markdown += '\n';
   }

@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { ResearchAgentService } from '@/services/researchAgentService'
-import { Header, Controls, InputBar, ResearchArea, ProgressBar, ResearchGraphView, ErrorDisplay } from '@/components'
+import { ResearchGraphManager } from '@/researchGraph'
+import { Header, Controls, InputBar, ResearchArea, ProgressBar, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar } from '@/components'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
-import { GENAI_MODEL_FLASH, ResearchStep, ResearchStepType, EffortType } from '@/types'
+import { GENAI_MODEL_FLASH, ResearchStep, ResearchStepType, EffortType, HostParadigm, ParadigmProbabilities } from '@/types'
 import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
 import '@/App.css'
 
@@ -15,13 +16,12 @@ const App: React.FC = () => {
   const [showGraph, setShowGraph] = useState(false)
   const [enhancedMode, setEnhancedMode] = useState(false)
   const [effort, setEffort] = useState<EffortType>(EffortType.LOW)
+  const [paradigm, setParadigm] = useState<HostParadigm | null>(null)
+  const [paradigmProbabilities, setParadigmProbabilities] = useState<ParadigmProbabilities | null>(null)
   const { error, handleError, clearError } = useErrorHandling()
 
-  // graphManager removed, will use researchAgent as graphManager if needed
-
+  const graphManager = useMemo(() => new ResearchGraphManager(), [])
   const researchAgent = useMemo(() => ResearchAgentService.getInstance(), [])
-
-  // contextEngineering removed
 
   const handleSubmit = useCallback(async (input: string) => {
     if (!input.trim() || isLoading) return
@@ -44,9 +44,19 @@ const App: React.FC = () => {
 
       setResearch(prev => [...prev, initialStep])
 
+      // Add to graph
+      const rootNode = graphManager.addNode(initialStep)
+
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setProgress(prev => Math.min(prev + 10, 90))
+      }, 200)
+
       // Process with research agent
       const result = await researchAgent.generateText(input, currentModel as typeof GENAI_MODEL_FLASH, effort)
-      // Note: If you want progress, you must adapt to the available API.
+
+      clearInterval(progressInterval)
+      setProgress(100)
 
       // Update step with result
       const completedStep: ResearchStep = {
@@ -55,19 +65,50 @@ const App: React.FC = () => {
         sources: result.sources || []
       }
 
+      // Complete the node in graph
+      graphManager.completeNode(rootNode.id)
+
       setResearch(prev =>
         prev.map(step => step.id === initialStep.id ? completedStep : step)
       )
 
+      // Update node metadata with processing info
+      graphManager.updateNodeMetadata(rootNode.id, {
+        model: currentModel as typeof GENAI_MODEL_FLASH,
+        effort: effort,
+        sourcesCount: result.sources?.length || 0
+      })
+
+      // Simulate paradigm detection based on query type
+      if (input.toLowerCase().includes('analyze') || input.toLowerCase().includes('explain')) {
+        setParadigm('bernard')
+        setParadigmProbabilities({ dolores: 0.15, teddy: 0.20, bernard: 0.45, maeve: 0.20 })
+      } else if (input.toLowerCase().includes('protect') || input.toLowerCase().includes('safe')) {
+        setParadigm('teddy')
+        setParadigmProbabilities({ dolores: 0.10, teddy: 0.50, bernard: 0.25, maeve: 0.15 })
+      } else {
+        setParadigm('dolores')
+        setParadigmProbabilities({ dolores: 0.40, teddy: 0.20, bernard: 0.25, maeve: 0.15 })
+      }
+
     } catch (err) {
       handleError(err as Error)
+      // Mark node as errored if it exists
+      if (graphManager.getNodes().length > 0) {
+        const nodes = graphManager.getNodes()
+        const lastNode = nodes[nodes.length - 1]
+        graphManager.markNodeError(lastNode.id, (err as Error).message)
+      }
     } finally {
       setIsLoading(false)
+      setProgress(0)
     }
-  }, [isLoading, currentModel, enhancedMode, researchAgent, clearError, handleError])
+  }, [isLoading, currentModel, effort, researchAgent, clearError, handleError, graphManager])
 
   const handleClear = useCallback(() => {
     setResearch([])
+    setParadigm(null)
+    setParadigmProbabilities(null)
   }, [setResearch])
 
   const handleToggleGraph = useCallback(() => {
@@ -85,14 +126,26 @@ const App: React.FC = () => {
         model: currentModel,
         effort: enhancedMode ? 'enhanced' : 'standard',
         timestamp: new Date().toLocaleString(),
-        // duration: graphManager.getStatistics().totalDuration // Remove if not needed
+        duration: graphManager.getStatistics().totalDuration
       })
       const timestamp = new Date().toISOString().split('T')[0]
       downloadFile(markdown, `research-${timestamp}.md`, 'text/markdown')
     } catch (err) {
       handleError(err as Error)
     }
-  }, [research, currentModel, enhancedMode, handleError])
+  }, [research, currentModel, enhancedMode, handleError, graphManager])
+
+  // Calculate context densities based on progress
+  const contextDensities = useMemo(() => {
+    if (!isLoading) return null
+    const base = progress / 100
+    return {
+      gryffindor: Math.floor(base * 25 + Math.random() * 10),
+      hufflepuff: Math.floor(base * 20 + Math.random() * 10),
+      ravenclaw: Math.floor(base * 35 + Math.random() * 10),
+      slytherin: Math.floor(base * 20 + Math.random() * 10)
+    }
+  }, [isLoading, progress])
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -105,6 +158,8 @@ const App: React.FC = () => {
           selectedModel={currentModel as typeof GENAI_MODEL_FLASH}
           onModelChange={setCurrentModel}
           onNewSearch={handleClear}
+          onExport={research.length > 0 ? handleExport : undefined}
+          onToggleGraph={graphManager.getNodes().length > 0 ? handleToggleGraph : undefined}
           isLoading={isLoading}
           enhancedMode={enhancedMode}
           onEnhancedModeChange={handleEnhancedModeChange}
@@ -114,11 +169,31 @@ const App: React.FC = () => {
           <ErrorDisplay error={error.message} onDismiss={clearError} />
         )}
 
-        {/* ResearchGraphView expects a graphManager, but researchAgent is not a graphManager.
-            You may need to adapt this or pass the correct object. For now, pass null. */}
-        <ResearchGraphView graphManager={null as any} isOpen={showGraph} onClose={handleToggleGraph} />
+        <ResearchGraphView graphManager={graphManager} isOpen={showGraph} onClose={handleToggleGraph} />
 
-        <ResearchArea steps={research} />
+        <div className="space-y-4">
+          {/* Show paradigm UI when detected */}
+          {paradigm && paradigmProbabilities && !isLoading && (
+            <ParadigmIndicator
+              paradigm={paradigm}
+              probabilities={paradigmProbabilities}
+              confidence={Math.max(...Object.values(paradigmProbabilities))}
+            />
+          )}
+
+          {/* Show context density during processing */}
+          {isLoading && contextDensities && (
+            <ContextDensityBar
+              densities={contextDensities}
+              dominantHouse="ravenclaw"
+              phase="analyzing"
+              showLabels={true}
+            />
+          )}
+
+          <ResearchArea steps={research} />
+        </div>
+
         {isLoading && <ProgressBar value={progress} />}
 
         <InputBar

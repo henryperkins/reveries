@@ -11,7 +11,13 @@ interface ResearchGraphViewProps {
 }
 
 export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManager, isOpen, onClose }) => {
-  const [stats, setStats] = useState(graphManager.getStatistics());
+  // Early return if graphManager is somehow null (type system should prevent this)
+  if (!graphManager) {
+    console.error('ResearchGraphView requires a valid graphManager instance')
+    return null
+  }
+
+  const [stats, setStats] = useState(() => graphManager.getStatistics());
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
