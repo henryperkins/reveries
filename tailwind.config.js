@@ -24,7 +24,8 @@ export default {
                 shimmer: 'shimmer 2s ease-in-out infinite',
                 fadeIn: 'fadeIn 0.3s ease-out',
                 slideUp: 'slideUp 0.3s ease-out',
-                pulseSoft: 'pulseSoft 2s ease-in-out infinite',
+                'pulse-soft': 'pulse-soft 2s ease-in-out infinite',
+                glow: 'glow 2s ease-in-out infinite',
             },
             keyframes: {
                 shimmer: {
@@ -39,10 +40,18 @@ export default {
                     '0%': { transform: 'translateY(20px)', opacity: '0' },
                     '100%': { transform: 'translateY(0)', opacity: '1' }
                 },
-                pulseSoft: {
+                'pulse-soft': {
                     '0%, 100%': { opacity: '1' },
                     '50%': { opacity: '0.8' }
+                },
+                glow: {
+                    '0%': { boxShadow: '0 0 5px rgba(212, 175, 55, 0.5)' },
+                    '50%': { boxShadow: '0 0 20px rgba(212, 175, 55, 0.8), 0 0 30px rgba(212, 175, 55, 0.6)' },
+                    '100%': { boxShadow: '0 0 5px rgba(212, 175, 55, 0.5)' }
                 }
+            },
+            boxShadow: {
+                'westworld-glow': '0 0 20px rgba(212, 175, 55, 0.5)'
             }
         },
     },

@@ -1,13 +1,12 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { ResearchAgentService } from '@/services/researchAgentService'
 import { ResearchGraphManager } from '@/researchGraph'
-import { Header, Controls, InputBar, ResearchArea, ProgressBar, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar } from '@/components'
+import { Header, Controls, InputBar, ResearchArea, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar } from '@/components'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
 import { GENAI_MODEL_FLASH, ResearchStep, ResearchStepType, EffortType, HostParadigm, ParadigmProbabilities } from '@/types'
 import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
 import '@/App.css'
-import { ResearchStepCard } from './components/ResearchStepCard';
 
 const App: React.FC = () => {
   const [research, setResearch] = usePersistedState<ResearchStep[]>('reveries_research', [])
@@ -198,7 +197,7 @@ const App: React.FC = () => {
             </div>
           )}
 
-          <div className="research-container">
+          <div className="research-container flex flex-col">
             <ResearchArea steps={research} />
           </div>
         </div>

@@ -1,5 +1,3 @@
-import { EffortType } from '../types';
-
 export interface FunctionParameter {
     type: string;
     description: string;

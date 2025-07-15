@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState } from 'react';
-import { ResearchStep, ResearchSource } from '../types';
+import { ResearchStep } from '../types';
 import { ResearchGraphManager } from '../researchGraph';
 import { databaseService } from 'databaseService';
 
@@ -59,8 +59,7 @@ export function useEnhancedPersistence(sessionId: string) {
   // Save research step with hybrid storage
   const saveResearchStep = useCallback(async (
     step: ResearchStep,
-    parentId?: string,
-    embedding?: number[]
+    parentId?: string
   ) => {
     setPersistenceState(prev => ({ ...prev, isSyncing: true }));
 

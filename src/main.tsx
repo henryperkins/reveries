@@ -1,35 +1,17 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
-import { ErrorBoundary } from './components/ErrorBoundary'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
 import './index.css'
-/* Polyfill: Ensure Buffer is available in browser */
-import { Buffer } from 'buffer';
+import App from './App.tsx'
 
-declare global {
-  interface Window {
-    Buffer: typeof Buffer;
-  }
+// Add error boundary for production
+const rootElement = document.getElementById('root');
+
+if (!rootElement) {
+  throw new Error('Failed to find root element');
 }
 
-if (!window.Buffer) {
-  window.Buffer = Buffer;
-}
-
-const rootElement = document.getElementById('root') as HTMLElement;
-const root = ReactDOM.createRoot(rootElement);
-
-root.render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </React.StrictMode>,
-);
-
-if (import.meta.hot) {
-  import.meta.hot.accept();
-  import.meta.hot.dispose(() => {
-    root.unmount();
-  });
-}
+createRoot(rootElement).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)

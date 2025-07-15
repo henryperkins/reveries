@@ -1,10 +1,8 @@
-import { Pool, PoolClient } from 'pg';
+import { Pool } from 'pg';
 import {
   ResearchStep,
   ResearchSection,
-  ResearchSource,
-  ModelType,
-  HostParadigm
+  ModelType
 } from '../types';
 
 interface DatabaseConfig {
@@ -27,9 +25,7 @@ interface AzureAIConfig {
 }
 
 export class DatabaseService {
-  private static instance: DatabaseService;
   private pool: Pool | null = null;
-  private isConnected = false;
   private config: DatabaseConfig;
   private aiConfig: AzureAIConfig;
   private retryCount = 3;
@@ -72,7 +68,6 @@ export class DatabaseService {
 
     this.pool.on('error', (err: Error) => {
       console.error('Unexpected database error:', err);
-      this.isConnected = false;
     });
 
     // Test connection

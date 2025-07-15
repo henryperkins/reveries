@@ -1,7 +1,7 @@
 /* Browser stub: always reports "not available". Only the methods that are
    referenced from the client-side code are included. */
 
-import { EffortType, Citation } from '../types';
+import { Citation } from '../types';
 import { APIError } from './errorHandler';
 
 export interface AzureOpenAIResponse {
@@ -12,7 +12,6 @@ export interface AzureOpenAIResponse {
 }
 
 export class AzureOpenAIService {
-  private static instance: AzureOpenAIService;
 
   private constructor() {
     throw new APIError(

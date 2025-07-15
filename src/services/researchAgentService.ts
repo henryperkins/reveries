@@ -31,7 +31,6 @@ import { WriteLayerService } from './contextLayers/writeLayer';
 import { SelectLayerService } from './contextLayers/selectLayer';
 import { CompressLayerService } from './contextLayers/compressLayer';
 import { IsolateLayerService } from './contextLayers/isolateLayer';
-import { Pool } from 'pg';
 // import { ChatOpenAI } from 'langchain/chat_models/openai';
 // import { OpenAIEmbeddings } from '@langchain/openai';
 // import { PGVectorStore } from '@langchain/community/vectorstores/pgvector';
@@ -93,15 +92,7 @@ const getGrokApiKey = (): string => {
   return apiKey;
 };
 
-interface AzureAIConfig {
-  endpoint: string;
-  apiKey: string;
-  deploymentName: string;
-  embeddingModel: string;
-}
-
 export class ResearchAgentService {
-  private static instance: ResearchAgentService;
   private geminiAI: GoogleGenerativeAI;
   private azureOpenAI: AzureOpenAIService | null = null;
   private researchCache: Map<string, { result: EnhancedResearchResults; timestamp: number }> = new Map();
@@ -119,7 +110,6 @@ export class ResearchAgentService {
   private compressLayer = CompressLayerService.getInstance();
   private isolateLayer = IsolateLayerService.getInstance();
   private vectorStore: any | null = null;
-  private pool: Pool | null = null;
 
   private constructor() {
     // Currently only Gemini needs an SDK client. Grok is called via fetch.
@@ -141,25 +131,11 @@ export class ResearchAgentService {
   }
 
   public static getInstance(): ResearchAgentService {
-    if (!ResearchAgentService.instance) {
-      ResearchAgentService.instance = new ResearchAgentService();
-    }
-    return ResearchAgentService.instance;
+    return new ResearchAgentService();
   }
 
   private async initializeVectorStore(): Promise<void> {
     if (!process.env.AZURE_OPENAI_API_KEY || !process.env.PGHOST) return;
-
-    this.pool = new Pool({
-      host: process.env.PGHOST,
-      port: parseInt(process.env.PGPORT || '5432'),
-      database: process.env.PGDATABASE,
-      user: process.env.PGUSER,
-      password: process.env.PGPASSWORD,
-      ssl: process.env.PGHOST?.includes('database.azure.com')
-        ? { rejectUnauthorized: false }
-        : false,
-    });
 
     // Vector store initialization disabled - requires proper LangChain setup
     // const embeddings = new OpenAIEmbeddings({
@@ -2152,6 +2128,7 @@ export class ResearchAgentService {
       // Apply final compression if needed
       const compressedSynthesis = this.compressLayer.compress(
         result.synthesis,
+
         contextDensity.densities[paradigm] * 15,
         paradigm
       );
