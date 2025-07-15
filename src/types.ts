@@ -25,6 +25,20 @@ export interface Citation {
   published?: string;
   accessed?: string;
   snippet?: string;
+  relevanceScore?: number;
+}
+
+export interface ResearchSource {
+  name: string;
+  url: string;
+  snippet: string;
+  relevanceScore: number;
+}
+
+export interface ResearchParadigm {
+  id: string;
+  name: string;
+  description: string;
 }
 
 export interface ResearchStep {
@@ -36,6 +50,8 @@ export interface ResearchStep {
   timestamp?: string;
   isSpinning?: boolean;
   sources?: Citation[];
+  query?: string;
+  metadata?: ResearchMetadata;
 }
 
 export enum EffortType {
@@ -295,6 +311,8 @@ export interface ResearchMetadata {
     quality?: 'good' | 'needs_improvement';
     feedback?: string;
   };
+  summary?: string;
+  distance?: number;
 }
 
 export type EdgeType = 'sequential' | 'dependency' | 'error';

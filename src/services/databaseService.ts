@@ -375,6 +375,8 @@ export class DatabaseService {
           return {
             id: row.step_id,
             type: row.type,
+            title: row.title || 'Research Step',
+            icon: () => null,
             query: row.query,
             content: row.content,
             sources: sourcesResult.rows.map(source => ({
@@ -408,6 +410,8 @@ export class DatabaseService {
       return result.rows.map(row => ({
         id: row.step_id,
         type: row.type,
+        title: row.title || 'Research Step',
+        icon: () => null,
         query: row.query,
         content: row.content,
         metadata: { ...row.metadata, distance: row.distance },
@@ -425,6 +429,28 @@ export class DatabaseService {
         [limit]
       );
       return result.rows;
+    });
+  }
+
+  async saveResearchStep(sessionId: string, step: ResearchStep, parentId?: string): Promise<void> {
+    await this.saveResearchStepWithAI(sessionId, step, parentId);
+  }
+
+  async saveResearchSession(sessionId: string, data: any): Promise<void> {
+    await this.executeWithRetry(async () => {
+      await this.pool!.query(
+        'INSERT INTO research_sessions (session_id, data) VALUES ($1, $2) ON CONFLICT (session_id) DO UPDATE SET data = $2',
+        [sessionId, JSON.stringify(data)]
+      );
+    });
+  }
+
+  async saveResearchGraph(sessionId: string, graph: any): Promise<void> {
+    await this.executeWithRetry(async () => {
+      await this.pool!.query(
+        'INSERT INTO research_graphs (session_id, graph_data) VALUES ($1, $2) ON CONFLICT (session_id) DO UPDATE SET graph_data = $2',
+        [sessionId, JSON.stringify(graph)]
+      );
     });
   }
 
@@ -465,6 +491,8 @@ export class DatabaseService {
       return result.rows.map(row => ({
         id: row.step_id,
         type: row.type,
+        title: row.title || 'Research Step',
+        icon: () => null,
         query: row.query,
         content: row.content,
         metadata: {

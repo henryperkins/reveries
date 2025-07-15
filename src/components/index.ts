@@ -1,5 +1,5 @@
 // Main UI Components
-export { App } from './App';
+export { ContextDensityBar } from './ContextDensityBar';
 export { Controls } from './Controls';
 export { ErrorBoundary } from './ErrorBoundary';
 export { ErrorDisplay } from './ErrorDisplay';
@@ -7,9 +7,9 @@ export { Header } from './Header';
 export { InputBar } from './InputBar';
 export { ParadigmIndicator } from './ParadigmUI';
 export { ProgressBar } from './ProgressBar';
+export { ResearchArea } from './ResearchArea';
 export { ResearchGraphView } from './ResearchGraphView';
-export { ResearchStep } from './ResearchStep';
-export { StatusIndicator } from './StatusIndicator';
+export { ResearchStepCard } from './ResearchStepCard';
 
 // Export icons separately
 export * as Icons from './icons';

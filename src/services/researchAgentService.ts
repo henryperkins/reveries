@@ -32,8 +32,9 @@ import { SelectLayerService } from './contextLayers/selectLayer';
 import { CompressLayerService } from './contextLayers/compressLayer';
 import { IsolateLayerService } from './contextLayers/isolateLayer';
 import { Pool } from 'pg';
-import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
-import { PGVectorStore } from 'langchain/vectorstores/pgvector';
+import { ChatOpenAI } from 'langchain/chat_models/openai';
+import { OpenAIEmbeddings } from '@langchain/openai';
+import { PGVectorStore } from '@langchain/community/vectorstores/pgvector';
 import { AzureOpenAI } from '@azure/openai';
 
 /**
