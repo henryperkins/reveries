@@ -159,7 +159,7 @@ export class GrokService {
               role: "tool",
               content: JSON.stringify(result),
               tool_call_id: toolCall.id
-            });
+            } as any);
           }
         }
 

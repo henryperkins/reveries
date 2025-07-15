@@ -18,6 +18,7 @@ export enum ResearchStepType {
 
 export interface Citation {
   url: string;
+  name?: string;
   title?: string;
   authors?: string[];
   year?: number;
@@ -44,7 +45,7 @@ export enum EffortType {
 }
 
 // Updated ModelType to include Azure O3
-export type ModelType = typeof GENAI_MODEL_FLASH | typeof GROK_MODEL_4 | typeof AZURE_O3_MODEL;
+export type ModelType = 'gemini-2.5-flash' | 'grok-4' | 'o3';
 
 
 export const effortOptions: { value: EffortType; label: string }[] = [
@@ -153,6 +154,10 @@ export interface EnhancedResearchResults {
   refinementCount?: number;
   confidenceScore?: number;
   toolsUsed?: string[];
+  research?: unknown;
+  query?: string;
+  paradigm?: HostParadigm;
+  evaluation?: unknown;
   adaptiveMetadata?: {
     cacheHit?: boolean;
     learnedPatterns?: boolean;
@@ -183,9 +188,10 @@ export interface EnhancedResearchResults {
     paradigmProbabilities?: ParadigmProbabilities;
     contextLayers?: {
       executed: ContextLayer[];
-      results: Record<string, any>;
+      results: Record<string, unknown>;
     };
     currentContextLayer?: ContextLayer;
+    layerOutputs?: Record<string, unknown>;
   };
 }
 
@@ -244,6 +250,7 @@ export interface ResearchMetadata {
   model: ModelType;
   effort: EffortType;
   processingTime?: number;
+  duration?: number;
   sourcesCount?: number;
   queryType?: QueryType;
   hostParadigm?: HostParadigm;
@@ -260,12 +267,12 @@ export interface ResearchMetadata {
   contextLayer?: ContextLayer;
   contextLayers?: {
     executed: ContextLayer[];
-    results: Record<string, any>;
+    results: Record<string, unknown>;
   };
   functionCalls?: Array<{
     name: string;
-    arguments: any;
-    result: any;
+    arguments: Record<string, unknown>;
+    result: unknown;
     timestamp: number;
   }>;
   errorDetails?: {
@@ -273,6 +280,7 @@ export interface ResearchMetadata {
     code?: string;
     retryable?: boolean;
   };
+  errorMessage?: string;
   searchQueries?: string[];
   sections?: Array<{
     topic: string;
@@ -351,3 +359,6 @@ export interface ExportedResearchData {
     }>;
   }>;
 }
+
+// Re-export ResearchGraphManager from researchGraph.ts
+export { ResearchGraphManager } from './researchGraph';

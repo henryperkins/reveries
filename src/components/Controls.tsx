@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { EffortType, ModelType, effortOptions, modelOptions, GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL } from '../types';
-import { CpuChipIcon, PlusIcon, BeakerIcon, ArrowPathIcon, SparklesIcon, LightBulbIcon, ChartBarIcon, ChevronDownIcon } from './icons';
+import { EffortType, ModelType, GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL } from '../types';
+import { CpuChipIcon, PlusIcon, BeakerIcon, SparklesIcon, LightBulbIcon, ChevronDownIcon } from './icons';
 import { GROK_AVAILABLE, AZURE_OPENAI_AVAILABLE } from '../constants';
 
 interface ControlsProps {
@@ -12,6 +12,10 @@ interface ControlsProps {
   isLoading: boolean;
   enhancedMode?: boolean;
   onEnhancedModeChange?: (enabled: boolean) => void;
+  /** Optional export callback (hooked up in App) */
+  onExport?: () => void;
+  /** Optional toggle-graph callback (hooked up in App) */
+  onToggleGraph?: () => void;
 }
 
 const MODEL_INFO = {
@@ -69,16 +73,14 @@ export const Controls: React.FC<ControlsProps> = ({
   selectedEffort, onEffortChange,
   selectedModel, onModelChange,
   onNewSearch, isLoading,
+  /** optional props (unused in this component) */
   enhancedMode = true,
   onEnhancedModeChange
 }) => {
   const [showConfig, setShowConfig] = useState(false);
 
   // Filter available models - updated logic
-  const availableModels = Object.entries(MODEL_INFO).filter(([key, info]) => {
-    // Show all models that are marked as available
-    return info.available;
-  });
+  const availableModels = Object.entries(MODEL_INFO).filter(([, info]) => info.available);
 
   return (
     <div className="mt-6 space-y-4">

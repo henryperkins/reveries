@@ -9,10 +9,8 @@ export { GrokService } from './grokService'
 export { AzureOpenAIService } from './azureOpenAIService'
 
 // Utility Services
-export { errorHandler, APIError } from './errorHandler'
-export { rateLimiter } from './rateLimiter'
+export { APIError, ErrorBoundary, withRetry } from './errorHandler'
+export { RateLimiter } from './rateLimiter'
 
 // Stubs for browser builds
-export { azureOpenAIStub } from './azureOpenAIStub'
-export { geminiStub } from './geminiStub'
-export { grokStub } from './grokStub'
+export { AzureOpenAIService as azureOpenAIStub } from './azureOpenAIStub'

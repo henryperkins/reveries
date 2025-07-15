@@ -352,15 +352,17 @@ export class AzureOpenAIService {
     return withRetry(
       async () => {
         try {
-          const response = await this.createChatCompletion({
-            messages: [{ role: 'user', content: prompt }],
-            reasoning_effort: this.mapEffortToReasoning(effort),
-            max_completion_tokens: 4096
-          });
+          const response = await this.generateResponse(
+            prompt,
+            effort,
+            true, // useReasoningEffort
+            0.7,  // temperature
+            4096  // maxTokens
+          );
 
           return {
-            text: response.choices[0]?.message?.content || '',
-            sources: [] // Azure doesn't provide sources directly
+            text: response.text || '',
+            sources: response.sources || [] // Azure doesn't provide sources directly
           };
         } catch (error) {
           // Enhanced error handling

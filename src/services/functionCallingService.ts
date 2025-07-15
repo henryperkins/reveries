@@ -83,7 +83,12 @@ export class FunctionCallingService {
 
         this.registerFunction('extract_key_entities', async (text: string) => {
             // Simple entity extraction
-            const entities = {
+            const entities: {
+                topics: string[];
+                timeframes: string[];
+                locations: string[];
+                comparisons: string[];
+            } = {
                 topics: [],
                 timeframes: [],
                 locations: [],
@@ -169,8 +174,13 @@ export class FunctionCallingService {
             return { quality: 'medium', score: 0.5 };
         });
 
-        this.registerFunction('synthesize_findings', async (findings: any[], strategy: any) => {
-            const synthesis = {
+        this.registerFunction('synthesize_findings', async (findings: unknown[], strategy: unknown) => {
+            const synthesis: {
+                mainPoints: string[];
+                supportingEvidence: string[];
+                contradictions: string[];
+                gaps: string[];
+            } = {
                 mainPoints: [],
                 supportingEvidence: [],
                 contradictions: [],
@@ -181,14 +191,15 @@ export class FunctionCallingService {
             if (Array.isArray(findings)) {
                 synthesis.mainPoints = findings
                     .filter(f => f && typeof f === 'object')
-                    .map(f => f.summary || f.text || '')
+                    .map(f => (f as any).summary || (f as any).text || '')
                     .filter(text => text.length > 50);
             }
 
             // Identify gaps based on strategy
-            if (strategy.entities?.topics?.length > 0) {
+            const strategyObj = strategy as { entities?: { topics?: string[] } };
+            if (strategyObj.entities?.topics && strategyObj.entities.topics.length > 0) {
                 const coveredTopics = synthesis.mainPoints.join(' ').toLowerCase();
-                synthesis.gaps = strategy.entities.topics.filter(
+                synthesis.gaps = strategyObj.entities.topics.filter(
                     (topic: string) => !coveredTopics.includes(topic.toLowerCase())
                 );
             }
@@ -277,7 +288,7 @@ export class FunctionCallingService {
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
             console.error(`Function execution error for ${call.name}:`, errorMessage);
-            
+
             return {
                 result: null,
                 error: errorMessage
@@ -376,6 +387,7 @@ export class FunctionCallingService {
                 parameters: {
                     type: 'object',
                     properties: {},
+                    required: []
                 },
             },
             {

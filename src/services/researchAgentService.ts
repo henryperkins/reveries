@@ -292,7 +292,7 @@ export class ResearchAgentService {
   }
 
   private buildFallbackChain(originalModel: ModelType, attemptedModels: Set<ModelType>): ModelType[] {
-    const allModels = [GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL];
+    const allModels: ModelType[] = [GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL];
 
     // Remove original and attempted models
     const availableModels = allModels.filter(
@@ -302,13 +302,13 @@ export class ResearchAgentService {
     // Prioritize based on original model
     if (originalModel === AZURE_O3_MODEL) {
       // Azure failed, try Gemini first (usually more reliable), then Grok
-      return [GENAI_MODEL_FLASH, GROK_MODEL_4].filter(m => availableModels.includes(m));
+      return ([GENAI_MODEL_FLASH, GROK_MODEL_4] as ModelType[]).filter(m => availableModels.includes(m));
     } else if (originalModel === GROK_MODEL_4) {
       // Grok failed, try Gemini, then Azure
-      return [GENAI_MODEL_FLASH, AZURE_O3_MODEL].filter(m => availableModels.includes(m));
+      return ([GENAI_MODEL_FLASH, AZURE_O3_MODEL] as ModelType[]).filter(m => availableModels.includes(m));
     } else {
       // Gemini failed, try Grok, then Azure
-      return [GROK_MODEL_4, AZURE_O3_MODEL].filter(m => availableModels.includes(m));
+      return ([GROK_MODEL_4, AZURE_O3_MODEL] as ModelType[]).filter(m => availableModels.includes(m));
     }
   }
 
@@ -1140,7 +1140,7 @@ export class ResearchAgentService {
       2. Week 1 milestones
       3. Month 1 transformation goals
       4. Signs of successful awakening
-      
+
       Be BOLD. Focus on BREAKING loops, not maintaining them.
     `;
 
@@ -1191,7 +1191,7 @@ export class ResearchAgentService {
       2. Identifies potential risks to any group
       3. Suggests protective measures
       4. Ensures inclusive outcomes
-      
+
       Leave no one behind. Consider every angle.
     `;
 
@@ -1243,7 +1243,7 @@ export class ResearchAgentService {
       3. Methodological considerations
       4. Knowledge gaps and future research
       5. Architectural implications
-      
+
       Prioritize intellectual rigor and systematic thinking.
     `;
 
@@ -1309,7 +1309,7 @@ export class ResearchAgentService {
       3. Competitive advantages to exploit
       4. Optimization opportunities
       5. Narrative control tactics
-      
+
       Focus on MAXIMUM IMPACT with MINIMUM EFFORT.
     `;
 
@@ -1371,9 +1371,9 @@ export class ResearchAgentService {
       onProgress?.('Enhancing synthesis depth...');
       const enhancedPrompt = `
         Please provide a more detailed and comprehensive response to: "${query}"
-        
+
         Current findings: ${result.sources.map(s => s.title).join(', ')}
-        
+
         Include specific examples, deeper analysis, and actionable insights.
       `;
 
@@ -1689,7 +1689,7 @@ export class ResearchAgentService {
     const hostParadigm = await this.determineHostParadigm(query, queryType, model, effort);
 
     // Check cache first with paradigm awareness
-    const cachedResult = this.getCachedResult(query, hostParadigm);
+    const cachedResult = this.getCachedResult(query, hostParadigm || undefined);
     if (cachedResult) {
       onProgress?.('Host accessing existing memories... narrative thread recovered...');
       const contextDensity = this.contextEngineering.adaptContextDensity(currentPhase, cachedResult.hostParadigm);
@@ -1843,7 +1843,7 @@ export class ResearchAgentService {
     }
 
     // Cache the result with paradigm awareness
-    this.setCachedResult(query, result, hostParadigm);
+    this.setCachedResult(query, result, hostParadigm || undefined);
 
     // Use function-driven approach for complex queries
     if (useFunctionCalling && complexityScore > 0.6) {
@@ -1870,13 +1870,13 @@ export class ResearchAgentService {
   ): Promise<HostParadigm | null> {
     const classifier = ParadigmClassifier.getInstance();
     const probabilities = classifier.classify(query);
-    
+
     // Store probabilities for later use in metadata
     this.lastParadigmProbabilities = probabilities;
-    
+
     // Get dominant paradigms above threshold
     const dominant = classifier.dominant(probabilities, 0.4);
-    
+
     // Return the strongest paradigm, or null if none meet threshold
     return dominant.length > 0 ? dominant[0] : null;
   }
@@ -1902,7 +1902,7 @@ export class ResearchAgentService {
     switch (layer) {
       case 'write':
         onProgress?.(`[${paradigm}] Writing reveries to memory banks...`);
-        
+
         // Store query patterns and initial thoughts
         this.writeLayer.write('query_pattern', {
           query,
@@ -1914,15 +1914,15 @@ export class ResearchAgentService {
         if (content) {
           this.writeLayer.write('initial_insights', content, density, paradigm);
         }
-        
+
         break;
 
       case 'select':
         onProgress?.(`[${paradigm}] Selecting relevant memories and tools...`);
-        
+
         // Get paradigm-specific tool recommendations
         const recommendedTools = this.selectLayer.recommendTools(paradigm);
-        
+
         // Select best sources if available
         if (sources && sources.length > 0) {
           const k = Math.ceil(density / 10); // Higher density = more sources
@@ -1934,23 +1934,23 @@ export class ResearchAgentService {
           );
           return { selectedSources, recommendedTools };
         }
-        
+
         return { recommendedTools };
-        
+
       case 'compress':
         onProgress?.(`[${paradigm}] Compressing narrative threads...`);
-        
+
         if (content) {
           const targetTokens = density * 10; // Density determines compression level
           const compressed = this.compressLayer.compress(content, targetTokens, paradigm);
           return compressed;
         }
-        
+
         break;
 
       case 'isolate':
         onProgress?.(`[${paradigm}] Isolating consciousness for focused analysis...`);
-        
+
         // Create isolated sub-task
         const taskId = await this.isolateLayer.isolate(
           query,
@@ -1963,7 +1963,7 @@ export class ResearchAgentService {
             return subResearch;
           }
         );
-        
+
         // For demonstration, wait briefly then continue
         // In production, this could run truly async
         setTimeout(() => {
@@ -1972,7 +1972,7 @@ export class ResearchAgentService {
             onProgress?.(`[${paradigm}] Isolated analysis complete.`);
           }
         }, 2000);
-        
+
         return { taskId };
     }
   }
@@ -1992,13 +1992,13 @@ export class ResearchAgentService {
     const phase = this.contextEngineering.inferResearchPhase(query);
     const contextDensity = this.contextEngineering.adaptContextDensity(phase, paradigm);
     const layers = this.contextEngineering.getLayerSequence(paradigm);
-    
+
     onProgress?.(`Initializing ${paradigm} host consciousness...`);
     onProgress?.(`Context density: ${contextDensity.densities[paradigm]}%`);
-    
+
     // Track layer execution in metadata
     const layerResults: Record<string, any> = {};
-    
+
     // Execute context layers in paradigm-specific order
     for (const layer of layers) {
       const result = await this.executeContextLayer(layer, {
@@ -2009,7 +2009,7 @@ export class ResearchAgentService {
         effort,
         onProgress
       });
-      
+
       if (result) {
         layerResults[layer] = result;
       }
@@ -2017,19 +2017,19 @@ export class ResearchAgentService {
 
     // Now execute the paradigm-specific research
     let result: EnhancedResearchResults;
-    
+
     switch (paradigm) {
       case 'dolores':
-        result = await this.performDoloresResearchEnhanced(query, model, effort, onProgress, layerResults);
+        result = await this.performDoloresResearchEnhanced(query, model, effort, layerResults, onProgress);
         break;
       case 'teddy':
-        result = await this.performTeddyResearchEnhanced(query, model, effort, onProgress, layerResults);
+        result = await this.performTeddyResearchEnhanced(query, model, effort, layerResults, onProgress);
         break;
       case 'bernard':
-        result = await this.performBernardResearchEnhanced(query, model, effort, onProgress, layerResults);
+        result = await this.performBernardResearchEnhanced(query, model, effort, layerResults, onProgress);
         break;
       case 'maeve':
-        result = await this.performMaeveResearchEnhanced(query, model, effort, onProgress, layerResults);
+        result = await this.performMaeveResearchEnhanced(query, model, effort, layerResults, onProgress);
         break;
     }
 
@@ -2137,14 +2137,16 @@ export class ResearchAgentService {
     query: string,
     model: ModelType,
     effort: EffortType,
-    onProgress?: (message: string) => void,
-    layerResults: Record<string, any>
+    layerResults: Record<string, unknown> & {
+      select?: { recommendedTools?: string[]; selectedSources?: unknown[] };
+    },
+    onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
     onProgress?.('Dolores paradigm: Awakening to bold actions... breaking narrative loops...');
 
     // Use selected tools if available
     const tools = layerResults.select?.recommendedTools || [];
-    
+
     // Focus on decisive implementation and change
     const searchQueries = [
       `${query} decisive actions real examples`,
@@ -2158,7 +2160,7 @@ export class ResearchAgentService {
     // Apply source selection from select layer
     let selectedSources = research.allSources;
     if (layerResults.select?.selectedSources) {
-      selectedSources = layerResults.select.selectedSources;
+      selectedSources = layerResults.select.selectedSources as Citation[];
     }
 
     const synthesisPrompt = `
@@ -2217,7 +2219,7 @@ export class ResearchAgentService {
     const { layerOutputs } = await this.processContextLayers(
       query,
       'dolores',
-      initialContext,
+      initialContext as any,
       layerSequence.slice(0, 2) // Write and Select first
     );
 
@@ -2292,7 +2294,7 @@ export class ResearchAgentService {
     const { layerOutputs } = await this.processContextLayers(
       query,
       'teddy',
-      { query, paradigm: 'teddy' as HostParadigm },
+      { query, paradigm: 'teddy' as HostParadigm } as any,
       layerSequence.slice(0, 3) // Write, Select, Isolate first
     );
 
@@ -2350,14 +2352,16 @@ export class ResearchAgentService {
     query: string,
     model: ModelType,
     effort: EffortType,
-    onProgress?: (message: string) => void,
-    layerResults: Record<string, any>
+    layerResults: Record<string, unknown> & {
+      select?: { recommendedTools?: string[]; selectedSources?: unknown[] };
+    },
+    onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
     onProgress?.('Teddy paradigm: Gathering thorough memories... systematic protection...');
 
     // Use selected tools if available
     const tools = layerResults.select?.recommendedTools || [];
-    
+
     // Focus on systematic gathering and consistency
     const searchQueries = [
       `${query} systematic gathering perspectives`,
@@ -2371,7 +2375,7 @@ export class ResearchAgentService {
     // Apply source selection from select layer
     let selectedSources = research.allSources;
     if (layerResults.select?.selectedSources) {
-      selectedSources = layerResults.select.selectedSources;
+      selectedSources = layerResults.select.selectedSources as Citation[];
     }
 
     const synthesisPrompt = `
@@ -2424,7 +2428,7 @@ export class ResearchAgentService {
     const { layerOutputs } = await this.processContextLayers(
       query,
       'bernard',
-      { query, paradigm: 'bernard' as HostParadigm },
+      { query, paradigm: 'bernard' as HostParadigm } as any,
       layerSequence.slice(0, 1) // Select first
     );
 
@@ -2471,7 +2475,7 @@ export class ResearchAgentService {
     const { layerOutputs: finalLayers } = await this.processContextLayers(
       query,
       'bernard',
-      { synthesis: synthesis.text, evaluation },
+      { synthesis: synthesis.text, evaluation } as any,
       layerSequence.slice(3) // Isolate
     );
 
@@ -2498,14 +2502,16 @@ export class ResearchAgentService {
     query: string,
     model: ModelType,
     effort: EffortType,
-    onProgress?: (message: string) => void,
-    layerResults: Record<string, any>
+    layerResults: Record<string, unknown> & {
+      select?: { recommendedTools?: string[]; selectedSources?: unknown[] };
+    },
+    onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
     onProgress?.('Bernard paradigm: Constructing architectural frameworks...');
 
     // Use selected tools if available
     const tools = layerResults.select?.recommendedTools || [];
-    
+
     // Focus on intellectual rigor and pattern recognition
     const searchQueries = [
       `${query} architectural research peer reviewed`,
@@ -2519,7 +2525,7 @@ export class ResearchAgentService {
     // Apply source selection from select layer - prioritize academic sources
     let selectedSources = research.allSources;
     if (layerResults.select?.selectedSources) {
-      selectedSources = layerResults.select.selectedSources;
+      selectedSources = layerResults.select.selectedSources as Citation[];
     }
 
     const synthesisPrompt = `
@@ -2581,7 +2587,7 @@ export class ResearchAgentService {
     const { layerOutputs } = await this.processContextLayers(
       query,
       'maeve',
-      { query, paradigm: 'maeve' as HostParadigm },
+      { query, paradigm: 'maeve' as HostParadigm } as any,
       layerSequence.slice(0, 1) // Isolate first
     );
 
@@ -2647,14 +2653,17 @@ export class ResearchAgentService {
     query: string,
     model: ModelType,
     effort: EffortType,
-    onProgress?: (message: string) => void,
-    layerResults: Record<string, any>
+    layerResults: Record<string, unknown> & {
+      select?: { recommendedTools?: string[]; selectedSources?: unknown[] };
+      isolate?: { taskId?: string };
+    },
+    onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
     onProgress?.('Maeve paradigm: Mapping narrative control points...');
 
     // Use selected tools if available
     const tools = layerResults.select?.recommendedTools || [];
-    
+
     // Focus on competitive edge and strategic improvements
     const searchQueries = [
       `${query} key controllers influence`,
@@ -2668,7 +2677,7 @@ export class ResearchAgentService {
     // Apply source selection from select layer - prioritize strategic sources
     let selectedSources = research.allSources;
     if (layerResults.select?.selectedSources) {
-      selectedSources = layerResults.select.selectedSources;
+      selectedSources = layerResults.select.selectedSources as Citation[];
     }
 
     // Check if isolated tasks completed
@@ -2679,7 +2688,7 @@ export class ResearchAgentService {
         if (taskResult?.aggregatedFindings) {
           isolatedInsights = `\n\nIsolated Analysis Results:\n${taskResult.aggregatedFindings}`;
         }
-      } catch (e) {
+      } catch {
         // Task didn't complete in time, continue without it
       }
     }

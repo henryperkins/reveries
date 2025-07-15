@@ -1,7 +1,84 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+@theme {
+    --color-background: #F5E6D3;
+    --color-surface: #FAFAFA;
+    --color-border: #D2B48C;
+    --color-text-primary: #1A1A1A;
+    --color-text-secondary: #8B4513;
+    --color-text-muted: #B87333;
+    --color-accent: #D4AF37;
+    --color-accent-dark: #B87333;
+
+    /* Westworld theme colors */
+    --color-westworld-cream: #FAFAFA;
+    --color-westworld-beige: #F5E6D3;
+    --color-westworld-tan: #D2B48C;
+    --color-westworld-brown: #A0522D;
+    --color-westworld-darkbrown: #654321;
+    --color-westworld-black: #1A1A1A;
+    --color-westworld-gold: #D4AF37;
+    --color-westworld-rust: #8B4513;
+    --color-westworld-copper: #B87333;
+    --color-westworld-white: #FAFAFA;
+
+    /* Custom font families */
+    --font-sans: system-ui, -apple-system, sans-serif;
+    --font-serif: Georgia, Cambria, serif;
+    --font-mono: 'Courier New', Courier, monospace;
+
+    /* Custom animations */
+    --animate-fade-in: fadeIn 0.3s ease-out;
+    --animate-slide-up: slideUp 0.3s ease-out;
+    --animate-pulse-soft: pulseSoft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+    /* Keyframes */
+    @keyframes fadeIn {
+        0% {
+            opacity: 0;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideUp {
+        0% {
+            transform: translateY(10px);
+            opacity: 0;
+        }
+
+        100% {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes pulseSoft {
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.8;
+        }
+    }
+
+    @keyframes shimmer {
+        0% {
+            background-position: -200% 0;
+        }
+
+        100% {
+            background-position: 200% 0;
+        }
+    }
+}
+
+/* Legacy CSS variables for compatibility */
 :root {
     --westworld-gold: #D4AF37;
     --westworld-rust: #8B4513;
@@ -14,8 +91,9 @@
 
 @layer base {
     body {
-        @apply text-westworld-black bg-westworld-beige antialiased;
+        @apply text-gray-900 bg-westworld-beige antialiased;
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        color: var(--color-westworld-black);
     }
 
     /* Improve focus states for better accessibility */

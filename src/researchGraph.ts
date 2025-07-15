@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ResearchStep, ResearchStepType, ModelType, EffortType, Citation, ExportedResearchData, GENAI_MODEL_FLASH, ResearchMetadata } from './types';
 
 export interface GraphNode {
@@ -130,6 +131,24 @@ export class ResearchGraphManager {
         if (node && node.metadata) {
             node.metadata = { ...node.metadata, ...metadata };
         }
+    }
+
+    /**
+     * Mark a node as complete and record its duration.
+     * Exposed so UI components can signal when processing
+     * for a given step has finished.
+     */
+    public completeNode(nodeId: string): void {
+        // Re-use the existing duration helper
+        this.updateNodeDuration(nodeId);
+    }
+
+    /**
+     * Return all nodes in insertion order – useful for UI
+     * components that need to iterate over the graph.
+     */
+    public getNodes(): GraphNode[] {
+        return Array.from(this.graph.nodes.values());
     }
 
     // Add an edge between nodes
@@ -381,6 +400,7 @@ export class ResearchGraphManager {
                 id: node.id,
                 label: node.title,
                 type: node.type,
+                metadata: node.metadata
             })),
             edges: Array.from(this.graph.edges.values()),
         };

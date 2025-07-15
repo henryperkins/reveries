@@ -14,7 +14,6 @@ export { FeaturesList } from './FeaturesList'
 export { ErrorBoundary } from './ErrorBoundary'
 export { ParadigmIndicator, ParadigmProbabilityBar } from './ParadigmUI'
 export { ContextDensityBar } from './ContextDensityBar'
-export { FunctionCallVisualizer } from './FunctionCallVisualizer'
 export { ToolUsageIndicator } from './ToolUsageIndicator'
 
 // Future components (to be implemented)

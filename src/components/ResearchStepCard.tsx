@@ -11,13 +11,47 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({ step }) => {
   const IconComponent = step.icon;
 
   const getStepStyles = (type: ResearchStepType) => {
-    const styles = {
+    const styles: Record<ResearchStepType, {
+      iconColor: string;
+      borderColor: string;
+      bgGradient: string;
+      glowColor: string;
+      animate: boolean;
+    }> = {
       [ResearchStepType.USER_QUERY]: {
         iconColor: 'text-westworld-gold',
         borderColor: 'border-westworld-gold/30',
         bgGradient: 'from-westworld-gold/5 to-transparent',
         glowColor: 'shadow-westworld-glow',
         animate: true
+      },
+      [ResearchStepType.GENERATING_QUERIES]: {
+        iconColor: 'text-westworld-darkbrown',
+        borderColor: 'border-westworld-darkbrown/30',
+        bgGradient: 'from-westworld-darkbrown/5 to-transparent',
+        glowColor: '',
+        animate: false
+      },
+      [ResearchStepType.WEB_RESEARCH]: {
+        iconColor: 'text-westworld-darkbrown',
+        borderColor: 'border-westworld-darkbrown/30',
+        bgGradient: 'from-westworld-darkbrown/5 to-transparent',
+        glowColor: '',
+        animate: false
+      },
+      [ResearchStepType.REFLECTION]: {
+        iconColor: 'text-westworld-darkbrown',
+        borderColor: 'border-westworld-darkbrown/30',
+        bgGradient: 'from-westworld-darkbrown/5 to-transparent',
+        glowColor: '',
+        animate: false
+      },
+      [ResearchStepType.SEARCHING_FINAL_ANSWER]: {
+        iconColor: 'text-westworld-darkbrown',
+        borderColor: 'border-westworld-darkbrown/30',
+        bgGradient: 'from-westworld-darkbrown/5 to-transparent',
+        glowColor: '',
+        animate: false
       },
       [ResearchStepType.FINAL_ANSWER]: {
         iconColor: 'text-westworld-gold animate-pulse-soft',
@@ -33,16 +67,16 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({ step }) => {
         glowColor: '',
         animate: false
       },
-      default: {
+      [ResearchStepType.ANALYTICS]: {
         iconColor: 'text-westworld-darkbrown',
-        borderColor: 'border-westworld-darkbrown/20',
+        borderColor: 'border-westworld-darkbrown/30',
         bgGradient: 'from-westworld-darkbrown/5 to-transparent',
         glowColor: '',
         animate: false
       }
     };
 
-    return styles[type] || styles.default;
+    return styles[type];
   };
 
   const stepStyles = getStepStyles(step.type);
