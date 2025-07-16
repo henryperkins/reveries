@@ -95,15 +95,14 @@ export class GraphLayoutEngine {
 
   // Force-directed layout for complex graphs
   forceDirectedLayout(nodes: any[], edges: any[], iterations: number = 100): GraphNode[] {
-    const layoutNodes: GraphNode[] = nodes.map((node, i) => ({
+    const layoutNodes: GraphNode[] = nodes.map((node) => ({
       id: node.id,
-      x: Math.random() * 800 - 400,
-      y: node.level * this.levelHeight,
-      width: this.nodeWidth,
-      height: this.nodeHeight,
-      type: node.type,
-      title: node.label,
-      level: node.level
+      x: node.x || 0,
+      y: node.y || 0,
+      vx: 0,
+      vy: 0,
+      fx: node.fx,
+      fy: node.fy
     }));
 
     // Simple force simulation
@@ -215,4 +214,5 @@ export function getNodeStyle(type: ResearchStepType): {
     border: '#334155',
     textColor: '#ffffff'
   };
+}
 }

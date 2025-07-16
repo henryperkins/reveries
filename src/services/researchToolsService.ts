@@ -362,6 +362,58 @@ export class ResearchToolsService {
         return queries.slice(0, args.count);
       }
     });
+
+    // Tool to list all available tools
+    this.registerTool({
+      name: 'list_tools',
+      description: 'List all available research tools',
+      category: 'knowledge',
+      parameters: {},
+      execute: async (_args) => {
+        return {
+          currentTools: this.tools.map(t => ({
+            name: t.name,
+            description: t.description,
+            category: t.category
+          }))
+        };
+      }
+    });
+
+    // Tool to suggest a research workflow
+    this.registerTool({
+      name: 'suggest_workflow',
+      description: 'Suggest a research workflow based on the given parameters',
+      category: 'analysis',
+      parameters: {
+        type: 'object',
+        properties: {
+          researchGoal: { type: 'string' },
+          dataAvailability: { type: 'string', enum: ['high', 'medium', 'low'] },
+          analysisType: { type: 'string', enum: ['descriptive', 'inferential', 'predictive'] }
+        },
+        required: ['researchGoal']
+      },
+      execute: async (_args) => {
+        const workflowSteps = await this.suggestWorkflow(
+          'Research workflow planning',
+          'analytical'
+        );
+        return { workflowSteps };
+      }
+    });
+
+    // Citation guide retrieval tool
+    this.registerTool({
+      name: 'get_citation_guide',
+      description: 'Retrieve the citation guide for various styles',
+      category: 'citation',
+      parameters: {},
+      execute: async (_args) => {
+        const guide = await this.getCitationGuide();
+        return { guide };
+      }
+    });
   }
 
   private registerTool(tool: ResearchTool): void {
@@ -504,38 +556,14 @@ export class ResearchToolsService {
     return citation;
   }
 
-  private formatMLA(title: string, authors: string[], year: string | number, url: string): string {
-    const authorText = authors.length > 0 ?
-      (authors.length === 1 ? authors[0] :
-       authors.length === 2 ? `${authors[0]} and ${authors[1]}` :
-       `${authors[0]} et al.`) : 'Unknown Author';
-
-    let citation = `${authorText}. "${title}."`;
-    if (url) {
-      citation += ` Web. ${new Date().toLocaleDateString('en-US', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      })}.`;
-    }
-    return citation;
+  private formatMLA(title: string, authors: string[], _year: string | number, url: string): string {
+    const authorStr = authors.length > 0 ? `${authors[0]}` : 'Unknown';
+    return `${authorStr}. "${title}." Web. <${url}>.`;
   }
 
-  private formatChicago(title: string, authors: string[], year: string | number, url: string): string {
-    const authorText = authors.length > 0 ?
-      (authors.length === 1 ? authors[0] :
-       authors.length === 2 ? `${authors[0]} and ${authors[1]}` :
-       `${authors[0]} et al.`) : 'Unknown Author';
-
-    let citation = `${authorText}. "${title}."`;
-    if (url) {
-      citation += ` Accessed ${new Date().toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-      })}. ${url}.`;
-    }
-    return citation;
+  private formatChicago(title: string, authors: string[], _year: string | number, url: string): string {
+    const authorStr = authors.join(', ');
+    return `${authorStr}. "${title}." Accessed from ${url}.`;
   }
 
   private formatHarvard(title: string, authors: string[], year: string | number, url: string): string {

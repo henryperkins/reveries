@@ -9,7 +9,7 @@ interface SelectionStrategy {
 
 export class SelectLayerService {
   private static instance: SelectLayerService;
-  
+
   private strategies: Record<HostParadigm, SelectionStrategy> = {
     dolores: {
       paradigm: 'dolores',
@@ -17,7 +17,7 @@ export class SelectLayerService {
       sourcePriorities: ['case studies', 'success stories', 'implementation'],
       selectionCriteria: (source) => {
         const actionWords = ['implement', 'action', 'change', 'transform', 'achieve'];
-        const score = actionWords.reduce((acc, word) => 
+        const score = actionWords.reduce((acc, word) =>
           acc + (source.title?.toLowerCase().includes(word) ? 1 : 0), 0
         );
         return score;
@@ -29,7 +29,7 @@ export class SelectLayerService {
       sourcePriorities: ['comprehensive', 'balanced', 'stakeholder', 'safety'],
       selectionCriteria: (source) => {
         const protectiveWords = ['comprehensive', 'thorough', 'safety', 'all', 'complete'];
-        const score = protectiveWords.reduce((acc, word) => 
+        const score = protectiveWords.reduce((acc, word) =>
           acc + (source.title?.toLowerCase().includes(word) ? 1 : 0), 0
         );
         return score;
@@ -41,7 +41,7 @@ export class SelectLayerService {
       sourcePriorities: ['peer-reviewed', 'academic', 'theoretical', 'framework'],
       selectionCriteria: (source) => {
         const analyticalWords = ['analysis', 'framework', 'theory', 'model', 'pattern'];
-        const score = analyticalWords.reduce((acc, word) => 
+        const score = analyticalWords.reduce((acc, word) =>
           acc + (source.title?.toLowerCase().includes(word) ? 1 : 0), 0
         );
         // Boost for academic sources
@@ -57,7 +57,7 @@ export class SelectLayerService {
       sourcePriorities: ['strategic', 'competitive', 'leverage', 'control'],
       selectionCriteria: (source) => {
         const strategicWords = ['strategy', 'competitive', 'leverage', 'control', 'optimize'];
-        const score = strategicWords.reduce((acc, word) => 
+        const score = strategicWords.reduce((acc, word) =>
           acc + (source.title?.toLowerCase().includes(word) ? 1 : 0), 0
         );
         return score;
@@ -74,6 +74,19 @@ export class SelectLayerService {
     return SelectLayerService.instance;
   }
 
+  async select(
+    paradigm: HostParadigm,
+    k: number = 5
+  ): Promise<{
+    recommendedTools: string[];
+    selectedSources: unknown[];
+  }> {
+    return {
+      recommendedTools: this.recommendTools(paradigm),
+      selectedSources: []
+    };
+  }
+
   async selectSources(
     query: string,
     sources: Citation[],
@@ -81,7 +94,7 @@ export class SelectLayerService {
     k: number
   ): Promise<Citation[]> {
     const strategy = this.strategies[paradigm];
-    
+
     // Score and rank sources based on paradigm strategy
     const scoredSources = sources.map(source => ({
       source,

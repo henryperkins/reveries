@@ -312,10 +312,21 @@ export class DatabaseService {
           ]
         );
 
+        // Remove the assignment since aiResult is not used
+        // await client.query(`
+        //   INSERT INTO research_sessions (id, title, created_at, updated_at, research_data)
+        //   VALUES ($1, $2, $3, $4, $5)
+        //   ON CONFLICT (id) DO UPDATE SET
+        //     title = EXCLUDED.title,
+        //     updated_at = EXCLUDED.updated_at,
+        //     research_data = EXCLUDED.research_data
+        // `, [sessionId, title, now, now, researchData]);
+
         // Save sources
         if (step.sources && step.sources.length > 0) {
-          const values = step.sources.map((source, index) =>
-            `($1, $${2 + index * 4}, $${3 + index * 4}, $${4 + index * 4}, $${5 + index * 4})`
+          const baseIndex = 1;
+          const values = step.sources.map((_, index) =>
+            `($${baseIndex + index * 5}, $${baseIndex + index * 5 + 1}, $${baseIndex + index * 5 + 2}, $${baseIndex + index * 5 + 3}, $${baseIndex + index * 5 + 4})`
           ).join(', ');
 
           const params = [step.id];

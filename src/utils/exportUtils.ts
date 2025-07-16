@@ -1,4 +1,4 @@
-import { ResearchStep, ResearchStepType, ResearchGraphManager, ExportedResearchData } from '../types';
+import { ResearchStep, ResearchStepType, ExportedResearchData } from '../types';
 
 export function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`

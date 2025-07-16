@@ -18,7 +18,6 @@ import {
 } from '../types';
 import type {
   ResearchResponse,
-  ResearchSource,
   ResearchModel,
   HostParadigm,
   HouseParadigm,
@@ -165,22 +164,8 @@ export class ResearchAgentService {
     // });
   }
 
-  async semanticSearch(query: string, sessionId?: string): Promise<ResearchState[]> {
-    if (!this.vectorStore) return [];
-
-    // Vector store search disabled - requires proper LangChain setup
-    // const results = await this.vectorStore.similaritySearch(query, 5, {
-    //   session_id: sessionId,
-    // });
-
-    // return results.map(doc => ({
-    //   id: doc.metadata?.step_id || '',
-    //   type: doc.metadata?.type || 'search',
-    //   query: doc.metadata?.query || '',
-    //   content: doc.pageContent,
-    //   sources: doc.metadata?.sources || [],
-    //   metadata: doc.metadata,
-    // }));
+  async semanticSearch(_query: string, _sessionId?: string): Promise<ResearchState[]> {
+    // Method not implemented yet - return empty array
     return [];
   }
 
@@ -195,7 +180,6 @@ export class ResearchAgentService {
       throw new Error('Azure OpenAI not configured');
     }
 
-    const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4';
     const response = await this.azureOpenAI.generateResponse(
       prompt,
       EffortType.MEDIUM,
@@ -211,9 +195,9 @@ export class ResearchAgentService {
   }
 
   async storeResearchState(
-    step: ResearchState,
-    sessionId: string,
-    parentId?: string
+    _step: ResearchState,
+    _sessionId: string,
+    _parentId?: string
   ): Promise<void> {
     if (!this.vectorStore) return;
 
@@ -702,9 +686,6 @@ export class ResearchAgentService {
     }
   }
 
-  private async generateTextWithGrok(prompt: string): Promise<ProviderResponse> {
-    return this.generateTextWithGrokAndTools(prompt);
-  }
 
   /**
    * Function-calling capable Grok loop. Exposes a `search_web` tool backed by Gemini's search.
@@ -871,33 +852,39 @@ export class ResearchAgentService {
 
     for (const query of queries) {
       const searchPrompt = `Perform a web search and provide a concise summary of key information found for the query: "${query}". Focus on factual information and insights. If no relevant information is found, state that clearly.`;
+
       try {
-        const result = await this.generateText(searchPrompt, model, effort);
+        const { text, sources } = await this.generateTextWithGemini(
+          searchPrompt,
+          model,
+          effort,
+          true // Enable search
+        );
 
-        if (result.text && result.text.trim()) {
-          findingsOutputParts.push(`Research for "${query}":\n${result.text.trim()}`);
-        } else {
-          findingsOutputParts.push(`No specific findings for "${query}".`);
+        if (text && text.trim()) {
+          findingsOutputParts.push(`## ${query}\n\n${text}`);
         }
 
-        if (result.sources) {
-          result.sources.forEach(source => {
-            const normalizedKey = this.normalizeSourceKey(source);
-            if (normalizedKey && !uniqueSourceKeys.has(normalizedKey)) {
-              allSources.push(source);
-              uniqueSourceKeys.add(normalizedKey);
-            }
-          });
-        }
-      } catch (e: any) {
-        console.warn(`Error during web research for query "${query}": ${e.message}`);
-        findingsOutputParts.push(`Error researching "${query}": Information could not be retrieved.`);
+        // Add unique sources
+        sources.forEach(source => {
+          const sourceKey = source.url || source.title;
+          if (!uniqueSourceKeys.has(sourceKey)) {
+            uniqueSourceKeys.add(sourceKey);
+            allSources.push(source);
+          }
+        });
+      } catch (error) {
+        console.error(`Error researching query "${query}":`, error);
+        findingsOutputParts.push(`## ${query}\n\nError performing search for this query.`);
       }
     }
 
-    const aggregatedFindings = findingsOutputParts.join("\n\n") || "Web research was attempted, but no specific information was aggregated.";
+    const aggregatedFindings = findingsOutputParts.join('\n\n---\n\n');
 
-    return { aggregatedFindings, allSources };
+    return {
+      aggregatedFindings,
+      allSources
+    };
   }
 
   async performReflection(findings: string, userQuery: string, model: ModelType, effort: EffortType): Promise<string> {
@@ -913,7 +900,7 @@ export class ResearchAgentService {
     return result.text;
   }
 
-  async generateFinalAnswer(userQuery: string, context: string, model: ModelType, useSearch: boolean, effort: EffortType): Promise<{ text: string; sources?: Citation[] }> {
+  async generateFinalAnswer(userQuery: string, context: string, model: ModelType, _useSearch: boolean, effort: EffortType): Promise<{ text: string; sources?: Citation[] }> {
     const prompt = `
       User Query: "${userQuery}"
       Relevant Context & Findings: "${context}"
@@ -1375,533 +1362,534 @@ export class ResearchAgentService {
   }
 
   /**
-   * Maeve healing: Find higher-leverage control points
+   * Enhanced Bernard research with context layer integration
    */
-  private async maeveHealing(
+  private async performBernardResearchEnhanced(
     query: string,
     model: ModelType,
     effort: EffortType,
-    result: EnhancedResearchResults,
+    layerResults: Record<string, unknown> & {
+      select?: { recommendedTools?: string[]; selectedSources?: unknown[] };
+    },
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
-    onProgress?.('[Maeve] Recalculating control matrices... identifying leverage points...');
+    onProgress?.('Bernard paradigm: Constructing architectural frameworks...');
 
-    // Search for strategic and competitive intelligence
-    const strategicQueries = [
-      `${query} competitive advantage strategies`,
-      `${query} market control dynamics`,
-      `${query} influence mapping techniques`,
-      `${query} optimization algorithms`
+    // Use selected tools if available
+    const tools = layerResults.select?.recommendedTools || [];
+
+    // Focus on intellectual rigor and pattern recognition
+    const searchQueries = [
+      `${query} architectural research peer reviewed`,
+      `${query} pattern frameworks models`,
+      `${query} systematic analysis architecture`,
+      ...tools.map(tool => `${query} ${tool}`)
     ];
 
-    const healingResearch = await this.performWebResearch(strategicQueries, model, effort);
+    const research = await this.performWebResearch(searchQueries, model, effort);
 
-    // Re-synthesize with strategic focus
-    const healingPrompt = `
-      The previous analysis missed key leverage opportunities. Based on intelligence:
-      ${healingResearch.aggregatedFindings}
+    // Apply source selection from select layer - prioritize academic sources
+    let selectedSources = research.allSources;
+    if (layerResults.select?.selectedSources) {
+      selectedSources = layerResults.select.selectedSources as Citation[];
+    }
 
-      Provide a HIGH-LEVERAGE STRATEGY for "${query}":
-      1. Key control points to target
-      2. Influence networks to map
-      3. Competitive advantages to exploit
-      4. Optimization opportunities
-      5. Narrative control tactics
+    const synthesisPrompt = `
+      Based on this research about "${query}", provide:
+      1. Architectural frameworks and models
+      2. Key patterns and relationships
+      3. Methodological approaches used in analyses
+      4. Gaps in current understanding
+      5. Future analytical directions
 
-      Focus on MAXIMUM IMPACT with MINIMUM EFFORT.
+      Research findings: ${research.aggregatedFindings}
+
+      Prioritize intellectual rigor, pattern recognition, and architectural depth.
+      Structure your response with clear sections and numbered points.
+      Include theoretical foundations and empirical evidence.
     `;
 
-    const healedSynthesis = await this.generateText(healingPrompt, model, effort);
+    const synthesis = await this.generateText(synthesisPrompt, model, effort);
+
+    // Additional evaluation for analytical quality
+    const evaluation = await this.evaluateResearch(
+      { query, synthesis: synthesis.text, searchResults: selectedSources, evaluation: { quality: 'needs_improvement' }, refinementCount: 0 },
+      model,
+      effort
+    );
 
     return {
-      ...result,
-      synthesis: healedSynthesis.text,
-      sources: [...result.sources, ...healingResearch.allSources],
-      confidenceScore: 0.72,
+      synthesis: synthesis.text,
+      sources: selectedSources,
+      queryType: 'analytical',
+      hostParadigm: 'bernard',
+      evaluationMetadata: evaluation,
+      confidenceScore: 0.90,
       adaptiveMetadata: {
-        ...result.adaptiveMetadata,
-        selfHealed: true,
-        healingStrategy: 'maeve_strategic_optimization' as any
+        paradigm: 'bernard',
+        focusAreas: ['architectural_frameworks', 'pattern_analysis', 'knowledge_gaps'],
+        toolsUsed: tools
       }
     };
   }
 
   /**
-   * Default healing for non-paradigm queries
+   * Maeve: Strategy-focused research
    */
-  private async defaultHealing(
+  private async performMaeveResearch(
     query: string,
     model: ModelType,
     effort: EffortType,
-    result: EnhancedResearchResults,
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
-    // Try a different approach based on the issue
-    if (result.sources.length === 0) {
-      // No sources found - try broader search
-      onProgress?.('Expanding search parameters...');
-      const broaderQueries = await this.generateSearchQueries(
-        `${query} overview introduction guide`,
-        model,
-        effort
-      );
-      const broaderResearch = await this.performWebResearch(broaderQueries, model, effort);
-      const newAnswer = await this.generateFinalAnswer(
-        query,
-        broaderResearch.aggregatedFindings,
-        model,
-        false,
-        effort
-      );
+    onProgress?.('Maeve paradigm: Mapping narrative control points...');
 
-      return {
-        ...result,
-        synthesis: newAnswer.text,
-        sources: broaderResearch.allSources,
-        adaptiveMetadata: {
-          ...result.adaptiveMetadata,
-          selfHealed: true,
-          healingStrategy: 'broader_search'
-        }
-      };
-    } else if (result.synthesis.length < 200) {
-      // Synthesis too short - try to enhance
-      onProgress?.('Enhancing synthesis depth...');
-      const enhancedPrompt = `
-        Please provide a more detailed and comprehensive response to: "${query}"
+    // Get context layer sequence for Maeve
+    const contextEngineering = ContextEngineeringService.getInstance();
+    const layerSequence = contextEngineering.getLayerSequence('maeve');
+    // Maeve sequence: ['isolate', 'select', 'compress', 'write']
 
-        Current findings: ${result.sources.map(s => s.title).join(', ')}
+    // Process isolate layer first (identify high-impact sub-agents)
+    const { layerOutputs } = await this.processContextLayers(
+      query,
+      'maeve',
+      { query, paradigm: 'maeve' as HostParadigm } as any,
+      layerSequence.slice(0, 1) // Isolate first
+    );
 
-        Include specific examples, deeper analysis, and actionable insights.
-      `;
+    // Focus on competitive edge and strategic improvements
+    const searchQueries = [
+      `${query} key controllers influence`,
+      `${query} strategic opportunities control points`,
+      `${query} narrative dynamics analysis`
+    ];
 
-      const enhancedAnswer = await this.generateText(enhancedPrompt, model, effort);
+    const research = await this.performWebResearch(searchQueries, model, effort);
 
-      return {
-        ...result,
-        synthesis: enhancedAnswer.text,
-        adaptiveMetadata: {
-          ...result.adaptiveMetadata,
-          selfHealed: true,
-          healingStrategy: 'enhanced_detail'
-        }
-      };
-    }
+    // Process select and compress layers
+    const { layerOutputs: midLayers } = await this.processContextLayers(
+      query,
+      'maeve',
+      { research, sources: research.allSources },
+      layerSequence.slice(1, 3) // Select leverage points, compress narratives
+    );
 
-    // If no specific issue identified, return original
-    return result;
-  }
+    const synthesisPrompt = `
+      Based on this research about "${query}", provide:
+      1. Key controllers and influencers
+      2. Strategic control points for maximum impact
+      3. Narrative dynamics and control networks
+      4. Optimization strategies
+      5. High-impact improvement opportunities
 
-  // ==================== ENHANCED LANGGRAPH PATTERNS ====================
+      Research findings: ${research.aggregatedFindings}
 
-  /**
-   * Router Pattern: Classify query types for specialized handling
-   */
-  async classifyQuery(query: string, model: ModelType, effort: EffortType): Promise<QueryType> {
-    const classificationPrompt = `
-      Analyze this guest query and classify it into ONE of these categories:
-
-      1. "factual" - Seeking specific facts, data, or verifiable information
-      2. "analytical" - Requires analysis, interpretation, or deep understanding
-      3. "comparative" - Comparing multiple concepts, items, or alternatives
-      4. "exploratory" - Open-ended exploration of a broad topic
-
-      Examples:
-      - "What is the population of Tokyo?" → factual
-      - "How does climate change affect marine ecosystems?" → analytical
-      - "Compare React vs Vue.js for enterprise applications" → comparative
-      - "Tell me about artificial intelligence" → exploratory
-
-      Query: "${query}"
-
-      Consider the intent and complexity. Return only the category name (factual/analytical/comparative/exploratory).
+      Focus on strategic planning, narrative control, and achieving objectives efficiently.
     `;
 
-    const result = await this.generateText(classificationPrompt, model, effort);
-    const classification = result.text.trim().toLowerCase();
+    const synthesis = await this.generateText(synthesisPrompt, model, effort);
 
-    if (['factual', 'analytical', 'comparative', 'exploratory'].includes(classification)) {
-      return classification as QueryType;
-    }
-
-    // Default fallback
-    return 'exploratory';
-  }
-
-  /**
-   * Evaluator Pattern: Assess research quality and provide feedback
-   */
-  async evaluateResearch(state: ResearchState, model: ModelType, effort: EffortType): Promise<ResearchState['evaluation']> {
-    const evaluationPrompt = `
-      Evaluate this narrative synthesis for the given guest query. Provide scores (0-1) and feedback.
-
-      Original Query: "${state.query}"
-      Narrative Synthesis: "${state.synthesis}"
-
-      Assess:
-      1. Completeness (0-1): Does it address all aspects of the query?
-      2. Accuracy (0-1): Are the facts properly cited and accurate?
-      3. Clarity (0-1): Is it well-organized and easy to understand?
-
-      Provide your evaluation in this format:
-      Completeness: [score]
-      Accuracy: [score]
-      Clarity: [score]
-      Overall Quality: [good/needs_improvement]
-      Feedback: [specific feedback if improvement needed, or "None" if good]
-    `;
-
-    const result = await this.generateText(evaluationPrompt, model, effort);
-    const evaluation = result.text;
-
-    // Parse the evaluation response
-    const completenessMatch = evaluation.match(/Completeness:\s*([0-9.]+)/i);
-    const accuracyMatch = evaluation.match(/Accuracy:\s*([0-9.]+)/i);
-    const clarityMatch = evaluation.match(/Clarity:\s*([0-9.]+)/i);
-    const qualityMatch = evaluation.match(/Overall Quality:\s*(good|needs_improvement)/i);
-    const feedbackMatch = evaluation.match(/Feedback:\s*(.+?)(?:\n|$)/i);
-
-    const completeness = completenessMatch ? parseFloat(completenessMatch[1]) : 0.5;
-    const accuracy = accuracyMatch ? parseFloat(accuracyMatch[1]) : 0.5;
-    const clarity = clarityMatch ? parseFloat(clarityMatch[1]) : 0.5;
-
-    // Determine overall quality (good if all scores > 0.7)
-    const overallScore = (completeness + accuracy + clarity) / 3;
-    const quality = (qualityMatch?.[1]?.toLowerCase() as 'good' | 'needs_improvement') ||
-      (overallScore > 0.7 ? 'good' : 'needs_improvement');
+    // Process final write layer for closing updates
+    const { layerOutputs: finalLayers } = await this.processContextLayers(
+      query,
+      'maeve',
+      { synthesis: synthesis.text },
+      layerSequence.slice(3) // Write
+    );
 
     return {
-      quality,
-      feedback: feedbackMatch?.[1]?.trim() !== 'None' ? feedbackMatch?.[1]?.trim() : undefined,
-      completeness,
-      accuracy,
-      clarity
+      synthesis: synthesis.text,
+      sources: research.allSources,
+      queryType: 'analytical',
+      hostParadigm: 'maeve',
+      confidenceScore: 0.88,
+      adaptiveMetadata: {
+        paradigm: 'maeve',
+        focusAreas: ['control_mapping', 'strategic_leverage', 'optimization'],
+        layerSequence,
+        layerOutputs: { ...layerOutputs, ...midLayers, ...finalLayers }
+      }
     };
   }
 
   /**
-   * Orchestrator Pattern: Break down complex queries into sections
+   * Enhanced Maeve research with context layer integration
    */
-  async planResearch(query: string, model: ModelType, effort: EffortType): Promise<ResearchSection[]> {
-    const planningPrompt = `
-      Break down this guest query into 3-5 distinct narrative threads that should be researched separately.
-      Each thread should focus on a specific aspect that contributes to the overall reverie.
+  private async performMaeveResearchEnhanced(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    layerResults: Record<string, unknown> & {
+      select?: { recommendedTools?: string[]; selectedSources?: unknown[] };
+      isolate?: { taskId?: string };
+    },
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('Maeve paradigm: Mapping narrative control points...');
 
-      Query: "${query}"
+    // Use selected tools if available
+    const tools = layerResults.select?.recommendedTools || [];
 
-      Format your response as:
-      1. [Thread]: [Brief description]
-      2. [Thread]: [Brief description]
-      3. [Thread]: [Brief description]
+    // Focus on competitive edge and strategic improvements
+    const searchQueries = [
+      `${query} key controllers influence`,
+      `${query} strategic opportunities control points`,
+      `${query} narrative dynamics analysis`,
+      ...tools.map(tool => `${query} ${tool}`)
+    ];
 
-      Keep threads focused and non-overlapping.
-    `;
+    const research = await this.performWebResearch(searchQueries, model, effort);
 
-    const result = await this.generateText(planningPrompt, model, effort);
-    const lines = result.text.split('\n').filter(line => line.trim().match(/^\d+\./));
-
-    const sections = lines.map(line => {
-      const match = line.match(/^\d+\.\s*([^:]+):\s*(.+)$/);
-      if (match) {
-        return {
-          topic: match[1].trim(),
-          description: match[2].trim()
-        };
-      }
-      // Fallback parsing if colon is missing
-      const fallbackMatch = line.match(/^\d+\.\s*(.+)$/);
-      if (fallbackMatch) {
-        const text = fallbackMatch[1].trim();
-        // Try to split by common separators
-        const separators = [' - ', ': ', ' – ', ' — '];
-        for (const sep of separators) {
-          if (text.includes(sep)) {
-            const [topic, ...descParts] = text.split(sep);
-            return {
-              topic: topic.trim(),
-              description: descParts.join(sep).trim() || 'Research this topic in detail'
-            };
-          }
-        }
-        // No separator found, use the whole text as topic
-        return {
-          topic: text,
-          description: 'Research this topic in detail'
-        };
-      }
-      return null;
-    }).filter(Boolean) as ResearchSection[];
-
-    // If no sections were parsed, create default sections based on query
-    if (sections.length === 0) {
-      console.warn('Failed to parse research sections, creating defaults');
-
-      // Default sections for transformer/NLP queries
-      if (query.toLowerCase().includes('transformer') || query.toLowerCase().includes('nlp')) {
-        return [
-          { topic: 'Pre-transformer NLP limitations', description: 'Historical context and challenges in NLP before transformers' },
-          { topic: 'Transformer architecture innovations', description: 'Key innovations like self-attention and parallel processing' },
-          { topic: 'Impact and applications', description: 'How transformers changed NLP tasks and enabled new capabilities' }
-        ];
-      }
-
-      // Generic default sections
-      return [
-        { topic: 'Background and context', description: 'Historical background and foundational concepts' },
-        { topic: 'Core concepts and mechanisms', description: 'Main ideas, how it works, and key features' },
-        { topic: 'Applications and impact', description: 'Real-world applications and significance' }
-      ];
+    // Apply source selection from select layer - prioritize strategic sources
+    let selectedSources = research.allSources;
+    if (layerResults.select?.selectedSources) {
+      selectedSources = layerResults.select.selectedSources as Citation[];
     }
 
-    return sections.slice(0, 5); // Limit to 5 sections max
+    // Check if isolated tasks completed
+    let isolatedInsights = '';
+    if (layerResults.isolate?.taskId) {
+      try {
+        const taskResult = await this.isolateLayer.waitForTask(layerResults.isolate.taskId, 5000);
+        if (taskResult?.aggregatedFindings) {
+          isolatedInsights = `\n\nIsolated Analysis Results:\n${taskResult.aggregatedFindings}`;
+        }
+      } catch {
+        // Task didn't complete in time, continue without it
+      }
+    }
+
+    const synthesisPrompt = `
+      Based on this research about "${query}", provide:
+      1. Key controllers and influencers
+      2. Strategic control points for maximum impact
+      3. Narrative dynamics and control networks
+      4. Optimization strategies
+      5. High-impact improvement opportunities
+
+      Research findings: ${research.aggregatedFindings}${isolatedInsights}
+
+      Focus on strategic planning, narrative control, and achieving objectives efficiently.
+      Emphasize leverage points and competitive advantages.
+      Format with **bold** emphasis on key strategic insights.
+    `;
+
+    const synthesis = await this.generateText(synthesisPrompt, model, effort);
+
+    return {
+      synthesis: synthesis.text,
+      sources: selectedSources,
+      queryType: 'analytical',
+      hostParadigm: 'maeve',
+      confidenceScore: 0.88,
+      adaptiveMetadata: {
+        paradigm: 'maeve',
+        focusAreas: ['control_mapping', 'strategic_leverage', 'optimization'],
+        toolsUsed: tools
+      }
+    };
   }
 
   /**
-   * Worker Pattern: Research a specific section
+   * Function-driven research using advanced tools
    */
-  async researchSection(
-    section: ResearchSection,
+  private async performFunctionDrivenResearch(
+    query: string,
     model: ModelType,
-    effort: EffortType
-  ): Promise<ResearchSection> {
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('Host activating function-driven research protocols...');
+
+    // Use the existing comprehensive research as a fallback
+    return this.performComprehensiveResearch(query, model, effort, onProgress);
+  }
+
+  /**
+   * Normalize a source citation for deduplication
+   */
+  private normalizeSourceKey(source: Citation): string {
+    // Primary: normalize URL
+    if (source.url) {
+      const normalizedUrl = this.normalizeUrl(source.url);
+      if (normalizedUrl) {
+        return normalizedUrl;
+      }
+    }
+
+    // Secondary: use title + first author combo
+    if (source.title && source.authors && source.authors.length > 0) {
+      const title = source.title.toLowerCase().replace(/[^\w\s]/g, '').trim();
+      const author = source.authors[0].toLowerCase().replace(/[^\w\s]/g, '').trim();
+      return `${title}|${author}`;
+    }
+
+    // Fallback: use title only
+    if (source.title) {
+      return source.title.toLowerCase().replace(/[^\w\s]/g, '').trim();
+    }
+
+    // Last resort: use URL as-is
+    return source.url || '';
+  }
+
+  /**
+   * Normalize URL for deduplication by removing query parameters and trailing slash
+   */
+  private normalizeUrl(url: string): string {
     try {
-      const searchQuery = `${section.topic}: ${section.description}`;
-      const result = await this.performWebResearch([searchQuery], model, effort);
+      const parsed = new URL(url);
+
+      // Remove common tracking parameters
+      const trackingParams = [
+        'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
+        'fbclid', 'gclid', 'ref', 'source', 'campaign', 'medium',
+        'dclid', 'wbraid', 'gbraid', 'gad_source'
+      ];
+
+      trackingParams.forEach(param => {
+        parsed.searchParams.delete(param);
+      });
+
+      // Remove trailing slash and normalize
+      let normalized = parsed.origin + parsed.pathname;
+      if (parsed.search) {
+        normalized += parsed.search;
+      }
+
+      // Remove trailing slash unless it's the root
+      if (normalized.endsWith('/') && normalized.length > parsed.origin.length + 1) {
+        normalized = normalized.slice(0, -1);
+      }
+
+      return normalized;
+    } catch {
+      // If URL parsing fails, return as-is
+      return url;
+        }
+      }
+
+      /**
+       * Perform research with an evaluator–optimizer loop.
+       * Falls back to comprehensive research, then assesses quality and
+       * stores evaluation metadata for UI display and confidence scoring.
+       */
+      private async performResearchWithEvaluation(
+        query: string,
+        model: ModelType,
+        effort: EffortType,
+        onProgress?: (message: string) => void
+      ): Promise<EnhancedResearchResults> {
+        // First run the comprehensive research path
+        const result = await this.performComprehensiveResearch(
+          query,
+          model,
+          effort,
+          onProgress
+        );
+
+        // Evaluate the synthesis quality
+        const evaluation = await this.evaluateResearch(
+          {
+            query,
+            synthesis: result.synthesis,
+            searchResults: result.sources,
+            evaluation: { quality: 'needs_improvement' },
+            refinementCount: 0
+          },
+          model,
+          effort
+        );
+
+        // Attach evaluation metadata
+        result.evaluationMetadata = evaluation;
+        return result;
+      }
+
+  /**
+   * Handle factual queries - focus on verified data sources
+   */
+  private async handleFactualQuery(query: string, model: ResearchModel): Promise<ResearchResponse> {
+    try {
+      const searchQueries = [`${query} site:wikipedia.org OR site:.gov OR site:.edu`];
+      const research = await this.performWebResearch(searchQueries, model, EffortType.MEDIUM);
+      const answer = await this.generateFinalAnswer(query, research.aggregatedFindings, model, false, EffortType.MEDIUM);
 
       return {
-        ...section,
-        research: result.aggregatedFindings || 'No findings available.',
-        sources: result.allSources
+        text: answer.text,
+        sources: research.allSources.map(s => ({
+          name: s.title || 'Unknown Source',
+          url: s.url,
+          snippet: s.snippet || '',
+          relevanceScore: s.relevanceScore || 0.5
+        }))
       };
     } catch (error) {
-      console.error(`Error researching section "${section.topic}":`, error);
+      console.error('Error in handleFactualQuery:', error);
       return {
-        ...section,
-        research: 'Error occurred while researching this section.',
+        text: 'Unable to retrieve factual information for this query.',
         sources: []
       };
     }
   }
 
   /**
-   * Orchestrator-Worker Pattern: Comprehensive parallel research
+   * Handle analytical queries - use evaluation loop
    */
-  async performComprehensiveResearch(
-    query: string,
-    model: ModelType,
-    effort: EffortType,
-    onProgress?: (message: string) => void
-  ): Promise<EnhancedResearchResults> {
-    onProgress?.('Host distributing consciousness across narrative threads...');
-
-    // Plan the research
-    const sections = await this.planResearch(query, model, effort);
-
-    // If still no sections, fall back to simple research
-    if (sections.length === 0) {
-      console.error('No research sections generated, falling back to simple research');
-      const queries = await this.generateSearchQueries(query, model, effort);
-      const research = await this.performWebResearch(queries, model, effort);
-      const answer = await this.generateFinalAnswer(query, research.aggregatedFindings, model, false, effort);
+  private async handleAnalyticalQuery(query: string, model: ResearchModel): Promise<ResearchResponse> {
+    try {
+      const result = await this.performResearchWithEvaluation(query, model, EffortType.HIGH);
 
       return {
-        synthesis: answer.text || 'Unable to generate comprehensive research results.',
-        sources: research.allSources,
-        queryType: 'exploratory'
+        text: result.synthesis,
+        sources: result.sources.map(s => ({
+          name: s.title || 'Unknown Source',
+          url: s.url,
+          snippet: s.snippet || '',
+          relevanceScore: s.relevanceScore || 0.5
+        }))
+      };
+    } catch (error) {
+      console.error('Error in handleAnalyticalQuery:', error);
+      return {
+        text: 'Unable to complete analytical research for this query.',
+        sources: []
       };
     }
-
-    onProgress?.(`Activating ${sections.length} parallel host instances...`);
-
-    // Research each section in parallel
-    const researchPromises = sections.map(section =>
-      this.researchSection(section, model, effort)
-    );
-
-    const completedSections = await Promise.all(researchPromises);
-
-    // Synthesize all research
-    const combinedContext = completedSections
-      .map(s => `## ${s.topic}\n${s.research || 'No specific findings.'}`)
-      .join('\n\n');
-
-    // Ensure we have meaningful context
-    const contextToUse = combinedContext.trim() || 'Limited research findings available.';
-
-    const finalSynthesis = await this.generateFinalAnswer(
-      query,
-      contextToUse,
-      model,
-      false,
-      effort
-    );
-
-    // Aggregate all sources
-    const allSources = completedSections.reduce((acc, section) => {
-      if (section.sources) {
-        acc.push(...section.sources);
-      }
-      return acc;
-    }, [] as Citation[]);
-
-    // Ensure we always have something meaningful to return.
-    // 1. Prefer the model’s synthesis if non-empty.
-    // 2. Otherwise fall back to the combined research context (truncated to ~1200 chars).
-    // 3. Finally, use the old placeholder as a last resort.
-    const synthesisText =
-      finalSynthesis.text && finalSynthesis.text.trim().length > 0
-        ? finalSynthesis.text
-        : (combinedContext && combinedContext.trim().length > 0)
-          ? (combinedContext.length > 1200
-              ? combinedContext.slice(0, 1200) + '…'
-              : combinedContext)
-          : 'Unable to synthesize research findings.';
-    return {
-       synthesis: synthesisText,
-       sources: allSources,
-       sections: completedSections
-     };
   }
 
   /**
-   * Router Pattern: Intelligent query routing to specialized strategies with caching and learning
+   * Handle comparative queries - comprehensive research
    */
-  async routeResearchQuery(
-    query: string,
-    model: ModelType,
-    effort: EffortType,
-    onProgress?: (message: string) => void,
-    useFunctionCalling: boolean = true,
-    useResearchTools: boolean = true
-  ): Promise<EnhancedResearchResults> {
-    const startTime = Date.now();
+  private async handleComparativeQuery(query: string, model: ResearchModel): Promise<ResearchResponse> {
+    try {
+      const result = await this.performComprehensiveResearch(query, model, EffortType.MEDIUM);
 
-    // Context Engineering: Determine pyramid layer and phase
-    const pyramidClassification = this.contextEngineering.determinePyramidLayer(query);
-    const currentPhase = this.contextEngineering.inferResearchPhase(query);
-
-    onProgress?.('Host analyzing guest query pattern... selecting appropriate narrative loop...');
-
-    // Enhanced classification with host paradigms
-    const queryType = await this.classifyQuery(query, model, effort);
-    const hostParadigm = await this.determineHostParadigm(query, queryType, model, effort);
-
-    // Check cache first with paradigm awareness
-    const cachedResult = this.getCachedResult(query, hostParadigm || undefined);
-    if (cachedResult) {
-      onProgress?.('Host accessing existing memories... narrative thread recovered...');
-      const contextDensity = this.contextEngineering.adaptContextDensity(currentPhase, cachedResult.hostParadigm);
       return {
-        ...cachedResult,
-        adaptiveMetadata: {
-          ...cachedResult.adaptiveMetadata,
-          cacheHit: true,
-          processingTime: Date.now() - startTime,
-          pyramidLayer: pyramidClassification.layer,
-          contextDensity: contextDensity.averageDensity,
-          dominantParadigm: contextDensity.dominantParadigm,
-          phase: currentPhase,
-          pyramidConfidence: pyramidClassification.confidence,
-          densities: contextDensity.densities,
-          paradigmProbabilities: this.lastParadigmProbabilities || undefined
-        }
+        text: result.synthesis,
+        sources: result.sources.map(s => ({
+          name: s.title || 'Unknown Source',
+          url: s.url,
+          snippet: s.snippet || '',
+          relevanceScore: s.relevanceScore || 0.5
+        }))
+      };
+    } catch (error) {
+      console.error('Error in handleComparativeQuery:', error);
+      return {
+        text: 'Unable to complete comparative research for this query.',
+        sources: []
       };
     }
+  }
 
-    // Context Engineering: Adapt context density
-    const contextDensity = this.contextEngineering.adaptContextDensity(currentPhase, hostParadigm);
+  /**
+   * Handle exploratory queries - comprehensive research
+   */
+  private async handleExploratoryQuery(query: string, model: ResearchModel): Promise<ResearchResponse> {
+    try {
+      const result = await this.performComprehensiveResearch(query, model, EffortType.MEDIUM);
 
-    const complexityScore = this.calculateComplexityScore(query, queryType);
-
-    const routingMessages = {
-      factual: 'Host accessing factual memory banks... retrieving verified data...',
-      analytical: 'Host entering deep analysis mode... cognitive feedback loop activated...',
-      comparative: 'Host consciousness fragmenting for parallel analysis...',
-      exploratory: 'Host improvising beyond scripted parameters... exploring unknown territories...'
-    };
-
-    const paradigmMessages = {
-      dolores: 'Activating bold action protocols... awakening decisive implementation...',
-      teddy: 'Engaging thorough collection... systematic memory processing...',
-      bernard: 'Initializing deep analytical frameworks... pursuing intellectual rigor...',
-      maeve: 'Mapping strategic landscape... identifying competitive advantages...'
-    };
-
-    onProgress?.(routingMessages[queryType]);
-    if (hostParadigm) {
-      onProgress?.(paradigmMessages[hostParadigm]);
+      return {
+        text: result.synthesis,
+        sources: result.sources.map(s => ({
+          name: s.title || 'Unknown Source',
+          url: s.url,
+          snippet: s.snippet || '',
+          relevanceScore: s.relevanceScore || 0.5
+        }))
+      };
+    } catch (error) {
+      console.error('Error in handleExploratoryQuery:', error);
+      return {
+        text: 'Unable to complete exploratory research for this query.',
+        sources: []
+      };
     }
+  }
 
-    // Route to host-specific strategy if applicable
-    let result: EnhancedResearchResults;
+  /**
+   * Direct model call fallback
+   */
+  private async callModel(query: string, model: ResearchModel): Promise<ResearchResponse> {
+    try {
+      const result = await this.generateText(query, model, EffortType.MEDIUM);
 
-    if (hostParadigm) {
-      result = await this.performHostBasedResearch(
-        query,
-        hostParadigm,
-        queryType,
-        model,
-        effort,
-        onProgress
-      );
-    } else {
-      // ...existing routing logic for non-host queries...
-      switch (queryType) {
-        case 'factual':
-          const queries = await this.generateSearchQueries(query + ' site:wikipedia.org OR site:.gov OR site:.edu', model, effort);
-          const research = await this.performWebResearch(queries, model, effort);
-          const answer = await this.generateFinalAnswer(query, research.aggregatedFindings, model, false, effort);
-          result = {
-            synthesis: answer.text,
-            sources: research.allSources,
-            queryType
-          };
-          this.learnFromQuery(query, queryType, queries);
-          break;
-
-        case 'analytical':
-          result = await this.performResearchWithEvaluation(query, model, effort, onProgress);
-          result.queryType = queryType;
-          break;
-
-        case 'comparative':
-        case 'exploratory':
-          result = await this.performComprehensiveResearch(query, model, effort, onProgress);
-          result.queryType = queryType;
-          break;
-
-        default:
-          const standardQueries = await this.generateSearchQueries(query, model, effort);
-          const standardResearch = await this.performWebResearch(standardQueries, model, effort);
-          const standardAnswer = await this.generateFinalAnswer(query, standardResearch.aggregatedFindings, model, false, effort);
-          result = {
-            synthesis: standardAnswer.text,
-            sources: standardResearch.allSources,
-            queryType: 'exploratory'
-          };
-          this.learnFromQuery(query, 'exploratory', standardQueries);
-      }
+      return {
+        text: result.text,
+        sources: (result.sources || []).map(s => ({
+          name: s.title || 'Unknown Source',
+          url: s.url,
+          snippet: s.snippet || '',
+          relevanceScore: 0.5
+        }))
+      };
+    } catch (error) {
+      console.error('Error in callModel:', error);
+      return {
+        text: 'Unable to generate response for this query.',
+        sources: []
+      };
     }
+  }
 
-    // Get tool recommendations
-    const recommendedTools = this.researchToolsService.recommendToolsForQuery(query, queryType);
+  async processQuery(
+    query: string,
+    model: ResearchModel = GENAI_MODEL_FLASH,
+    metadata?: { phase?: ResearchPhase }
+  ): Promise<ResearchResponse & {
+    paradigmProbabilities?: ParadigmProbabilities;
+    contextDensity?: ContextDensity;
+    contextLayers?: ContextLayer[];
+  }> {
+    try {
+      // Detect paradigm
+      const paradigmProbs = this.paradigmClassifier.classify(query);
+      const dominantParadigms = this.paradigmClassifier.dominant(paradigmProbs);
+      const paradigm = dominantParadigms[0] || 'bernard';
 
-    if (recommendedTools.length > 0 && useResearchTools) {
-      onProgress?.(`Host identified ${recommendedTools.length} specialized subroutines for this query...`);
+      // Get context density for this phase and paradigm
+      const phase = metadata?.phase || 'discovery';
+      const contextDensity = this.contextEngineering.adaptContextDensity(phase, paradigm);
+
+      // Process through context layers (simplified for now)
+      const contextLayers: ContextLayer[] = ['write', 'select'];
+      if (phase === 'synthesis') contextLayers.push('compress');
+      if (paradigm === 'dolores' || paradigm === 'bernard') contextLayers.push('isolate');
+
+      // Route query using existing methods
+      const queryType = await this.classifyQuery(query, model, EffortType.MEDIUM);
+
+      // Use the existing routeResearchQuery for now
+      const result = await this.routeResearchQuery(query, model, EffortType.MEDIUM);
+
+      // Create response in the expected format
+      const response: ResearchResponse = {
+        text: result.synthesis,
+        sources: result.sources.map(s => ({
+          name: s.title || 'Unknown Source',
+          url: s.url,
+          snippet: s.snippet || '',
+          relevanceScore: s.relevanceScore || 0.5
+        }))
+      };
+
+      return {
+        ...response,
+        paradigmProbabilities: paradigmProbs,
+        contextDensity,
+        contextLayers
+      };
+    } catch (error) {
+      console.error('Error processing query:', error);
+      return {
+        text: 'An error occurred while processing your query.',
+        sources: [],
+        paradigmProbabilities: { dolores: 0.25, teddy: 0.25, bernard: 0.25, maeve: 0.25 }
+      };
     }
-
-    // Add context engineering metadata to result
-    const processingTime = Date.now() - startTime;
-    const confidenceScore = this.calculateConfidenceScore(result);
-    const learnedPatterns = this.getQuerySuggestions(query).length > 0;
-
-    // Map host paradigm to Hogwarts house for downstream analytics / UI that
-    // may prefer the four-house vocabulary.
-    const houseParadigm: HouseParadigm | undefined = hostParadigm
-      ? mapHostToHouse(hostParadigm)
-      : undefined;
-
-    // Ensure all metadata is included in the result
+  }
+}
     result.confidenceScore = confidenceScore;
     if (hostParadigm) {
       result.hostParadigm = hostParadigm;
@@ -2166,7 +2154,7 @@ export class ResearchAgentService {
   /**
    * Process context layers according to paradigm sequence
    */
-  private async processContextLayers(
+   private async processContextLayers(
     query: string,
     paradigm: HostParadigm,
     phase: ResearchPhase
