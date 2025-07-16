@@ -215,4 +215,3 @@ export function getNodeStyle(type: ResearchStepType): {
     textColor: '#ffffff'
   };
 }
-}
