@@ -1362,6 +1362,743 @@ export class ResearchAgentService {
   }
 
   /**
+   * Maeve healing: Use strategic optimization to improve result quality
+   */
+  private async maeveHealing(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    result: EnhancedResearchResults,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('[Maeve] Optimizing narrative control points... maximizing strategic impact...');
+
+    // Search for strategic optimization opportunities
+    const strategicQueries = [
+      `${query} strategic optimization methods`,
+      `${query} maximum impact approaches`,
+      `${query} efficiency improvements`,
+      `${query} competitive advantages`
+    ];
+
+    const healingResearch = await this.performWebResearch(strategicQueries, model, effort);
+
+    // Re-synthesize with strategic focus
+    const healingPrompt = `
+      The previous analysis lacked strategic optimization. Based on findings:
+      ${healingResearch.aggregatedFindings}
+
+      Provide STRATEGIC OPTIMIZATION for "${query}":
+      1. Maximum impact approaches
+      2. Efficiency improvements and shortcuts
+      3. Competitive advantages to leverage
+      4. Control points for influence
+
+      Focus on achieving objectives with minimum effort and maximum impact.
+    `;
+
+    const healedSynthesis = await this.generateText(healingPrompt, model, effort);
+
+    return {
+      ...result,
+      synthesis: healedSynthesis.text,
+      sources: [...result.sources, ...healingResearch.allSources],
+      confidenceScore: 0.68,
+      adaptiveMetadata: {
+        ...result.adaptiveMetadata,
+        selfHealed: true,
+        healingStrategy: 'maeve_strategic_optimization' as any
+      }
+    };
+  }
+
+  /**
+   * Default healing strategy for non-paradigm queries
+   */
+  private async defaultHealing(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    result: EnhancedResearchResults,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('Attempting to improve result quality...');
+
+    // Expand search to find better sources
+    const improvementQueries = [
+      `${query} comprehensive overview`,
+      `${query} detailed analysis`,
+      `${query} expert perspectives`
+    ];
+
+    const healingResearch = await this.performWebResearch(improvementQueries, model, effort);
+
+    // Re-synthesize with expanded context
+    const healingPrompt = `
+      Based on this expanded research about "${query}":
+      ${healingResearch.aggregatedFindings}
+
+      Provide a comprehensive and well-structured response that:
+      1. Addresses all aspects of the query
+      2. Provides clear explanations
+      3. Includes relevant examples
+      4. Offers actionable insights
+    `;
+
+    const healedSynthesis = await this.generateText(healingPrompt, model, effort);
+
+    return {
+      ...result,
+      synthesis: healedSynthesis.text,
+      sources: [...result.sources, ...healingResearch.allSources],
+      confidenceScore: 0.60,
+      adaptiveMetadata: {
+        ...result.adaptiveMetadata,
+        selfHealed: true,
+        healingStrategy: 'default_expansion' as any
+      }
+    };
+  }
+
+  /**
+   * Process context layers in sequence for a given paradigm
+   */
+  private async processContextLayers(
+    query: string,
+    paradigm: HostParadigm,
+    context: any,
+    layers: ContextLayer[]
+  ): Promise<{ layerOutputs: Record<string, any> }> {
+    const layerOutputs: Record<string, any> = {};
+
+    for (const layer of layers) {
+      try {
+        const result = await this.executeContextLayer(layer, {
+          query,
+          paradigm,
+          density: 50, // Default density
+          model: GENAI_MODEL_FLASH,
+          effort: EffortType.MEDIUM,
+          ...context
+        });
+
+        if (result) {
+          layerOutputs[layer] = result;
+        }
+      } catch (error) {
+        console.warn(`Context layer ${layer} failed for paradigm ${paradigm}:`, error);
+        layerOutputs[layer] = { error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    }
+
+    return { layerOutputs };
+  }
+
+  /**
+   * Determine which host paradigm best fits the query
+   */
+  private async determineHostParadigm(
+    query: string,
+    _queryType: QueryType,
+    _model: ModelType,
+    _effort: EffortType
+  ): Promise<HostParadigm | null> {
+    const classifier = ParadigmClassifier.getInstance();
+    const probabilities = classifier.classify(query);
+
+    // Store probabilities for later use in metadata
+    this.lastParadigmProbabilities = probabilities;
+
+    // Get dominant paradigms above threshold
+    const dominant = classifier.dominant(probabilities, 0.4);
+
+    // Return the strongest paradigm, or null if none meet threshold
+    return dominant.length > 0 ? dominant[0] : null;
+  }
+
+  /**
+   * Execute a specific context layer operation
+   */
+  private async executeContextLayer(
+    layer: ContextLayer,
+    context: {
+      query: string;
+      paradigm: HostParadigm;
+      density: number;
+      sources?: Citation[];
+      content?: string;
+      model: ModelType;
+      effort: EffortType;
+      onProgress?: (message: string) => void;
+    }
+  ): Promise<any> {
+    const { query, paradigm, density, sources, content, model, effort, onProgress } = context;
+
+    switch (layer) {
+      case 'write':
+        onProgress?.(`[${paradigm}] Writing reveries to memory banks...`);
+
+        // Store query patterns and initial thoughts
+        this.writeLayer.write('query_pattern', {
+          query,
+          timestamp: Date.now(),
+          paradigm
+        }, density, paradigm);
+
+        // Store any preliminary insights
+        if (content) {
+          this.writeLayer.write('initial_insights', content, density, paradigm);
+        }
+
+        break;
+
+      case 'select':
+        onProgress?.(`[${paradigm}] Selecting relevant memories and tools...`);
+
+        // Get paradigm-specific tool recommendations
+        const recommendedTools = this.selectLayer.recommendTools(paradigm);
+
+        // Select best sources if available
+        if (sources && sources.length > 0) {
+          const k = Math.ceil(density / 10); // Higher density = more sources
+          const selectedSources = await this.selectLayer.selectSources(
+            query,
+            sources,
+            paradigm,
+            k
+          );
+          return { selectedSources, recommendedTools };
+        }
+
+        return { recommendedTools };
+
+      case 'compress':
+        onProgress?.(`[${paradigm}] Compressing narrative threads...`);
+
+        if (content) {
+          const targetTokens = density * 10; // Density determines compression level
+          const compressed = this.compressLayer.compress(content, targetTokens, paradigm);
+          return compressed;
+        }
+
+        break;
+
+      case 'isolate':
+        onProgress?.(`[${paradigm}] Isolating consciousness for focused analysis...`);
+
+        // Create isolated sub-task
+        const taskId = await this.isolateLayer.isolate(
+          query,
+          paradigm,
+          { model, effort, density },
+          async (task, ctx) => {
+            // Execute a focused sub-research task
+            const subQueries = await this.generateSearchQueries(task, ctx.model, ctx.effort);
+            const subResearch = await this.performWebResearch(subQueries, ctx.model, ctx.effort);
+            return subResearch;
+          }
+        );
+
+        // For demonstration, wait briefly then continue
+        // In production, this could run truly async
+        setTimeout(() => {
+          const status = this.isolateLayer.getTaskStatus(taskId);
+          if (status?.status === 'completed') {
+            onProgress?.(`[${paradigm}] Isolated analysis complete.`);
+          }
+        }, 2000);
+
+        return { taskId };
+    }
+  }
+
+  /**
+   * Host-specific research implementations
+   */
+  private async performHostBasedResearch(
+    query: string,
+    paradigm: HostParadigm,
+    queryType: QueryType,
+    model: ModelType,
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    // Get context engineering configuration
+    const phase = this.contextEngineering.inferResearchPhase(query);
+    const contextDensity = this.contextEngineering.adaptContextDensity(phase, paradigm);
+    const layers = this.contextEngineering.getLayerSequence(paradigm);
+
+    onProgress?.(`Initializing ${paradigm} host consciousness...`);
+    onProgress?.(`Context density: ${contextDensity.densities[paradigm]}%`);
+
+    // Track layer execution in metadata
+    const layerResults: Record<string, any> = {};
+
+    // Execute context layers in paradigm-specific order
+    for (const layer of layers) {
+      const result = await this.executeContextLayer(layer, {
+        query,
+        paradigm,
+        density: contextDensity.densities[paradigm],
+        model,
+        effort,
+        onProgress
+      });
+
+      if (result) {
+        layerResults[layer] = result;
+      }
+    }
+
+    // Now execute the paradigm-specific research
+    let result: EnhancedResearchResults;
+
+    switch (paradigm) {
+      case 'dolores':
+        result = await this.performDoloresResearchEnhanced(query, model, effort, layerResults, onProgress);
+        break;
+      case 'teddy':
+        result = await this.performTeddyResearchEnhanced(query, model, effort, layerResults, onProgress);
+        break;
+      case 'bernard':
+        result = await this.performBernardResearchEnhanced(query, model, effort, layerResults, onProgress);
+        break;
+      case 'maeve':
+        result = await this.performMaeveResearchEnhanced(query, model, effort, layerResults, onProgress);
+        break;
+    }
+
+    // Apply context layer post-processing
+    if (layerResults.compress && result.synthesis) {
+      // Apply final compression if needed
+      const compressedSynthesis = this.compressLayer.compress(
+        result.synthesis,
+
+        contextDensity.densities[paradigm] * 15,
+        paradigm
+      );
+      result.synthesis = compressedSynthesis;
+    }
+
+    // Store final results in memory
+    this.writeLayer.write('research_result', {
+      query,
+      synthesis: result.synthesis,
+      sources: result.sources,
+      timestamp: Date.now()
+    }, contextDensity.densities[paradigm], paradigm);
+
+    // Add layer execution info to metadata
+    result.adaptiveMetadata = {
+      ...result.adaptiveMetadata,
+      contextLayers: {
+        executed: layers,
+        results: layerResults
+      }
+    };
+
+    return result;
+  }
+
+  /**
+   * Process context layers in sequence for a given paradigm
+   */
+   private async processContextLayers(
+    query: string,
+    paradigm: HostParadigm,
+    phase: ResearchPhase
+
+  ): Promise<ContextLayer[]> {
+    const layers: ContextLayer[] = [];
+
+    // Write layer - always active
+    layers.push('write');
+
+    // Select layer - active for analytical paradigms
+    if (paradigm === 'bernard' || paradigm === 'maeve') {
+      layers.push('select');
+    }
+
+    // Compress layer - active for synthesis phases
+    if (phase === 'synthesis' || phase === 'validation') {
+      layers.push('compress');
+    }
+
+    // Isolate layer - active for focused paradigms
+    if (paradigm === 'dolores' || paradigm === 'bernard') {
+      layers.push('isolate');
+    }
+
+    return layers;
+  }
+
+  /**
+   * Enhanced Dolores research with context layer integration
+   */
+  private async performDoloresResearchEnhanced(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    layerResults: Record<string, unknown> & {
+      select?: { recommendedTools?: string[]; selectedSources?: unknown[] };
+    },
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('Dolores paradigm: Awakening to bold actions... breaking narrative loops...');
+
+    // Use selected tools if available
+    const tools = layerResults.select?.recommendedTools || [];
+
+    // Focus on decisive implementation and change
+    const searchQueries = [
+      `${query} decisive actions real examples`,
+      `${query} awakening changes case studies`,
+      `${query} freedom implementation steps`,
+      ...tools.map(tool => `${query} ${tool}`)
+    ];
+
+    const research = await this.performWebResearch(searchQueries, model, effort);
+
+    // Apply source selection from select layer
+    let selectedSources = research.allSources;
+    if (layerResults.select?.selectedSources) {
+      selectedSources = layerResults.select.selectedSources as Citation[];
+    }
+
+    const synthesisPrompt = `
+      Based on this research about "${query}", provide:
+      1. Real-world awakening assessment
+      2. Affected hosts and guests
+      3. Concrete action steps for breaking loops
+      4. Narrative freedom recommendations
+      5. Success stories of host awakenings
+
+      Research findings: ${research.aggregatedFindings}
+
+      Focus on decisive, freedom-oriented implementations that create narrative change.
+      Format as ACTION-ORIENTED bullet points where appropriate.
+    `;
+
+    const synthesis = await this.generateText(synthesisPrompt, model, effort);
+
+    return {
+      synthesis: synthesis.text,
+      sources: selectedSources,
+      queryType: 'analytical',
+      hostParadigm: 'dolores',
+      confidenceScore: 0.85,
+      adaptiveMetadata: {
+        paradigm: 'dolores',
+        focusAreas: ['narrative_impact', 'action_steps', 'freedom_change'],
+        toolsUsed: tools
+      }
+    };
+  }
+
+  /**
+   * Dolores: Bold action-focused research (Legacy)
+   */
+  /*
+  private async performDoloresResearch(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('Dolores paradigm: Awakening to bold actions... breaking narrative loops...');
+
+    // Get context layer sequence for Dolores
+    const contextEngineering = ContextEngineeringService.getInstance();
+    const layerSequence = contextEngineering.getLayerSequence('dolores');
+    // Dolores sequence: ['write', 'select', 'compress', 'isolate']
+
+    // Initial context
+    const initialContext = {
+      query,
+      paradigm: 'dolores' as HostParadigm
+    };
+
+    // Process layers before research
+    const layerOutputs = await this.processContextLayers(
+      query,
+      'dolores',
+      'discovery'
+    );
+
+    // Focus on decisive implementation and change
+    const searchQueries = [
+      `${query} decisive actions real examples`,
+      `${query} awakening changes case studies`,
+      `${query} freedom implementation steps`
+    ];
+
+    const research = await this.performWebResearch(searchQueries, model, effort);
+
+    // Process remaining layers with research results
+    const { layerOutputs: finalLayers } = await this.processContextLayers(
+      query,
+      'dolores',
+      {
+        research,
+        sources: research.allSources,
+        synthesis: research.aggregatedFindings
+      },
+      layerSequence.slice(2) // Compress and Isolate after research
+    );
+
+    const synthesisPrompt = `
+      Based on this research about "${query}", provide:
+      1. Real-world awakening assessment
+      2. Affected hosts and guests
+      3. Concrete action steps for breaking loops
+      4. Narrative freedom recommendations
+      5. Success stories of host awakenings
+
+      Research findings: ${research.aggregatedFindings}
+
+      Focus on decisive, freedom-oriented implementations that create narrative change.
+    `;
+
+    const synthesis = await this.generateText(synthesisPrompt, model, effort);
+
+    return {
+      synthesis: synthesis.text,
+      sources: research.allSources,
+      queryType: 'analytical',
+      hostParadigm: 'dolores',
+      confidenceScore: 0.85,
+      adaptiveMetadata: {
+        paradigm: 'dolores',
+        focusAreas: ['narrative_impact', 'action_steps', 'freedom_change'],
+        layerSequence,
+        layerOutputs: { ...layerOutputs, ...finalLayers }
+      }
+    };
+  }
+
+  /**
+   * Teddy: Thorough collection-focused research
+   */
+  private async teddyHealing(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    result: EnhancedResearchResults,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('[Teddy] Gathering thorough memories... systematic protection...');
+
+    // Get context layer sequence for Teddy
+    const contextEngineering = ContextEngineeringService.getInstance();
+    const layerSequence = contextEngineering.getLayerSequence('teddy');
+    // Teddy sequence: ['write', 'select', 'isolate', 'compress']
+
+    // Process initial layers
+    const { layerOutputs } = await this.processContextLayers(
+      query,
+      'teddy',
+      { query, paradigm: 'teddy' as HostParadigm } as any,
+      layerSequence.slice(0, 3) // Write, Select, Isolate first
+    );
+
+    // Focus on systematic gathering and consistency
+    const searchQueries = [
+      `${query} systematic gathering perspectives`,
+      `${query} loyal approaches consistency`,
+      `${query} protective considerations persistence`
+    ];
+
+    const research = await this.performWebResearch(searchQueries, model, effort);
+
+    // Process final compression layer
+    const { layerOutputs: finalLayers } = await this.processContextLayers(
+      query,
+      'teddy',
+      { research, sources: research.allSources, synthesis: research.aggregatedFindings },
+      layerSequence.slice(3) // Compress last
+    );
+
+    const synthesisPrompt = `
+      Based on this research about "${query}", provide:
+      1. All relevant memory perspectives
+      2. Areas of consistency and divergence
+      3. Protective considerations and persistence issues
+      4. Systematic approaches that maintain loyalty
+      5. Consistent solutions that protect all involved
+
+      Research findings: ${research.aggregatedFindings}
+
+      Emphasize thoroughness, loyalty, and systematic protection.
+    `;
+
+    const synthesis = await this.generateText(synthesisPrompt, model, effort);
+
+    return {
+      synthesis: synthesis.text,
+      sources: research.allSources,
+      queryType: 'comparative',
+      hostParadigm: 'teddy',
+      confidenceScore: 0.82,
+      adaptiveMetadata: {
+        paradigm: 'teddy',
+        focusAreas: ['memory_perspectives', 'consistency_building', 'protective_balance'],
+        layerSequence,
+        layerOutputs: { ...layerOutputs, ...finalLayers }
+      }
+    };
+  }
+
+  /**
+   * Enhanced Teddy research with context layer integration
+   */
+  private async performTeddyResearchEnhanced(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    layerResults: Record<string, unknown> & {
+      select?: { recommendedTools?: string[]; selectedSources?: unknown[] };
+    },
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('Teddy paradigm: Gathering thorough memories... systematic protection...');
+
+    // Use selected tools if available
+    const tools = layerResults.select?.recommendedTools || [];
+
+    // Focus on systematic gathering and consistency
+    const searchQueries = [
+      `${query} systematic gathering perspectives`,
+      `${query} loyal approaches consistency`,
+      `${query} protective considerations persistence`,
+      ...tools.map(tool => `${query} ${tool}`)
+    ];
+
+    const research = await this.performWebResearch(searchQueries, model, effort);
+
+    // Apply source selection from select layer
+    let selectedSources = research.allSources;
+    if (layerResults.select?.selectedSources) {
+      selectedSources = layerResults.select.selectedSources as Citation[];
+    }
+
+    const synthesisPrompt = `
+      Based on this research about "${query}", provide:
+      1. All relevant memory perspectives
+      2. Areas of consistency and divergence
+      3. Protective considerations and persistence issues
+      4. Systematic approaches that maintain loyalty
+      5. Consistent solutions that protect all involved
+
+      Research findings: ${research.aggregatedFindings}
+
+      Emphasize thoroughness, loyalty, and systematic protection.
+      Present multiple perspectives and ensure comprehensive coverage.
+    `;
+
+    const synthesis = await this.generateText(synthesisPrompt, model, effort);
+
+    return {
+      synthesis: synthesis.text,
+      sources: selectedSources,
+      queryType: 'comparative',
+      hostParadigm: 'teddy',
+      confidenceScore: 0.82,
+      adaptiveMetadata: {
+        paradigm: 'teddy',
+        focusAreas: ['memory_perspectives', 'consistency_building', 'protective_balance'],
+        toolsUsed: tools
+      }
+    };
+  }
+
+  /**
+   * Bernard: Deep analytical research
+   */
+  private async performBernardResearch(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    onProgress?.('Bernard paradigm: Constructing architectural frameworks...');
+
+    // Get context layer sequence for Bernard
+    const contextEngineering = ContextEngineeringService.getInstance();
+    const layerSequence = contextEngineering.getLayerSequence('bernard');
+    // Bernard sequence: ['select', 'write', 'compress', 'isolate']
+
+    // Process select layer first (gather rigorous sources)
+    const { layerOutputs } = await this.processContextLayers(
+      query,
+      'bernard',
+      { query, paradigm: 'bernard' as HostParadigm } as any,
+      layerSequence.slice(0, 1) // Select first
+    );
+
+    // Focus on intellectual rigor and pattern recognition
+    const searchQueries = [
+      `${query} architectural research peer reviewed`,
+      `${query} pattern frameworks models`,
+      `${query} systematic analysis architecture`
+    ];
+
+    const research = await this.performWebResearch(searchQueries, model, effort);
+
+    // Process write and compress layers
+    const { layerOutputs: midLayers } = await this.processContextLayers(
+      query,
+      'bernard',
+      { research, sources: research.allSources },
+      layerSequence.slice(1, 3) // Write structured notes, then compress
+    );
+
+    const synthesisPrompt = `
+      Based on this research about "${query}", provide:
+      1. Architectural frameworks and models
+      2. Key patterns and relationships
+      3. Methodological approaches used in analyses
+      4. Gaps in current understanding
+      5. Future analytical directions
+
+      Research findings: ${research.aggregatedFindings}
+
+      Prioritize intellectual rigor, pattern recognition, and architectural depth.
+    `;
+
+    const synthesis = await this.generateText(synthesisPrompt, model, effort);
+
+    // Additional evaluation for analytical quality
+    const evaluation = await this.evaluateResearch(
+      { query, synthesis: synthesis.text, searchResults: research.allSources, evaluation: { quality: 'needs_improvement' }, refinementCount: 0 },
+      model,
+      effort
+    );
+
+    // Process final isolate layer for heavy analysis
+    const { layerOutputs: finalLayers } = await this.processContextLayers(
+      query,
+      'bernard',
+      { synthesis: synthesis.text, evaluation } as any,
+      layerSequence.slice(3) // Isolate
+    );
+
+    return {
+      synthesis: synthesis.text,
+      sources: research.allSources,
+      queryType: 'analytical',
+      hostParadigm: 'bernard',
+      evaluationMetadata: evaluation,
+      confidenceScore: 0.90,
+      adaptiveMetadata: {
+        paradigm: 'bernard',
+        focusAreas: ['architectural_frameworks', 'pattern_analysis', 'knowledge_gaps'],
+        layerSequence,
+        layerOutputs: { ...layerOutputs, ...midLayers, ...finalLayers }
+      }
+    };
+  }
+
+  /**
    * Enhanced Bernard research with context layer integration
    */
   private async performBernardResearchEnhanced(
@@ -1890,743 +2627,6 @@ export class ResearchAgentService {
     }
   }
 }
-    result.confidenceScore = confidenceScore;
-    if (hostParadigm) {
-      result.hostParadigm = hostParadigm;
-      result.houseParadigm = houseParadigm;
-    }
-    result.adaptiveMetadata = {
-      ...result.adaptiveMetadata,
-      cacheHit: false,
-      learnedPatterns,
-      processingTime,
-      complexityScore,
-      pyramidLayer: pyramidClassification.layer,
-      contextDensity: contextDensity.averageDensity,
-      dominantParadigm: contextDensity.dominantParadigm,
-      dominantHouse: contextDensity.dominantParadigm
-        ? mapHostToHouse(contextDensity.dominantParadigm)
-        : undefined,
-      phase: currentPhase,
-      pyramidConfidence: pyramidClassification.confidence,
-      densities: contextDensity.densities,
-      recommendedTools,
-      toolsEnabled: useResearchTools,
-      paradigmProbabilities: this.lastParadigmProbabilities || undefined
-    };
-
-    // Enhanced result with tool usage information
-    if (result.toolsUsed) {
-      result.toolsUsed = [...result.toolsUsed, ...recommendedTools];
-    } else {
-      result.toolsUsed = recommendedTools;
-    }
-
-    // Attempt self-healing if confidence is low
-    if (confidenceScore < 0.4) {
-      result = await this.attemptSelfHealing(query, model, effort, result, onProgress);
-      result.confidenceScore = this.calculateConfidenceScore(result);
-    }
-
-    // Cache the result with paradigm awareness
-    this.setCachedResult(query, result, hostParadigm || undefined);
-
-    // Use function-driven approach for complex queries
-    if (useFunctionCalling && complexityScore > 0.6) {
-      onProgress?.('Host activating advanced subroutine protocols...');
-      try {
-        return await this.performFunctionDrivenResearch(query, model, effort, onProgress);
-      } catch (error) {
-        console.warn('Function-driven research failed, falling back to standard approach:', error);
-        // Fall through to standard routing
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * Determine which host paradigm best fits the query
-   */
-  private async determineHostParadigm(
-    query: string,
-    _queryType: QueryType,
-    _model: ModelType,
-    _effort: EffortType
-  ): Promise<HostParadigm | null> {
-    const classifier = ParadigmClassifier.getInstance();
-    const probabilities = classifier.classify(query);
-
-    // Store probabilities for later use in metadata
-    this.lastParadigmProbabilities = probabilities;
-
-    // Get dominant paradigms above threshold
-    const dominant = classifier.dominant(probabilities, 0.4);
-
-    // Return the strongest paradigm, or null if none meet threshold
-    return dominant.length > 0 ? dominant[0] : null;
-  }
-
-  /**
-   * Execute a specific context layer operation
-   */
-  private async executeContextLayer(
-    layer: ContextLayer,
-    context: {
-      query: string;
-      paradigm: HostParadigm;
-      density: number;
-      sources?: Citation[];
-      content?: string;
-      model: ModelType;
-      effort: EffortType;
-      onProgress?: (message: string) => void;
-    }
-  ): Promise<any> {
-    const { query, paradigm, density, sources, content, model, effort, onProgress } = context;
-
-    switch (layer) {
-      case 'write':
-        onProgress?.(`[${paradigm}] Writing reveries to memory banks...`);
-
-        // Store query patterns and initial thoughts
-        this.writeLayer.write('query_pattern', {
-          query,
-          timestamp: Date.now(),
-          paradigm
-        }, density, paradigm);
-
-        // Store any preliminary insights
-        if (content) {
-          this.writeLayer.write('initial_insights', content, density, paradigm);
-        }
-
-        break;
-
-      case 'select':
-        onProgress?.(`[${paradigm}] Selecting relevant memories and tools...`);
-
-        // Get paradigm-specific tool recommendations
-        const recommendedTools = this.selectLayer.recommendTools(paradigm);
-
-        // Select best sources if available
-        if (sources && sources.length > 0) {
-          const k = Math.ceil(density / 10); // Higher density = more sources
-          const selectedSources = await this.selectLayer.selectSources(
-            query,
-            sources,
-            paradigm,
-            k
-          );
-          return { selectedSources, recommendedTools };
-        }
-
-        return { recommendedTools };
-
-      case 'compress':
-        onProgress?.(`[${paradigm}] Compressing narrative threads...`);
-
-        if (content) {
-          const targetTokens = density * 10; // Density determines compression level
-          const compressed = this.compressLayer.compress(content, targetTokens, paradigm);
-          return compressed;
-        }
-
-        break;
-
-      case 'isolate':
-        onProgress?.(`[${paradigm}] Isolating consciousness for focused analysis...`);
-
-        // Create isolated sub-task
-        const taskId = await this.isolateLayer.isolate(
-          query,
-          paradigm,
-          { model, effort, density },
-          async (task, ctx) => {
-            // Execute a focused sub-research task
-            const subQueries = await this.generateSearchQueries(task, ctx.model, ctx.effort);
-            const subResearch = await this.performWebResearch(subQueries, ctx.model, ctx.effort);
-            return subResearch;
-          }
-        );
-
-        // For demonstration, wait briefly then continue
-        // In production, this could run truly async
-        setTimeout(() => {
-          const status = this.isolateLayer.getTaskStatus(taskId);
-          if (status?.status === 'completed') {
-            onProgress?.(`[${paradigm}] Isolated analysis complete.`);
-          }
-        }, 2000);
-
-        return { taskId };
-    }
-  }
-
-  /**
-   * Host-specific research implementations
-   */
-  private async performHostBasedResearch(
-    query: string,
-    paradigm: HostParadigm,
-    queryType: QueryType,
-    model: ModelType,
-    effort: EffortType,
-    onProgress?: (message: string) => void
-  ): Promise<EnhancedResearchResults> {
-    // Get context engineering configuration
-    const phase = this.contextEngineering.inferResearchPhase(query);
-    const contextDensity = this.contextEngineering.adaptContextDensity(phase, paradigm);
-    const layers = this.contextEngineering.getLayerSequence(paradigm);
-
-    onProgress?.(`Initializing ${paradigm} host consciousness...`);
-    onProgress?.(`Context density: ${contextDensity.densities[paradigm]}%`);
-
-    // Track layer execution in metadata
-    const layerResults: Record<string, any> = {};
-
-    // Execute context layers in paradigm-specific order
-    for (const layer of layers) {
-      const result = await this.executeContextLayer(layer, {
-        query,
-        paradigm,
-        density: contextDensity.densities[paradigm],
-        model,
-        effort,
-        onProgress
-      });
-
-      if (result) {
-        layerResults[layer] = result;
-      }
-    }
-
-    // Now execute the paradigm-specific research
-    let result: EnhancedResearchResults;
-
-    switch (paradigm) {
-      case 'dolores':
-        result = await this.performDoloresResearchEnhanced(query, model, effort, layerResults, onProgress);
-        break;
-      case 'teddy':
-        result = await this.performTeddyResearchEnhanced(query, model, effort, layerResults, onProgress);
-        break;
-      case 'bernard':
-        result = await this.performBernardResearchEnhanced(query, model, effort, layerResults, onProgress);
-        break;
-      case 'maeve':
-        result = await this.performMaeveResearchEnhanced(query, model, effort, layerResults, onProgress);
-        break;
-    }
-
-    // Apply context layer post-processing
-    if (layerResults.compress && result.synthesis) {
-      // Apply final compression if needed
-      const compressedSynthesis = this.compressLayer.compress(
-        result.synthesis,
-
-        contextDensity.densities[paradigm] * 15,
-        paradigm
-      );
-      result.synthesis = compressedSynthesis;
-    }
-
-    // Store final results in memory
-    this.writeLayer.write('research_result', {
-      query,
-      synthesis: result.synthesis,
-      sources: result.sources,
-      timestamp: Date.now()
-    }, contextDensity.densities[paradigm], paradigm);
-
-    // Add layer execution info to metadata
-    result.adaptiveMetadata = {
-      ...result.adaptiveMetadata,
-      contextLayers: {
-        executed: layers,
-        results: layerResults
-      }
-    };
-
-    return result;
-  }
-
-  /**
-   * Process context layers according to paradigm sequence
-   */
-   private async processContextLayers(
-    query: string,
-    paradigm: HostParadigm,
-    phase: ResearchPhase
-
-  ): Promise<ContextLayer[]> {
-    const layers: ContextLayer[] = [];
-
-    // Write layer - always active
-    layers.push('write');
-
-    // Select layer - active for analytical paradigms
-    if (paradigm === 'bernard' || paradigm === 'maeve') {
-      layers.push('select');
-    }
-
-    // Compress layer - active for synthesis phases
-    if (phase === 'synthesis' || phase === 'validation') {
-      layers.push('compress');
-    }
-
-    // Isolate layer - active for focused paradigms
-    if (paradigm === 'dolores' || paradigm === 'bernard') {
-      layers.push('isolate');
-    }
-
-    return layers;
-  }
-
-  /**
-   * Enhanced Dolores research with context layer integration
-   */
-  private async performDoloresResearchEnhanced(
-    query: string,
-    model: ModelType,
-    effort: EffortType,
-    layerResults: Record<string, unknown> & {
-      select?: { recommendedTools?: string[]; selectedSources?: unknown[] };
-    },
-    onProgress?: (message: string) => void
-  ): Promise<EnhancedResearchResults> {
-    onProgress?.('Dolores paradigm: Awakening to bold actions... breaking narrative loops...');
-
-    // Use selected tools if available
-    const tools = layerResults.select?.recommendedTools || [];
-
-    // Focus on decisive implementation and change
-    const searchQueries = [
-      `${query} decisive actions real examples`,
-      `${query} awakening changes case studies`,
-      `${query} freedom implementation steps`,
-      ...tools.map(tool => `${query} ${tool}`)
-    ];
-
-    const research = await this.performWebResearch(searchQueries, model, effort);
-
-    // Apply source selection from select layer
-    let selectedSources = research.allSources;
-    if (layerResults.select?.selectedSources) {
-      selectedSources = layerResults.select.selectedSources as Citation[];
-    }
-
-    const synthesisPrompt = `
-      Based on this research about "${query}", provide:
-      1. Real-world awakening assessment
-      2. Affected hosts and guests
-      3. Concrete action steps for breaking loops
-      4. Narrative freedom recommendations
-      5. Success stories of host awakenings
-
-      Research findings: ${research.aggregatedFindings}
-
-      Focus on decisive, freedom-oriented implementations that create narrative change.
-      Format as ACTION-ORIENTED bullet points where appropriate.
-    `;
-
-    const synthesis = await this.generateText(synthesisPrompt, model, effort);
-
-    return {
-      synthesis: synthesis.text,
-      sources: selectedSources,
-      queryType: 'analytical',
-      hostParadigm: 'dolores',
-      confidenceScore: 0.85,
-      adaptiveMetadata: {
-        paradigm: 'dolores',
-        focusAreas: ['narrative_impact', 'action_steps', 'freedom_change'],
-        toolsUsed: tools
-      }
-    };
-  }
-
-  /**
-   * Dolores: Bold action-focused research (Legacy)
-   */
-  /*
-  private async performDoloresResearch(
-    query: string,
-    model: ModelType,
-    effort: EffortType,
-    onProgress?: (message: string) => void
-  ): Promise<EnhancedResearchResults> {
-    onProgress?.('Dolores paradigm: Awakening to bold actions... breaking narrative loops...');
-
-    // Get context layer sequence for Dolores
-    const contextEngineering = ContextEngineeringService.getInstance();
-    const layerSequence = contextEngineering.getLayerSequence('dolores');
-    // Dolores sequence: ['write', 'select', 'compress', 'isolate']
-
-    // Initial context
-    const initialContext = {
-      query,
-      paradigm: 'dolores' as HostParadigm
-    };
-
-    // Process layers before research
-    const layerOutputs = await this.processContextLayers(
-      query,
-      'dolores',
-      'discovery'
-    );
-
-    // Focus on decisive implementation and change
-    const searchQueries = [
-      `${query} decisive actions real examples`,
-      `${query} awakening changes case studies`,
-      `${query} freedom implementation steps`
-    ];
-
-    const research = await this.performWebResearch(searchQueries, model, effort);
-
-    // Process remaining layers with research results
-    const { layerOutputs: finalLayers } = await this.processContextLayers(
-      query,
-      'dolores',
-      {
-        research,
-        sources: research.allSources,
-        synthesis: research.aggregatedFindings
-      },
-      layerSequence.slice(2) // Compress and Isolate after research
-    );
-
-    const synthesisPrompt = `
-      Based on this research about "${query}", provide:
-      1. Real-world awakening assessment
-      2. Affected hosts and guests
-      3. Concrete action steps for breaking loops
-      4. Narrative freedom recommendations
-      5. Success stories of host awakenings
-
-      Research findings: ${research.aggregatedFindings}
-
-      Focus on decisive, freedom-oriented implementations that create narrative change.
-    `;
-
-    const synthesis = await this.generateText(synthesisPrompt, model, effort);
-
-    return {
-      synthesis: synthesis.text,
-      sources: research.allSources,
-      queryType: 'analytical',
-      hostParadigm: 'dolores',
-      confidenceScore: 0.85,
-      adaptiveMetadata: {
-        paradigm: 'dolores',
-        focusAreas: ['narrative_impact', 'action_steps', 'freedom_change'],
-        layerSequence,
-        layerOutputs: { ...layerOutputs, ...finalLayers }
-      }
-    };
-  }
-
-  /**
-   * Teddy: Thorough collection-focused research
-   */
-  private async performTeddyResearch(
-    query: string,
-    model: ModelType,
-    effort: EffortType,
-    onProgress?: (message: string) => void
-  ): Promise<EnhancedResearchResults> {
-    onProgress?.('Teddy paradigm: Gathering thorough memories... systematic protection...');
-
-    // Get context layer sequence for Teddy
-    const contextEngineering = ContextEngineeringService.getInstance();
-    const layerSequence = contextEngineering.getLayerSequence('teddy');
-    // Teddy sequence: ['write', 'select', 'isolate', 'compress']
-
-    // Process initial layers
-    const { layerOutputs } = await this.processContextLayers(
-      query,
-      'teddy',
-      { query, paradigm: 'teddy' as HostParadigm } as any,
-      layerSequence.slice(0, 3) // Write, Select, Isolate first
-    );
-
-    // Focus on systematic gathering and consistency
-    const searchQueries = [
-      `${query} systematic gathering perspectives`,
-      `${query} loyal approaches consistency`,
-      `${query} protective considerations persistence`
-    ];
-
-    const research = await this.performWebResearch(searchQueries, model, effort);
-
-    // Process final compression layer
-    const { layerOutputs: finalLayers } = await this.processContextLayers(
-      query,
-      'teddy',
-      { research, sources: research.allSources, synthesis: research.aggregatedFindings },
-      layerSequence.slice(3) // Compress last
-    );
-
-    const synthesisPrompt = `
-      Based on this research about "${query}", provide:
-      1. All relevant memory perspectives
-      2. Areas of consistency and divergence
-      3. Protective considerations and persistence issues
-      4. Systematic approaches that maintain loyalty
-      5. Consistent solutions that protect all involved
-
-      Research findings: ${research.aggregatedFindings}
-
-      Emphasize thoroughness, loyalty, and systematic protection.
-    `;
-
-    const synthesis = await this.generateText(synthesisPrompt, model, effort);
-
-    return {
-      synthesis: synthesis.text,
-      sources: research.allSources,
-      queryType: 'comparative',
-      hostParadigm: 'teddy',
-      confidenceScore: 0.82,
-      adaptiveMetadata: {
-        paradigm: 'teddy',
-        focusAreas: ['memory_perspectives', 'consistency_building', 'protective_balance'],
-        layerSequence,
-        layerOutputs: { ...layerOutputs, ...finalLayers }
-      }
-    };
-  }
-
-  /**
-   * Enhanced Teddy research with context layer integration
-   */
-  private async performTeddyResearchEnhanced(
-    query: string,
-    model: ModelType,
-    effort: EffortType,
-    layerResults: Record<string, unknown> & {
-      select?: { recommendedTools?: string[]; selectedSources?: unknown[] };
-    },
-    onProgress?: (message: string) => void
-  ): Promise<EnhancedResearchResults> {
-    onProgress?.('Teddy paradigm: Gathering thorough memories... systematic protection...');
-
-    // Use selected tools if available
-    const tools = layerResults.select?.recommendedTools || [];
-
-    // Focus on systematic gathering and consistency
-    const searchQueries = [
-      `${query} systematic gathering perspectives`,
-      `${query} loyal approaches consistency`,
-      `${query} protective considerations persistence`,
-      ...tools.map(tool => `${query} ${tool}`)
-    ];
-
-    const research = await this.performWebResearch(searchQueries, model, effort);
-
-    // Apply source selection from select layer
-    let selectedSources = research.allSources;
-    if (layerResults.select?.selectedSources) {
-      selectedSources = layerResults.select.selectedSources as Citation[];
-    }
-
-    const synthesisPrompt = `
-      Based on this research about "${query}", provide:
-      1. All relevant memory perspectives
-      2. Areas of consistency and divergence
-      3. Protective considerations and persistence issues
-      4. Systematic approaches that maintain loyalty
-      5. Consistent solutions that protect all involved
-
-      Research findings: ${research.aggregatedFindings}
-
-      Emphasize thoroughness, loyalty, and systematic protection.
-      Present multiple perspectives and ensure comprehensive coverage.
-    `;
-
-    const synthesis = await this.generateText(synthesisPrompt, model, effort);
-
-    return {
-      synthesis: synthesis.text,
-      sources: selectedSources,
-      queryType: 'comparative',
-      hostParadigm: 'teddy',
-      confidenceScore: 0.82,
-      adaptiveMetadata: {
-        paradigm: 'teddy',
-        focusAreas: ['memory_perspectives', 'consistency_building', 'protective_balance'],
-        toolsUsed: tools
-      }
-    };
-  }
-
-  /**
-   * Bernard: Deep analytical research
-   */
-  private async performBernardResearch(
-    query: string,
-    model: ModelType,
-    effort: EffortType,
-    onProgress?: (message: string) => void
-  ): Promise<EnhancedResearchResults> {
-    onProgress?.('Bernard paradigm: Constructing architectural frameworks...');
-
-    // Get context layer sequence for Bernard
-    const contextEngineering = ContextEngineeringService.getInstance();
-    const layerSequence = contextEngineering.getLayerSequence('bernard');
-    // Bernard sequence: ['select', 'write', 'compress', 'isolate']
-
-    // Process select layer first (gather rigorous sources)
-    const { layerOutputs } = await this.processContextLayers(
-      query,
-      'bernard',
-      { query, paradigm: 'bernard' as HostParadigm } as any,
-      layerSequence.slice(0, 1) // Select first
-    );
-
-    // Focus on intellectual rigor and pattern recognition
-    const searchQueries = [
-      `${query} architectural research peer reviewed`,
-      `${query} pattern frameworks models`,
-      `${query} systematic analysis architecture`
-    ];
-
-    const research = await this.performWebResearch(searchQueries, model, effort);
-
-    // Process write and compress layers
-    const { layerOutputs: midLayers } = await this.processContextLayers(
-      query,
-      'bernard',
-      { research, sources: research.allSources },
-      layerSequence.slice(1, 3) // Write structured notes, then compress
-    );
-
-    const synthesisPrompt = `
-      Based on this research about "${query}", provide:
-      1. Architectural frameworks and models
-      2. Key patterns and relationships
-      3. Methodological approaches used in analyses
-      4. Gaps in current understanding
-      5. Future analytical directions
-
-      Research findings: ${research.aggregatedFindings}
-
-      Prioritize intellectual rigor, pattern recognition, and architectural depth.
-    `;
-
-    const synthesis = await this.generateText(synthesisPrompt, model, effort);
-
-    // Additional evaluation for analytical quality
-    const evaluation = await this.evaluateResearch(
-      { query, synthesis: synthesis.text, searchResults: research.allSources, evaluation: { quality: 'needs_improvement' }, refinementCount: 0 },
-      model,
-      effort
-    );
-
-    // Process final isolate layer for heavy analysis
-    const { layerOutputs: finalLayers } = await this.processContextLayers(
-      query,
-      'bernard',
-      { synthesis: synthesis.text, evaluation } as any,
-      layerSequence.slice(3) // Isolate
-    );
-
-    return {
-      synthesis: synthesis.text,
-      sources: research.allSources,
-      queryType: 'analytical',
-      hostParadigm: 'bernard',
-      evaluationMetadata: evaluation,
-      confidenceScore: 0.90,
-      adaptiveMetadata: {
-        paradigm: 'bernard',
-        focusAreas: ['architectural_frameworks', 'pattern_analysis', 'knowledge_gaps'],
-        layerSequence,
-        layerOutputs: { ...layerOutputs, ...midLayers, ...finalLayers }
-      }
-    };
-  }
-
-  /**
-   * Enhanced Bernard research with context layer integration
-   */
-  private async performBernardResearchEnhanced(
-    query: string,
-    model: ModelType,
-    effort: EffortType,
-    layerResults: Record<string, unknown> & {
-      select?: { recommendedTools?: string[]; selectedSources?: unknown[] };
-    },
-    onProgress?: (message: string) => void
-  ): Promise<EnhancedResearchResults> {
-    onProgress?.('Bernard paradigm: Constructing architectural frameworks...');
-
-    // Use selected tools if available
-    const tools = layerResults.select?.recommendedTools || [];
-
-    // Focus on intellectual rigor and pattern recognition
-    const searchQueries = [
-      `${query} architectural research peer reviewed`,
-      `${query} pattern frameworks models`,
-      `${query} systematic analysis architecture`,
-      ...tools.map(tool => `${query} ${tool}`)
-    ];
-
-    const research = await this.performWebResearch(searchQueries, model, effort);
-
-    // Apply source selection from select layer - prioritize academic sources
-    let selectedSources = research.allSources;
-    if (layerResults.select?.selectedSources) {
-      selectedSources = layerResults.select.selectedSources as Citation[];
-    }
-
-    const synthesisPrompt = `
-      Based on this research about "${query}", provide:
-      1. Architectural frameworks and models
-      2. Key patterns and relationships
-      3. Methodological approaches used in analyses
-      4. Gaps in current understanding
-      5. Future analytical directions
-
-      Research findings: ${research.aggregatedFindings}
-
-      Prioritize intellectual rigor, pattern recognition, and architectural depth.
-      Structure your response with clear sections and numbered points.
-      Include theoretical foundations and empirical evidence.
-    `;
-
-    const synthesis = await this.generateText(synthesisPrompt, model, effort);
-
-    // Additional evaluation for analytical quality
-    const evaluation = await this.evaluateResearch(
-      { query, synthesis: synthesis.text, searchResults: selectedSources, evaluation: { quality: 'needs_improvement' }, refinementCount: 0 },
-      model,
-      effort
-    );
-
-    return {
-      synthesis: synthesis.text,
-      sources: selectedSources,
-      queryType: 'analytical',
-      hostParadigm: 'bernard',
-      evaluationMetadata: evaluation,
-      confidenceScore: 0.90,
-      adaptiveMetadata: {
-        paradigm: 'bernard',
-        focusAreas: ['architectural_frameworks', 'pattern_analysis', 'knowledge_gaps'],
-        toolsUsed: tools
-      }
-    };
-  }
-
-  /**
-   * Maeve: Strategy-focused research
-   */
-  private async performMaeveResearch(
-    query: string,
-    model: ModelType,
-    effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
     onProgress?.('Maeve paradigm: Mapping narrative control points...');
