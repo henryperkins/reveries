@@ -140,6 +140,13 @@ export class ResearchMemoryService {
   }
 
   /**
+   * Cache a research result (alias for setCachedResult for backwards compatibility)
+   */
+  cacheResult(query: string, result: EnhancedResearchResults, paradigm?: HostParadigm): void {
+    this.setCachedResult(query, result, paradigm);
+  }
+
+  /**
    * Clear all cached data (useful for testing)
    */
   clearAll(): void {

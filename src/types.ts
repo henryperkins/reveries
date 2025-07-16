@@ -96,9 +96,13 @@ export interface ServiceCallConfig {
 }
 
 // Enhanced research types for LangGraph patterns
-export type QueryType = 'factual' | 'analytical' | 'comparative' | 'exploratory';
+export type QueryType = 'factual' | 'analytical' | 'comparative' | 'exploratory' | 'comprehensive';
 
 export interface ResearchSection {
+  id?: string;
+  title?: string;
+  content?: string;
+  confidence?: number;
   topic: string;
   description: string;
   research?: string;
@@ -111,7 +115,7 @@ export interface ResearchState {
   searchResults: Citation[];
   synthesis: string;
   evaluation: {
-    quality: 'good' | 'needs_improvement';
+    quality: 'excellent' | 'good' | 'needs_improvement';
     feedback?: string;
     completeness?: number; // 0-1 score
     accuracy?: number; // 0-1 score

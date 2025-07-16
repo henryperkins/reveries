@@ -151,7 +151,8 @@ export class ResearchUtilities {
       factual: 0.1,
       analytical: 0.4,
       comparative: 0.3,
-      exploratory: 0.2
+      exploratory: 0.2,
+      comprehensive: 0.5
     };
     complexity += typeComplexity[queryType];
 
@@ -195,6 +196,41 @@ export class ResearchUtilities {
   static generateCacheKey(query: string, paradigm?: string): string {
     const normalizedQuery = query.toLowerCase().trim();
     return paradigm ? `${paradigm}:${normalizedQuery}` : normalizedQuery;
+  }
+
+  /**
+   * Check if result needs self-healing based on quality metrics
+   */
+  static needsSelfHealing(result: EnhancedResearchResults): boolean {
+    // Check if evaluation indicates improvement needed
+    if (result.evaluationMetadata?.quality === 'needs_improvement') {
+      return true;
+    }
+
+    // Check for low confidence scores
+    if (result.confidenceScore !== undefined && result.confidenceScore < 0.4) {
+      return true;
+    }
+
+    // Check for very short synthesis (likely incomplete)
+    if (result.synthesis.length < 100) {
+      return true;
+    }
+
+    // Check for lack of sources
+    if (!result.sources || result.sources.length === 0) {
+      return true;
+    }
+
+    // Check evaluation metrics if available
+    if (result.evaluationMetadata) {
+      const { completeness = 0, accuracy = 0, clarity = 0 } = result.evaluationMetadata;
+      if (completeness < 0.5 || accuracy < 0.5 || clarity < 0.5) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**

@@ -77,7 +77,7 @@ const App: React.FC = () => {
       }, 200)
 
       // Process with enhanced research agent using processQuery
-      const result = await researchAgent.processQuery(input, currentModel, { phase: currentPhase })
+      const result = await researchAgent.processQuery(input, currentModel, EffortType.MEDIUM)
 
       clearInterval(progressInterval)
       setProgress(100)
@@ -85,22 +85,22 @@ const App: React.FC = () => {
       // Update step with result
       const completedStep: ResearchStep = {
         ...initialStep,
-        content: result.text,
+        content: 'synthesis' in result ? result.synthesis : (result as any).text,
         sources: result.sources || []
       }
 
       // Update paradigm information
-      if (result.paradigmProbabilities) {
+      if ('paradigmProbabilities' in result && result.paradigmProbabilities) {
         setParadigmProbabilities(result.paradigmProbabilities)
         const dominantParadigms = Object.entries(result.paradigmProbabilities)
-          .sort(([,a], [,b]) => b - a)
+          .sort(([,a], [,b]) => (b as number) - (a as number))
         if (dominantParadigms.length > 0) {
           setParadigm(dominantParadigms[0][0] as HostParadigm)
         }
       }
 
       // Update context information
-      setContextLayers(result.contextLayers || [])
+      setContextLayers('contextLayers' in result ? result.contextLayers || [] : [])
 
       setResearch(prev =>
         prev.map(step => step.id === initialStep.id ? completedStep : step)

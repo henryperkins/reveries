@@ -3,10 +3,14 @@
  * Handles research quality evaluation, refinement, and self-healing
  */
 
-import { ModelType, EffortType, Citation } from '../../types';
-import { 
-  EnhancedResearchResults, 
-  ResearchState, 
+import {
+  ModelType,
+  EffortType,
+  Citation,
+  EnhancedResearchResults,
+  ResearchState
+} from '../../types';
+import {
   EvaluationMetadata,
   WebResearchResult
 } from '../research/types';
@@ -14,7 +18,7 @@ import { ResearchUtilities } from '../utils/ResearchUtilities';
 
 export class EvaluationService {
   private static instance: EvaluationService;
-  
+
   private constructor() {}
 
   public static getInstance(): EvaluationService {
@@ -59,7 +63,17 @@ export class EvaluationService {
    * Parse evaluation response into structured metadata
    */
   private parseEvaluationResponse(response: string): EvaluationMetadata {
-    const metadata: EvaluationMetadata = {};
+    const metadata: EvaluationMetadata = {
+      quality: 'good',
+      confidence: 0.5,
+      refinementCount: 0,
+      timestamp: new Date().toISOString(),
+      completeness: 0.5,
+      accuracy: 0.5,
+      clarity: 0.5,
+      feedback: '',
+      overallScore: 0.5
+    };
 
     // Extract scores using regex
     const completenessMatch = response.match(/COMPLETENESS:\s*([\d.]+)/);

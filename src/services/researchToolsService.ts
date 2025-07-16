@@ -7,7 +7,7 @@ export interface ResearchTool {
   description: string;
   category: 'search' | 'analysis' | 'citation' | 'verification' | 'visualization' | 'knowledge';
   parameters: any;
-  execute: (args: any) => Promise<any>;
+  execute: (_args: any) => Promise<any>;
 }
 
 export class ResearchToolsService {
@@ -55,12 +55,12 @@ export class ResearchToolsService {
         },
         required: ['query']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Implementation would use search APIs with filters
         return {
           results: [],
           totalFound: 0,
-          filters: args
+          filters: _args
         };
       }
     });
@@ -89,11 +89,11 @@ export class ResearchToolsService {
         },
         required: ['query']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would integrate with academic APIs
         return {
           papers: [],
-          database: args.database || 'all'
+          database: _args.database || 'all'
         };
       }
     });
@@ -114,7 +114,7 @@ export class ResearchToolsService {
         },
         required: ['query']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would search through indexed local content
         return {
           files: [],
@@ -139,10 +139,10 @@ export class ResearchToolsService {
         },
         required: ['data', 'analysisType']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would perform actual statistical calculations
         return {
-          analysis: args.analysisType,
+          analysis: _args.analysisType,
           results: {}
         };
       }
@@ -175,8 +175,8 @@ export class ResearchToolsService {
         },
         required: ['sources', 'style']
       },
-      execute: async (args) => {
-        return this.formatCitations(args.sources, args.style);
+      execute: async (_args) => {
+        return this.formatCitations(_args.sources, _args.style);
       }
     });
 
@@ -193,10 +193,10 @@ export class ResearchToolsService {
         },
         required: ['claim']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would check against fact-checking databases
         return {
-          claim: args.claim,
+          claim: _args.claim,
           verdict: 'unverified',
           sources: []
         };
@@ -220,11 +220,11 @@ export class ResearchToolsService {
         },
         required: ['data', 'chartType']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would generate chart configuration
         return {
           chartConfig: {},
-          chartType: args.chartType
+          chartType: _args.chartType
         };
       }
     });
@@ -248,7 +248,7 @@ export class ResearchToolsService {
         },
         required: ['text']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would use NER models
         return {
           entities: []
@@ -273,11 +273,11 @@ export class ResearchToolsService {
         },
         required: ['text']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would generate summaries
         return {
           summary: '',
-          style: args.style || 'paragraph'
+          style: _args.style || 'paragraph'
         };
       }
     });
@@ -298,7 +298,7 @@ export class ResearchToolsService {
         },
         required: ['documents']
       },
-      execute: async (args) => {
+      execute: async (_args) => {
         // Would extract relationships
         return {
           nodes: [],
@@ -320,8 +320,8 @@ export class ResearchToolsService {
         },
         required: ['query']
       },
-      execute: async (args) => {
-        const queryLower = args.query.toLowerCase();
+      execute: async (_args) => {
+        const queryLower = _args.query.toLowerCase();
 
         let type: QueryType = 'exploratory';
         if (queryLower.includes('what is') || queryLower.includes('define')) {
@@ -332,7 +332,7 @@ export class ResearchToolsService {
           type = 'analytical';
         }
 
-        const complexity = Math.min(args.query.split(' ').length / 20, 1);
+        const complexity = Math.min(_args.query.split(' ').length / 20, 1);
 
         return { type, complexity };
       }
@@ -351,15 +351,15 @@ export class ResearchToolsService {
         },
         required: ['topic']
       },
-      execute: async (args) => {
-        const queries: string[] = [args.topic];
+      execute: async (_args) => {
+        const queries: string[] = [_args.topic];
 
         // Generate variations
-        if (args.count > 1) queries.push(`${args.topic} definition explanation`);
-        if (args.count > 2) queries.push(`${args.topic} examples applications`);
-        if (args.count > 3) queries.push(`${args.topic} research studies`);
+        if (_args.count > 1) queries.push(`${_args.topic} definition explanation`);
+        if (_args.count > 2) queries.push(`${_args.topic} examples applications`);
+        if (_args.count > 3) queries.push(`${_args.topic} research studies`);
 
-        return queries.slice(0, args.count);
+        return queries.slice(0, _args.count);
       }
     });
 
@@ -371,7 +371,7 @@ export class ResearchToolsService {
       parameters: {},
       execute: async (_args) => {
         return {
-          currentTools: this.tools.map(t => ({
+          currentTools: Array.from(this.tools.values()).map(t => ({
             name: t.name,
             description: t.description,
             category: t.category
@@ -581,5 +581,60 @@ export class ResearchToolsService {
       })}, <${url}>`;
     }
     return citation;
+  }
+
+  private async suggestWorkflow(_goal: string, queryType: string): Promise<string[]> {
+    // Simple workflow suggestion based on query type
+    const workflows = {
+      analytical: [
+        'Define research question',
+        'Identify key concepts',
+        'Search academic sources',
+        'Analyze evidence',
+        'Synthesize findings'
+      ],
+      comparative: [
+        'Identify items to compare',
+        'Define comparison criteria',
+        'Research each item separately',
+        'Identify similarities/differences',
+        'Draw conclusions'
+      ],
+      exploratory: [
+        'Broad initial search',
+        'Identify key themes',
+        'Deep dive into promising areas',
+        'Connect related concepts',
+        'Summarize discoveries'
+      ],
+      factual: [
+        'Identify specific information needed',
+        'Search authoritative sources',
+        'Verify facts across sources',
+        'Compile verified information'
+      ]
+    };
+    
+    return workflows[queryType as keyof typeof workflows] || workflows.analytical;
+  }
+
+  private async getCitationGuide(): Promise<string> {
+    return `
+# Citation Guide
+
+## APA Style
+Format: Author, A. A. (Year). Title of work. URL
+
+## MLA Style
+Format: Author. "Title of Work." Website Name, Date, URL.
+
+## Chicago Style
+Format: Author. "Title of Work." Website Name. Date. URL.
+
+## Harvard Style
+Format: Author Year, 'Title of Work', Website Name, viewed Date, <URL>.
+
+Choose the appropriate style based on your academic or professional requirements.
+    `.trim();
   }
 }

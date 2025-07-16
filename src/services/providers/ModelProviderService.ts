@@ -462,11 +462,4 @@ export class ModelProviderService {
 
     return models;
   }
-
-  /**
-   * Check if a specific model is available
-   */
-  isModelAvailable(model: ModelType): boolean {
-    return this.getAvailableModels().includes(model);
-  }
 }

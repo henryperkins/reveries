@@ -3,11 +3,14 @@
  * Implements orchestrator-worker pattern for complex research tasks
  */
 
-import { ModelType, EffortType, Citation } from '../../types';
-import { 
-  EnhancedResearchResults, 
-  ResearchSection,
-  WebResearchResult 
+import {
+  ModelType,
+  EffortType,
+  Citation,
+  EnhancedResearchResults
+} from '../../types';
+import {
+  ResearchSection
 } from '../research/types';
 import { WebResearchService } from './WebResearchService';
 import { ModelProviderService } from '../providers/ModelProviderService';
@@ -43,7 +46,7 @@ export class ComprehensiveResearchService {
 
     // Step 1: Break down the query into sections
     const sections = await this.breakdownQuery(query, model, effort);
-    
+
     onProgress?.(`Identified ${sections.length} research sections. Initiating parallel research...`);
 
     // Step 2: Research each section in parallel
@@ -184,17 +187,25 @@ export class ComprehensiveResearchService {
         onProgress?.(`[Worker ${index + 1}] Completed research for: ${section.topic}`);
 
         return {
+          id: `section_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          title: section.topic,
+          content: findings.text,
+          confidence: 0.8,
           topic: section.topic,
           description: section.description,
-          findings: findings.text,
+          research: findings.text,
           sources: research.allSources
         };
       } catch (error) {
         console.error(`Error researching section "${section.topic}":`, error);
         return {
+          id: `section_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          title: section.topic,
+          content: `Unable to complete research for this section.`,
+          confidence: 0.1,
           topic: section.topic,
           description: section.description,
-          findings: `Unable to complete research for this section.`,
+          research: `Unable to complete research for this section.`,
           sources: []
         };
       }
@@ -214,8 +225,8 @@ export class ComprehensiveResearchService {
     effort: EffortType
   ): Promise<{ text: string; sources?: Citation[] }> {
     // Prepare section summaries
-    const sectionSummaries = sections.map(section => 
-      `## ${section.topic}\n${section.findings}`
+    const sectionSummaries = sections.map(section =>
+      `## ${section.title || section.topic}\n${section.content || section.research || 'No content available'}`
     ).join('\n\n');
 
     const synthesisPrompt = `
@@ -240,11 +251,13 @@ export class ComprehensiveResearchService {
     const seenKeys = new Set<string>();
 
     for (const section of sections) {
-      for (const source of section.sources) {
-        const key = ResearchUtilities.normalizeSourceKey(source);
-        if (!seenKeys.has(key)) {
-          seenKeys.add(key);
-          allSources.push(source);
+      if (section.sources && section.sources.length > 0) {
+        for (const source of section.sources) {
+          const key = ResearchUtilities.normalizeSourceKey(source);
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            allSources.push(source);
+          }
         }
       }
     }
@@ -286,9 +299,13 @@ export class ComprehensiveResearchService {
     );
 
     return {
+      id: `section_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      title: section.topic,
+      content: findings.text,
+      confidence: 0.8,
       topic: section.topic,
       description: section.description,
-      findings: findings.text,
+      research: findings.text,
       sources: research.allSources
     };
   }

@@ -76,7 +76,7 @@ export class SelectLayerService {
 
   async select(
     paradigm: HostParadigm,
-    k: number = 5
+    _k: number = 5
   ): Promise<{
     recommendedTools: string[];
     selectedSources: unknown[];
@@ -88,7 +88,7 @@ export class SelectLayerService {
   }
 
   async selectSources(
-    query: string,
+    _query: string,
     sources: Citation[],
     paradigm: HostParadigm,
     k: number

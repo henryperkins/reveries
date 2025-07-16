@@ -3,17 +3,17 @@
  * Main orchestrator/facade for all research operations
  */
 
-import { 
-  ModelType, 
-  EffortType, 
-  QueryType,
-  HostParadigm,
+import {
+  ModelType,
+  EffortType,
+  // QueryType,
+  // HostParadigm,
   Citation,
   ResearchResponse,
   ResearchModel,
   GENAI_MODEL_FLASH
 } from '../types';
-import { 
+import {
   EnhancedResearchResults,
   ResearchState,
   ParadigmProbabilities,
@@ -32,8 +32,6 @@ import { ParadigmResearchService } from './paradigm/ParadigmResearchService';
 import { ResearchMemoryService } from './memory/ResearchMemoryService';
 import { ResearchUtilities } from './utils/ResearchUtilities';
 import { ContextEngineeringService } from './contextEngineeringService';
-import { FunctionCallingService } from './functionCallingService';
-import { ResearchToolsService } from './researchToolsService';
 import { ParadigmClassifier } from './paradigmClassifier';
 
 export class ResearchAgentService {
@@ -48,8 +46,8 @@ export class ResearchAgentService {
   private paradigmService: ParadigmResearchService;
   private memoryService: ResearchMemoryService;
   private contextEngineering: ContextEngineeringService;
-  private functionCallingService: FunctionCallingService;
-  private researchToolsService: ResearchToolsService;
+  // private functionCallingService: FunctionCallingService;
+  // private researchToolsService: ResearchToolsService;
   private paradigmClassifier: ParadigmClassifier;
 
   // State
@@ -65,8 +63,6 @@ export class ResearchAgentService {
     this.paradigmService = ParadigmResearchService.getInstance();
     this.memoryService = ResearchMemoryService.getInstance();
     this.contextEngineering = ContextEngineeringService.getInstance();
-    this.functionCallingService = FunctionCallingService.getInstance();
-    this.researchToolsService = ResearchToolsService.getInstance();
     this.paradigmClassifier = ParadigmClassifier.getInstance();
   }
 
@@ -81,8 +77,8 @@ export class ResearchAgentService {
    * Main public API - Generate text using the specified model
    */
   async generateText(
-    prompt: string, 
-    model: ModelType, 
+    prompt: string,
+    model: ModelType,
     effort: EffortType
   ): Promise<{ text: string; sources?: Citation[] }> {
     return this.modelProvider.generateText(prompt, model, effort);
@@ -92,8 +88,8 @@ export class ResearchAgentService {
    * Generate search queries
    */
   async generateSearchQueries(
-    userQuery: string, 
-    model: ModelType, 
+    userQuery: string,
+    model: ModelType,
     effort: EffortType
   ): Promise<string[]> {
     const generateText = this.modelProvider.generateText.bind(this.modelProvider);
@@ -170,7 +166,6 @@ export class ResearchAgentService {
       if (paradigm === 'dolores' || paradigm === 'bernard') contextLayers.push('isolate');
 
       // Route query using research strategy
-      const queryType = this.strategyService.classifyQueryType(query);
       const result = await this.routeResearchQuery(query, model, EffortType.MEDIUM);
 
       // Create response in the expected format
@@ -187,7 +182,10 @@ export class ResearchAgentService {
       return {
         ...response,
         paradigmProbabilities: paradigmProbs,
-        contextDensity,
+        contextDensity: {
+          phase: phase,
+          density: contextDensity.averageDensity || 0.5
+        },
         contextLayers
       };
     } catch (error) {
@@ -224,7 +222,7 @@ export class ResearchAgentService {
 
     // Determine paradigm
     const paradigm = await this.paradigmService.determineHostParadigm(query);
-    
+
     let result: EnhancedResearchResults;
 
     // Route based on paradigm and query type
@@ -241,7 +239,7 @@ export class ResearchAgentService {
     } else {
       // Fall back to query type routing
       onProgress?.(`Routing to ${queryType} research strategy...`);
-      
+
       const response = await this.strategyService.handleQuery(
         query,
         queryType,
@@ -394,11 +392,11 @@ export class ResearchAgentService {
    */
   async generateWithAzureOpenAI(
     prompt: string,
-    options: {
+    _options: {
       temperature?: number;
       maxTokens?: number;
     } = {}
-  ): Promise<{ text: string; sources: Citation[] }> {
+  ): Promise<{ text: string; sources?: Citation[] }> {
     // Delegate to model provider
     return this.modelProvider.generateText(
       prompt,

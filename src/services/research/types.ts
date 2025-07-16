@@ -2,7 +2,7 @@
  * Research-specific types and interfaces extracted from ResearchAgentService
  */
 
-import { Citation, QueryType, HostParadigm, ResearchPhase, ModelType, EffortType } from '../../types';
+import { Citation, QueryType, HostParadigm, ResearchPhase, ModelType, EffortType, EnhancedResearchResults } from '../../types';
 
 export interface ProviderResponse {
   text: string;
@@ -54,14 +54,16 @@ export interface ResearchConfig {
 // Re-export commonly used types from main types file
 export type {
   Citation,
-  EnhancedResearchResults,
   ResearchState,
   HostParadigm,
   ModelType,
   EffortType,
   QueryType,
   ResearchPhase,
-  ContextLayer
+  ContextLayer,
+  ResearchSection,
+  EnhancedResearchResults,
+  ParadigmProbabilities
 } from '../../types';
 
 export interface WebResearchResult {
@@ -107,17 +109,16 @@ export interface ContextDensity {
   density: number;
 }
 
-export interface ResearchSection {
-  id: string;
-  title: string;
-  content: string;
-  sources: Citation[];
-  confidence: number;
-}
+// ResearchSection is now imported from main types file
 
 export interface EvaluationMetadata {
   quality: 'excellent' | 'good' | 'needs_improvement';
   confidence: number;
   refinementCount: number;
   timestamp: string;
+  completeness: number;
+  accuracy: number;
+  clarity: number;
+  feedback: string;
+  overallScore: number;
 }

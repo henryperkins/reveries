@@ -12,7 +12,9 @@ export async function runComponentHealthCheck(): Promise<HealthCheckResult[]> {
   const results: HealthCheckResult[] = [];
 
   // Check AI services
-  const availableModels = researchAgentService.getAvailableModels();
+  const availableModels = ('getAvailableModels' in researchAgentService) 
+    ? researchAgentService.getAvailableModels() 
+    : [];
 
   if (availableModels.length === 0) {
     results.push({

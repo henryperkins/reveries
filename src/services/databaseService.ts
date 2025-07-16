@@ -281,7 +281,7 @@ export class DatabaseService {
         await client.query('BEGIN');
 
         // Generate embedding and summary in database
-        const aiResult = await client.query(`
+        await client.query(`
           WITH step_ai AS (
             SELECT
               generate_embedding($1) as embedding,

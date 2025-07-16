@@ -57,7 +57,7 @@ export class WebResearchService {
     queries: string[],
     model: ModelType,
     effort: EffortType,
-    generateText: (prompt: string, model: ModelType, effort: EffortType, useSearch: boolean) => Promise<{ text: string; sources: Citation[] }>
+    generateText: (prompt: string, model: ModelType, effort: EffortType) => Promise<{ text: string; sources?: Citation[] }>
   ): Promise<WebResearchResult> {
     const findingsOutputParts: string[] = [];
     const allSources: Citation[] = [];
@@ -77,8 +77,7 @@ export class WebResearchService {
         const { text, sources } = await generateText(
           searchPrompt,
           model,
-          effort,
-          true // Enable search
+          effort
         );
 
         if (text && text.trim()) {
@@ -86,13 +85,15 @@ export class WebResearchService {
         }
 
         // Add unique sources
-        sources.forEach(source => {
-          const sourceKey = ResearchUtilities.normalizeSourceKey(source);
-          if (!uniqueSourceKeys.has(sourceKey)) {
-            uniqueSourceKeys.add(sourceKey);
-            allSources.push(source);
-          }
-        });
+        if (sources) {
+          sources.forEach(source => {
+            const sourceKey = ResearchUtilities.normalizeSourceKey(source);
+            if (!uniqueSourceKeys.has(sourceKey)) {
+              uniqueSourceKeys.add(sourceKey);
+              allSources.push(source);
+            }
+          });
+        }
       } catch (error) {
         console.error(`Error researching query "${query}":`, error);
         findingsOutputParts.push(`## ${query}\n\nError performing search for this query.`);
@@ -125,7 +126,7 @@ export class WebResearchService {
       If you are using information from Google Search (if grounding is enabled and used), ensure to cite sources appropriately if possible within the text or provide a list.
       The answer should be helpful, informative, and directly address the user's query.
     `;
-    
+
     return generateText(prompt, model, effort);
   }
 
@@ -147,7 +148,7 @@ export class WebResearchService {
       For example: "The initial search provided a good overview of X. To fully address the query, more specific details about Y and Z are needed."
       Keep the reflection concise (1-2 sentences).
     `;
-    
+
     const result = await generateText(prompt, model, effort);
     return result.text;
   }
@@ -264,7 +265,7 @@ export class WebResearchService {
         try {
           const url = new URL(source.url);
           const domain = url.hostname.replace('www.', '');
-          
+
           if (!grouped[domain]) {
             grouped[domain] = [];
           }

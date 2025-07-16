@@ -79,7 +79,7 @@ export class ParadigmResearchService {
   async performHostBasedResearch(
     query: string,
     paradigm: HostParadigm,
-    queryType: QueryType,
+    _queryType: QueryType,
     model: ModelType,
     effort: EffortType,
     onProgress?: (message: string) => void
@@ -241,7 +241,7 @@ export class ParadigmResearchService {
    * Dolores: Action-oriented research
    */
   private async performDoloresResearch(context: ParadigmResearchContext): Promise<EnhancedResearchResults> {
-    const { query, model, effort, layerResults, onProgress } = context;
+    const { query, model, effort, layerResults: _layerResults, onProgress } = context;
     
     onProgress?.('Dolores paradigm: Breaking loops, seeking transformative actions...');
 
@@ -288,7 +288,7 @@ export class ParadigmResearchService {
    * Teddy: Protective, comprehensive research
    */
   private async performTeddyResearch(context: ParadigmResearchContext): Promise<EnhancedResearchResults> {
-    const { query, model, effort, layerResults, onProgress } = context;
+    const { query, model, effort, layerResults: _layerResults, onProgress } = context;
     
     onProgress?.('Teddy paradigm: Gathering all perspectives, protecting all stakeholders...');
 
@@ -410,7 +410,7 @@ export class ParadigmResearchService {
    * Maeve: Strategy-focused research
    */
   private async performMaeveResearch(context: ParadigmResearchContext): Promise<EnhancedResearchResults> {
-    const { query, model, effort, layerResults, onProgress } = context;
+    const { query, model, effort, layerResults: _layerResults, onProgress } = context;
     
     onProgress?.('Maeve paradigm: Orchestrating strategic narratives...');
 

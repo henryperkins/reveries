@@ -6,18 +6,18 @@
 import { ModelType, EffortType, QueryType } from '../../types';
 import { ResearchResponse, EnhancedResearchResults } from '../research/types';
 import { WebResearchService } from './WebResearchService';
-import { EvaluationService } from './EvaluationService';
+// import { EvaluationService } from './EvaluationService';
 import { ModelProviderService } from '../providers/ModelProviderService';
 
 export class ResearchStrategyService {
   private static instance: ResearchStrategyService;
   private webResearchService: WebResearchService;
-  private evaluationService: EvaluationService;
+  // private evaluationService: EvaluationService;
   private modelProvider: ModelProviderService;
 
   private constructor() {
     this.webResearchService = WebResearchService.getInstance();
-    this.evaluationService = EvaluationService.getInstance();
+    // this.evaluationService = EvaluationService.getInstance();
     this.modelProvider = ModelProviderService.getInstance();
   }
 
@@ -63,21 +63,21 @@ export class ResearchStrategyService {
     query: string,
     queryType: QueryType,
     model: ModelType,
-    effort: EffortType,
+    _effort: EffortType,
     performComprehensiveResearch?: (query: string, model: ModelType, effort: EffortType) => Promise<EnhancedResearchResults>,
     performResearchWithEvaluation?: (query: string, model: ModelType, effort: EffortType) => Promise<EnhancedResearchResults>
   ): Promise<ResearchResponse> {
     switch (queryType) {
       case 'factual':
-        return this.handleFactualQuery(query, model, effort);
+        return this.handleFactualQuery(query, model, _effort);
       case 'analytical':
-        return this.handleAnalyticalQuery(query, model, effort, performResearchWithEvaluation);
+        return this.handleAnalyticalQuery(query, model, _effort, performResearchWithEvaluation);
       case 'comparative':
-        return this.handleComparativeQuery(query, model, effort, performComprehensiveResearch);
+        return this.handleComparativeQuery(query, model, _effort, performComprehensiveResearch);
       case 'exploratory':
-        return this.handleExploratoryQuery(query, model, effort, performComprehensiveResearch);
+        return this.handleExploratoryQuery(query, model, _effort, performComprehensiveResearch);
       default:
-        return this.handleExploratoryQuery(query, model, effort, performComprehensiveResearch);
+        return this.handleExploratoryQuery(query, model, _effort, performComprehensiveResearch);
     }
   }
 
@@ -141,7 +141,7 @@ export class ResearchStrategyService {
   private async handleAnalyticalQuery(
     query: string,
     model: ModelType,
-    effort: EffortType,
+    _effort: EffortType,
     performResearchWithEvaluation?: (query: string, model: ModelType, effort: EffortType) => Promise<EnhancedResearchResults>
   ): Promise<ResearchResponse> {
     try {
@@ -176,7 +176,7 @@ export class ResearchStrategyService {
   private async handleComparativeQuery(
     query: string,
     model: ModelType,
-    effort: EffortType,
+    _effort: EffortType,
     performComprehensiveResearch?: (query: string, model: ModelType, effort: EffortType) => Promise<EnhancedResearchResults>
   ): Promise<ResearchResponse> {
     try {
@@ -211,7 +211,7 @@ export class ResearchStrategyService {
   private async handleExploratoryQuery(
     query: string,
     model: ModelType,
-    effort: EffortType,
+    _effort: EffortType,
     performComprehensiveResearch?: (query: string, model: ModelType, effort: EffortType) => Promise<EnhancedResearchResults>
   ): Promise<ResearchResponse> {
     try {
@@ -243,7 +243,7 @@ export class ResearchStrategyService {
   /**
    * Generate research strategy metadata
    */
-  generateStrategyMetadata(query: string, queryType: QueryType): {
+  generateStrategyMetadata(_query: string, queryType: QueryType): {
     recommendedEffort: EffortType;
     expectedDuration: string;
     researchDepth: 'shallow' | 'moderate' | 'deep';
