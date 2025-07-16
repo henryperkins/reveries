@@ -4,19 +4,19 @@
  */
 
 import { HostParadigm } from '../../types';
-import { 
-  EnhancedResearchResults, 
-  ResearchMemoryEntry, 
-  ResearchCacheEntry 
+import {
+  EnhancedResearchResults,
+  ResearchMemoryEntry,
+  ResearchCacheEntry
 } from '../research/types';
 import { ResearchUtilities } from '../utils/ResearchUtilities';
 
 export class ResearchMemoryService {
   private static instance: ResearchMemoryService;
-  
+
   private researchCache: Map<string, ResearchCacheEntry> = new Map();
   private researchMemory: Map<string, ResearchMemoryEntry> = new Map();
-  
+
   private readonly CACHE_TTL = 1000 * 60 * 30; // 30 minutes
   private readonly MEMORY_TTL = 1000 * 60 * 60 * 24; // 24 hours
 
@@ -40,7 +40,7 @@ export class ResearchMemoryService {
    */
   getCachedResult(query: string, paradigm?: HostParadigm): EnhancedResearchResults | null {
     const cacheKey = ResearchUtilities.generateCacheKey(query, paradigm);
-    
+
     // Check exact match
     const cached = this.researchCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {

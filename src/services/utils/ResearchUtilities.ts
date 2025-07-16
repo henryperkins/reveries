@@ -206,7 +206,7 @@ export class ResearchUtilities {
    */
   static deduplicateSources(sources: Citation[]): Citation[] {
     const seen = new Map<string, Citation>();
-    
+
     for (const source of sources) {
       const key = this.normalizeSourceKey(source);
       if (!seen.has(key)) {
