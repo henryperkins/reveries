@@ -8,7 +8,7 @@ import { Controls } from './components/Controls';
 import { FeaturesList } from './components/FeaturesList';
 import { ProgressBar } from './components/ProgressBar';
 import { ResearchStep, ResearchStepType, EffortType, ModelType, ServiceCallConfig, EnhancedResearchResults, QueryType, Citation, ResearchMetadata } from './types';
-import { ResearchAgentService } from './services/researchAgentService';
+import { ResearchAgentService } from './services';
 import { ResearchGraphManager } from './researchGraph';
 import { ResearchGraphView } from './components/ResearchGraphView';
 import { usePersistedState, useResearchSessions, useCancellableOperation } from './hooks/usePersistedState';

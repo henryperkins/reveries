@@ -13,7 +13,7 @@ import {
   ContextDensity,
   ResearchPhase
 } from './types';
-import { ResearchAgentService } from './services/researchAgentService';
+import { ResearchAgentService } from './services';
 
 export interface GraphNode {
     id: string;

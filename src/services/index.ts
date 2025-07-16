@@ -1,7 +1,10 @@
 // Core Services
-export { ResearchAgentService } from './researchAgentService'
+export { ResearchAgentService } from './researchAgentServiceWrapper'
 export { ContextEngineeringService } from './contextEngineeringService'
 export { FunctionCallingService } from './functionCallingService'
+
+// Export refactored sub-services for direct access if needed
+export * from './research/types'
 
 // AI Provider Services
 export { GeminiService } from './geminiService'

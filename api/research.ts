@@ -1,6 +1,6 @@
-import { AzureOpenAIService } from '../services/azureOpenAIService';
-import { ResearchAgentService } from '../services/researchAgentService';
-import { ModelType, EffortType, GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL } from '../types';
+import { AzureOpenAIService } from '../src/services/azureOpenAIService';
+import { ResearchAgentService } from '../src/services';
+import { ModelType, EffortType, GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL } from '../src/types';
 
 export interface ResearchRequest {
   prompt: string;

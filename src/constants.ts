@@ -94,3 +94,15 @@ export const DEFAULT_CONTEXT_WINDOW_METRICS: ContextWindowMetrics[] = [
 export const GEMINI_AVAILABLE = isGeminiAvailable();
 export const GROK_AVAILABLE = isGrokAvailable();
 export const AZURE_OPENAI_AVAILABLE = isAzureOpenAIAvailable();
+
+// Feature flag for refactored ResearchAgentService
+export const USE_REFACTORED_RESEARCH_SERVICE = (() => {
+  try {
+    // Check both client and server environments
+    const clientFlag = import.meta.env.VITE_USE_REFACTORED_RESEARCH === 'true';
+    const serverFlag = typeof process !== 'undefined' && process.env?.USE_REFACTORED_RESEARCH === 'true';
+    return clientFlag || serverFlag;
+  } catch {
+    return false; // Default to old implementation
+  }
+})();
