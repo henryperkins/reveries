@@ -158,18 +158,7 @@ export class ResearchMemoryService {
       memoryTTL: this.MEMORY_TTL
     };
   }
-}
-      }
-    }
-  }
 
-  /**
-   * Clear all cache and memory
-   */
-  clearAll(): void {
-    this.researchCache.clear();
-    this.researchMemory.clear();
-  }
 
   /**
    * Get cache statistics

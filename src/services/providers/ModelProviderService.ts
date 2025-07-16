@@ -44,6 +44,7 @@ const getGrokApiKey = (): string => {
 };
 
 export class ModelProviderService {
+  private static instance: ModelProviderService | null = null;
   private geminiAI: GoogleGenerativeAI;
   private azureOpenAI: AzureOpenAIService | null = null;
   private functionCallingService: FunctionCallingService;
@@ -65,6 +66,16 @@ export class ModelProviderService {
     }
     this.functionCallingService = functionCallingService;
     this.researchToolsService = researchToolsService;
+  }
+
+  static getInstance(): ModelProviderService {
+    if (!ModelProviderService.instance) {
+      ModelProviderService.instance = new ModelProviderService(
+        FunctionCallingService.getInstance(),
+        ResearchToolsService.getInstance()
+      );
+    }
+    return ModelProviderService.instance;
   }
 
   /**
@@ -428,7 +439,18 @@ export class ModelProviderService {
     }
     throw new Error('Grok tool-calling loop exceeded max iterations');
   }
-}
+
+  /**
+   * Get available models
+   */
+  getAvailableModels(): ModelType[] {
+    const models: ModelType[] = [];
+
+    // Always include Gemini as fallback
+    models.push(GENAI_MODEL_FLASH);
+
+    // Check Grok availability
+    try {
       getGrokApiKey();
       models.push(GROK_MODEL_4);
     } catch {}

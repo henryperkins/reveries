@@ -1,4 +1,4 @@
-import { ResearchAgentService } from '../services/researchAgentService';
+import { ResearchAgentService } from '../services/researchAgentServiceWrapper';
 
 const researchAgentService = ResearchAgentService.getInstance();
 

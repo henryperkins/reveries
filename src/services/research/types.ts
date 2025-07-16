@@ -63,9 +63,6 @@ export type {
   ResearchPhase,
   ContextLayer
 } from '../../types';
-  evaluation: { quality: 'excellent' | 'good' | 'needs_improvement' };
-  refinementCount: number;
-}
 
 export interface WebResearchResult {
   aggregatedFindings: string;
@@ -103,4 +100,24 @@ export interface ParadigmResearchContext {
     select?: { recommendedTools?: string[]; selectedSources?: unknown[] };
   };
   onProgress?: (message: string) => void;
+}
+
+export interface ContextDensity {
+  phase: ResearchPhase;
+  density: number;
+}
+
+export interface ResearchSection {
+  id: string;
+  title: string;
+  content: string;
+  sources: Citation[];
+  confidence: number;
+}
+
+export interface EvaluationMetadata {
+  quality: 'excellent' | 'good' | 'needs_improvement';
+  confidence: number;
+  refinementCount: number;
+  timestamp: string;
 }

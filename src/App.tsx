@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react'
-import { ResearchAgentService } from '@/services/researchAgentService'
+import { ResearchAgentService } from '@/services/researchAgentServiceWrapper'
 import { ResearchGraphManager } from '@/researchGraph'
 import { Header, Controls, InputBar, ResearchArea, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar } from '@/components'
 import { usePersistedState } from '@/hooks/usePersistedState'
