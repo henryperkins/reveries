@@ -1,11 +1,12 @@
 // src/components/Controls.tsx
 import React, { useState, useMemo } from 'react';
 import {
-  ModelType,
-  GENAI_MODEL_FLASH,
-  GROK_MODEL_4,
-  AZURE_O3_MODEL
-} from '../types';
+   ModelType,
+   EffortType,
+   GENAI_MODEL_FLASH,
+   GROK_MODEL_4,
+   AZURE_O3_MODEL
+ } from '../types';
 import {
   PlusIcon,
   TrashIcon,
@@ -22,6 +23,8 @@ import { GROK_AVAILABLE, AZURE_OPENAI_AVAILABLE } from '../constants';
 
 interface ControlsProps {
   /* research parameters */
+  selectedEffort: EffortType;
+  onEffortChange: (effort: EffortType) => void;
   selectedModel: ModelType;
   onModelChange: (model: ModelType) => void;
 

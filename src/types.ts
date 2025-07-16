@@ -145,7 +145,23 @@ export type PyramidLayer = 'memory' | 'improvisation' | 'self_interest' | 'suffe
 /**
  * Research phases for context density adaptation
  */
-export type ResearchPhase = 'problem_definition' | 'data_collection' | 'analysis' | 'synthesis' | 'action';
+export type ResearchPhase = 'discovery' | 'exploration' | 'synthesis' | 'validation';
+
+// Research Model type alias
+export type ResearchModel = ModelType;
+
+// Research Response interface
+export interface ResearchResponse {
+  text: string;
+  sources: ResearchSource[];
+}
+
+// Context Density interface
+export interface ContextDensity {
+  averageDensity: number;
+  dominantParadigm: HostParadigm;
+  densities: Record<HostParadigm, number>;
+}
 
 /**
  * Context window density metrics for each research phase and host paradigm.

@@ -9,21 +9,28 @@ import { FunctionCallingService, FunctionCall } from './functionCallingService';
 import { ResearchToolsService } from './researchToolsService';
 import { ContextEngineeringService } from './contextEngineeringService';
 import {
-  ModelType,
   EffortType,
+  ModelType,
   GENAI_MODEL_FLASH,
   GROK_MODEL_4,
   AZURE_O3_MODEL,
-  QueryType,
-  ResearchSection,
-  ResearchState,
-  EnhancedResearchResults,
-  Citation,
+  QueryType
+} from '../types';
+import type {
+  ResearchResponse,
+  ResearchSource,
+  ResearchModel,
   HostParadigm,
   HouseParadigm,
+  ParadigmProbabilities,
+  ContextDensity,
+  ResearchPhase,
   ContextLayer,
-  ParadigmProbabilities
-} from "../types";
+  Citation,
+  EnhancedResearchResults,
+  ResearchState,
+  ResearchSection
+} from '../types';
 
 import { mapHostToHouse } from '../utils/houseMappings';
 import { ParadigmClassifier } from './paradigmClassifier';
@@ -110,6 +117,7 @@ export class ResearchAgentService {
   private compressLayer = CompressLayerService.getInstance();
   private isolateLayer = IsolateLayerService.getInstance();
   private vectorStore: any | null = null;
+  private paradigmClassifier = ParadigmClassifier.getInstance();
 
   private constructor() {
     // Currently only Gemini needs an SDK client. Grok is called via fetch.
@@ -2161,64 +2169,30 @@ export class ResearchAgentService {
   private async processContextLayers(
     query: string,
     paradigm: HostParadigm,
-    context: {
-      research?: any;
-      synthesis?: string;
-      sources?: any[];
-    },
-    layerSequence: ContextLayer[]
-  ): Promise<{
-    processedContext: any;
-    layerOutputs: Record<ContextLayer, any>;
-  }> {
-    const layerOutputs: Record<ContextLayer, any> = {
-      write: null,
-      select: null,
-      compress: null,
-      isolate: null
-    };
+    phase: ResearchPhase
 
-    const processedContext = { ...context };
+  ): Promise<ContextLayer[]> {
+    const layers: ContextLayer[] = [];
 
-    for (const layer of layerSequence) {
-      switch (layer) {
-        case 'write':
-          // Write initial reveries or structured notes
-          layerOutputs.write = {
-            paradigm,
-            initialContext: query,
-            timestamp: new Date().toISOString()
-          };
-          break;
+    // Write layer - always active
+    layers.push('write');
 
-        case 'select':
-          // Select relevant sources and context
-          if (context.sources) {
-            layerOutputs.select = context.sources.slice(0, 5); // Top 5 most relevant
-          }
-          break;
-
-        case 'compress':
-          // Compress feedback loops or summaries
-          if (context.synthesis) {
-            layerOutputs.compress = {
-              original: context.synthesis.length,
-              compressed: Math.round(context.synthesis.length * 0.7)
-            };
-          }
-          break;
-
-        case 'isolate':
-          // Isolate urgent interventions or sub-agents
-          layerOutputs.isolate = {
-            paradigm,
-            isolatedTasks: [`${paradigm}_research_${Date.now()}`]
-          };
-          break;
-      }
+    // Select layer - active for analytical paradigms
+    if (paradigm === 'bernard' || paradigm === 'maeve') {
+      layers.push('select');
     }
 
-    return { processedContext, layerOutputs };
+    // Compress layer - active for synthesis phases
+    if (phase === 'synthesis' || phase === 'validation') {
+      layers.push('compress');
+    }
+
+    // Isolate layer - active for focused paradigms
+    if (paradigm === 'dolores' || paradigm === 'bernard') {
+      layers.push('isolate');
+    }
+
+    return layers;
   }
 
   /**
@@ -2287,6 +2261,7 @@ export class ResearchAgentService {
   /**
    * Dolores: Bold action-focused research (Legacy)
    */
+  /*
   private async performDoloresResearch(
     query: string,
     model: ModelType,
@@ -2307,11 +2282,10 @@ export class ResearchAgentService {
     };
 
     // Process layers before research
-    const { layerOutputs } = await this.processContextLayers(
+    const layerOutputs = await this.processContextLayers(
       query,
       'dolores',
-      initialContext as any,
-      layerSequence.slice(0, 2) // Write and Select first
+      'discovery'
     );
 
     // Focus on decisive implementation and change
@@ -2930,4 +2904,188 @@ export class ResearchAgentService {
         result.evaluationMetadata = evaluation;
         return result;
       }
+
+  /**
+   * Handle factual queries - focus on verified data sources
+   */
+  private async handleFactualQuery(query: string, model: ResearchModel): Promise<ResearchResponse> {
+    try {
+      const searchQueries = [`${query} site:wikipedia.org OR site:.gov OR site:.edu`];
+      const research = await this.performWebResearch(searchQueries, model, EffortType.MEDIUM);
+      const answer = await this.generateFinalAnswer(query, research.aggregatedFindings, model, false, EffortType.MEDIUM);
+
+      return {
+        text: answer.text,
+        sources: research.allSources.map(s => ({
+          name: s.title || 'Unknown Source',
+          url: s.url,
+          snippet: s.snippet || '',
+          relevanceScore: s.relevanceScore || 0.5
+        }))
+      };
+    } catch (error) {
+      console.error('Error in handleFactualQuery:', error);
+      return {
+        text: 'Unable to retrieve factual information for this query.',
+        sources: []
+      };
     }
+  }
+
+  /**
+   * Handle analytical queries - use evaluation loop
+   */
+  private async handleAnalyticalQuery(query: string, model: ResearchModel): Promise<ResearchResponse> {
+    try {
+      const result = await this.performResearchWithEvaluation(query, model, EffortType.HIGH);
+
+      return {
+        text: result.synthesis,
+        sources: result.sources.map(s => ({
+          name: s.title || 'Unknown Source',
+          url: s.url,
+          snippet: s.snippet || '',
+          relevanceScore: s.relevanceScore || 0.5
+        }))
+      };
+    } catch (error) {
+      console.error('Error in handleAnalyticalQuery:', error);
+      return {
+        text: 'Unable to complete analytical research for this query.',
+        sources: []
+      };
+    }
+  }
+
+  /**
+   * Handle comparative queries - comprehensive research
+   */
+  private async handleComparativeQuery(query: string, model: ResearchModel): Promise<ResearchResponse> {
+    try {
+      const result = await this.performComprehensiveResearch(query, model, EffortType.MEDIUM);
+
+      return {
+        text: result.synthesis,
+        sources: result.sources.map(s => ({
+          name: s.title || 'Unknown Source',
+          url: s.url,
+          snippet: s.snippet || '',
+          relevanceScore: s.relevanceScore || 0.5
+        }))
+      };
+    } catch (error) {
+      console.error('Error in handleComparativeQuery:', error);
+      return {
+        text: 'Unable to complete comparative research for this query.',
+        sources: []
+      };
+    }
+  }
+
+  /**
+   * Handle exploratory queries - comprehensive research
+   */
+  private async handleExploratoryQuery(query: string, model: ResearchModel): Promise<ResearchResponse> {
+    try {
+      const result = await this.performComprehensiveResearch(query, model, EffortType.MEDIUM);
+
+      return {
+        text: result.synthesis,
+        sources: result.sources.map(s => ({
+          name: s.title || 'Unknown Source',
+          url: s.url,
+          snippet: s.snippet || '',
+          relevanceScore: s.relevanceScore || 0.5
+        }))
+      };
+    } catch (error) {
+      console.error('Error in handleExploratoryQuery:', error);
+      return {
+        text: 'Unable to complete exploratory research for this query.',
+        sources: []
+      };
+    }
+  }
+
+  /**
+   * Direct model call fallback
+   */
+  private async callModel(query: string, model: ResearchModel): Promise<ResearchResponse> {
+    try {
+      const result = await this.generateText(query, model, EffortType.MEDIUM);
+
+      return {
+        text: result.text,
+        sources: (result.sources || []).map(s => ({
+          name: s.title || 'Unknown Source',
+          url: s.url,
+          snippet: s.snippet || '',
+          relevanceScore: 0.5
+        }))
+      };
+    } catch (error) {
+      console.error('Error in callModel:', error);
+      return {
+        text: 'Unable to generate response for this query.',
+        sources: []
+      };
+    }
+  }
+
+  async processQuery(
+    query: string,
+    model: ResearchModel = GENAI_MODEL_FLASH,
+    metadata?: { phase?: ResearchPhase }
+  ): Promise<ResearchResponse & {
+    paradigmProbabilities?: ParadigmProbabilities;
+    contextDensity?: ContextDensity;
+    contextLayers?: ContextLayer[];
+  }> {
+    try {
+      // Detect paradigm
+      const paradigmProbs = this.paradigmClassifier.classify(query);
+      const dominantParadigms = this.paradigmClassifier.dominant(paradigmProbs);
+      const paradigm = dominantParadigms[0] || 'bernard';
+
+      // Get context density for this phase and paradigm
+      const phase = metadata?.phase || 'discovery';
+      const contextDensity = this.contextEngineering.adaptContextDensity(phase, paradigm);
+
+      // Process through context layers (simplified for now)
+      const contextLayers: ContextLayer[] = ['write', 'select'];
+      if (phase === 'synthesis') contextLayers.push('compress');
+      if (paradigm === 'dolores' || paradigm === 'bernard') contextLayers.push('isolate');
+
+      // Route query using existing methods
+      const queryType = await this.classifyQuery(query, model, EffortType.MEDIUM);
+
+      // Use the existing routeResearchQuery for now
+      const result = await this.routeResearchQuery(query, model, EffortType.MEDIUM);
+
+      // Create response in the expected format
+      const response: ResearchResponse = {
+        text: result.synthesis,
+        sources: result.sources.map(s => ({
+          name: s.title || 'Unknown Source',
+          url: s.url,
+          snippet: s.snippet || '',
+          relevanceScore: s.relevanceScore || 0.5
+        }))
+      };
+
+      return {
+        ...response,
+        paradigmProbabilities: paradigmProbs,
+        contextDensity,
+        contextLayers
+      };
+    } catch (error) {
+      console.error('Error processing query:', error);
+      return {
+        text: 'An error occurred while processing your query.',
+        sources: [],
+        paradigmProbabilities: { dolores: 0.25, teddy: 0.25, bernard: 0.25, maeve: 0.25 }
+      };
+    }
+  }
+}

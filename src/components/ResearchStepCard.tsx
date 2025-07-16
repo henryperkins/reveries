@@ -5,6 +5,9 @@ import { ResearchStep, ResearchStepType } from '../types';
 
 interface ResearchStepCardProps {
   step: ResearchStep;
+  isExpanded?: boolean;
+  onToggle?: () => void;
+  onNavigate?: (stepId: string) => void;
 }
 
 export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({

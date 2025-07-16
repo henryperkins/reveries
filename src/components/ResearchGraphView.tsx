@@ -11,7 +11,15 @@ interface ResearchGraphViewProps {
 }
 
 export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManager, isOpen, onClose }) => {
-  const [stats, setStats] = useState(() => graphManager?.getStatistics() || { nodes: 0, edges: 0, depth: 0 });
+  const [stats, setStats] = useState(() => graphManager?.getStatistics() || {
+    totalNodes: 0,
+    totalDuration: 0,
+    averageStepDuration: 0,
+    errorCount: 0,
+    successRate: 0,
+    sourcesCollected: 0,
+    uniqueCitations: 0
+  });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -22,7 +30,7 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
 
   const layoutEngine = useRef(new GraphLayoutEngine());
 
-  // Early return after hooks (this is safe)
+  // Early return after all hooks
   if (!graphManager) {
     console.error('ResearchGraphView requires a valid graphManager instance')
     return null
@@ -488,3 +496,5 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
     </div>
   );
 };
+
+export default ResearchGraphView;

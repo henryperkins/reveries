@@ -1,5 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResearchStep, ResearchState, ResearchStepType, ModelType, EffortType, Citation, ExportedResearchData, GENAI_MODEL_FLASH, ResearchMetadata } from './types';
+import {
+  ResearchStep,
+  ResearchState,
+  ResearchStepType,
+  ModelType,
+  EffortType,
+  Citation,
+  ExportedResearchData,
+  GENAI_MODEL_FLASH,
+  ResearchMetadata,
+  ParadigmProbabilities,
+  ContextDensity,
+  ResearchPhase
+} from './types';
 import { ResearchAgentService } from './services/researchAgentService';
 
 export interface GraphNode {
@@ -12,6 +25,15 @@ export interface GraphNode {
     children: string[]; // IDs of child nodes
     parents: string[]; // IDs of parent nodes
     metadata?: ResearchMetadata;
+    data?: ResearchStep;
+}
+
+export interface GraphNodeMetadata {
+    model?: ModelType;
+    effort?: EffortType;
+    paradigmProbabilities?: ParadigmProbabilities;
+    contextDensity?: ContextDensity;
+    phase?: ResearchPhase;
 }
 
 export interface GraphEdge {
@@ -52,19 +74,49 @@ export class ResearchGraphManager {
      */
     addNode(
         step: ResearchStep,
-        parentId?: string | null,
-        metadata?: Partial<GraphNode['metadata']>
+        parentId: string | null = null,
+        metadata?: GraphNodeMetadata & {
+            paradigmProbabilities?: ParadigmProbabilities;
+            contextDensity?: ContextDensity;
+            phase?: ResearchPhase;
+        }
     ): GraphNode {
+        const node: GraphNode = {
+            id: step.id,
+            stepId: step.id,
+            type: step.type,
+            title: step.title || '',
+            timestamp: step.timestamp || new Date().toISOString(),
+            children: [],
+            parents: parentId ? [parentId] : [],
+            data: step,
+            metadata: {
+                model: metadata?.model || GENAI_MODEL_FLASH,
+                effort: metadata?.effort || EffortType.MEDIUM,
+                paradigmProbabilities: metadata?.paradigmProbabilities,
+                contextDensity: typeof metadata?.contextDensity === 'object'
+                    ? metadata.contextDensity.averageDensity
+                    : metadata?.contextDensity,
+                phase: metadata?.phase
+            }
+        };
+
+        this.graph.nodes.set(node.id, node);
+
         const nodeId = `node-${step.id}`;
         const timestamp = Date.now();
 
         // Ensure metadata includes all available information
         const enrichedMetadata: ResearchMetadata = {
-            model: GENAI_MODEL_FLASH,
-            effort: EffortType.MEDIUM,
+            model: metadata?.model || GENAI_MODEL_FLASH,
+            effort: metadata?.effort || EffortType.MEDIUM,
             sourcesCount: step.sources?.length || 0,
             processingTime: this.lastNodeTimestamp ? timestamp - this.lastNodeTimestamp : 0,
-            ...metadata
+            paradigmProbabilities: metadata?.paradigmProbabilities,
+            contextDensity: typeof metadata?.contextDensity === 'object'
+                ? metadata.contextDensity.averageDensity
+                : (typeof metadata?.contextDensity === 'number' ? metadata.contextDensity : undefined),
+            phase: metadata?.phase
         };
 
         const newNode: GraphNode = {

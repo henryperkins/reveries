@@ -190,7 +190,7 @@ export class ContextEngineeringService {
       lower.includes('define') ||
       lower.includes('problem')
     ) {
-      return 'problem_definition';
+      return 'discovery';
     }
 
     if (
@@ -199,7 +199,7 @@ export class ContextEngineeringService {
       lower.includes('gather') ||
       lower.includes('collect')
     ) {
-      return 'data_collection';
+      return 'exploration';
     }
 
     if (
@@ -207,7 +207,7 @@ export class ContextEngineeringService {
       lower.includes('examine') ||
       lower.includes('investigate')
     ) {
-      return 'analysis';
+      return 'synthesis';
     }
 
     if (
@@ -226,9 +226,9 @@ export class ContextEngineeringService {
       lower.includes('use') ||
       lower.includes('execute')
     ) {
-      return 'action';
+      return 'validation';
     }
 
-    return 'problem_definition';
+    return 'discovery';
   }
 }

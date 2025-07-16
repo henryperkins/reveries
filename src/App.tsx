@@ -4,10 +4,23 @@ import { ResearchGraphManager } from '@/researchGraph'
 import { Header, Controls, InputBar, ResearchArea, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar } from '@/components'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
-import { ResearchStep, ResearchStepType, EffortType, HostParadigm, ParadigmProbabilities, ModelType } from '@/types'
+import {
+  ResearchStep,
+  ResearchStepType,
+  EffortType,
+  HostParadigm,
+  ParadigmProbabilities,
+  ContextLayer,
+  ResearchPhase,
+  ModelType
+} from '@/types'
 import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
 import { DEFAULT_MODEL } from '@/constants'
 import '@/App.css'
+import {
+  ParadigmDashboard,
+  ContextLayerProgress
+} from './components';
 
 const App: React.FC = () => {
   const [research, setResearch] = usePersistedState<ResearchStep[]>('reveries_research', [])
@@ -19,10 +32,20 @@ const App: React.FC = () => {
   const [effort, setEffort] = useState<EffortType>(EffortType.LOW)
   const [paradigm, setParadigm] = useState<HostParadigm | null>(null)
   const [paradigmProbabilities, setParadigmProbabilities] = useState<ParadigmProbabilities | null>(null)
+  const [contextLayers, setContextLayers] = useState<ContextLayer[]>([])
+  const [currentPhase, setCurrentPhase] = useState<ResearchPhase>('discovery')
   const { error, handleError, clearError } = useErrorHandling()
 
   const graphManager = useMemo(() => new ResearchGraphManager(), [])
   const researchAgent = useMemo(() => ResearchAgentService.getInstance(), [])
+
+  const progressPhase = useCallback(() => {
+    const phases: ResearchPhase[] = ['discovery', 'exploration', 'synthesis', 'validation'];
+    const currentIndex = phases.indexOf(currentPhase);
+    if (currentIndex < phases.length - 1) {
+      setCurrentPhase(phases[currentIndex + 1]);
+    }
+  }, [currentPhase, setCurrentPhase]);
 
   const handleSubmit = useCallback(async (input: string) => {
     if (!input.trim() || isLoading) return
@@ -46,15 +69,15 @@ const App: React.FC = () => {
       setResearch(prev => [...prev, initialStep])
 
       // Add to graph
-      const rootNode = graphManager.addNode(initialStep)
+      graphManager.addNode(initialStep)
 
       // Simulate progress updates
       const progressInterval = setInterval(() => {
         setProgress(prev => Math.min(prev + 10, 90))
       }, 200)
 
-      // Process with research agent
-      const result = await researchAgent.generateText(input, currentModel, effort)
+      // Process with enhanced research agent using processQuery
+      const result = await researchAgent.processQuery(input, currentModel, { phase: currentPhase })
 
       clearInterval(progressInterval)
       setProgress(100)
@@ -66,45 +89,33 @@ const App: React.FC = () => {
         sources: result.sources || []
       }
 
-      // Complete the node in graph
-      graphManager.completeNode(rootNode.id)
+      // Update paradigm information
+      if (result.paradigmProbabilities) {
+        setParadigmProbabilities(result.paradigmProbabilities)
+        const dominantParadigms = Object.entries(result.paradigmProbabilities)
+          .sort(([,a], [,b]) => b - a)
+        if (dominantParadigms.length > 0) {
+          setParadigm(dominantParadigms[0][0] as HostParadigm)
+        }
+      }
+
+      // Update context information
+      setContextLayers(result.contextLayers || [])
 
       setResearch(prev =>
         prev.map(step => step.id === initialStep.id ? completedStep : step)
       )
 
-      // Update node metadata with processing info
-      graphManager.updateNodeMetadata(rootNode.id, {
-        model: currentModel,
-        effort: effort,
-        sourcesCount: result.sources?.length || 0
-      })
-
-      // Simulate paradigm detection based on query type
-      if (input.toLowerCase().includes('analyze') || input.toLowerCase().includes('explain')) {
-        setParadigm('bernard')
-        setParadigmProbabilities({ dolores: 0.15, teddy: 0.20, bernard: 0.45, maeve: 0.20 })
-      } else if (input.toLowerCase().includes('protect') || input.toLowerCase().includes('safe')) {
-        setParadigm('teddy')
-        setParadigmProbabilities({ dolores: 0.10, teddy: 0.50, bernard: 0.25, maeve: 0.15 })
-      } else {
-        setParadigm('dolores')
-        setParadigmProbabilities({ dolores: 0.40, teddy: 0.20, bernard: 0.25, maeve: 0.15 })
-      }
+      // Progress phase if needed
+      progressPhase()
 
     } catch (err) {
       handleError(err as Error)
-      // Mark node as errored if it exists
-      if (graphManager.getNodes().length > 0) {
-        const nodes = graphManager.getNodes()
-        const lastNode = nodes[nodes.length - 1]
-        graphManager.markNodeError(lastNode.id, (err as Error).message)
-      }
     } finally {
       setIsLoading(false)
       setProgress(0)
     }
-  }, [isLoading, currentModel, effort, researchAgent, clearError, handleError, graphManager])
+  }, [isLoading, currentModel, currentPhase, researchAgent, clearError, handleError, graphManager, setResearch, progressPhase])
 
   const handleClear = useCallback(() => {
     setResearch([])
@@ -214,6 +225,27 @@ const App: React.FC = () => {
           />
         </div>
       </main>
+
+      {/* Paradigm Dashboard */}
+      {paradigmProbabilities && (
+        <div className="fixed top-4 right-4 z-50">
+          <ParadigmDashboard
+            paradigm={paradigm || 'bernard'}
+            probabilities={paradigmProbabilities}
+            layers={contextLayers}
+          />
+        </div>
+      )}
+
+      {/* Context Layer Progress */}
+      {isLoading && contextLayers.length > 0 && paradigm && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+          <ContextLayerProgress
+            layers={contextLayers}
+            paradigm={paradigm}
+          />
+        </div>
+      )}
     </div>
   )
 }

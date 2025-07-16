@@ -1,5 +1,6 @@
-import { researchAgentService } from '../services/researchAgentService';
-import { ModelType } from '../types';
+import { ResearchAgentService } from '../services/researchAgentService';
+
+const researchAgentService = ResearchAgentService.getInstance();
 
 interface HealthCheckResult {
   component: string;
