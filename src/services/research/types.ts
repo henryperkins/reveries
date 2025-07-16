@@ -1,9 +1,13 @@
 /**
- * Research-specific types and interfaces
- * Extracted from ResearchAgentService for better modularity
+ * Research-specific types and interfaces extracted from ResearchAgentService
  */
 
 import { Citation, QueryType, HostParadigm, ResearchPhase, ModelType, EffortType } from '../../types';
+
+export interface ProviderResponse {
+  text: string;
+  sources?: Citation[];
+}
 
 export interface ResearchMemoryEntry {
   queries: string[];
@@ -11,58 +15,54 @@ export interface ResearchMemoryEntry {
   timestamp: number;
 }
 
-export interface ResearchCacheEntry {
+export interface CachedResult {
   result: EnhancedResearchResults;
   timestamp: number;
 }
 
-export interface EvaluationMetadata {
-  completeness?: number;
-  accuracy?: number;
-  clarity?: number;
-  overallScore?: number;
-  feedback?: string;
+export interface FallbackContext {
+  originalModel: ModelType;
+  attemptedModels: Set<ModelType>;
+  prompt: string;
+  effort: EffortType;
 }
 
-export interface AdaptiveMetadata {
-  cacheHit?: boolean;
-  learnedPatterns?: boolean;
-  processingTime?: number;
-  complexityScore?: number;
-  selfHealed?: boolean;
-  healingStrategy?: 'dolores_action_expansion' | 'teddy_comprehensive_expansion' | 'bernard_analytical_deepening';
-  paradigm?: HostParadigm;
-  focusAreas?: string[];
-  toolsUsed?: string[];
-  contextLayers?: {
-    executed: string[];
-    results: Record<string, any>;
-  };
+export interface HealingStrategy {
+  type: 'dolores_action_expansion' | 'teddy_comprehensive_expansion' | 'bernard_analytical_deepening' | 'maeve_strategic_optimization' | 'default_expansion';
+  confidence: number;
 }
 
-export interface ResearchSection {
-  topic: string;
-  description: string;
-  findings: string;
-  sources: Citation[];
-}
-
-export interface EnhancedResearchResults {
-  synthesis: string;
-  sources: Citation[];
-  queryType?: QueryType;
-  hostParadigm?: HostParadigm | null;
-  sections?: ResearchSection[];
-  evaluationMetadata?: EvaluationMetadata;
-  refinementCount?: number;
-  confidenceScore?: number;
-  adaptiveMetadata?: AdaptiveMetadata;
-}
-
-export interface ResearchState {
+export interface LayerExecutionContext {
   query: string;
-  synthesis: string;
-  searchResults: Citation[];
+  paradigm: HostParadigm;
+  density: number;
+  sources?: Citation[];
+  content?: string;
+  model: ModelType;
+  effort: EffortType;
+  onProgress?: (message: string) => void;
+}
+
+export interface ResearchConfig {
+  cacheEnabled: boolean;
+  cacheTTL: number;
+  memoryTTL: number;
+  maxFallbackAttempts: number;
+  confidenceThreshold: number;
+}
+
+// Re-export commonly used types from main types file
+export type {
+  Citation,
+  EnhancedResearchResults,
+  ResearchState,
+  HostParadigm,
+  ModelType,
+  EffortType,
+  QueryType,
+  ResearchPhase,
+  ContextLayer
+} from '../../types';
   evaluation: { quality: 'excellent' | 'good' | 'needs_improvement' };
   refinementCount: number;
 }
