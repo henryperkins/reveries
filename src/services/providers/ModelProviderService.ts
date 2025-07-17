@@ -2,6 +2,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { APIError, ErrorBoundary } from '../errorHandler';
 import { AzureOpenAIService } from '../azureOpenAIService';
+import { AzureAIAgentService } from '../azureAIAgentService';
 import { geminiService } from '../geminiService';
 import { GrokService } from '../grokService';
 import { FunctionCallingService, FunctionCall } from '../functionCallingService';
@@ -47,6 +48,7 @@ export class ModelProviderService {
   private static instance: ModelProviderService | null = null;
   private geminiAI: GoogleGenerativeAI;
   private azureOpenAI: AzureOpenAIService | null = null;
+  private azureAIAgent: AzureAIAgentService | null = null;
   private functionCallingService: FunctionCallingService;
   private researchToolsService: ResearchToolsService;
   private fallbackAttempts: Map<string, number> = new Map();
@@ -62,6 +64,14 @@ export class ModelProviderService {
         this.azureOpenAI = AzureOpenAIService.getInstance();
       } catch (error) {
         console.warn('Azure OpenAI initialization failed:', error);
+      }
+    }
+    if (AzureAIAgentService.isAvailable()) {
+      try {
+        this.azureAIAgent = AzureAIAgentService.getInstance();
+        console.log('Azure AI Agent Service with Bing Search grounding initialized');
+      } catch (error) {
+        console.warn('Azure AI Agent Service initialization failed:', error);
       }
     }
     this.functionCallingService = functionCallingService;
@@ -114,6 +124,23 @@ export class ModelProviderService {
           };
 
         case AZURE_O3_MODEL:
+          // Prioritize Azure AI Agent Service with Bing Search if available
+          if (this.azureAIAgent) {
+            console.log('Using Azure AI Agent Service with Bing Search grounding and enhancement pipeline');
+            try {
+              const agentResult = await this.azureAIAgent.generateText(prompt, model, effort);
+              console.log(`Azure AI Agent returned ${agentResult.sources?.length || 0} sources with quality enhancement`);
+              return {
+                text: agentResult.text,
+                sources: agentResult.sources || []
+              };
+            } catch (error) {
+              console.warn('Azure AI Agent Service failed, falling back to Azure OpenAI:', error);
+              // Fall through to Azure OpenAI
+            }
+          }
+          
+          // Fallback to traditional Azure OpenAI (no web search)
           if (!AzureOpenAIService.isAvailable()) {
             console.warn('Azure OpenAI not available, falling back to Gemini');
             return this.generateText(prompt, GENAI_MODEL_FLASH, effort);
@@ -215,7 +242,8 @@ export class ModelProviderService {
       case GROK_MODEL_4:
         try { return !!getGrokApiKey(); } catch { return false; }
       case AZURE_O3_MODEL:
-        return AzureOpenAIService.isAvailable();
+        // Prefer Azure AI Agent Service with Bing Search, fallback to Azure OpenAI
+        return AzureAIAgentService.isAvailable() || AzureOpenAIService.isAvailable();
       default:
         return false;
     }
@@ -233,6 +261,15 @@ export class ModelProviderService {
         const grokResult = await grokService.generateResponseWithLiveSearch(prompt, effort);
         return { text: grokResult.text, sources: grokResult.sources || [] };
       case AZURE_O3_MODEL:
+        // Try Azure AI Agent Service with enhancement first
+        if (this.azureAIAgent) {
+          try {
+            const agentResult = await this.azureAIAgent.generateText(prompt, model, effort);
+            return { text: agentResult.text, sources: agentResult.sources || [] };
+          } catch (error) {
+            console.warn('Azure AI Agent Service direct generation failed:', error);
+          }
+        }
         return this.generateTextWithAzureOpenAI(prompt, effort, false);
       default:
         throw new APIError(`Unsupported model: ${model}`, 'INVALID_MODEL', false);
@@ -455,8 +492,8 @@ export class ModelProviderService {
       models.push(GROK_MODEL_4);
     } catch {}
 
-    // Check Azure OpenAI availability
-    if (this.azureOpenAI) {
+    // Check Azure OpenAI availability (including AI Agent Service)
+    if (this.azureAIAgent || this.azureOpenAI) {
       models.push(AZURE_O3_MODEL);
     }
 

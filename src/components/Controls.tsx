@@ -87,9 +87,11 @@ export const Controls: React.FC<ControlsProps> = ({
   isLoading,
   isEmpty,
   enhancedMode,
-  onEnhancedModeChange
+  onEnhancedModeChange,
+  selectedEffort,
+  onEffortChange
 }) => {
-  const [showConfig, setShowConfig] = useState(false);
+  const [showConfig, setShowConfig] = useState(true);
 
   // Available models based on API key configuration
   const availableModels = useMemo(() =>
@@ -169,7 +171,7 @@ export const Controls: React.FC<ControlsProps> = ({
       {/* Configuration Panel */}
       {showConfig && (
         <div className="p-4 bg-gray-50 rounded-lg border">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-2 gap-4">
             {/* Model Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -201,6 +203,38 @@ export const Controls: React.FC<ControlsProps> = ({
                     </label>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Effort Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Research Effort
+              </label>
+              <div className="space-y-2">
+                {Object.values(EffortType).map((effort) => (
+                  <label
+                    key={effort}
+                    className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-white"
+                  >
+                    <input
+                      type="radio"
+                      name="effort"
+                      value={effort}
+                      checked={selectedEffort === effort}
+                      onChange={() => onEffortChange(effort)}
+                      className="mr-3"
+                    />
+                    <div>
+                      <div className="font-medium">{effort} Effort</div>
+                      <p className="text-sm text-gray-600">
+                        {effort === EffortType.LOW && 'Quick research with basic analysis'}
+                        {effort === EffortType.MEDIUM && 'Balanced research with moderate depth'}
+                        {effort === EffortType.HIGH && 'Comprehensive research with deep analysis'}
+                      </p>
+                    </div>
+                  </label>
+                ))}
               </div>
             </div>
 

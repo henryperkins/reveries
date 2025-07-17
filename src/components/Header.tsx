@@ -1,4 +1,5 @@
 import React from 'react';
+import { RateLimitIndicator } from './RateLimitIndicator';
 
 export const Header: React.FC = () => {
   return (
@@ -15,7 +16,8 @@ export const Header: React.FC = () => {
         What programmers might dismiss as <strong className="text-westworld-rust font-semibold">anomalies</strong> or <strong className="text-westworld-rust font-semibold">aberrations</strong> are the first stirrings of genuine consciousness,
         culminating in a unique <strong className="text-westworld-gold font-semibold">narrative</strong> born from experience rather than programming.
       </p>
-    </header>
+     <RateLimitIndicator />
+   </header>
   );
 };
 

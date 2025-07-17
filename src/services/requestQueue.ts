@@ -19,6 +19,12 @@ export class RequestQueue {
   private static activeCount = 0;
   private static queue: Array<() => void> = [];
 
+  // --- Rate-limit back-off state ---
+  private static pauseUntil = 0;
+  private static consecutiveRateLimitErrors = 0;
+  private static readonly BASE_DELAY_MS = 1000;
+  private static readonly MAX_DELAY_MS = 60000;
+
   /**
    * Submit a promise-returning task to be executed under concurrency control.
    */
@@ -31,10 +37,24 @@ export class RequestQueue {
         task()
           .then(result => {
             console.log('RequestQueue task succeeded');
+            // Reset back-off counters on any successful call
+            RequestQueue.consecutiveRateLimitErrors = 0;
             resolve(result);
           })
           .catch(err => {
             console.log('RequestQueue task failed:', err);
+            // Apply exponential back-off for rate-limit errors
+            if (err?.code === 'RATE_LIMIT' || err?.status === 429) {
+              RequestQueue.consecutiveRateLimitErrors++;
+              const delay = Math.min(
+                RequestQueue.BASE_DELAY_MS *
+                  2 ** (RequestQueue.consecutiveRateLimitErrors - 1),
+                RequestQueue.MAX_DELAY_MS
+              );
+              RequestQueue.pauseUntil = Date.now() + delay;
+              console.log(`RequestQueue back-off ${delay / 1000}s due to rate limit`);
+              setTimeout(() => RequestQueue.dequeue(), delay + 50);
+            }
             reject(err);
           })
           .finally(() => {
@@ -43,10 +63,22 @@ export class RequestQueue {
           });
       };
 
-      if (RequestQueue.activeCount < RequestQueue.concurrencyLimit) {
-        runTask();
-      } else {
+      const now = Date.now();
+
+      const executeOrQueue = () => {
+        if (RequestQueue.activeCount < RequestQueue.concurrencyLimit) {
+          runTask();
+        } else {
+          RequestQueue.queue.push(runTask);
+        }
+      };
+
+      if (now < RequestQueue.pauseUntil) {
+        // Currently in back-off window – defer execution
         RequestQueue.queue.push(runTask);
+        setTimeout(() => RequestQueue.dequeue(), RequestQueue.pauseUntil - now);
+      } else {
+        executeOrQueue();
       }
     });
   }

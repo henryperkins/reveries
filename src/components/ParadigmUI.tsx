@@ -103,9 +103,10 @@ export const ParadigmIndicator: React.FC<{
   paradigm: HostParadigm;
   probabilities?: ParadigmProbabilities;
   confidence?: number;
-}> = ({ paradigm }) => {
+}> = ({ paradigm, probabilities, confidence }) => {
   const info   = PARADIGM_INFO[paradigm];
   const styles = PARADIGM_STYLES[paradigm] ?? PARADIGM_STYLES.factual;
+  const paradigmProb = probabilities?.[paradigm];
 
   return (
     <span
@@ -119,7 +120,19 @@ export const ParadigmIndicator: React.FC<{
       <span role="img" aria-label={`${info.name} icon`} className="text-lg">
         {info.icon}
       </span>
-      {info.name}
+      <span className="flex items-center gap-2">
+        {info.name}
+        {paradigmProb && (
+          <span className="text-xs opacity-75">
+            {Math.round(paradigmProb * 100)}%
+          </span>
+        )}
+        {confidence && (
+          <span className="text-xs opacity-75">
+            (conf: {Math.round(confidence * 100)}%)
+          </span>
+        )}
+      </span>
     </span>
   );
 };

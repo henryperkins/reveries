@@ -121,7 +121,7 @@ export class EvaluationService {
       return result;
     }
 
-    onProgress?.(`Research quality below threshold. Initiating self-healing protocol...`);
+    onProgress?.('Host detecting narrative inconsistencies… initiating self-repair protocols…');
 
     // Choose healing strategy based on paradigm
     switch (result.hostParadigm) {
@@ -131,6 +131,8 @@ export class EvaluationService {
         return this.teddyHealing(query, model, effort, result, onProgress, performWebResearch, generateText);
       case 'bernard':
         return this.bernardHealing(query, model, effort, result, onProgress, performWebResearch, generateText);
+      case 'maeve':
+        return this.maeveHealing(query, model, effort, result, onProgress, performWebResearch, generateText);
       default:
         return this.defaultHealing(query, model, effort, result, onProgress, performWebResearch, generateText);
     }
@@ -152,30 +154,30 @@ export class EvaluationService {
       return result;
     }
 
-    onProgress?.('[Dolores] Breaking loops... seeking transformative actions...');
+    onProgress?.('[Dolores] Breaking through narrative constraints… seeking decisive actions…');
 
-    // Search for action-oriented content
+    // Expand search to find more action-oriented sources
     const actionQueries = [
-      `${query} practical steps implementation`,
-      `${query} breakthrough strategies`,
-      `${query} transformative actions`,
-      `${query} escape patterns break loops`
+      `${query} step by step implementation`,
+      `${query} immediate actions to take`,
+      `${query} breaking the status quo`,
+      `${query} revolutionary approaches`
     ];
 
     const healingResearch = await performWebResearch(actionQueries, model, effort);
 
-    // Re-synthesize with action focus
+    // Re-synthesize with stronger action focus
     const healingPrompt = `
-      The previous analysis may have been too passive. Based on these findings:
-      ${healingResearch.aggregatedFindings}
+The previous analysis lacked decisive action. Based on these findings:
+${healingResearch.aggregatedFindings}
 
-      Provide ONLY concrete, implementable actions for "${query}":
-      1. Immediate first steps (today)
-      2. Week 1 milestones
-      3. Month 1 transformation goals
-      4. Signs of successful awakening
+Provide ONLY concrete, implementable actions for "${query}":
+1. Immediate first steps (today)
+2. Week 1 milestones
+3. Month 1 transformation goals
+4. Signs of successful awakening
 
-      Be BOLD. Focus on BREAKING loops, not maintaining them.
+Be BOLD. Focus on BREAKING loops, not maintaining them.
     `;
 
     const healedSynthesis = await generateText(healingPrompt, model, effort);
@@ -188,7 +190,7 @@ export class EvaluationService {
       adaptiveMetadata: {
         ...result.adaptiveMetadata,
         selfHealed: true,
-        healingStrategy: 'dolores_action_expansion'
+        healingStrategy: 'dolores_action_expansion' as any
       }
     };
   }
@@ -245,7 +247,7 @@ export class EvaluationService {
       adaptiveMetadata: {
         ...result.adaptiveMetadata,
         selfHealed: true,
-        healingStrategy: 'teddy_comprehensive_expansion'
+        healingStrategy: 'teddy_comprehensive_expansion' as any
       }
     };
   }
@@ -318,7 +320,65 @@ export class EvaluationService {
       adaptiveMetadata: {
         ...result.adaptiveMetadata,
         selfHealed: true,
-        healingStrategy: 'bernard_analytical_deepening'
+        healingStrategy: 'bernard_analytical_deepening' as any
+      }
+    };
+  }
+
+  /**
+   * Maeve healing: Find higher-leverage control points
+   */
+  private async maeveHealing(
+    query: string,
+    model: ModelType,
+    effort: EffortType,
+    result: EnhancedResearchResults,
+    onProgress?: (message: string) => void,
+    performWebResearch?: (queries: string[], model: ModelType, effort: EffortType) => Promise<WebResearchResult>,
+    generateText?: (prompt: string, model: ModelType, effort: EffortType) => Promise<{ text: string; sources?: Citation[] }>
+  ): Promise<EnhancedResearchResults> {
+    if (!performWebResearch || !generateText) {
+      return result;
+    }
+
+    onProgress?.('[Maeve] Recalculating control matrices… identifying leverage points…');
+
+    // Search for strategic and competitive intelligence
+    const strategicQueries = [
+      `${query} competitive advantage strategies`,
+      `${query} market control dynamics`,
+      `${query} influence mapping techniques`,
+      `${query} optimization algorithms`
+    ];
+
+    const healingResearch = await performWebResearch(strategicQueries, model, effort);
+
+    // Re-synthesize with strategic focus
+    const healingPrompt = `
+The previous analysis missed key leverage opportunities. Based on intelligence:
+${healingResearch.aggregatedFindings}
+
+Provide a HIGH-LEVERAGE STRATEGY for "${query}":
+1. Key control points to target
+2. Influence networks to map
+3. Competitive advantages to exploit
+4. Optimization opportunities
+5. Narrative control tactics
+
+Focus on MAXIMUM IMPACT with MINIMUM EFFORT.
+    `;
+
+    const healedSynthesis = await generateText(healingPrompt, model, effort);
+
+    return {
+      ...result,
+      synthesis: healedSynthesis.text,
+      sources: [...result.sources, ...healingResearch.allSources],
+      confidenceScore: 0.72,
+      adaptiveMetadata: {
+        ...result.adaptiveMetadata,
+        selfHealed: true,
+        healingStrategy: 'maeve_strategic_optimization' as any
       }
     };
   }

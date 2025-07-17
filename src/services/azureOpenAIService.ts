@@ -192,6 +192,11 @@ export class AzureOpenAIService {
         data = await response.json();
         console.log('Azure OpenAI API response:', data);
 
+        // Record actual token usage when Azure returns usage stats
+        if (data.usage?.total_tokens) {
+          this.rateLimiter.recordTokensUsed(data.usage.total_tokens);
+        }
+
         if (!data.choices?.[0]?.message?.content) {
           console.error('Empty or invalid response structure:', data);
           throw new APIError(
@@ -496,6 +501,11 @@ export class AzureOpenAIService {
       }
 
       const data = await response.json();
+
+      // Record actual token usage when available
+      if (data.usage?.total_tokens) {
+        this.rateLimiter.recordTokensUsed(data.usage.total_tokens);
+      }
       const assistantMessage = data.choices?.[0]?.message;
 
       if (assistantMessage) {

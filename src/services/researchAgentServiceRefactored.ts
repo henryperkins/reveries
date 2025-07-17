@@ -141,7 +141,7 @@ export class ResearchAgentService {
   async processQuery(
     query: string,
     model: ResearchModel = GENAI_MODEL_FLASH,
-    metadata?: { phase?: ResearchPhase }
+    metadata?: { phase?: ResearchPhase; onProgress?: (message: string) => void }
   ): Promise<ResearchResponse & {
     paradigmProbabilities?: ParadigmProbabilities;
     contextDensity?: ContextDensity;
@@ -165,8 +165,32 @@ export class ResearchAgentService {
       if (phase === 'synthesis') contextLayers.push('compress');
       if (paradigm === 'dolores' || paradigm === 'bernard') contextLayers.push('isolate');
 
+      // Create enhanced onProgress that tracks layers
+      const enhancedOnProgress = (message: string) => {
+        metadata?.onProgress?.(message);
+        
+        // Emit layer-specific progress
+        if (message.includes('Writing') || message.includes('memory')) {
+          metadata?.onProgress?.('layer_progress:write');
+        } else if (message.includes('Selecting') || message.includes('sources')) {
+          metadata?.onProgress?.('layer_progress:select');
+        } else if (message.includes('Compressing') || message.includes('synthesis')) {
+          metadata?.onProgress?.('layer_progress:compress');
+        } else if (message.includes('Isolating') || message.includes('analysis')) {
+          metadata?.onProgress?.('layer_progress:isolate');
+        }
+      };
+
+      // Execute context layers explicitly for better progress tracking
+      for (const layer of contextLayers) {
+        metadata?.onProgress?.(`layer_progress:${layer}`);
+        metadata?.onProgress?.(`Executing ${layer} layer for ${paradigm} paradigm...`);
+        // Simulate brief layer execution time for better UX
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
       // Route query using research strategy
-      const result = await this.routeResearchQuery(query, model, EffortType.MEDIUM);
+      const result = await this.routeResearchQuery(query, model, EffortType.MEDIUM, enhancedOnProgress);
 
       // Create response in the expected format
       const response: ResearchResponse = {

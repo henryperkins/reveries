@@ -25,15 +25,23 @@ interface AzureAIConfig {
 }
 
 export class DatabaseService {
+  private static instance: DatabaseService | null = null;
   private pool: Pool | null = null;
   private config: DatabaseConfig;
   private aiConfig: AzureAIConfig;
   private retryCount = 3;
   private retryDelay = 1000;
 
-  constructor() {
+  private constructor() {
     this.config = this.getConfig();
     this.aiConfig = this.getAzureAIConfig();
+  }
+
+  public static getInstance(): DatabaseService {
+    if (!DatabaseService.instance) {
+      DatabaseService.instance = new DatabaseService();
+    }
+    return DatabaseService.instance;
   }
 
   private getConfig(): DatabaseConfig {
@@ -99,9 +107,29 @@ export class DatabaseService {
     }
   }
 
-  private isRetryableError(error: any): boolean {
-    const retryableCodes = ['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND'];
-    return retryableCodes.some(code => error.code === code);
+  private isRetryableError(error: unknown): boolean {
+    // Check for network-related errors
+    const retryableCodes = ['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNRESET', 'EPIPE'];
+
+    // Handle NodeJS error objects with code property
+    if (error && typeof error === 'object' && 'code' in error) {
+      return retryableCodes.includes(error.code as string);
+    }
+
+    // Handle rate limit errors (like the Azure OpenAI 429 errors)
+    if (error && typeof error === 'object' && 'status' in error && error.status === 429) {
+      return true;
+    }
+
+    // Handle PostgreSQL connection errors
+    if (error && typeof error === 'object' && 'message' in error) {
+      const message = (error.message as string).toLowerCase();
+      if (message.includes('connection') || message.includes('timeout') || message.includes('network')) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   async initializeSchema(): Promise<void> {
@@ -637,5 +665,5 @@ export class DatabaseService {
   }
 }
 
-export const databaseService = new DatabaseService();
+export const databaseService = DatabaseService.getInstance();
 
