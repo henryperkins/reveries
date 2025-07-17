@@ -1,6 +1,8 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import { NodeGlobalsPolyfillPlugin, NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -8,15 +10,36 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
+      // Polyfill Node.js core modules (util, stream, crypto, etc.) for browser compatibility
+      nodePolyfills({
+        globals: {
+          buffer: true,
+          process: true,
+        },
+        protocolImports: true,
+      }),
     ],
     optimizeDeps: {
-      include: ['buffer', 'util', 'crypto-browserify', 'stream-browserify'],
+      include: [
+        'buffer',
+        'util',
+        'crypto-browserify',
+        'stream-browserify',
+        'process/browser'
+      ],
       exclude: ['pg'],
       esbuildOptions: {
-        // Define global for esbuild
         define: {
           global: 'globalThis',
         },
+        // Polyfill globals & core modules during dependency optimization
+        plugins: [
+          NodeGlobalsPolyfillPlugin({
+            buffer: true,
+            process: true,
+          }),
+          NodeModulesPolyfillPlugin(),
+        ],
       },
     },
     css: {
@@ -31,12 +54,18 @@ export default defineConfig(({ mode }) => {
           : path.resolve(__dirname, './src/services/azureOpenAIService.ts'),
         databaseService: path.resolve(__dirname, './src/services/databaseServiceStub.ts'),
         'pg': path.resolve(__dirname, './src/services/pgBrowserStub.ts'),
-        // Node.js polyfills
-        buffer: 'buffer',
-        util: 'util',
-        crypto: 'crypto-browserify',
-        stream: 'stream-browserify',
-        process: 'process/browser',
+        // Node.js polyfills and explicit aliases
+        'buffer': 'buffer',
+        'util': 'util',
+        'crypto': 'crypto-browserify',
+        'stream': 'stream-browserify',
+        'process': 'process/browser',
+        'util/': 'util',
+        'node:util': 'util',
+        'node:buffer': 'buffer',
+        'node:crypto': 'crypto-browserify',
+        'node:stream': 'stream-browserify',
+        'node:process': 'process/browser',
       },
     },
     define: {
@@ -47,10 +76,14 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_AZURE_OPENAI_API_KEY': mode === 'production' ? '""' : JSON.stringify(env.VITE_AZURE_OPENAI_API_KEY || ''),
       'import.meta.env.VITE_AZURE_OPENAI_DEPLOYMENT': JSON.stringify(env.VITE_AZURE_OPENAI_DEPLOYMENT || 'o3'),
       'import.meta.env.VITE_AZURE_OPENAI_API_VERSION': JSON.stringify(env.VITE_AZURE_OPENAI_API_VERSION || '2024-10-01-preview'),
-      // Properly define globals
+      // Node.js globals for browser
       global: 'globalThis',
-      'window.global': 'window',
+      'globalThis.global': 'globalThis',
+      'window.global': 'globalThis',
       'process.env': '{}',
+      'process.version': '"v20.0.0"',
+      'process.versions': '{}',
+      'process.versions.node': '"20.0.0"',
     },
     build: {
       rollupOptions: {

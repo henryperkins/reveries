@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Reverie Engine</title>
   <link rel="icon"
-    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🧠%3C/text%3E%3C/svg%3E">
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E">
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Crimson+Text:wght@400;600;700&display=swap"
     rel="stylesheet">
@@ -23,14 +23,46 @@
 }
 </script>
   <script>
-    // Polyfill global and process before anything else loads
+    // Enhanced polyfills - set up globals before anything loads
     if (typeof global === 'undefined') {
-      window.global = window;
+      window.global = globalThis;
+      globalThis.global = globalThis;
     }
+
     if (typeof process === 'undefined') {
-      window.process = { env: {} };
+      window.process = globalThis.process = {
+        env: {},
+        version: 'v20.0.0',
+        versions: { node: '20.0.0' },
+        platform: 'browser',
+        nextTick: (fn) => setTimeout(fn, 0),
+        browser: true
+      };
     }
   </script>
+  <script type="module">
+    // Load the official Buffer class from the "buffer" package
+    import { Buffer as BufferPolyfill } from 'buffer';
+    if (!window.Buffer?.alloc) {
+      window.Buffer = globalThis.Buffer = BufferPolyfill;
+    }
+  </script>
+</head>
+
+<body class="scrollbar-thin">
+  <div id="root"></div>
+  <script type="module" src="/src/index.tsx"></script>
+</body>
+
+</html>
+
+</html>
+},
+isBuffer: function (obj) {
+return obj instanceof Uint8Array;
+}
+};
+</script>
 </head>
 
 <body class="scrollbar-thin">

@@ -199,6 +199,36 @@ export class RateLimiter {
     })();
   }
 
+  /**
+   * Dynamically update the limiter’s configuration according to the latest
+   * Azure rate-limit headers.  This lets the client adapt automatically when
+   * subscription tiers change or the service lowers limits temporarily.
+   *
+   * Only the fields provided in <code>newLimits</code> are modified.  Updates are
+   * applied under the internal mutex to keep bucket calculations consistent in
+   * highly-concurrent situations.
+   */
+  updateLimits(newLimits: Partial<RateLimitConfig>): void {
+    (async () => {
+      const release = await this.acquireLock();
+      try {
+        if (typeof newLimits.maxTokensPerMinute === 'number' && newLimits.maxTokensPerMinute > 0) {
+          this.config.maxTokensPerMinute = newLimits.maxTokensPerMinute;
+        }
+        if (typeof newLimits.maxRequestsPerMinute === 'number' && newLimits.maxRequestsPerMinute > 0) {
+          this.config.maxRequestsPerMinute = newLimits.maxRequestsPerMinute;
+        }
+        if (typeof newLimits.burstCapacity === 'number' && newLimits.burstCapacity > 0) {
+          this.config.burstCapacity = newLimits.burstCapacity;
+          // Ensure the current bucket does not exceed the new burst size.
+          this.tokenBucket = Math.min(this.tokenBucket, this.config.burstCapacity);
+        }
+      } finally {
+        release();
+      }
+    })();
+  }
+
   // ───── Helper methods ───────────────────────────────────────────
   private refillBuckets(now: number): void {
     const elapsedMs = now - this.lastRefill;

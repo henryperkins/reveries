@@ -190,6 +190,8 @@ export class AzureOpenAIService {
         }
 
         data = await response.json();
+        // Adapt limiter to latest service headers
+        this.updateLimitsFromHeaders(response.headers);
         console.log('Azure OpenAI API response:', data);
 
         // Record actual token usage when Azure returns usage stats
@@ -423,6 +425,24 @@ export class AzureOpenAIService {
     return retryAfter ? parseInt(retryAfter, 10) : null;
   }
 
+  /**
+   * Parse Azure rate-limit headers and update the shared {@link RateLimiter}
+   * instance so all future requests respect the latest limits.
+   */
+  private updateLimitsFromHeaders(headers: Headers): void {
+    const limitTokens    = parseInt(headers.get('x-ratelimit-limit-tokens')     ?? '', 10);
+    const limitRequests  = parseInt(headers.get('x-ratelimit-limit-requests')   ?? '', 10);
+    const burstTokens    = parseInt(headers.get('x-ratelimit-burst-tokens')     ?? '', 10);
+
+    if (Number.isFinite(limitTokens) || Number.isFinite(limitRequests) || Number.isFinite(burstTokens)) {
+      this.rateLimiter.updateLimits({
+        maxTokensPerMinute:     Number.isFinite(limitTokens)   ? limitTokens   : undefined,
+        maxRequestsPerMinute:   Number.isFinite(limitRequests) ? limitRequests : undefined,
+        burstCapacity:          Number.isFinite(burstTokens)   ? burstTokens   : undefined,
+      });
+    }
+  }
+
   async generateResponseWithTools(
     prompt: string,
     tools: any[],
@@ -501,6 +521,7 @@ export class AzureOpenAIService {
       }
 
       const data = await response.json();
+      this.updateLimitsFromHeaders(response.headers);
 
       // Record actual token usage when available
       if (data.usage?.total_tokens) {
@@ -613,6 +634,7 @@ export class AzureOpenAIService {
       }
 
       const reader = response.body?.getReader();
+      this.updateLimitsFromHeaders(response.headers);
       if (!reader) {
         throw new APIError('No response body available', 'STREAM_ERROR', false);
       }
