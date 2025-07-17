@@ -1,10 +1,16 @@
 import { HostParadigm } from '../../types';
+import crypto from 'crypto';
+
+type MemoryType = 'procedural' | 'episodic' | 'semantic';
 
 interface Memory {
   content: any;
   timestamp: number;
   paradigm: HostParadigm;
   density: number;
+  type: MemoryType;
+  taskId?: string;
+  embedding?: number[];
 }
 
 export class WriteLayerService {
@@ -25,11 +31,17 @@ export class WriteLayerService {
   }
 
   write(key: string, value: any, density: number, paradigm: HostParadigm): void {
+    // Determine memory type based on content
+    const memoryType = this.classifyMemoryType(key, value);
+    
     const memory: Memory = {
       content: value,
       timestamp: Date.now(),
       paradigm,
-      density
+      density,
+      type: memoryType,
+      taskId: this.generateTaskId(key, paradigm),
+      embedding: this.generateEmbedding(value)
     };
 
     if (density > 80) {
@@ -37,6 +49,30 @@ export class WriteLayerService {
       this.memoryStore.set(`${paradigm}:${key}`, memory);
     } else {
       // Lower density: short-term scratchpad
+      this.scratchpad.set(`${paradigm}:${key}`, memory);
+    }
+
+    this.cleanup();
+  }
+
+  /**
+   * ACE-Graph style memory writing with explicit type classification
+   */
+  writeMemory(taskId: string, content: string, memoryType: MemoryType, paradigm: HostParadigm, density: number = 50): void {
+    const memory: Memory = {
+      content: { task: taskId, body: content, type: memoryType },
+      timestamp: Date.now(),
+      paradigm,
+      density,
+      type: memoryType,
+      taskId,
+      embedding: this.generateEmbedding(content)
+    };
+
+    const key = `${memoryType}:${taskId}`;
+    if (density > 80) {
+      this.memoryStore.set(`${paradigm}:${key}`, memory);
+    } else {
       this.scratchpad.set(`${paradigm}:${key}`, memory);
     }
 
@@ -96,5 +132,67 @@ export class WriteLayerService {
         this.memoryStore.delete(key);
       }
     }
+  }
+
+  private classifyMemoryType(key: string, value: any): MemoryType {
+    const keyLower = key.toLowerCase();
+    const valueStr = typeof value === 'string' ? value.toLowerCase() : JSON.stringify(value).toLowerCase();
+    
+    // Procedural: steps, actions, how-to
+    if (keyLower.includes('step') || keyLower.includes('action') || keyLower.includes('process') ||
+        valueStr.includes('step') || valueStr.includes('how to') || valueStr.includes('procedure')) {
+      return 'procedural';
+    }
+    
+    // Episodic: events, experiences, specific instances
+    if (keyLower.includes('query') || keyLower.includes('result') || keyLower.includes('research') ||
+        valueStr.includes('when') || valueStr.includes('happened') || valueStr.includes('experience')) {
+      return 'episodic';
+    }
+    
+    // Semantic: facts, concepts, general knowledge
+    return 'semantic';
+  }
+
+  private generateTaskId(key: string, paradigm: HostParadigm): string {
+    const timestamp = Date.now().toString();
+    return crypto.createHash('md5').update(`${paradigm}:${key}:${timestamp}`).digest('hex').substring(0, 12);
+  }
+
+  private generateEmbedding(content: any): number[] {
+    // Simplified embedding - in production would use actual embedding model
+    const text = typeof content === 'string' ? content : JSON.stringify(content);
+    const hash = crypto.createHash('sha256').update(text).digest();
+    const embedding: number[] = [];
+    
+    for (let i = 0; i < Math.min(128, hash.length); i++) {
+      embedding.push((hash[i] - 128) / 128); // Normalize to [-1, 1]
+    }
+    
+    return embedding;
+  }
+
+  /**
+   * Retrieve memories by type and paradigm
+   */
+  getMemoriesByType(memoryType: MemoryType, paradigm: HostParadigm): Memory[] {
+    const memories: Memory[] = [];
+    const prefix = `${paradigm}:${memoryType}:`;
+    
+    // Check scratchpad
+    for (const [key, memory] of this.scratchpad.entries()) {
+      if (key.startsWith(prefix) && Date.now() - memory.timestamp < this.SCRATCHPAD_TTL) {
+        memories.push(memory);
+      }
+    }
+    
+    // Check memory store
+    for (const [key, memory] of this.memoryStore.entries()) {
+      if (key.startsWith(prefix) && Date.now() - memory.timestamp < this.MEMORY_TTL) {
+        memories.push(memory);
+      }
+    }
+    
+    return memories.sort((a, b) => b.timestamp - a.timestamp);
   }
 }

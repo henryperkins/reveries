@@ -7,6 +7,14 @@ interface SelectionStrategy {
   selectionCriteria: (source: Citation) => number;
 }
 
+interface RetrievalResult {
+  source: Citation;
+  semanticScore: number;
+  keywordScore: number;
+  combinedScore: number;
+  relevanceReason: string;
+}
+
 export class SelectLayerService {
   private static instance: SelectLayerService;
 
@@ -88,24 +96,139 @@ export class SelectLayerService {
   }
 
   async selectSources(
-    _query: string,
+    query: string,
     sources: Citation[],
     paradigm: HostParadigm,
     k: number
   ): Promise<Citation[]> {
     const strategy = this.strategies[paradigm];
 
-    // Score and rank sources based on paradigm strategy
-    const scoredSources = sources.map(source => ({
-      source,
-      score: strategy.selectionCriteria(source)
-    }));
+    // ACE-Graph hybrid retrieval: combine semantic and keyword scoring
+    const hybridResults = this.hybridRetrieve(query, sources, paradigm);
 
-    // Sort by score descending
-    scoredSources.sort((a, b) => b.score - a.score);
+    // Apply paradigm-specific reranking
+    const rerankedResults = this.rerank(hybridResults, strategy);
 
     // Return top k sources
-    return scoredSources.slice(0, k).map(s => s.source);
+    return rerankedResults.slice(0, k).map(result => result.source);
+  }
+
+  /**
+   * ACE-Graph Hybrid Retrieval implementation
+   * Combines semantic similarity with keyword matching
+   */
+  private hybridRetrieve(query: string, sources: Citation[], paradigm: HostParadigm): RetrievalResult[] {
+    const results: RetrievalResult[] = [];
+    const queryLower = query.toLowerCase();
+    const strategy = this.strategies[paradigm];
+
+    for (const source of sources) {
+      // Semantic scoring (simplified - would use actual embeddings in production)
+      const semanticScore = this.calculateSemanticSimilarity(query, source);
+      
+      // Keyword scoring based on paradigm priorities
+      const keywordScore = this.calculateKeywordScore(queryLower, source, strategy);
+      
+      // Combined score with weights
+      const combinedScore = (semanticScore * 0.6) + (keywordScore * 0.4);
+      
+      results.push({
+        source,
+        semanticScore,
+        keywordScore,
+        combinedScore,
+        relevanceReason: this.generateRelevanceReason(source, strategy, semanticScore, keywordScore)
+      });
+    }
+
+    return results;
+  }
+
+  private calculateSemanticSimilarity(query: string, source: Citation): number {
+    // Simplified semantic similarity - in production would use embeddings
+    const queryWords = query.toLowerCase().split(' ');
+    const sourceText = `${source.title || ''} ${source.snippet || ''}`.toLowerCase();
+    
+    const matchedWords = queryWords.filter(word => 
+      word.length > 2 && sourceText.includes(word)
+    );
+    
+    return matchedWords.length / Math.max(queryWords.length, 1);
+  }
+
+  private calculateKeywordScore(_query: string, source: Citation, strategy: SelectionStrategy): number {
+    const sourceText = `${source.title || ''} ${source.snippet || ''}`.toLowerCase();
+    
+    // Base paradigm criteria score
+    let score = strategy.selectionCriteria(source);
+    
+    // Boost for priority terms
+    for (const priority of strategy.sourcePriorities) {
+      if (sourceText.includes(priority.toLowerCase())) {
+        score += 0.5;
+      }
+    }
+    
+    // Normalize to 0-1 range
+    return Math.min(score / 5, 1);
+  }
+
+  private rerank(results: RetrievalResult[], strategy: SelectionStrategy): RetrievalResult[] {
+    // Sort by combined score
+    results.sort((a, b) => b.combinedScore - a.combinedScore);
+    
+    // Apply MMR-style diversification for top results
+    const diversified = this.applyDiversification(results, strategy);
+    
+    return diversified;
+  }
+
+  private applyDiversification(results: RetrievalResult[], _strategy: SelectionStrategy): RetrievalResult[] {
+    const diversified: RetrievalResult[] = [];
+    const used = new Set<string>();
+    
+    for (const result of results) {
+      const sourceKey = this.getSourceKey(result.source);
+      
+      // Avoid duplicate domains for diversity
+      if (!used.has(sourceKey)) {
+        diversified.push(result);
+        used.add(sourceKey);
+      }
+      
+      if (diversified.length >= 20) break; // Limit to reasonable number
+    }
+    
+    return diversified;
+  }
+
+  private getSourceKey(source: Citation): string {
+    if (source.url) {
+      try {
+        const domain = new URL(source.url).hostname;
+        return domain;
+      } catch {
+        return source.url;
+      }
+    }
+    return source.title || 'unknown';
+  }
+
+  private generateRelevanceReason(source: Citation, strategy: SelectionStrategy, semanticScore: number, keywordScore: number): string {
+    const reasons: string[] = [];
+    
+    if (semanticScore > 0.7) reasons.push('high semantic relevance');
+    if (keywordScore > 0.7) reasons.push(`matches ${strategy.paradigm} priorities`);
+    
+    const sourceText = `${source.title || ''} ${source.snippet || ''}`.toLowerCase();
+    for (const priority of strategy.sourcePriorities) {
+      if (sourceText.includes(priority.toLowerCase())) {
+        reasons.push(`contains "${priority}"`);
+        break;
+      }
+    }
+    
+    return reasons.join(', ') || 'general relevance';
   }
 
   recommendTools(paradigm: HostParadigm): string[] {

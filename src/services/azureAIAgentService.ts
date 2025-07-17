@@ -39,11 +39,12 @@ export class AzureAIAgentService {
   private static instance: AzureAIAgentService | null = null;
   private config: AzureAIAgentConfig;
   private rateLimiter: RateLimiter;
-  private agentId: string | null = null;
+  private agentId: string;
 
   private constructor() {
     this.config = this.getConfig();
     this.rateLimiter = RateLimiter.getInstance();
+    this.agentId = '';
   }
 
   private getConfig(): AzureAIAgentConfig {
@@ -168,7 +169,7 @@ When responding:
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<AgentResponse> {
-    await this.rateLimiter.checkRateLimit();
+    await this.rateLimiter.waitForCapacity(0);
 
     onProgress?.('Initializing Azure AI Agent with Bing Search grounding...');
     const agentId = await this.initializeAgent(model);
@@ -256,7 +257,7 @@ When responding:
     const runId = runResponse.id;
 
     onProgress?.('Waiting for enhanced research completion...');
-    const completedRun = await this.pollRunCompletion(threadId, runId, onProgress);
+    await this.pollRunCompletion(threadId, runId, onProgress);
 
     onProgress?.('Retrieving enhanced results with source evaluation...');
     const messages = await this.getThreadMessages(threadId);
@@ -401,7 +402,7 @@ When responding:
    */
   private async processAgentResponse(
     messages: any[],
-    originalQuery: string,
+    _originalQuery: string,
     effort: EffortType
   ): Promise<AgentResponse> {
     const assistantMessage = messages.find(m => m.role === 'assistant');
@@ -455,7 +456,7 @@ When responding:
       sources: enhancedSources,
       bingQueries,
       confidence,
-      evaluationMetadata: mockResult.evaluationMetadata
+      evaluationMetadata: mockResult.evaluationMetadata as EvaluationMetadata
     };
   }
 
@@ -496,17 +497,29 @@ When responding:
   private generateEvaluationMetadata(
     content: string,
     sources: Citation[],
-    effort: EffortType
+    _effort: EffortType
   ): EvaluationMetadata {
     const wordCount = content.split(/\s+/).length;
     const sourceCount = sources.length;
-    const avgSourceQuality = sources.reduce((sum, s) => sum + (s.relevanceScore || 0.5), 0) / sourceCount;
+    const avgSourceQuality = sourceCount > 0 ? sources.reduce((sum, s) => sum + (s.relevanceScore || 0.5), 0) / sourceCount : 0;
+
+    const completeness = Math.min(0.3 + (wordCount / 1000) * 0.4 + (sourceCount / 10) * 0.3, 1);
+    const accuracy = Math.min(0.4 + avgSourceQuality * 0.6, 1);
+    const clarity = Math.min(0.5 + (wordCount > 100 && wordCount < 2000 ? 0.3 : 0) + 0.2, 1);
+    const quality = avgSourceQuality > 0.7 && sourceCount >= 3 ? 'excellent' : sourceCount >= 2 ? 'good' : 'needs_improvement';
+    
+    const overallScore = (completeness + accuracy + clarity) / 3;
 
     return {
-      completeness: Math.min(0.3 + (wordCount / 1000) * 0.4 + (sourceCount / 10) * 0.3, 1),
-      accuracy: Math.min(0.4 + avgSourceQuality * 0.6, 1),
-      clarity: Math.min(0.5 + (wordCount > 100 && wordCount < 2000 ? 0.3 : 0) + 0.2, 1),
-      quality: avgSourceQuality > 0.7 && sourceCount >= 3 ? 'high' : sourceCount >= 2 ? 'medium' : 'needs_improvement'
+      completeness,
+      accuracy,
+      clarity,
+      quality,
+      confidence: accuracy,
+      refinementCount: 0,
+      timestamp: new Date().toISOString(),
+      feedback: '',
+      overallScore
     };
   }
 

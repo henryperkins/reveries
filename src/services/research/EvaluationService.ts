@@ -18,6 +18,11 @@ import { ResearchUtilities } from '../utils/ResearchUtilities';
 
 export class EvaluationService {
   private static instance: EvaluationService;
+  
+  // ACE-Graph fault tolerance parameters
+  private readonly MAX_RETRIES = 3;
+  private readonly BASE_DELAY = 1000; // 1 second
+  private readonly MAX_DELAY = 8000; // 8 seconds
 
   private constructor() {}
 
@@ -29,7 +34,7 @@ export class EvaluationService {
   }
 
   /**
-   * Evaluate research quality and provide improvement suggestions
+   * Evaluate research quality with fault tolerance
    */
   async evaluateResearch(
     state: ResearchState,
@@ -55,8 +60,18 @@ export class EvaluationService {
       FEEDBACK: [specific suggestions for improvement]
     `;
 
-    const evaluation = await generateText(evaluationPrompt, model, effort);
-    return this.parseEvaluationResponse(evaluation.text);
+    // Use fault-tolerant execution
+    const evaluation = await this.executeWithRetry(
+      () => generateText(evaluationPrompt, model, effort),
+      'evaluation'
+    );
+    
+    const parsed = this.parseEvaluationResponse(evaluation.text);
+    
+    // Apply self-critique for hallucination detection
+    const critiqued = await this.applySelfCritique(parsed, state, model, effort, generateText);
+    
+    return critiqued;
   }
 
   /**
@@ -452,5 +467,103 @@ Focus on MAXIMUM IMPACT with MINIMUM EFFORT.
 
     const overallScore = evaluation.overallScore || 0;
     return overallScore < 0.8;
+  }
+
+  /**
+   * ACE-Graph Fault Tolerance: Execute with exponential retry
+   */
+  private async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    operationType: string,
+    retryCount: number = 0
+  ): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      if (retryCount >= this.MAX_RETRIES) {
+        console.error(`${operationType} failed after ${this.MAX_RETRIES} retries:`, error);
+        throw error;
+      }
+
+      // Check error type for specific handling
+      if (this.isRetryableError(error)) {
+        const delay = Math.min(this.BASE_DELAY * Math.pow(2, retryCount), this.MAX_DELAY);
+        console.warn(`${operationType} failed, retrying in ${delay}ms... (attempt ${retryCount + 1}/${this.MAX_RETRIES})`);
+        
+        await this.sleep(delay);
+        return this.executeWithRetry(operation, operationType, retryCount + 1);
+      }
+
+      // Non-retryable error, throw immediately
+      throw error;
+    }
+  }
+
+  /**
+   * Check if error is retryable (HTTP 500, timeouts, etc.)
+   */
+  private isRetryableError(error: any): boolean {
+    if (error?.status === 500) return true;
+    if (error?.code === 'TIMEOUT') return true;
+    if (error?.code === 'ECONNRESET') return true;
+    if (error?.message?.includes('rate limit')) return false; // Don't retry rate limits
+    return false;
+  }
+
+  /**
+   * ACE-Graph Self-Critique for hallucination detection
+   */
+  private async applySelfCritique(
+    evaluation: EvaluationMetadata,
+    state: ResearchState,
+    model: ModelType,
+    _effort: EffortType,
+    generateText: (prompt: string, model: ModelType, effort: EffortType) => Promise<{ text: string; sources?: Citation[] }>
+  ): Promise<EvaluationMetadata> {
+    const critiquePrompt = `
+      Check factuality & policy compliance of this evaluation:
+      
+      Original Query: "${state.query}"
+      Synthesis: "${state.synthesis}"
+      Evaluation Scores: Completeness ${evaluation.completeness}, Accuracy ${evaluation.accuracy}, Clarity ${evaluation.clarity}
+      Feedback: "${evaluation.feedback}"
+      
+      System: "Check factuality & policy compliance"
+      
+      Does this evaluation contain:
+      1. Factual inaccuracies?
+      2. Policy violations?
+      3. Hallucinated information?
+      4. Inappropriate suggestions?
+      
+      Respond with: VALID or INVALID with brief reason.
+    `;
+
+    try {
+      const critique = await this.executeWithRetry(
+        () => generateText(critiquePrompt, model, EffortType.LOW),
+        'self-critique'
+      );
+
+      if (critique.text.includes('INVALID')) {
+        console.warn('Self-critique detected issues, reverting to conservative evaluation');
+        return {
+          ...evaluation,
+          quality: 'needs_improvement',
+          confidence: Math.max(evaluation.confidence - 0.2, 0.1),
+          feedback: 'Conservative evaluation applied due to critique flags',
+          overallScore: Math.max(evaluation.overallScore - 0.2, 0.3)
+        };
+      }
+    } catch (error) {
+      console.warn('Self-critique failed, using original evaluation:', error);
+    }
+
+    return evaluation;
+  }
+
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }

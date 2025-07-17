@@ -50,6 +50,9 @@
   ],
   "exclude": [
     "components",
-    "api"
+    "api",
+    "src/tests/**/*",
+    "**/*.test.ts",
+    "**/*.spec.ts"
   ]
 }
