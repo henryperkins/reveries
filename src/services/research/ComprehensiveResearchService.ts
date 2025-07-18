@@ -45,11 +45,13 @@ export class ComprehensiveResearchService {
     onProgress?.('Breaking down query into research sections...');
 
     // Step 1: Break down the query into sections
+    onProgress?.('tool_used:query_breakdown');
     const sections = await this.breakdownQuery(query, model, effort);
 
     onProgress?.(`Identified ${sections.length} research sections. Initiating parallel research...`);
 
     // Step 2: Research each section in parallel
+    onProgress?.('tool_used:parallel_research');
     const sectionResults = await this.researchSectionsInParallel(
       sections,
       model,
@@ -59,6 +61,7 @@ export class ComprehensiveResearchService {
 
     // Step 3: Synthesize findings
     onProgress?.('Synthesizing findings from all research sections...');
+    onProgress?.('tool_used:synthesis_engine');
     const synthesis = await this.synthesizeFindings(
       query,
       sectionResults,
@@ -154,6 +157,7 @@ export class ComprehensiveResearchService {
 
       try {
         // Generate search queries for this section
+        onProgress?.('tool_used:search_query_generation');
         const queries = await this.webResearchService.generateSearchQueries(
           `${section.topic}: ${section.description}`,
           model,
@@ -162,11 +166,13 @@ export class ComprehensiveResearchService {
         );
 
         // Perform web research
+        onProgress?.('tool_used:web_search');
         const research = await this.webResearchService.performWebResearch(
           queries,
           model,
           effort,
-          generateText
+          generateText,
+          onProgress
         );
 
         // Generate section-specific findings

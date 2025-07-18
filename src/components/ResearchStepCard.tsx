@@ -2,6 +2,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ResearchStep, ResearchStepType } from '../types';
+import { ToolUsageIndicator } from './ToolUsageIndicator';
 
 interface ResearchStepCardProps {
   step: ResearchStep;
@@ -137,6 +138,14 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
               step.content
             )}
           </div>
+
+          {/* Tool Usage Indicator */}
+          {(step.toolsUsed || step.recommendedTools) && (
+            <ToolUsageIndicator
+              toolsUsed={step.toolsUsed}
+              recommendedTools={step.recommendedTools}
+            />
+          )}
 
           {/* Sources section with Westworld-themed styling */}
           {step.sources && step.sources.length > 0 && (

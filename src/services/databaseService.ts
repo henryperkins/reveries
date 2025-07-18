@@ -640,6 +640,28 @@ export class DatabaseService {
     }
   }
 
+  // Test database connection
+  async testConnection(): Promise<boolean> {
+    return this.executeWithRetry(async () => {
+      const result = await this.pool!.query('SELECT NOW() as current_time, version() as pg_version');
+      console.log('Database connected:', result.rows[0].pg_version);
+      return true;
+    });
+  }
+
+  // Check if required extensions are installed
+  async checkExtensions(): Promise<string[]> {
+    return this.executeWithRetry(async () => {
+      const result = await this.pool!.query(`
+        SELECT extname 
+        FROM pg_extension 
+        WHERE extname IN ('vector', 'azure_ai', 'azure_openai')
+        ORDER BY extname
+      `);
+      return result.rows.map(row => row.extname);
+    });
+  }
+
   // Get research statistics with AI insights
   async getEnhancedStatistics(sessionId: string): Promise<any> {
     return this.executeWithRetry(async () => {

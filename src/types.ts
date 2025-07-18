@@ -52,6 +52,8 @@ export interface ResearchStep {
   sources?: Citation[];
   query?: string;
   metadata?: ResearchMetadata;
+  toolsUsed?: string[];
+  recommendedTools?: string[];
 }
 
 export enum EffortType {

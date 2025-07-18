@@ -57,7 +57,8 @@ export class WebResearchService {
     queries: string[],
     model: ModelType,
     effort: EffortType,
-    generateText: (prompt: string, model: ModelType, effort: EffortType) => Promise<{ text: string; sources?: Citation[] }>
+    generateText: (prompt: string, model: ModelType, effort: EffortType) => Promise<{ text: string; sources?: Citation[] }>,
+    onProgress?: (message: string) => void
   ): Promise<WebResearchResult> {
     const findingsOutputParts: string[] = [];
     const allSources: Citation[] = [];
@@ -71,6 +72,7 @@ export class WebResearchService {
     }
 
     for (const query of queries) {
+      onProgress?.(`Searching for: "${query}"`);
       const searchPrompt = `Perform a web search and provide a concise summary of key information found for the query: "${query}". Focus on factual information and insights. If no relevant information is found, state that clearly.`;
 
       try {
@@ -93,10 +95,41 @@ export class WebResearchService {
               allSources.push(source);
             }
           });
+          onProgress?.(`Found ${sources.length} sources for "${query}"`);
+        } else {
+          onProgress?.(`No sources found for "${query}"`);
         }
       } catch (error) {
         console.error(`Error researching query "${query}":`, error);
-        findingsOutputParts.push(`## ${query}\n\nError performing search for this query.`);
+        onProgress?.(`Error searching for "${query}", retrying...`);
+        
+        // Simple retry mechanism
+        try {
+          const { text, sources } = await generateText(
+            searchPrompt,
+            model,
+            effort
+          );
+          
+          if (text && text.trim()) {
+            findingsOutputParts.push(`## ${query}\n\n${text}`);
+          }
+          
+          if (sources) {
+            sources.forEach(source => {
+              const sourceKey = ResearchUtilities.normalizeSourceKey(source);
+              if (!uniqueSourceKeys.has(sourceKey)) {
+                uniqueSourceKeys.add(sourceKey);
+                allSources.push(source);
+              }
+            });
+            onProgress?.(`Retry successful: Found ${sources.length} sources for "${query}"`);
+          }
+        } catch (retryError) {
+          console.error(`Retry failed for query "${query}":`, retryError);
+          onProgress?.(`Search failed for "${query}" after retry`);
+          findingsOutputParts.push(`## ${query}\n\nError performing search for this query.`);
+        }
       }
     }
 

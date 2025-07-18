@@ -11,7 +11,10 @@ import {
   Citation,
   ResearchResponse,
   ResearchModel,
-  GENAI_MODEL_FLASH
+  GENAI_MODEL_FLASH,
+  ResearchStep,
+  ResearchStepType,
+  ResearchMetadata
 } from '../types';
 import {
   EnhancedResearchResults,
@@ -33,6 +36,7 @@ import { ResearchMemoryService } from './memory/ResearchMemoryService';
 import { ResearchUtilities } from './utils/ResearchUtilities';
 import { ContextEngineeringService } from './contextEngineeringService';
 import { ParadigmClassifier } from './paradigmClassifier';
+import { DatabaseService } from './databaseService';
 
 export class ResearchAgentService {
   private static instance: ResearchAgentService | null = null;
@@ -49,6 +53,7 @@ export class ResearchAgentService {
   // private functionCallingService: FunctionCallingService;
   // private researchToolsService: ResearchToolsService;
   private paradigmClassifier: ParadigmClassifier;
+  private databaseService: DatabaseService | null = null;
 
   // State
   private lastParadigmProbabilities: ParadigmProbabilities | null = null;
@@ -64,6 +69,14 @@ export class ResearchAgentService {
     this.memoryService = ResearchMemoryService.getInstance();
     this.contextEngineering = ContextEngineeringService.getInstance();
     this.paradigmClassifier = ParadigmClassifier.getInstance();
+    
+    // Initialize database service if available (server-side only)
+    try {
+      this.databaseService = DatabaseService.getInstance();
+    } catch (error) {
+      console.log('Database service not available (client-side context)');
+      this.databaseService = null;
+    }
   }
 
   public static getInstance(): ResearchAgentService {
@@ -234,6 +247,7 @@ export class ResearchAgentService {
     const startTime = Date.now();
 
     // Check cache first
+    onProgress?.('tool_used:memory_cache');
     const cachedResult = this.memoryService.getCachedResult(query);
     if (cachedResult) {
       onProgress?.('Found cached research result.');
@@ -241,10 +255,12 @@ export class ResearchAgentService {
     }
 
     // Classify query
+    onProgress?.('tool_used:query_classification');
     const queryType = this.strategyService.classifyQueryType(query);
     onProgress?.(`Query classified as: ${queryType}`);
 
     // Determine paradigm
+    onProgress?.('tool_used:paradigm_detection');
     const paradigm = await this.paradigmService.determineHostParadigm(query);
 
     let result: EnhancedResearchResults;
@@ -252,6 +268,7 @@ export class ResearchAgentService {
     // Route based on paradigm and query type
     if (paradigm) {
       onProgress?.(`Routing to ${paradigm} paradigm research...`);
+      onProgress?.('tool_used:paradigm_research');
       result = await this.paradigmService.performHostBasedResearch(
         query,
         paradigm,
@@ -263,6 +280,7 @@ export class ResearchAgentService {
     } else {
       // Fall back to query type routing
       onProgress?.(`Routing to ${queryType} research strategy...`);
+      onProgress?.('tool_used:strategy_routing');
 
       const response = await this.strategyService.handleQuery(
         query,
@@ -328,6 +346,7 @@ export class ResearchAgentService {
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
+    onProgress?.('tool_used:comprehensive_research');
     return this.comprehensiveService.performComprehensiveResearch(
       query,
       model,
@@ -393,22 +412,61 @@ export class ResearchAgentService {
   }
 
   /**
-   * Semantic search (placeholder)
+   * Semantic search using vector store
    */
-  async semanticSearch(_query: string, _sessionId?: string): Promise<ResearchState[]> {
-    // TODO: Implement when vector store is available
-    return [];
+  async semanticSearch(query: string, sessionId?: string): Promise<ResearchState[]> {
+    if (!this.databaseService) {
+      console.warn('Database service not available for semantic search');
+      return [];
+    }
+
+    try {
+      // Search for similar research steps
+      const similarSteps = await this.databaseService.semanticSearch(query, sessionId, 10);
+      
+      // Convert ResearchStep objects to ResearchState objects
+      return similarSteps.map(step => this.convertStepToState(step));
+    } catch (error) {
+      console.error('Semantic search error:', error);
+      return [];
+    }
   }
 
   /**
-   * Store research state (placeholder)
+   * Store research state in vector store
    */
   async storeResearchState(
-    _step: ResearchState,
-    _sessionId: string,
-    _parentId?: string
+    state: ResearchState,
+    sessionId: string,
+    parentId?: string
   ): Promise<void> {
-    // TODO: Implement when vector store is available
+    if (!this.databaseService) {
+      console.warn('Database service not available for storing research state');
+      return;
+    }
+
+    try {
+      // Convert ResearchState to ResearchStep for storage
+      const step = this.convertStateToStep(state);
+      
+      // Store additional metadata separately
+      const enhancedMetadata = {
+        ...step.metadata,
+        refinementCount: state.refinementCount,
+        evaluation: state.evaluation,
+        model: GENAI_MODEL_FLASH as ModelType,
+        effort: EffortType.MEDIUM
+      } as any;
+      
+      // Update step with enhanced metadata
+      step.metadata = enhancedMetadata;
+      
+      // Save to database with AI enhancements (embeddings)
+      await this.databaseService.saveResearchStepWithAI(sessionId, step, parentId);
+    } catch (error) {
+      console.error('Store research state error:', error);
+      throw error;
+    }
   }
 
   /**
@@ -441,5 +499,72 @@ export class ResearchAgentService {
    */
   clearCaches() {
     this.memoryService.clearAll();
+  }
+
+  /**
+   * Convert ResearchStep to ResearchState
+   */
+  private convertStepToState(step: ResearchStep): ResearchState {
+    const metadata = step.metadata || {};
+    
+    return {
+      query: step.title || '',
+      searchResults: step.sources || [],
+      synthesis: typeof step.content === 'string' ? step.content : '',
+      evaluation: (metadata as any).evaluation || {
+        quality: 'good',
+        completeness: 0.8,
+        accuracy: 0.9,
+        clarity: 0.85
+      },
+      sections: (metadata as any).sections || [],
+      refinementCount: (metadata as any).refinementCount || 0
+    };
+  }
+
+  /**
+   * Convert ResearchState to ResearchStep
+   */
+  private convertStateToStep(state: ResearchState): ResearchStep {
+    // Determine step type based on state characteristics
+    const stepType = this.determineStepType(state);
+    
+    return {
+      id: crypto.randomUUID(),
+      type: stepType,
+      title: state.query,
+      content: state.synthesis,
+      icon: 'DocumentMagnifyingGlassIcon' as any, // Default icon
+      timestamp: new Date().toISOString(),
+      sources: state.searchResults,
+      metadata: {
+        model: GENAI_MODEL_FLASH as ModelType,
+        effort: EffortType.MEDIUM,
+        paradigmProbabilities: this.lastParadigmProbabilities || undefined
+      } as ResearchMetadata
+    };
+  }
+
+  /**
+   * Determine ResearchStepType based on ResearchState
+   */
+  private determineStepType(state: ResearchState): ResearchStepType {
+    // If it has been refined, it's iterative
+    if (state.refinementCount > 0) {
+      return ResearchStepType.REFLECTION;
+    }
+    
+    // If it has multiple sections, it's comprehensive
+    if (state.sections && state.sections.length > 3) {
+      return ResearchStepType.FINAL_ANSWER;
+    }
+    
+    // If evaluation shows high quality, it's detailed
+    if (state.evaluation.quality === 'excellent') {
+      return ResearchStepType.SEARCHING_FINAL_ANSWER;
+    }
+    
+    // Default to search
+    return ResearchStepType.WEB_RESEARCH;
   }
 }

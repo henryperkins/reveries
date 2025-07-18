@@ -1,9 +1,5 @@
-// Prototype components - not used in production
-// These are kept for reference and future development
+// Prototype components - experimental features not yet in production
+// These components are kept for testing and future development
 
-export { ContextDensityBar } from '../ContextDensityBar';
-export { FeaturesList } from '../FeaturesList';
-export { FunctionCallVisualizer } from '../FunctionCallVisualizer';
-export { ToolUsageIndicator } from '../ToolUsageIndicator';
-export { ResearchStepCard } from '../ResearchStepCard';
-export { ContextLayerProgress } from '../ParadigmUI';
+// Currently no active prototype components
+// Production components have been moved to the main components directory

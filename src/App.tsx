@@ -3,7 +3,7 @@ import { ResearchAgentService } from '@/services/researchAgentServiceWrapper'
 import { FunctionCallingService } from '@/services/functionCallingService'
 import { DatabaseService } from '@/services/databaseService'
 import { ResearchGraphManager } from '@/researchGraph'
-import { Header, Controls, InputBar, ResearchArea, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar, FunctionCallVisualizer, SemanticSearch, SessionHistoryBrowser } from '@/components'
+import { Header, Controls, InputBar, ResearchArea, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar, FunctionCallVisualizer, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress, LiveFunctionCallIndicator } from '@/components'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useResearchSessions } from '@/hooks/useEnhancedPersistedState'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
@@ -21,10 +21,6 @@ import {
 import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
 import { DEFAULT_MODEL } from '@/constants'
 import '@/App.css'
-import {
-  ParadigmDashboard,
-  ContextLayerProgress
-} from './components';
 
 const App: React.FC = () => {
   const [research, setResearch] = usePersistedState<ResearchStep[]>('reveries_research', [])
@@ -49,6 +45,13 @@ const App: React.FC = () => {
   const [showSemanticSearch, setShowSemanticSearch] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [showSessionHistory, setShowSessionHistory] = useState(false)
+  const [liveFunctionCalls, setLiveFunctionCalls] = useState<Array<{
+    id: string;
+    function: string;
+    status: 'pending' | 'running' | 'completed' | 'failed';
+    timestamp: number;
+    duration?: number;
+  }>>([]);
   
   // Research sessions management
   const { sessions, addSession, deleteSession } = useResearchSessions()
@@ -74,6 +77,7 @@ const App: React.FC = () => {
     setProgress(0)
     setCurrentLayer(null)
     setRealTimeContextDensities(null)
+    setLiveFunctionCalls([])
     clearError()
 
     try {
@@ -101,6 +105,44 @@ const App: React.FC = () => {
         (message: string) => {
           console.log('🔄 Research Progress:', message);
           
+          // Handle tool usage tracking
+          if (message.startsWith('tool_used:')) {
+            const toolName = message.split(':')[1];
+            
+            // Add to live function calls
+            const callId = crypto.randomUUID();
+            setLiveFunctionCalls(prev => [...prev, {
+              id: callId,
+              function: toolName,
+              status: 'running',
+              timestamp: Date.now()
+            }]);
+            
+            // Mark as completed after a brief delay to simulate processing
+            setTimeout(() => {
+              setLiveFunctionCalls(prev => 
+                prev.map(call => 
+                  call.id === callId 
+                    ? { ...call, status: 'completed', duration: Date.now() - call.timestamp }
+                    : call
+                )
+              );
+            }, 500);
+            
+            setResearch(prev => 
+              prev.map(step => {
+                if (step.isSpinning) {
+                  const currentTools = step.toolsUsed || [];
+                  if (!currentTools.includes(toolName)) {
+                    return { ...step, toolsUsed: [...currentTools, toolName] };
+                  }
+                }
+                return step;
+              })
+            );
+            return;
+          }
+          
           // Create research steps based on actual progress messages
           if (message.includes('Query classified as:')) {
             setProgress(15);
@@ -112,7 +154,9 @@ const App: React.FC = () => {
               timestamp: new Date().toISOString(),
               type: ResearchStepType.GENERATING_QUERIES,
               sources: [],
-              isSpinning: true
+              isSpinning: true,
+              toolsUsed: [],
+              recommendedTools: ['query_analysis', 'paradigm_classification']
             };
             setResearch(prev => [...prev, generatingStep]);
             
@@ -126,7 +170,9 @@ const App: React.FC = () => {
               timestamp: new Date().toISOString(),
               type: ResearchStepType.GENERATING_QUERIES,
               sources: [],
-              isSpinning: true
+              isSpinning: true,
+              toolsUsed: [],
+              recommendedTools: ['paradigm_routing', 'strategy_selection']
             };
             setResearch(prev => [...prev, routingStep]);
             
@@ -140,7 +186,9 @@ const App: React.FC = () => {
               timestamp: new Date().toISOString(),
               type: ResearchStepType.WEB_RESEARCH,
               sources: [],
-              isSpinning: true
+              isSpinning: true,
+              toolsUsed: [],
+              recommendedTools: ['web_search', 'google_search', 'bing_search', 'academic_search']
             };
             setResearch(prev => [...prev, searchingStep]);
             
@@ -154,7 +202,9 @@ const App: React.FC = () => {
               timestamp: new Date().toISOString(),
               type: ResearchStepType.REFLECTION,
               sources: [],
-              isSpinning: true
+              isSpinning: true,
+              toolsUsed: [],
+              recommendedTools: ['quality_evaluation', 'fact_verification', 'source_validation']
             };
             setResearch(prev => [...prev, reflectionStep]);
             
@@ -169,7 +219,9 @@ const App: React.FC = () => {
               timestamp: new Date().toISOString(),
               type: ResearchStepType.SEARCHING_FINAL_ANSWER,
               sources: [],
-              isSpinning: true
+              isSpinning: true,
+              toolsUsed: [],
+              recommendedTools: ['synthesis_engine', 'content_compression', 'narrative_generation']
             };
             setResearch(prev => [...prev, synthesisStep]);
           }
@@ -452,6 +504,11 @@ const App: React.FC = () => {
 
           <div className="research-container flex flex-col">
             <ResearchArea steps={research} />
+            
+            {/* Live Function Call Indicator */}
+            {enhancedMode && liveFunctionCalls.length > 0 && (
+              <LiveFunctionCallIndicator calls={liveFunctionCalls} />
+            )}
             
             {/* Function Call History */}
             {enhancedMode && functionHistory.length > 0 && (

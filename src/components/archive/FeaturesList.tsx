@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChatBubbleLeftRightIcon, CpuChipIcon, QuestionMarkCircleIcon, GlobeAltIcon, SparklesIcon } from './icons';
+import { ChatBubbleLeftRightIcon, CpuChipIcon, QuestionMarkCircleIcon, GlobeAltIcon, SparklesIcon } from '../icons';
 
 interface FeatureItemProps {
   icon: React.ElementType;

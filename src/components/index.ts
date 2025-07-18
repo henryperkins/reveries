@@ -20,6 +20,8 @@ export {
 } from './ParadigmUI';
 export { ErrorBoundary } from './ErrorBoundary';
 export { RateLimitIndicator } from './RateLimitIndicator';
+export { ToolUsageIndicator } from './ToolUsageIndicator';
+export { LiveFunctionCallIndicator } from './LiveFunctionCallIndicator';
 
 // Export icons separately
 export * as Icons from './icons';

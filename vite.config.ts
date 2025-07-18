@@ -1,8 +1,8 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
-import { NodeGlobalsPolyfillPlugin, NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
+import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
+import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfill';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -10,14 +10,6 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      // Polyfill Node.js core modules (util, stream, crypto, etc.) for browser compatibility
-      nodePolyfills({
-        globals: {
-          buffer: true,
-          process: true,
-        },
-        protocolImports: true,
-      }),
     ],
     optimizeDeps: {
       include: [
