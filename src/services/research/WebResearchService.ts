@@ -51,7 +51,7 @@ export class WebResearchService {
   }
 
   /**
-   * Perform web research using generated queries
+   * Perform web research using real search APIs
    */
   async performWebResearch(
     queries: string[],
@@ -71,48 +71,104 @@ export class WebResearchService {
       };
     }
 
+    // Import search provider service
+    const { SearchProviderService } = await import('../search/SearchProviderService');
+    const searchService = SearchProviderService.getInstance();
+
     for (const query of queries) {
       onProgress?.(`Searching for: "${query}"`);
-      const searchPrompt = `Perform a web search and provide a concise summary of key information found for the query: "${query}". Focus on factual information and insights. If no relevant information is found, state that clearly.`;
-
+      
       try {
-        const { text, sources } = await generateText(
-          searchPrompt,
-          model,
-          effort
-        );
+        // Perform real web search
+        const searchResponse = await searchService.search(query, {
+          maxResults: 10,
+          safe: true,
+          timeRange: 'month' // Focus on recent results
+        });
 
-        if (text && text.trim()) {
-          findingsOutputParts.push(`## ${query}\n\n${text}`);
+        onProgress?.(`Found ${searchResponse.results.length} results for "${query}"`);
+
+        if (searchResponse.results.length === 0) {
+          findingsOutputParts.push(`## ${query}\n\nNo search results found for this query.`);
+          continue;
         }
 
-        // Add unique sources
-        if (sources) {
-          sources.forEach(source => {
-            const sourceKey = ResearchUtilities.normalizeSourceKey(source);
-            if (!uniqueSourceKeys.has(sourceKey)) {
-              uniqueSourceKeys.add(sourceKey);
-              allSources.push(source);
-            }
-          });
-          onProgress?.(`Found ${sources.length} sources for "${query}"`);
-        } else {
-          onProgress?.(`No sources found for "${query}"`);
-        }
-      } catch (error) {
-        console.error(`Error researching query "${query}":`, error);
-        onProgress?.(`Error searching for "${query}", retrying...`);
+        // Convert search results to citations
+        const searchCitations = searchService.convertToCitations(searchResponse.results);
         
-        // Simple retry mechanism
+        // Add unique sources
+        searchCitations.forEach(source => {
+          const sourceKey = ResearchUtilities.normalizeSourceKey(source);
+          if (!uniqueSourceKeys.has(sourceKey)) {
+            uniqueSourceKeys.add(sourceKey);
+            allSources.push(source);
+          }
+        });
+
+        // Summarize search results using LLM
+        const searchContext = searchResponse.results
+          .slice(0, 5) // Top 5 results for context
+          .map(result => `Title: ${result.title}\nURL: ${result.url}\nSnippet: ${result.snippet}`)
+          .join('\n\n---\n\n');
+
+        const summaryPrompt = `Based on the following search results for the query "${query}", provide a comprehensive summary of the key information found. Focus on factual insights and important findings. If the results don't contain relevant information, state that clearly.
+
+Search Results:
+${searchContext}
+
+Please provide a well-structured summary that synthesizes the information from these sources.`;
+
         try {
+          const { text: summary, sources: additionalSources } = await generateText(
+            summaryPrompt,
+            model,
+            effort
+          );
+
+          if (summary && summary.trim()) {
+            findingsOutputParts.push(`## ${query}\n\n${summary}`);
+          }
+
+          // Add any additional sources from LLM response
+          if (additionalSources) {
+            additionalSources.forEach(source => {
+              const sourceKey = ResearchUtilities.normalizeSourceKey(source);
+              if (!uniqueSourceKeys.has(sourceKey)) {
+                uniqueSourceKeys.add(sourceKey);
+                allSources.push(source);
+              }
+            });
+          }
+
+          onProgress?.(`Summarized ${searchResponse.results.length} sources for "${query}"`);
+        } catch (summaryError) {
+          console.error(`Error summarizing results for "${query}":`, summaryError);
+          // Fallback: Use raw search results
+          const fallbackSummary = searchResponse.results
+            .slice(0, 3)
+            .map(result => `**${result.title}**\n${result.snippet}\nSource: ${result.url}`)
+            .join('\n\n');
+          
+          findingsOutputParts.push(`## ${query}\n\n${fallbackSummary}`);
+          onProgress?.(`Used raw search results for "${query}" due to summarization error`);
+        }
+
+      } catch (searchError) {
+        console.error(`Error searching for "${query}":`, searchError);
+        onProgress?.(`Search failed for "${query}", trying LLM fallback...`);
+        
+        // Fallback to LLM-only approach if search fails
+        try {
+          const fallbackPrompt = `Provide information about: "${query}". Focus on factual information and insights based on your training data. If you don't have reliable information about this topic, state that clearly.`;
+          
           const { text, sources } = await generateText(
-            searchPrompt,
+            fallbackPrompt,
             model,
             effort
           );
           
           if (text && text.trim()) {
-            findingsOutputParts.push(`## ${query}\n\n${text}`);
+            findingsOutputParts.push(`## ${query}\n\n${text}\n\n*Note: This information is based on training data as web search was unavailable.*`);
           }
           
           if (sources) {
@@ -123,12 +179,13 @@ export class WebResearchService {
                 allSources.push(source);
               }
             });
-            onProgress?.(`Retry successful: Found ${sources.length} sources for "${query}"`);
           }
-        } catch (retryError) {
-          console.error(`Retry failed for query "${query}":`, retryError);
-          onProgress?.(`Search failed for "${query}" after retry`);
-          findingsOutputParts.push(`## ${query}\n\nError performing search for this query.`);
+          
+          onProgress?.(`Used LLM fallback for "${query}"`);
+        } catch (fallbackError) {
+          console.error(`Fallback failed for query "${query}":`, fallbackError);
+          onProgress?.(`All search methods failed for "${query}"`);
+          findingsOutputParts.push(`## ${query}\n\nUnable to retrieve information for this query. Both web search and LLM fallback failed.`);
         }
       }
     }

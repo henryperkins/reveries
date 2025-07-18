@@ -1,22 +1,16 @@
 /**
- * Service compatibility wrapper
- * Routes to either the original or refactored ResearchAgentService based on feature flag
+ * ResearchAgentService - Main research service
+ * Uses the fully refactored and feature-complete implementation
  */
 
-import { USE_REFACTORED_RESEARCH_SERVICE } from '../constants';
-import { ResearchAgentService as OriginalService } from './researchAgentService';
 import { ResearchAgentService as RefactoredService } from './researchAgentServiceRefactored';
 
-// Export the appropriate service based on feature flag
-export const ResearchAgentService = USE_REFACTORED_RESEARCH_SERVICE 
-  ? RefactoredService 
-  : OriginalService;
+// Always use the refactored service now that it's feature-complete
+export const ResearchAgentService = RefactoredService;
 
-// Log which implementation is being used (development only)
-if (import.meta.env.DEV) {
-  console.log(
-    `[ResearchAgentService] Using ${USE_REFACTORED_RESEARCH_SERVICE ? 'REFACTORED' : 'ORIGINAL'} implementation`
-  );
+// Log service initialization (development only)
+if (import.meta.env?.DEV || (typeof process !== 'undefined' && process.env.NODE_ENV === 'development')) {
+  console.log('[ResearchAgentService] Using fully implemented refactored service');
 }
 
 // Re-export types that might be needed

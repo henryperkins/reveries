@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   ResearchStep,
-  ResearchState,
   ResearchStepType,
   ModelType,
   EffortType,
@@ -13,7 +12,6 @@ import {
   ContextDensity,
   ResearchPhase
 } from './types';
-import { ResearchAgentService } from './services';
 
 export interface GraphNode {
     id: string;
@@ -202,6 +200,71 @@ export class ResearchGraphManager {
      */
     public getNodes(): GraphNode[] {
         return Array.from(this.graph.nodes.values());
+    }
+
+    /**
+     * Return all edges in the graph
+     */
+    public getEdges(): GraphEdge[] {
+        return Array.from(this.graph.edges.values());
+    }
+
+    /**
+     * Get edges by source node ID
+     */
+    public getEdgesBySource(sourceId: string): GraphEdge[] {
+        return this.getEdges().filter(edge => edge.source === sourceId);
+    }
+
+    /**
+     * Get edges by target node ID
+     */
+    public getEdgesByTarget(targetId: string): GraphEdge[] {
+        return this.getEdges().filter(edge => edge.target === targetId);
+    }
+
+    /**
+     * Get edges by type
+     */
+    public getEdgesByType(type: GraphEdge['type']): GraphEdge[] {
+        return this.getEdges().filter(edge => edge.type === type);
+    }
+
+    /**
+     * Get all edges connected to a specific node (incoming or outgoing)
+     */
+    public getConnectedEdges(nodeId: string): GraphEdge[] {
+        return this.getEdges().filter(edge => 
+            edge.source === nodeId || edge.target === nodeId
+        );
+    }
+
+    /**
+     * Check if two nodes are connected by an edge
+     */
+    public areNodesConnected(sourceId: string, targetId: string): boolean {
+        return this.getEdges().some(edge => 
+            edge.source === sourceId && edge.target === targetId
+        );
+    }
+
+    /**
+     * Remove an edge by ID
+     */
+    public removeEdge(edgeId: string): boolean {
+        return this.graph.edges.delete(edgeId);
+    }
+
+    /**
+     * Update an edge
+     */
+    public updateEdge(edgeId: string, updates: Partial<GraphEdge>): boolean {
+        const edge = this.graph.edges.get(edgeId);
+        if (!edge) return false;
+        
+        const updatedEdge = { ...edge, ...updates };
+        this.graph.edges.set(edgeId, updatedEdge);
+        return true;
     }
 
     // Add an edge between nodes
@@ -529,16 +592,35 @@ export class ResearchGraphManager {
         const node = this.graph.nodes.get(nodeId);
         if (!node) return [];
 
-        const agentService = ResearchAgentService.getInstance();
-        const similarSteps = await agentService.semanticSearch(node.title);
-
-        return similarSteps
-            .filter((step: ResearchState) => step.query !== nodeId)
-            .map((step: ResearchState) => ({
-                node: this.graph.nodes.get(step.query)!,
-                similarity: 1 - (step.evaluation?.completeness || 0),
-            }))
-            .filter((result: { node: GraphNode; similarity: number }) => result.similarity >= threshold);
+        try {
+            // Use embedding service for semantic similarity instead of deprecated service
+            const { EmbeddingService } = await import('./services/ai/EmbeddingService');
+            const embeddingService = EmbeddingService.getInstance();
+            
+            const nodeEmbedding = await embeddingService.generateEmbedding(node.title);
+            const similarNodes: { node: GraphNode; similarity: number }[] = [];
+            
+            // Compare with other nodes in the graph
+            for (const [otherNodeId, otherNode] of this.graph.nodes.entries()) {
+                if (otherNodeId === nodeId) continue;
+                
+                try {
+                    const otherEmbedding = await embeddingService.generateEmbedding(otherNode.title);
+                    const similarity = embeddingService.calculateSimilarity(nodeEmbedding, otherEmbedding);
+                    
+                    if (similarity >= threshold) {
+                        similarNodes.push({ node: otherNode, similarity });
+                    }
+                } catch (error) {
+                    console.warn(`Failed to calculate similarity for node ${otherNodeId}:`, error);
+                }
+            }
+            
+            return similarNodes.sort((a, b) => b.similarity - a.similarity);
+        } catch (error) {
+            console.error('Semantic search failed:', error);
+            return [];
+        }
     }
 }
 

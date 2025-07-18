@@ -60,7 +60,7 @@ export class ParadigmResearchService {
    * Determine host paradigm for a query
    */
   async determineHostParadigm(query: string): Promise<HostParadigm | null> {
-    const probabilities = this.paradigmClassifier.classify(query);
+    const probabilities = await this.paradigmClassifier.classify(query);
     const dominant = this.paradigmClassifier.dominant(probabilities, 0.4);
     
     return dominant.length > 0 ? dominant[0] : null;

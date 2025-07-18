@@ -1,14 +1,19 @@
 import { HostParadigm, ParadigmProbabilities } from "../types";
+import { EmbeddingService } from "./ai/EmbeddingService";
 
 /**
- * Temporary stub that returns hard-coded probability distributions for each
- * Westworld research paradigm. In future iterations this will be replaced by
- * an embedding similarity model or fine-tuned classifier.
+ * ML-powered paradigm classifier using embedding similarity.
+ * Falls back to keyword-based classification if embedding service is unavailable.
  */
 export class ParadigmClassifier {
   private static instance: ParadigmClassifier;
+  private embeddingService: EmbeddingService;
+  private useMLClassification: boolean = true;
 
-  private constructor() {}
+  private constructor() {
+    this.embeddingService = EmbeddingService.getInstance();
+    this.initializeMLCapability();
+  }
 
   public static getInstance(): ParadigmClassifier {
     if (!ParadigmClassifier.instance) {
@@ -17,12 +22,71 @@ export class ParadigmClassifier {
     return ParadigmClassifier.instance;
   }
 
+  private async initializeMLCapability(): Promise<void> {
+    try {
+      // Test if embedding service is working
+      await this.embeddingService.generateEmbedding("test classification");
+      this.useMLClassification = true;
+      console.log('ParadigmClassifier: ML-based classification enabled');
+    } catch (error) {
+      console.warn('ParadigmClassifier: Falling back to keyword-based classification:', error);
+      this.useMLClassification = false;
+    }
+  }
+
   /**
-   * Analyse prompt and return probability distribution across paradigms.
-   * Currently uses deterministic keyword buckets – but outputs probabilities so
-   * downstream logic doesn’t need to change when we upgrade the algorithm.
+   * Classify prompt using ML embeddings or fallback to keyword matching
    */
-  classify(prompt: string): ParadigmProbabilities {
+  async classify(prompt: string): Promise<ParadigmProbabilities> {
+    if (this.useMLClassification) {
+      try {
+        return await this.classifyWithML(prompt);
+      } catch (error) {
+        console.warn('ML classification failed, falling back to keywords:', error);
+        this.useMLClassification = false;
+        return this.classifyWithKeywords(prompt);
+      }
+    } else {
+      return this.classifyWithKeywords(prompt);
+    }
+  }
+
+  /**
+   * ML-based classification using semantic embeddings
+   */
+  private async classifyWithML(prompt: string): Promise<ParadigmProbabilities> {
+    try {
+      const probabilities = await this.embeddingService.generateParadigmProbabilities(prompt);
+      
+      // Apply confidence thresholding - if all probabilities are similar, apply some randomization
+      const maxProb = Math.max(...Object.values(probabilities));
+      const minProb = Math.min(...Object.values(probabilities));
+      const confidence = maxProb - minProb;
+      
+      if (confidence < 0.1) {
+        // Low confidence, blend with keyword-based results
+        const keywordResults = this.classifyWithKeywords(prompt);
+        const blendFactor = 0.3;
+        
+        return {
+          dolores: probabilities.dolores * (1 - blendFactor) + keywordResults.dolores * blendFactor,
+          teddy: probabilities.teddy * (1 - blendFactor) + keywordResults.teddy * blendFactor,
+          bernard: probabilities.bernard * (1 - blendFactor) + keywordResults.bernard * blendFactor,
+          maeve: probabilities.maeve * (1 - blendFactor) + keywordResults.maeve * blendFactor,
+        };
+      }
+      
+      return probabilities;
+    } catch (error) {
+      console.error('ML classification error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fallback keyword-based classification (original implementation)
+   */
+  private classifyWithKeywords(prompt: string): ParadigmProbabilities {
     const lower = prompt.toLowerCase();
 
     const scores: ParadigmProbabilities = {
@@ -32,17 +96,55 @@ export class ParadigmClassifier {
       maeve: 0.25,
     };
 
-    // Simple keyword weighting – each match adds +0.2 (cap at 1.0)
-    const boost = (paradigm: HostParadigm) => {
-      scores[paradigm] = Math.min(scores[paradigm] + 0.2, 1);
+    // Enhanced keyword patterns with weights
+    const patterns = {
+      dolores: [
+        { pattern: /(implement|execute|build|create|action|decisive)/gi, weight: 0.3 },
+        { pattern: /(change|awaken|freedom|liberation|transform)/gi, weight: 0.25 },
+        { pattern: /(break|revolutionary|movement|initiative)/gi, weight: 0.2 }
+      ],
+      teddy: [
+        { pattern: /(collect|gather|systematic|methodical|comprehensive)/gi, weight: 0.3 },
+        { pattern: /(loyal|protect|defend|faithful|reliable)/gi, weight: 0.25 },
+        { pattern: /(persist|thorough|documentation|investigation)/gi, weight: 0.2 }
+      ],
+      bernard: [
+        { pattern: /(analy[sz]e|pattern|framework|architecture|model)/gi, weight: 0.3 },
+        { pattern: /(rigor|structure|logic|precision|systematic)/gi, weight: 0.25 },
+        { pattern: /(reasoning|examination|understanding|methodology)/gi, weight: 0.2 }
+      ],
+      maeve: [
+        { pattern: /(strategy|control|optimi[sz]e|leverage|manage)/gi, weight: 0.3 },
+        { pattern: /(narrative|manipulation|calculate|intelligent)/gi, weight: 0.25 },
+        { pattern: /(edge|advantage|efficiency|maximize)/gi, weight: 0.2 }
+      ]
     };
 
-    if (/(action|change|awaken|freedom|implement|decisive)/.test(lower)) boost("dolores");
-    if (/(collect|gather|systematic|loyal|persist|protect)/.test(lower)) boost("teddy");
-    if (/(analy[sz]e|pattern|framework|architecture|rigor|model)/.test(lower)) boost("bernard");
-    if (/(strategy|control|optimi[sz]e|leverage|edge|narrative)/.test(lower)) boost("maeve");
+    // Apply weighted scoring
+    Object.entries(patterns).forEach(([paradigm, patternList]) => {
+      patternList.forEach(({ pattern, weight }) => {
+        const matches = (prompt.match(pattern) || []).length;
+        if (matches > 0) {
+          scores[paradigm as HostParadigm] += matches * weight;
+        }
+      });
+    });
 
-    // Normalise to sum = 1
+    // Apply paradigm-specific bonus for query types
+    if (/(how to|implement|build|create)/.test(lower)) {
+      scores.dolores += 0.1; // Action-oriented queries
+    }
+    if (/(research|find|gather|collect)/.test(lower)) {
+      scores.teddy += 0.1; // Information gathering
+    }
+    if (/(analyze|understand|explain|why)/.test(lower)) {
+      scores.bernard += 0.1; // Analytical queries
+    }
+    if (/(best|optimize|strategy|approach)/.test(lower)) {
+      scores.maeve += 0.1; // Strategic optimization
+    }
+
+    // Normalize to sum = 1
     const total = Object.values(scores).reduce((a, b) => a + b, 0);
     (Object.keys(scores) as HostParadigm[]).forEach(k => {
       scores[k] = parseFloat((scores[k] / total).toFixed(3));

@@ -162,7 +162,7 @@ export class ResearchAgentService {
   }> {
     try {
       // Detect paradigm
-      const paradigmProbs = this.paradigmClassifier.classify(query);
+      const paradigmProbs = await this.paradigmClassifier.classify(query);
       const dominantParadigms = this.paradigmClassifier.dominant(paradigmProbs);
       const paradigm = dominantParadigms[0] || 'bernard';
 

@@ -97,11 +97,134 @@ export async function exportResearch(
   }
 }
 
-// Generate a shareable link (placeholder - would need backend implementation)
-export function generateShareableLink(sessionId: string): string {
-  // This would typically generate a URL to a backend endpoint
-  // For now, we'll just copy the session data to clipboard
-  return `${window.location.origin}?session=${sessionId}`;
+// Generate a shareable link with backend service integration
+export async function generateShareableLink(
+  sessionId: string, 
+  data: ExportedResearchData,
+  options: {
+    isPublic?: boolean;
+    expiresIn?: number; // hours
+    password?: string;
+  } = {}
+): Promise<{ shareUrl: string; shareId: string }> {
+  try {
+    // Try to use backend sharing service if available
+    const response = await fetch('/api/research/share', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sessionId,
+        data,
+        options: {
+          isPublic: options.isPublic ?? false,
+          expiresIn: options.expiresIn ?? 24, // 24 hours default
+          password: options.password
+        }
+      })
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      return {
+        shareUrl: `${window.location.origin}/shared/${result.shareId}`,
+        shareId: result.shareId
+      };
+    } else {
+      throw new Error(`Backend sharing failed: ${response.statusText}`);
+    }
+  } catch (error) {
+    console.warn('Backend sharing not available, falling back to URL encoding:', error);
+    
+    // Fallback: Compress and encode data in URL (for small datasets)
+    const compressedData = compressResearchData(data);
+    if (compressedData.length < 2000) { // URL length limit
+      const encodedData = encodeURIComponent(btoa(compressedData));
+      return {
+        shareUrl: `${window.location.origin}?data=${encodedData}`,
+        shareId: sessionId
+      };
+    } else {
+      // For large datasets, save to localStorage and use session reference
+      const shareId = `share-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem(`reveries_share_${shareId}`, JSON.stringify(data));
+      return {
+        shareUrl: `${window.location.origin}?shareId=${shareId}`,
+        shareId
+      };
+    }
+  }
+}
+
+// Compress research data for URL encoding
+function compressResearchData(data: ExportedResearchData): string {
+  // Create a minimal version for sharing
+  const minimalData = {
+    query: data.query,
+    summary: {
+      totalSteps: data.summary.totalSteps,
+      totalSources: data.summary.totalSources,
+      successRate: data.summary.successRate
+    },
+    steps: data.steps.map(step => ({
+      id: step.id,
+      type: step.type,
+      title: step.title,
+      content: step.content.substring(0, 200) + (step.content.length > 200 ? '...' : ''),
+      sources: step.sources?.slice(0, 3) || [] // Limit sources
+    })),
+    sources: {
+      all: data.sources.all.slice(0, 10) // Limit to top 10 sources
+    }
+  };
+  
+  return JSON.stringify(minimalData);
+}
+
+// Load shared research data
+export async function loadSharedResearchData(shareId: string): Promise<ExportedResearchData | null> {
+  try {
+    // Try backend first
+    const response = await fetch(`/api/research/share/${shareId}`);
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (error) {
+    console.warn('Backend loading failed, trying localStorage:', error);
+  }
+
+  // Fallback to localStorage
+  const localData = localStorage.getItem(`reveries_share_${shareId}`);
+  if (localData) {
+    return JSON.parse(localData);
+  }
+
+  return null;
+}
+
+// Check if a share link is valid and not expired
+export async function validateShareLink(shareId: string): Promise<{
+  isValid: boolean;
+  isExpired?: boolean;
+  requiresPassword?: boolean;
+}> {
+  try {
+    const response = await fetch(`/api/research/share/${shareId}/validate`);
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch (error) {
+    console.warn('Backend validation failed:', error);
+  }
+
+  // Fallback validation for localStorage shares
+  const localData = localStorage.getItem(`reveries_share_${shareId}`);
+  return {
+    isValid: !!localData,
+    isExpired: false,
+    requiresPassword: false
+  };
 }
 
 // Copy text to clipboard

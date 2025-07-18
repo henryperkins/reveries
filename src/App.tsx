@@ -101,8 +101,9 @@ const App: React.FC = () => {
       const result = await researchAgent.processQuery(
         input, 
         currentModel, 
-        effort,
-        (message: string) => {
+        {
+          phase: currentPhase,
+          onProgress: (message: string) => {
           console.log('🔄 Research Progress:', message);
           
           // Handle tool usage tracking
@@ -248,6 +249,7 @@ const App: React.FC = () => {
           else if (message.includes('Selecting') || message.includes('sources')) setCurrentLayer('select')
           else if (message.includes('Compressing') || message.includes('synthesis')) setCurrentLayer('compress')
           else if (message.includes('Isolating') || message.includes('analysis')) setCurrentLayer('isolate')
+          }
         }
       )
 

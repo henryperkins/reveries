@@ -56,12 +56,55 @@ export class ResearchToolsService {
         required: ['query']
       },
       execute: async (_args) => {
-        // Implementation would use search APIs with filters
-        return {
-          results: [],
-          totalFound: 0,
-          filters: _args
-        };
+        const { SearchProviderService } = await import('./search/SearchProviderService');
+        const searchService = SearchProviderService.getInstance();
+        
+        try {
+          const searchOptions: any = {
+            maxResults: 20,
+            safe: true
+          };
+
+          if (_args.domains && _args.domains.length > 0) {
+            searchOptions.domains = _args.domains;
+          }
+
+          if (_args.fileType && _args.fileType !== 'any') {
+            searchOptions.fileType = _args.fileType;
+          }
+
+          if (_args.dateRange) {
+            const { start, end } = _args.dateRange;
+            if (start && end) {
+              const daysDiff = Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60 * 24));
+              if (daysDiff <= 7) searchOptions.timeRange = 'week';
+              else if (daysDiff <= 30) searchOptions.timeRange = 'month';
+              else if (daysDiff <= 365) searchOptions.timeRange = 'year';
+            }
+          }
+
+          const response = await searchService.search(_args.query, searchOptions);
+          
+          return {
+            results: response.results.map(r => ({
+              title: r.title,
+              url: r.url,
+              snippet: r.snippet,
+              relevanceScore: r.relevanceScore
+            })),
+            totalFound: response.totalResults || response.results.length,
+            filters: _args,
+            provider: response.provider
+          };
+        } catch (error) {
+          console.error('Advanced search failed:', error);
+          return {
+            results: [],
+            totalFound: 0,
+            filters: _args,
+            error: error instanceof Error ? error.message : 'Search failed'
+          };
+        }
       }
     });
 
@@ -90,11 +133,53 @@ export class ResearchToolsService {
         required: ['query']
       },
       execute: async (_args) => {
-        // Would integrate with academic APIs
-        return {
-          papers: [],
-          database: _args.database || 'all'
-        };
+        try {
+          // Try arxiv search if specified or as fallback
+          if (_args.database === 'arxiv' || _args.database === 'all') {
+            const arxivResults = await this.searchArxiv(_args.query, _args.limit || 10);
+            if (arxivResults.length > 0) {
+              return {
+                papers: arxivResults,
+                database: 'arxiv',
+                source: 'arXiv.org'
+              };
+            }
+          }
+
+          // Try general academic search through search provider
+          const { SearchProviderService } = await import('./search/SearchProviderService');
+          const searchService = SearchProviderService.getInstance();
+          
+          const academicQuery = `${_args.query} filetype:pdf site:arxiv.org OR site:pubmed.ncbi.nlm.nih.gov OR site:scholar.google.com`;
+          const response = await searchService.search(academicQuery, {
+            maxResults: _args.limit || 10,
+            domains: ['arxiv.org', 'pubmed.ncbi.nlm.nih.gov', 'ncbi.nlm.nih.gov'],
+            fileType: 'pdf'
+          });
+
+          const papers = response.results.map(result => ({
+            title: result.title,
+            url: result.url,
+            abstract: result.snippet,
+            authors: this.extractAuthorsFromSnippet(result.snippet),
+            publishedDate: result.publishedDate,
+            source: this.identifyAcademicSource(result.url),
+            relevanceScore: result.relevanceScore
+          }));
+
+          return {
+            papers,
+            database: _args.database || 'search',
+            totalFound: response.totalResults
+          };
+        } catch (error) {
+          console.error('Academic search failed:', error);
+          return {
+            papers: [],
+            database: _args.database || 'all',
+            error: error instanceof Error ? error.message : 'Academic search failed'
+          };
+        }
       }
     });
 
@@ -140,11 +225,30 @@ export class ResearchToolsService {
         required: ['data', 'analysisType']
       },
       execute: async (_args) => {
-        // Would perform actual statistical calculations
-        return {
-          analysis: _args.analysisType,
-          results: {}
-        };
+        try {
+          const data = _args.data;
+          const analysisType = _args.analysisType;
+
+          switch (analysisType) {
+            case 'descriptive':
+              return this.performDescriptiveAnalysis(data);
+            case 'correlation':
+              return this.performCorrelationAnalysis(data);
+            case 'regression':
+              return this.performRegressionAnalysis(data);
+            case 'timeseries':
+              return this.performTimeSeriesAnalysis(data);
+            default:
+              return this.performDescriptiveAnalysis(data);
+          }
+        } catch (error) {
+          console.error('Statistical analysis failed:', error);
+          return {
+            analysis: _args.analysisType,
+            results: {},
+            error: error instanceof Error ? error.message : 'Analysis failed'
+          };
+        }
       }
     });
 
@@ -636,5 +740,289 @@ Format: Author Year, 'Title of Work', Website Name, viewed Date, <URL>.
 
 Choose the appropriate style based on your academic or professional requirements.
     `.trim();
+  }
+
+  // Statistical analysis helper methods
+  private performDescriptiveAnalysis(data: number[]): any {
+    const sorted = [...data].sort((a, b) => a - b);
+    const n = data.length;
+    const sum = data.reduce((acc, val) => acc + val, 0);
+    const mean = sum / n;
+    
+    const variance = data.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (n - 1);
+    const stdDev = Math.sqrt(variance);
+    
+    const median = n % 2 === 0 
+      ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2 
+      : sorted[Math.floor(n / 2)];
+    
+    const q1 = sorted[Math.floor(n * 0.25)];
+    const q3 = sorted[Math.floor(n * 0.75)];
+    
+    return {
+      analysis: 'descriptive',
+      results: {
+        count: n,
+        mean: parseFloat(mean.toFixed(4)),
+        median: parseFloat(median.toFixed(4)),
+        standardDeviation: parseFloat(stdDev.toFixed(4)),
+        variance: parseFloat(variance.toFixed(4)),
+        minimum: sorted[0],
+        maximum: sorted[n - 1],
+        range: sorted[n - 1] - sorted[0],
+        quartiles: {
+          q1: parseFloat(q1.toFixed(4)),
+          q3: parseFloat(q3.toFixed(4)),
+          iqr: parseFloat((q3 - q1).toFixed(4))
+        },
+        summary: `Dataset of ${n} values with mean ${mean.toFixed(2)} and std dev ${stdDev.toFixed(2)}`
+      }
+    };
+  }
+
+  private performCorrelationAnalysis(data: number[]): any {
+    // For simple correlation, assume data represents paired values [x1, y1, x2, y2, ...]
+    if (data.length < 4 || data.length % 2 !== 0) {
+      return {
+        analysis: 'correlation',
+        results: {},
+        error: 'Correlation analysis requires paired data (even number of values)'
+      };
+    }
+
+    const pairs = [];
+    for (let i = 0; i < data.length; i += 2) {
+      pairs.push([data[i], data[i + 1]]);
+    }
+
+    const n = pairs.length;
+    const xValues = pairs.map(p => p[0]);
+    const yValues = pairs.map(p => p[1]);
+    
+    const xMean = xValues.reduce((sum, x) => sum + x, 0) / n;
+    const yMean = yValues.reduce((sum, y) => sum + y, 0) / n;
+    
+    let numerator = 0;
+    let xSumSq = 0;
+    let ySumSq = 0;
+    
+    for (let i = 0; i < n; i++) {
+      const xDiff = xValues[i] - xMean;
+      const yDiff = yValues[i] - yMean;
+      numerator += xDiff * yDiff;
+      xSumSq += xDiff * xDiff;
+      ySumSq += yDiff * yDiff;
+    }
+    
+    const correlation = numerator / Math.sqrt(xSumSq * ySumSq);
+    const rSquared = correlation * correlation;
+    
+    return {
+      analysis: 'correlation',
+      results: {
+        correlationCoefficient: parseFloat(correlation.toFixed(4)),
+        rSquared: parseFloat(rSquared.toFixed(4)),
+        strength: this.interpretCorrelation(Math.abs(correlation)),
+        direction: correlation > 0 ? 'positive' : correlation < 0 ? 'negative' : 'no correlation',
+        pairsAnalyzed: n,
+        summary: `${this.interpretCorrelation(Math.abs(correlation))} ${correlation > 0 ? 'positive' : 'negative'} correlation (r = ${correlation.toFixed(3)})`
+      }
+    };
+  }
+
+  private performRegressionAnalysis(data: number[]): any {
+    // Simple linear regression, assume paired data
+    if (data.length < 4 || data.length % 2 !== 0) {
+      return {
+        analysis: 'regression',
+        results: {},
+        error: 'Regression analysis requires paired data (even number of values)'
+      };
+    }
+
+    const pairs = [];
+    for (let i = 0; i < data.length; i += 2) {
+      pairs.push([data[i], data[i + 1]]);
+    }
+
+    const n = pairs.length;
+    const xValues = pairs.map(p => p[0]);
+    const yValues = pairs.map(p => p[1]);
+    
+    const xMean = xValues.reduce((sum, x) => sum + x, 0) / n;
+    const yMean = yValues.reduce((sum, y) => sum + y, 0) / n;
+    
+    let numerator = 0;
+    let denominator = 0;
+    
+    for (let i = 0; i < n; i++) {
+      const xDiff = xValues[i] - xMean;
+      numerator += xDiff * (yValues[i] - yMean);
+      denominator += xDiff * xDiff;
+    }
+    
+    const slope = numerator / denominator;
+    const intercept = yMean - slope * xMean;
+    
+    // Calculate R-squared
+    let ssRes = 0;
+    let ssTot = 0;
+    
+    for (let i = 0; i < n; i++) {
+      const predicted = slope * xValues[i] + intercept;
+      ssRes += Math.pow(yValues[i] - predicted, 2);
+      ssTot += Math.pow(yValues[i] - yMean, 2);
+    }
+    
+    const rSquared = 1 - (ssRes / ssTot);
+    
+    return {
+      analysis: 'regression',
+      results: {
+        slope: parseFloat(slope.toFixed(4)),
+        intercept: parseFloat(intercept.toFixed(4)),
+        rSquared: parseFloat(rSquared.toFixed(4)),
+        equation: `y = ${slope.toFixed(4)}x + ${intercept.toFixed(4)}`,
+        goodnessOfFit: rSquared > 0.7 ? 'good' : rSquared > 0.5 ? 'moderate' : 'poor',
+        summary: `Linear regression: y = ${slope.toFixed(2)}x + ${intercept.toFixed(2)} (R² = ${rSquared.toFixed(3)})`
+      }
+    };
+  }
+
+  private performTimeSeriesAnalysis(data: number[]): any {
+    if (data.length < 3) {
+      return {
+        analysis: 'timeseries',
+        results: {},
+        error: 'Time series analysis requires at least 3 data points'
+      };
+    }
+
+    // Calculate trend using linear regression
+    const xValues = Array.from({ length: data.length }, (_, i) => i);
+    const yValues = data;
+    const n = data.length;
+    
+    const xMean = xValues.reduce((sum, x) => sum + x, 0) / n;
+    const yMean = yValues.reduce((sum, y) => sum + y, 0) / n;
+    
+    let numerator = 0;
+    let denominator = 0;
+    
+    for (let i = 0; i < n; i++) {
+      const xDiff = xValues[i] - xMean;
+      numerator += xDiff * (yValues[i] - yMean);
+      denominator += xDiff * xDiff;
+    }
+    
+    const trend = numerator / denominator;
+    
+    // Calculate volatility (standard deviation)
+    const mean = yMean;
+    const variance = data.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (n - 1);
+    const volatility = Math.sqrt(variance);
+    
+    // Detect direction changes
+    let increases = 0;
+    let decreases = 0;
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i] > data[i - 1]) increases++;
+      else if (data[i] < data[i - 1]) decreases++;
+    }
+    
+    return {
+      analysis: 'timeseries',
+      results: {
+        trend: parseFloat(trend.toFixed(4)),
+        trendDirection: trend > 0.01 ? 'increasing' : trend < -0.01 ? 'decreasing' : 'stable',
+        volatility: parseFloat(volatility.toFixed(4)),
+        dataPoints: n,
+        increases,
+        decreases,
+        stability: volatility < mean * 0.1 ? 'stable' : volatility < mean * 0.3 ? 'moderate' : 'volatile',
+        summary: `${trend > 0 ? 'Increasing' : trend < 0 ? 'Decreasing' : 'Stable'} trend with ${volatility < mean * 0.2 ? 'low' : 'high'} volatility`
+      }
+    };
+  }
+
+  private interpretCorrelation(abs: number): string {
+    if (abs >= 0.8) return 'very strong';
+    if (abs >= 0.6) return 'strong';
+    if (abs >= 0.4) return 'moderate';
+    if (abs >= 0.2) return 'weak';
+    return 'very weak';
+  }
+
+  // Academic search helper methods
+  private async searchArxiv(query: string, limit: number): Promise<any[]> {
+    try {
+      // Simple arXiv search using their API
+      const searchUrl = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=${limit}`;
+      
+      const response = await fetch(searchUrl);
+      if (!response.ok) {
+        throw new Error(`arXiv API error: ${response.status}`);
+      }
+      
+      const xmlText = await response.text();
+      return this.parseArxivXML(xmlText);
+    } catch (error) {
+      console.error('arXiv search failed:', error);
+      return [];
+    }
+  }
+
+  private parseArxivXML(xmlText: string): any[] {
+    // Simple XML parsing for arXiv results
+    const papers = [];
+    const entries = xmlText.split('<entry>').slice(1); // Skip first empty split
+    
+    for (const entry of entries) {
+      const titleMatch = entry.match(/<title>(.*?)<\/title>/s);
+      const summaryMatch = entry.match(/<summary>(.*?)<\/summary>/s);
+      const linkMatch = entry.match(/<id>(.*?)<\/id>/);
+      const authorMatches = entry.match(/<name>(.*?)<\/name>/g);
+      const publishedMatch = entry.match(/<published>(.*?)<\/published>/);
+      
+      if (titleMatch && linkMatch) {
+        papers.push({
+          title: titleMatch[1].trim().replace(/\s+/g, ' '),
+          url: linkMatch[1].trim(),
+          abstract: summaryMatch ? summaryMatch[1].trim().replace(/\s+/g, ' ') : '',
+          authors: authorMatches ? authorMatches.map(m => m.replace(/<\/?name>/g, '')) : [],
+          publishedDate: publishedMatch ? publishedMatch[1].trim() : '',
+          source: 'arXiv'
+        });
+      }
+    }
+    
+    return papers;
+  }
+
+  private extractAuthorsFromSnippet(snippet: string): string[] {
+    // Simple author extraction from text snippets
+    const authorPatterns = [
+      /by\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)*)/gi,
+      /([A-Z][a-z]+,\s*[A-Z]\.(?:\s*[A-Z]\.)*)/gi
+    ];
+    
+    for (const pattern of authorPatterns) {
+      const match = snippet.match(pattern);
+      if (match) {
+        return match[0].replace(/^by\s+/i, '').split(/,\s*/).map(author => author.trim());
+      }
+    }
+    
+    return [];
+  }
+
+  private identifyAcademicSource(url: string): string {
+    if (url.includes('arxiv.org')) return 'arXiv';
+    if (url.includes('pubmed.ncbi.nlm.nih.gov')) return 'PubMed';
+    if (url.includes('scholar.google.com')) return 'Google Scholar';
+    if (url.includes('ieee.org')) return 'IEEE';
+    if (url.includes('acm.org')) return 'ACM';
+    return 'Academic';
   }
 }

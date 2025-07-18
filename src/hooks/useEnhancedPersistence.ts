@@ -94,8 +94,8 @@ export function useEnhancedPersistence(sessionId: string) {
   // Save research graph
   const saveResearchGraph = useCallback(async (graphManager: ResearchGraphManager) => {
     const graphData = {
-      nodes: Array.from(graphManager.getNodes().values()),
-      edges: [], // TODO: Add getEdges() method to ResearchGraphManager
+      nodes: graphManager.getNodes(),
+      edges: graphManager.getEdges(),
       statistics: graphManager.getStatistics(),
     };
 
