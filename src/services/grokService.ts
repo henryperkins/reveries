@@ -1,4 +1,5 @@
 import { EffortType, Citation } from '../types';
+import { getEnv } from '../utils/getEnv';
 
 export interface GrokResponse {
   text: string;
@@ -18,9 +19,8 @@ export class GrokService {
   private static instance: GrokService;
 
   private constructor() {
-    // Use XAI_API_KEY as the primary environment variable
-    const apiKey = import.meta.env.VITE_XAI_API_KEY ||
-                  (typeof process !== 'undefined' && process.env?.XAI_API_KEY);
+    // Resolve API key via unified helper
+    const apiKey = getEnv('VITE_XAI_API_KEY', 'XAI_API_KEY');
 
     if (!apiKey) {
       throw new Error('XAI API key is required. Set VITE_XAI_API_KEY or XAI_API_KEY');

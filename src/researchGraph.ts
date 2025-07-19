@@ -570,6 +570,46 @@ export class ResearchGraphManager {
         });
     }
 
+    // Persist graph to database if available
+    async persistGraph(sessionId: string): Promise<void> {
+        try {
+            // Import DatabaseService dynamically to avoid circular dependencies
+            const { DatabaseService } = await import('./services/databaseService');
+            const databaseService = DatabaseService.getInstance();
+            
+            if (databaseService) {
+                const graphData = this.serialize();
+                await databaseService.saveResearchGraph(sessionId, graphData);
+                console.log(`Research graph persisted for session: ${sessionId}`);
+            } else {
+                console.warn('Database service not available, graph not persisted');
+            }
+        } catch (error) {
+            console.error('Failed to persist research graph:', error);
+            // Don't throw - persistence failure shouldn't break the application
+        }
+    }
+
+    // Load graph from database if available
+    static async loadPersistedGraph(sessionId: string): Promise<ResearchGraphManager | null> {
+        try {
+            // Import DatabaseService dynamically to avoid circular dependencies
+            const { DatabaseService } = await import('./services/databaseService');
+            const databaseService = DatabaseService.getInstance();
+            
+            if (databaseService) {
+                const graphData = await databaseService.getResearchGraph(sessionId);
+                if (graphData) {
+                    return ResearchGraphManager.deserialize(graphData);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load persisted research graph:', error);
+        }
+        
+        return null;
+    }
+
     // Deserialize graph from saved state
     static deserialize(data: string): ResearchGraphManager {
         const parsed = JSON.parse(data);

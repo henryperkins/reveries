@@ -1,40 +1,22 @@
 /// <reference types="vite/client" />
 import { EffortType, ModelType, GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL } from './types';
+import { getEnv } from './utils/getEnv';
 
 // Check if Grok API key is available
 const isGrokAvailable = () => {
-  try {
-    return !!(import.meta.env.VITE_XAI_API_KEY ||
-             (typeof process !== 'undefined' && process.env?.XAI_API_KEY));
-  } catch {
-    return false;
-  }
+  return !!getEnv('VITE_XAI_API_KEY', 'XAI_API_KEY');
 };
 
 // Check if Gemini API key is available
 const isGeminiAvailable = () => {
-  try {
-    return !!(import.meta.env.VITE_GEMINI_API_KEY ||
-             (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY));
-  } catch {
-    return false;
-  }
+  return !!getEnv('VITE_GEMINI_API_KEY', 'GEMINI_API_KEY');
 };
 
 // Check if Azure OpenAI is available - updated to check for client-side env vars
 const isAzureOpenAIAvailable = () => {
-  try {
-    // Check for environment variables in both client and server contexts
-    const hasClientKey = !!(import.meta.env.VITE_AZURE_OPENAI_API_KEY &&
-                           import.meta.env.VITE_AZURE_OPENAI_ENDPOINT);
-    const hasServerKey = !!(typeof process !== 'undefined' &&
-                           process.env?.AZURE_OPENAI_API_KEY &&
-                           process.env?.AZURE_OPENAI_ENDPOINT);
-
-    return hasClientKey || hasServerKey;
-  } catch {
-    return false;
-  }
+  const apiKey = getEnv('VITE_AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_API_KEY');
+  const endpoint = getEnv('VITE_AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_ENDPOINT');
+  return !!(apiKey && endpoint);
 };
 
 // Default model selection logic - fallback to Flash if no keys available

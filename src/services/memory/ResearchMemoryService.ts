@@ -31,6 +31,20 @@ export class ResearchMemoryService {
   }
 
   /**
+   * Get cached sources for a query
+   */
+  getCachedSources(query: string): any[] {
+    const cacheKey = ResearchUtilities.generateCacheKey(query);
+    const cachedResult = this.researchCache.get(cacheKey);
+    
+    if (cachedResult && Date.now() - cachedResult.timestamp < this.CACHE_TTL) {
+      return cachedResult.result.sources || [];
+    }
+    
+    return [];
+  }
+
+  /**
    * Cache Pattern: Enhanced caching with paradigm awareness and similarity matching
    */
   getCachedResult(query: string, paradigm?: HostParadigm): EnhancedResearchResults | null {

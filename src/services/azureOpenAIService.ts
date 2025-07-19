@@ -3,6 +3,7 @@ import { RateLimiter, estimateTokens } from './rateLimiter';
 import { APIError, withRetry } from './errorHandler';
 import { ResearchToolsService } from './researchToolsService';
 import { FunctionCallingService } from './functionCallingService';
+import { getEnv } from '../utils/getEnv';
 
 export interface AzureOpenAIResponse {
   text: string;
@@ -57,17 +58,12 @@ export class AzureOpenAIService {
   }
 
   private getConfig(): AzureOpenAIConfig {
-    const endpoint = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AZURE_OPENAI_ENDPOINT) ||
-                    (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_ENDPOINT);
-    const apiKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AZURE_OPENAI_API_KEY) ||
-                   (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_API_KEY);
-    const deploymentName = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AZURE_OPENAI_DEPLOYMENT) ||
-                          (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_DEPLOYMENT) ||
-                          'o3';
+    const endpoint = getEnv('VITE_AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_ENDPOINT');
+    const apiKey = getEnv('VITE_AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_API_KEY');
+    const deploymentName = getEnv('VITE_AZURE_OPENAI_DEPLOYMENT', 'AZURE_OPENAI_DEPLOYMENT') || 'o3';
     // Updated API version for o3 support
-    const apiVersion = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AZURE_OPENAI_API_VERSION) ||
-                      (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_API_VERSION) ||
-                      '2025-04-01-preview';
+    const apiVersion = getEnv('VITE_AZURE_OPENAI_API_VERSION', 'AZURE_OPENAI_API_VERSION') ||
+                       '2025-04-01-preview';
 
     if (!endpoint || !apiKey) {
       throw new APIError(
@@ -89,18 +85,9 @@ export class AzureOpenAIService {
 
   public static isAvailable(): boolean {
     try {
-      // Check for both client-side (VITE_) and server-side env vars
-      const hasClientVars = !!(
-        import.meta.env.VITE_AZURE_OPENAI_API_KEY &&
-        import.meta.env.VITE_AZURE_OPENAI_ENDPOINT
-      );
-      const hasServerVars = !!(
-        typeof process !== 'undefined' &&
-        process.env?.AZURE_OPENAI_API_KEY &&
-        process.env?.AZURE_OPENAI_ENDPOINT
-      );
-
-      return hasClientVars || hasServerVars;
+      const apiKey = getEnv('VITE_AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_API_KEY');
+      const endpoint = getEnv('VITE_AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_ENDPOINT');
+      return !!(apiKey && endpoint);
     } catch {
       return false;
     }
@@ -488,7 +475,7 @@ export class AzureOpenAIService {
 
       // Build paradigm-aware system prompt
       const systemPrompt = this.buildParadigmAwareSystemPrompt(paradigm, paradigmProbabilities);
-      
+
       // Filter tools based on paradigm preferences
       const filteredTools = this.filterToolsByParadigm(tools, paradigm);
 
@@ -498,7 +485,7 @@ export class AzureOpenAIService {
         content: systemPrompt
       });
       allMessages.push({
-        role: "user", 
+        role: "user",
         content: prompt
       });
 
@@ -584,13 +571,13 @@ export class AzureOpenAIService {
         // Handle tool calls if present
         if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
           console.log(`Processing ${assistantMessage.tool_calls.length} tool calls...`);
-          
+
           // Execute each tool call
           for (const toolCall of assistantMessage.tool_calls) {
             try {
               const toolName = toolCall.function.name;
               const toolArgs = JSON.parse(toolCall.function.arguments);
-              
+
               // Add paradigm context to tool arguments
               if (paradigm) {
                 toolArgs._paradigmContext = {
@@ -601,7 +588,7 @@ export class AzureOpenAIService {
               }
 
               console.log(`Executing tool: ${toolName} with args:`, toolArgs);
-              
+
               // Execute the tool with enhanced context
               const toolContext: ParadigmAwareToolContext = {
                 paradigm,
@@ -619,7 +606,7 @@ export class AzureOpenAIService {
 
               if (executionResult.success) {
                 toolsUsed.push(toolName);
-                
+
                 // Add tool result to conversation
                 allMessages.push({
                   role: "tool",
@@ -641,7 +628,7 @@ export class AzureOpenAIService {
 
             } catch (error) {
               console.error(`Tool execution failed for ${toolCall.function.name}:`, error);
-              
+
               // Add error result to conversation
               allMessages.push({
                 role: "tool",
@@ -710,7 +697,7 @@ export class AzureOpenAIService {
    * Build paradigm-aware system prompt
    */
   private buildParadigmAwareSystemPrompt(
-    paradigm?: HostParadigm, 
+    paradigm?: HostParadigm,
     probabilities?: ParadigmProbabilities
   ): string {
     let basePrompt = "You are a helpful AI research assistant with access to tools. Use them when needed to provide accurate information.";
@@ -726,12 +713,12 @@ export class AzureOpenAIService {
       const confidence = probabilities[paradigm];
       if (confidence > 0.4) {
         basePrompt += `\n\nYou are operating in the ${paradigm.toUpperCase()} paradigm (confidence: ${Math.round(confidence * 100)}%). ${paradigmPrompts[paradigm]}`;
-        
+
         // Add multi-paradigm context if other paradigms are also strong
         const otherStrong = Object.entries(probabilities)
           .filter(([p, score]) => p !== paradigm && score > 0.25)
           .sort(([,a], [,b]) => b - a);
-        
+
         if (otherStrong.length > 0) {
           basePrompt += `\n\nSecondary influences: ${otherStrong.map(([p, score]) => `${p} (${Math.round(score * 100)}%)`).join(', ')}. Consider these perspectives as well.`;
         }
@@ -756,7 +743,7 @@ export class AzureOpenAIService {
     };
 
     const preferredTools = paradigmToolPreferences[paradigm] || [];
-    
+
     // Sort tools by paradigm preference, keeping all tools but prioritizing preferred ones
     return tools.sort((a, b) => {
       const aPreferred = preferredTools.includes(a.function?.name) ? 1 : 0;
@@ -795,7 +782,7 @@ export class AzureOpenAIService {
     context: ParadigmAwareToolContext
   ): Promise<ToolExecutionResult> {
     const startTime = Date.now();
-    
+
     // Add paradigm context to args if not already present
     const enrichedArgs = {
       ...args,
@@ -850,7 +837,7 @@ export class AzureOpenAIService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const isRetryable = this.isRetryableError(error);
-      
+
       // Record failure
       this.recordToolFailure(toolName);
 
@@ -1085,14 +1072,14 @@ export class AzureOpenAIService {
                 const parsed = JSON.parse(data);
                 const delta = parsed.choices?.[0]?.delta;
                 const content = delta?.content;
-                
+
                 // Handle tool calls in streaming
                 if (delta?.tool_calls && onToolCall) {
                   for (const toolCall of delta.tool_calls) {
                     onToolCall(toolCall);
                   }
                 }
-                
+
                 if (content) {
                   // Include paradigm metadata with chunks
                   const metadata = paradigm ? { paradigm } : undefined;
@@ -1136,14 +1123,14 @@ export class AzureOpenAIService {
       maxIterations?: number;
     }
   ): Promise<void> {
-    const { 
-      onChunk = () => {}, 
-      onToolCall, 
-      onComplete = () => {}, 
-      onError, 
-      maxIterations = 5 
+    const {
+      onChunk = () => {},
+      onToolCall,
+      onComplete = () => {},
+      onError,
+      maxIterations = 5
     } = options || {};
-    
+
     // Initialize conversation with paradigm context
     const messages: any[] = [
       {
@@ -1158,7 +1145,7 @@ export class AzureOpenAIService {
 
     // Filter tools based on paradigm
     const filteredTools = this.filterToolsByParadigm(tools, paradigm);
-    
+
     // Track tool execution context
     const toolExecutionContext = {
       paradigm,
@@ -1212,7 +1199,7 @@ export class AzureOpenAIService {
     }
 
     context.iterations++;
-    
+
     // Rate limiting
     const estimatedTokens = estimateTokens(JSON.stringify(messages)) + 4096;
     await this.rateLimiter.waitForCapacity(estimatedTokens);
@@ -1295,7 +1282,7 @@ export class AzureOpenAIService {
                 );
                 return; // Tool execution will continue the conversation
               }
-              
+
               // Add final message if any content
               if (currentMessage.content) {
                 messages.push({
@@ -1303,7 +1290,7 @@ export class AzureOpenAIService {
                   content: currentMessage.content
                 });
               }
-              
+
               callbacks.onComplete();
               return;
             }
@@ -1311,7 +1298,7 @@ export class AzureOpenAIService {
             try {
               const parsed = JSON.parse(data);
               const delta = parsed.choices?.[0]?.delta;
-              
+
               // Handle content chunks
               if (delta?.content) {
                 currentMessage.content += delta.content;
@@ -1321,7 +1308,7 @@ export class AzureOpenAIService {
                 };
                 callbacks.onChunk(delta.content, metadata);
               }
-              
+
               // Handle tool calls
               if (delta?.tool_calls) {
                 isCollectingToolCalls = true;
@@ -1335,7 +1322,7 @@ export class AzureOpenAIService {
                       function: { name: '', arguments: '' }
                     };
                   }
-                  
+
                   const toolCall = currentMessage.tool_calls[index];
                   if (toolCallDelta.id) toolCall.id = toolCallDelta.id;
                   if (toolCallDelta.function?.name) {
@@ -1381,7 +1368,7 @@ export class AzureOpenAIService {
       try {
         const toolName = toolCall.function.name;
         const toolArgs = JSON.parse(toolCall.function.arguments);
-        
+
         // Add paradigm context to tool arguments
         if (context.paradigm) {
           toolArgs._paradigmContext = {
@@ -1413,7 +1400,7 @@ export class AzureOpenAIService {
 
         if (executionResult.success) {
           context.toolsUsed.push(toolName);
-          
+
           // Notify with result
           if (callbacks.onToolCall) {
             callbacks.onToolCall(toolCall, executionResult.result);
@@ -1451,7 +1438,7 @@ export class AzureOpenAIService {
 
       } catch (error) {
         console.error(`Tool execution failed for ${toolCall.function.name}:`, error);
-        
+
         // Add error result to conversation
         messages.push({
           role: "tool",

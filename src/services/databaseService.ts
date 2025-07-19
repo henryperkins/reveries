@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { getEnv } from '../utils/getEnv';
 import {
   ResearchStep,
   ResearchSection,
@@ -45,14 +46,15 @@ export class DatabaseService {
   }
 
   private getConfig(): DatabaseConfig {
-    const isAzure = process.env.PGHOST?.includes('database.azure.com');
+    const pgHost = getEnv('PGHOST') || 'localhost';
+    const isAzure = pgHost.includes('database.azure.com');
 
     return {
-      host: process.env.PGHOST || 'localhost',
-      port: parseInt(process.env.PGPORT || '5432'),
-      database: process.env.PGDATABASE || 'reveries',
-      user: process.env.PGUSER || 'postgres',
-      password: process.env.PGPASSWORD || 'postgres',
+      host: pgHost,
+      port: parseInt(getEnv('PGPORT') || '5432'),
+      database: getEnv('PGDATABASE') || 'reveries',
+      user: getEnv('PGUSER') || 'postgres',
+      password: getEnv('PGPASSWORD') || 'postgres',
       ssl: isAzure ? { rejectUnauthorized: false } : false,
       max: 20,
       idleTimeoutMillis: 30000,
@@ -62,10 +64,10 @@ export class DatabaseService {
 
   private getAzureAIConfig(): AzureAIConfig {
     return {
-      openaiEndpoint: process.env.AZURE_OPENAI_ENDPOINT,
-      openaiKey: process.env.AZURE_OPENAI_API_KEY,
-      embeddingModel: process.env.AZURE_OPENAI_EMBEDDING_MODEL || 'text-embedding-ada-002',
-      deploymentName: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4',
+      openaiEndpoint: getEnv('VITE_AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_ENDPOINT'),
+      openaiKey: getEnv('VITE_AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_API_KEY'),
+      embeddingModel: getEnv('VITE_AZURE_OPENAI_EMBEDDING_MODEL', 'AZURE_OPENAI_EMBEDDING_MODEL') || 'text-embedding-ada-002',
+      deploymentName: getEnv('VITE_AZURE_OPENAI_DEPLOYMENT', 'AZURE_OPENAI_DEPLOYMENT') || 'gpt-4',
     };
   }
 
@@ -653,8 +655,8 @@ export class DatabaseService {
   async checkExtensions(): Promise<string[]> {
     return this.executeWithRetry(async () => {
       const result = await this.pool!.query(`
-        SELECT extname 
-        FROM pg_extension 
+        SELECT extname
+        FROM pg_extension
         WHERE extname IN ('vector', 'azure_ai', 'azure_openai')
         ORDER BY extname
       `);

@@ -102,15 +102,13 @@ export function useEnhancedPersistence(sessionId: string) {
     // Save to localStorage
     saveToLocalStorage('graph', graphData);
 
-    // Try to save to database
-    if (persistenceState.isConnected) {
-      try {
-        await databaseService.saveResearchGraph(sessionId, graphData);
-      } catch (error) {
-        console.error('Database graph save failed:', error);
-      }
+    // Use the new built-in persistence method which handles database connectivity automatically
+    try {
+      await graphManager.persistGraph(sessionId);
+    } catch (error) {
+      console.error('Graph persistence failed:', error);
     }
-  }, [sessionId, persistenceState.isConnected, saveToLocalStorage]);
+  }, [sessionId, saveToLocalStorage]);
 
   // Load research data
   const loadResearchData = useCallback(async (): Promise<{

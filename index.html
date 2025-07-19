@@ -41,10 +41,13 @@
     }
   </script>
   <script type="module">
-    // Load the official Buffer class from the "buffer" package
-    import { Buffer as BufferPolyfill } from 'buffer';
-    if (!window.Buffer?.alloc) {
-      window.Buffer = globalThis.Buffer = BufferPolyfill;
+    /* Ensure Buffer global for browser code.
+       Vite’s NodeGlobalsPolyfillPlugin bundles the “buffer” package, so we import
+       the named export and mount it if the global is missing.                 */
+    import * as BufferModule from 'buffer';
+    const NodeBuffer = BufferModule.Buffer;
+    if (typeof window.Buffer === 'undefined' || !window.Buffer?.alloc) {
+      window.Buffer = globalThis.Buffer = NodeBuffer;
     }
   </script>
 </head>
@@ -54,20 +57,3 @@
   <script type="module" src="/src/index.tsx"></script>
 </body>
 
-</html>
-
-</html>
-},
-isBuffer: function (obj) {
-return obj instanceof Uint8Array;
-}
-};
-</script>
-</head>
-
-<body class="scrollbar-thin">
-  <div id="root"></div>
-  <script type="module" src="/src/index.tsx"></script>
-</body>
-
-</html>

@@ -38,6 +38,12 @@ import { ContextEngineeringService } from './contextEngineeringService';
 import { ParadigmClassifier } from './paradigmClassifier';
 import { DatabaseService } from './databaseService';
 
+// Import context layer services
+import { WriteLayerService } from './contextLayers/writeLayer';
+import { SelectLayerService } from './contextLayers/selectLayer';
+import { CompressLayerService } from './contextLayers/compressLayer';
+import { IsolateLayerService } from './contextLayers/isolateLayer';
+
 export class ResearchAgentService {
   private static instance: ResearchAgentService | null = null;
 
@@ -55,6 +61,12 @@ export class ResearchAgentService {
   private paradigmClassifier: ParadigmClassifier;
   private databaseService: DatabaseService | null = null;
 
+  // Context layer services
+  private writeLayer: WriteLayerService;
+  private selectLayer: SelectLayerService;
+  private compressLayer: CompressLayerService;
+  private isolateLayer: IsolateLayerService;
+
   // State
   private lastParadigmProbabilities: ParadigmProbabilities | null = null;
 
@@ -69,6 +81,12 @@ export class ResearchAgentService {
     this.memoryService = ResearchMemoryService.getInstance();
     this.contextEngineering = ContextEngineeringService.getInstance();
     this.paradigmClassifier = ParadigmClassifier.getInstance();
+    
+    // Initialize context layer services
+    this.writeLayer = WriteLayerService.getInstance();
+    this.selectLayer = SelectLayerService.getInstance();
+    this.compressLayer = CompressLayerService.getInstance();
+    this.isolateLayer = IsolateLayerService.getInstance();
     
     // Initialize database service if available (server-side only)
     try {
@@ -195,11 +213,53 @@ export class ResearchAgentService {
       };
 
       // Execute context layers explicitly for better progress tracking
+      let layerResults: any = {};
+      
       for (const layer of contextLayers) {
         metadata?.onProgress?.(`layer_progress:${layer}`);
         metadata?.onProgress?.(`Executing ${layer} layer for ${paradigm} paradigm...`);
-        // Simulate brief layer execution time for better UX
-        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        try {
+          switch (layer) {
+            case 'write':
+              this.writeLayer.write('query_context', { query, paradigm, phase }, contextDensity.averageDensity || 50, paradigm);
+              layerResults.writeLayer = 'completed';
+              break;
+              
+            case 'select':
+              // Get some initial sources for selection (from memory or previous research)
+              const cachedSources = this.memoryService.getCachedSources(query) || [];
+              const selectedSources = await this.selectLayer.selectSources(query, cachedSources, paradigm, 5);
+              layerResults.selectedSources = selectedSources;
+              break;
+              
+            case 'compress':
+              if (layerResults.selectedSources && layerResults.selectedSources.length > 0) {
+                const sourcesText = layerResults.selectedSources.map((s: any) => s.snippet || s.title || '').join(' ');
+                const compressed = this.compressLayer.compress(sourcesText, Math.round(contextDensity.averageDensity || 50), paradigm);
+                layerResults.compressedContent = compressed;
+              }
+              break;
+              
+            case 'isolate':
+              // Isolate execution context for analysis-heavy paradigms
+              const isolationResult = await this.isolateLayer.isolate(query, paradigm, {
+                content: layerResults.compressedContent || query,
+                sources: layerResults.selectedSources || []
+              }, async (task: string, context: any) => {
+                // Simple analysis function for the isolation layer
+                return `Analyzed task: ${task} with context: ${JSON.stringify(context, null, 2)}`;
+              });
+              layerResults.isolatedAnalysis = isolationResult;
+              break;
+          }
+        } catch (error) {
+          console.warn(`Layer ${layer} execution failed:`, error);
+          // Continue with other layers even if one fails
+        }
+        
+        // Brief delay for UX
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
       // Route query using research strategy
@@ -311,14 +371,23 @@ export class ResearchAgentService {
 
     // Attempt self-healing if needed
     if (ResearchUtilities.needsSelfHealing(result)) {
+      // Ensure we provide the correct dependencies for self-healing
+      const webResearchFunction = async (queries: string[], model: ModelType, effort: EffortType) => {
+        return this.performWebResearch(queries, model, effort);
+      };
+      
+      const generateTextFunction = async (prompt: string, model: ModelType, effort: EffortType) => {
+        return this.generateText(prompt, model, effort);
+      };
+      
       result = await this.evaluationService.attemptSelfHealing(
         query,
         result,
         model,
         effort,
         onProgress,
-        this.performWebResearch.bind(this),
-        this.generateText.bind(this)
+        webResearchFunction,
+        generateTextFunction
       );
     }
 

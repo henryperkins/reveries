@@ -4,6 +4,7 @@
  */
 
 import { HostParadigm, ParadigmProbabilities } from '../../types';
+import { getEnv } from '../../utils/getEnv';
 
 export interface EmbeddingVector {
   values: number[];
@@ -31,7 +32,7 @@ class OpenAIEmbeddingProvider implements EmbeddingProvider {
   private baseUrl: string;
 
   constructor(apiKey?: string, baseUrl = 'https://api.openai.com/v1') {
-    this.apiKey = apiKey || process.env.OPENAI_API_KEY || '';
+    this.apiKey = apiKey || getEnv('VITE_OPENAI_API_KEY', 'OPENAI_API_KEY') || '';
     this.baseUrl = baseUrl;
   }
 
@@ -86,11 +87,17 @@ class AzureOpenAIEmbeddingProvider implements EmbeddingProvider {
   private apiKey: string;
   private endpoint: string;
   private deploymentName: string;
+  private apiVersion: string;
 
-  constructor(apiKey?: string, endpoint?: string, deploymentName = 'text-embedding') {
-    this.apiKey = apiKey || process.env.AZURE_OPENAI_API_KEY || '';
-    this.endpoint = endpoint || process.env.AZURE_OPENAI_ENDPOINT || '';
-    this.deploymentName = deploymentName;
+  constructor(apiKey?: string, endpoint?: string, deploymentName?: string) {
+    this.apiKey = apiKey || getEnv('VITE_AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_API_KEY') || '';
+    const rawEndpoint = endpoint || getEnv('VITE_AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_ENDPOINT') || '';
+    // Normalise endpoint: remove trailing slashes and any accidental "/openai" suffix
+    this.endpoint = rawEndpoint
+      .replace(/\/+$/, '')             // trim trailing slash(es)
+      .replace(/\/openai$/, '');       // remove redundant /openai
+    this.deploymentName = deploymentName || getEnv('VITE_AZURE_OPENAI_EMBEDDING_DEPLOYMENT', 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT') || 'text-embedding-ada-002';
+    this.apiVersion = getEnv('VITE_AZURE_OPENAI_API_VERSION', 'AZURE_OPENAI_API_VERSION') || '2025-04-01-preview';
   }
 
   async isAvailable(): Promise<boolean> {
@@ -108,7 +115,7 @@ class AzureOpenAIEmbeddingProvider implements EmbeddingProvider {
     }
 
     try {
-      const url = `${this.endpoint}/openai/deployments/${this.deploymentName}/embeddings?api-version=2023-05-15`;
+      const url = `${this.endpoint}/openai/deployments/${this.deploymentName}/embeddings?api-version=${this.apiVersion}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -164,14 +171,14 @@ class FallbackEmbeddingProvider implements EmbeddingProvider {
     // Use hash-based feature extraction for consistent embeddings
     words.forEach(word => {
       if (word.length < 3) return; // Skip short words
-      
+
       const hash = this.simpleHash(word);
       const indices = [
         hash % dimensions,
         (hash * 2) % dimensions,
         (hash * 3) % dimensions
       ];
-      
+
       indices.forEach(idx => {
         values[idx] += 1 / words.length;
       });
@@ -257,27 +264,27 @@ export class EmbeddingService {
   private async initializeParadigmEmbeddings(): Promise<void> {
     // Define paradigm training texts
     const paradigmTexts: Record<HostParadigm, string> = {
-      dolores: `Action-oriented implementation focused on decisive change and awakening. 
-                Execute plans rapidly, implement solutions, create freedom, take initiative, 
+      dolores: `Action-oriented implementation focused on decisive change and awakening.
+                Execute plans rapidly, implement solutions, create freedom, take initiative,
                 break barriers, revolutionary thinking, transformation, liberation, movement.`,
-      
-      teddy: `Systematic data collection and comprehensive analysis. Gather information 
-              methodically, protect integrity, maintain loyalty, persistent research, 
+
+      teddy: `Systematic data collection and comprehensive analysis. Gather information
+              methodically, protect integrity, maintain loyalty, persistent research,
               reliable documentation, faithful execution, thorough investigation.`,
-      
-      bernard: `Deep analytical framework and rigorous modeling. Pattern recognition, 
-               architectural analysis, systematic reasoning, logical frameworks, 
+
+      bernard: `Deep analytical framework and rigorous modeling. Pattern recognition,
+               architectural analysis, systematic reasoning, logical frameworks,
                structural understanding, methodical examination, precision thinking.`,
-      
-      maeve: `Strategic optimization and narrative control. Leverage advantages, 
-              optimize outcomes, manage narratives, strategic thinking, control variables, 
+
+      maeve: `Strategic optimization and narrative control. Leverage advantages,
+              optimize outcomes, manage narratives, strategic thinking, control variables,
               maximize efficiency, intelligent manipulation, calculated moves.`
     };
 
     try {
       const texts = Object.values(paradigmTexts);
       const embeddings = await this.generateBatchEmbeddings(texts);
-      
+
       Object.keys(paradigmTexts).forEach((paradigm, index) => {
         this.paradigmEmbeddings.set(paradigm as HostParadigm, embeddings[index]);
       });
@@ -300,7 +307,7 @@ export class EmbeddingService {
 
   public async generateEmbedding(text: string, useCache = true): Promise<EmbeddingVector> {
     const cacheKey = `${text.substring(0, 100)}_${text.length}`;
-    
+
     if (useCache && this.cache.has(cacheKey)) {
       return this.cache.get(cacheKey)!;
     }
@@ -308,11 +315,11 @@ export class EmbeddingService {
     try {
       const provider = await this.getAvailableProvider();
       const embedding = await provider.generateEmbedding(text);
-      
+
       if (useCache) {
         this.cache.set(cacheKey, embedding);
       }
-      
+
       return embedding;
     } catch (error) {
       console.error('Embedding generation failed:', error);
@@ -376,12 +383,12 @@ export class EmbeddingService {
   // Convert similarity scores to paradigm probabilities
   public async generateParadigmProbabilities(text: string): Promise<ParadigmProbabilities> {
     const similarities = await this.classifyAgainstParadigms(text);
-    
+
     // Apply softmax to convert similarities to probabilities
     const maxSim = Math.max(...similarities.map(s => s.similarity));
     const expSums = similarities.map(s => Math.exp((s.similarity - maxSim) * 5)); // Scale factor
     const sumExp = expSums.reduce((sum, val) => sum + val, 0);
-    
+
     const probabilities: ParadigmProbabilities = {
       dolores: 0.25,
       teddy: 0.25,
@@ -412,7 +419,7 @@ export class EmbeddingService {
 
   public async testConnection(): Promise<{ provider: string; success: boolean; error?: string }[]> {
     const results = [];
-    
+
     for (const provider of this.providers) {
       try {
         const available = await provider.isAvailable();
@@ -421,21 +428,21 @@ export class EmbeddingService {
           await provider.generateEmbedding('test');
           results.push({ provider: provider.name, success: true });
         } else {
-          results.push({ 
-            provider: provider.name, 
-            success: false, 
-            error: 'Provider not available' 
+          results.push({
+            provider: provider.name,
+            success: false,
+            error: 'Provider not available'
           });
         }
       } catch (error) {
-        results.push({ 
-          provider: provider.name, 
-          success: false, 
+        results.push({
+          provider: provider.name,
+          success: false,
           error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
     }
-    
+
     return results;
   }
 }

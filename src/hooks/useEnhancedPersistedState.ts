@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ResearchStep, ModelType, EffortType } from '../types';
 import { DatabaseService } from 'databaseService';
+import { getEnv } from '../utils/getEnv';
+
+// Resolve feature flag once at module level
+const ENABLE_DB_PERSISTENCE = getEnv('VITE_ENABLE_DATABASE_PERSISTENCE', 'ENABLE_DATABASE_PERSISTENCE') === 'true';
 
 export interface ResearchSession {
   id: string;
@@ -23,11 +27,13 @@ export function usePersistedState<T>(
   const storageKey = `reveries_${key}_v${version}`;
   const [state, setState] = useState<T>(defaultValue);
 
+  // Feature flag is resolved at module level
+
   // Check database availability on mount
   useEffect(() => {
     const checkDatabase = async () => {
       try {
-        if (import.meta.env.VITE_ENABLE_DATABASE_PERSISTENCE === 'true') {
+        if (ENABLE_DB_PERSISTENCE) {
           const db = DatabaseService.getInstance();
           const isConnected = await db.isConnected();
 
@@ -99,7 +105,7 @@ export function useResearchSessions() {
   useEffect(() => {
     const initDatabase = async () => {
       try {
-        if (import.meta.env.VITE_ENABLE_DATABASE_PERSISTENCE === 'true') {
+        if (ENABLE_DB_PERSISTENCE) {
           const db = DatabaseService.getInstance();
           const connected = await db.isConnected();
 
@@ -314,7 +320,7 @@ export function useDatabaseHealth() {
 
   const checkHealth = useCallback(async () => {
     try {
-      if (import.meta.env.VITE_ENABLE_DATABASE_PERSISTENCE === 'true') {
+      if (ENABLE_DB_PERSISTENCE) {
         const db = DatabaseService.getInstance();
         const connected = await db.isConnected();
         setIsHealthy(connected);
