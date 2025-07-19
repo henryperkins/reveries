@@ -65,7 +65,7 @@ export class AzureOpenAIService {
     // The new Responses API is currently available under the "preview" API
     // version. Allow overriding via env but default to "preview" so users
     // automatically pick up the latest capabilities.
-    const apiVersion = getEnv('VITE_AZURE_OPENAI_API_VERSION', 'AZURE_OPENAI_API_VERSION') || 'preview';
+    const apiVersion = getEnv('VITE_AZURE_OPENAI_API_VERSION', 'AZURE_OPENAI_API_VERSION') || '2025-04-01-preview';
 
     if (!endpoint || !apiKey) {
       throw new APIError(
@@ -216,11 +216,16 @@ export class AzureOpenAIService {
         // convenience so downstream callers can continue to expect a
         // simple `text` field.
 
-        const firstOutput = Array.isArray(data.output) ? data.output[0] : null;
+        // Find the message output (not reasoning output)
+        const messageOutput = Array.isArray(data.output) 
+          ? data.output.find((item: any) => item.type === 'message')
+          : null;
 
         let assistantText: string | undefined;
-        if (firstOutput?.content && Array.isArray(firstOutput.content)) {
-          const textPart = firstOutput.content.find((p: any) => p.type === 'output_text');
+        
+        // Parse the assistant message content
+        if (messageOutput?.content && Array.isArray(messageOutput.content)) {
+          const textPart = messageOutput.content.find((p: any) => p.type === 'output_text');
           if (textPart && typeof textPart.text === 'string') {
             assistantText = textPart.text;
           }
@@ -228,6 +233,7 @@ export class AzureOpenAIService {
 
         if (!assistantText) {
           console.error('Empty or invalid response structure:', data);
+          console.error('Full output array:', JSON.stringify(data.output, null, 2));
           throw new APIError(
             'Empty response from Azure OpenAI Responses API',
             'EMPTY_RESPONSE',
@@ -1554,5 +1560,34 @@ export class AzureOpenAIService {
       callbacks,
       maxIterations
     );
+  }
+
+  /**
+   * Summarizes content using the Responses API
+   * This replaces the database-level summarization that used azure_openai.create_chat_completion
+   */
+  async summarizeContent(content: string, maxSentences: number = 3): Promise<string> {
+    const prompt = `Summarize the following research content in ${maxSentences} sentences. Focus on key findings, insights, and important information.
+
+Content:
+${content}
+
+Summary:`;
+
+    try {
+      const response = await this.generateResponse(
+        prompt,
+        EffortType.LOW,
+        false, // No reasoning effort needed for simple summarization
+        0.7,
+        500 // Max tokens for summary
+      );
+      return response.text.trim();
+    } catch (error) {
+      console.error('Failed to summarize content:', error);
+      // Return first few sentences as fallback
+      const sentences = content.split(/[.!?]+/).filter(s => s.trim());
+      return sentences.slice(0, maxSentences).join('. ') + '.';
+    }
   }
 }

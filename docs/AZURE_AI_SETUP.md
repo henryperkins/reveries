@@ -60,23 +60,17 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function for content summarization
+-- NOTE: The PostgreSQL extension doesn't yet support azure_openai.create_response
+-- Until it does, summarization is handled through the AzureOpenAIService (Responses API)
+-- This placeholder function will be updated when the extension supports the Responses API
 CREATE OR REPLACE FUNCTION summarize_content(input_text TEXT)
 RETURNS TEXT
 AS $$
 BEGIN
-  RETURN azure_openai.create_chat_completion(
-    deployment_name => 'gpt-4',
-    messages => jsonb_build_array(
-      jsonb_build_object(
-        'role', 'system',
-        'content', 'Summarize the following research content in 2-3 sentences.'
-      ),
-      jsonb_build_object(
-        'role', 'user',
-        'content', input_text
-      )
-    )
-  );
+  -- Placeholder: Will be replaced with azure_openai.create_response
+  -- when the PostgreSQL extension supports the Responses API
+  -- For now, summarization is handled at the application level
+  RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 ```
@@ -109,6 +103,8 @@ AZURE_OPENAI_DEPLOYMENT=gpt-4
 ### 2. Content Summarization
 - Automatic summarization of research steps
 - Helps quickly understand research progress
+- **Note**: Summarization now uses the Azure OpenAI Responses API at the application level
+- Database-level summarization will be re-enabled when the PostgreSQL extension supports `azure_openai.create_response`
 
 ### 3. Semantic Search
 - Find similar research across sessions

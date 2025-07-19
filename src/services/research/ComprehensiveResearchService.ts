@@ -42,6 +42,7 @@ export class ComprehensiveResearchService {
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
+    onProgress?.('Comprehensive research initiated...');
     onProgress?.('Breaking down query into research sections...');
 
     // Step 1: Break down the query into sections
@@ -49,6 +50,7 @@ export class ComprehensiveResearchService {
     const sections = await this.breakdownQuery(query, model, effort);
 
     onProgress?.(`Identified ${sections.length} research sections. Initiating parallel research...`);
+    onProgress?.('search queries generated for comprehensive analysis...');
 
     // Step 2: Research each section in parallel
     onProgress?.('tool_used:parallel_research');
@@ -60,7 +62,9 @@ export class ComprehensiveResearchService {
     );
 
     // Step 3: Synthesize findings
+    onProgress?.('evaluating research quality and completeness...');
     onProgress?.('Synthesizing findings from all research sections...');
+    onProgress?.('Finalizing comprehensive answer through synthesis...');
     onProgress?.('tool_used:synthesis_engine');
     const synthesis = await this.synthesizeFindings(
       query,

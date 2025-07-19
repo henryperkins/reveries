@@ -66,9 +66,9 @@ describe('Azure OpenAI Streaming with Tools', () => {
   describe('streamResponseWithTools', () => {
     it('should handle streaming response with tool calls', async () => {
       const mockChunks = [
-        'data: {"choices":[{"delta":{"content":"Let me search for that information."}}]}',
-        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_123","function":{"name":"advanced_web_search","arguments":"{\\"query\\":\\"quantum computing\\"}"},"type":"function"}]}}]}',
-        'data: [DONE]'
+        'data: {"type":"response.output_text.delta","delta":"Let me search for that information."}',
+        'data: {"type":"response.function_call.delta","call_id":"call_123","name":"advanced_web_search","delta":"{\\"query\\":\\"quantum computing\\"}"}',
+        'data: {"type":"response.done"}'
       ];
 
       const mockToolResponse = {
@@ -117,11 +117,11 @@ describe('Azure OpenAI Streaming with Tools', () => {
                 read: vi.fn()
                   .mockResolvedValueOnce({ 
                     done: false, 
-                    value: new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Based on the search results, "}}]}\n') 
+                    value: new TextEncoder().encode('data: {"type":"response.output_text.delta","delta":"Based on the search results, "}\n') 
                   })
                   .mockResolvedValueOnce({ 
                     done: false, 
-                    value: new TextEncoder().encode('data: [DONE]\n') 
+                    value: new TextEncoder().encode('data: {"type":"response.done"}\n') 
                   })
                   .mockResolvedValueOnce({ done: true }),
                 releaseLock: vi.fn()
@@ -175,8 +175,8 @@ describe('Azure OpenAI Streaming with Tools', () => {
       });
 
       const mockChunks = [
-        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_456","function":{"name":"failing_tool","arguments":"{}"},"type":"function"}]}}]}',
-        'data: [DONE]'
+        'data: {"type":"response.function_call.delta","call_id":"call_456","name":"failing_tool","delta":"{}"}',
+        'data: {"type":"response.done"}'
       ];
 
       let callCount = 0;
@@ -212,11 +212,11 @@ describe('Azure OpenAI Streaming with Tools', () => {
                 read: vi.fn()
                   .mockResolvedValueOnce({ 
                     done: false, 
-                    value: new TextEncoder().encode('data: {"choices":[{"delta":{"content":"I encountered an error with the tool."}}]}\n') 
+                    value: new TextEncoder().encode('data: {"type":"response.output_text.delta","delta":"I encountered an error with the tool."}\n') 
                   })
                   .mockResolvedValueOnce({ 
                     done: false, 
-                    value: new TextEncoder().encode('data: [DONE]\n') 
+                    value: new TextEncoder().encode('data: {"type":"response.done"}\n') 
                   })
                   .mockResolvedValueOnce({ done: true }),
                 releaseLock: vi.fn()
@@ -289,8 +289,8 @@ describe('Azure OpenAI Streaming with Tools', () => {
       });
 
       const mockChunks = [
-        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_789","function":{"name":"slow_tool","arguments":"{}"},"type":"function"}]}}]}',
-        'data: [DONE]'
+        'data: {"type":"response.function_call.delta","call_id":"call_789","name":"slow_tool","delta":"{}"}',
+        'data: {"type":"response.done"}'
       ];
 
       (global.fetch as any).mockResolvedValueOnce({
@@ -319,11 +319,11 @@ describe('Azure OpenAI Streaming with Tools', () => {
             read: vi.fn()
               .mockResolvedValueOnce({ 
                 done: false, 
-                value: new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Tool timed out"}}]}\n') 
+                value: new TextEncoder().encode('data: {"type":"response.output_text.delta","delta":"Tool timed out"}\n') 
               })
               .mockResolvedValueOnce({ 
                 done: false, 
-                value: new TextEncoder().encode('data: [DONE]\n') 
+                value: new TextEncoder().encode('data: {"type":"response.done"}\n') 
               })
               .mockResolvedValueOnce({ done: true }),
             releaseLock: vi.fn()
@@ -410,8 +410,8 @@ describe('Azure OpenAI Streaming with Tools', () => {
       };
 
       const mockChunks = [
-        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_ctx","function":{"name":"advanced_web_search","arguments":"{\\"query\\":\\"strategic planning\\"}"},"type":"function"}]}}]}',
-        'data: [DONE]'
+        'data: {"type":"response.function_call.delta","call_id":"call_ctx","name":"advanced_web_search","delta":"{\\"query\\":\\"strategic planning\\"}"}',
+        'data: {"type":"response.done"}'
       ];
 
       (global.fetch as any).mockResolvedValueOnce({
@@ -440,7 +440,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
             read: vi.fn()
               .mockResolvedValueOnce({ 
                 done: false, 
-                value: new TextEncoder().encode('data: [DONE]\n') 
+                value: new TextEncoder().encode('data: {"type":"response.done"}\n') 
               })
               .mockResolvedValueOnce({ done: true }),
             releaseLock: vi.fn()
@@ -471,10 +471,10 @@ describe('Azure OpenAI Streaming with Tools', () => {
   describe('Streaming phase metadata', () => {
     it('should include phase information in chunk metadata', async () => {
       const mockChunks = [
-        'data: {"choices":[{"delta":{"content":"Analyzing your request..."}}]}',
-        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_phase","function":{"name":"advanced_web_search","arguments":"{\\"query\\":\\"test\\"}"},"type":"function"}]}}]}',
-        'data: {"choices":[{"delta":{"content":" Let me search for that."}}]}',
-        'data: [DONE]'
+        'data: {"type":"response.output_text.delta","delta":"Analyzing your request..."}',
+        'data: {"type":"response.function_call.delta","call_id":"call_phase","name":"advanced_web_search","delta":"{\\"query\\":\\"test\\"}"}',
+        'data: {"type":"response.output_text.delta","delta":" Let me search for that."}',
+        'data: {"type":"response.done"}'
       ];
 
       (global.fetch as any).mockResolvedValueOnce({
@@ -511,7 +511,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
             read: vi.fn()
               .mockResolvedValueOnce({ 
                 done: false, 
-                value: new TextEncoder().encode('data: [DONE]\n') 
+                value: new TextEncoder().encode('data: {"type":"response.done"}\n') 
               })
               .mockResolvedValueOnce({ done: true }),
             releaseLock: vi.fn()

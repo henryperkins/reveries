@@ -44,11 +44,21 @@
     /* Ensure Buffer global for browser code.
        Vite’s NodeGlobalsPolyfillPlugin bundles the “buffer” package, so we import
        the named export and mount it if the global is missing.                 */
-    import * as BufferModule from 'buffer';
-    const NodeBuffer = BufferModule.Buffer;
-    if (typeof window.Buffer === 'undefined' || !window.Buffer?.alloc) {
-      window.Buffer = globalThis.Buffer = NodeBuffer;
-    }
+    // Use dynamic import to load the "buffer" polyfill at runtime. Some build
+    // tools add a synthetic *default* import which the `buffer` ESM bundle does
+    // not expose, causing a "does not provide an export named 'default'"
+    // SyntaxError.  With `import()` we bypass that transform entirely.
+    (async () => {
+      try {
+        const mod = await import('buffer');
+        const NodeBuffer = mod.Buffer;
+        if (typeof window.Buffer === 'undefined' || !window.Buffer?.alloc) {
+          window.Buffer = globalThis.Buffer = NodeBuffer;
+        }
+      } catch (err) {
+        console.error('Failed to load Buffer polyfill:', err);
+      }
+    })();
   </script>
 </head>
 

@@ -228,11 +228,28 @@ class GoogleSearchProvider implements SearchProvider {
       const data = await response.json();
       const searchTime = Date.now() - startTime;
 
+      // Enhanced logging for debugging
+      console.log(`[GoogleSearchProvider] Query: "${query}"`);
+      console.log(`[GoogleSearchProvider] Response status: ${response.status}`);
+      console.log(`[GoogleSearchProvider] Search time: ${searchTime}ms`);
+      console.log(`[GoogleSearchProvider] Total results: ${data.searchInformation?.totalResults || 0}`);
+      console.log(`[GoogleSearchProvider] Items returned: ${data.items?.length || 0}`);
+
       if (data.error) {
+        console.error(`[GoogleSearchProvider] API Error:`, data.error);
         throw new Error(`Google Search API error: ${data.error.message}`);
       }
 
       const results = this.parseGoogleResults(data.items || []);
+      
+      // Log sample results for debugging
+      if (results.length > 0) {
+        console.log(`[GoogleSearchProvider] Sample result:`, {
+          title: results[0].title,
+          url: results[0].url,
+          snippet: results[0].snippet.substring(0, 100) + '...'
+        });
+      }
       
       return {
         results,
@@ -416,10 +433,18 @@ export class SearchProviderService {
 
   private async getAvailableProvider(): Promise<SearchProvider> {
     // Try providers in order until one is available
+    console.log(`[SearchProviderService] Checking ${this.providers.length} providers...`);
+    
     for (const provider of this.providers) {
-      if (await provider.isAvailable()) {
+      const isAvailable = await provider.isAvailable();
+      console.log(`[SearchProviderService] Provider ${provider.name}: ${isAvailable ? 'available' : 'not available'}`);
+      
+      if (isAvailable) {
         const rateLimit = provider.getRateLimit();
+        console.log(`[SearchProviderService] Provider ${provider.name} rate limit: ${rateLimit.remaining} remaining`);
+        
         if (rateLimit.remaining > 0) {
+          console.log(`[SearchProviderService] Selected provider: ${provider.name}`);
           return provider;
         }
       }

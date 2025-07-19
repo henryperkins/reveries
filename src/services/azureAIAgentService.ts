@@ -56,7 +56,7 @@ export class AzureAIAgentService {
                         (typeof process !== 'undefined' && process.env?.BING_CONNECTION_ID);
     const apiVersion = import.meta.env.VITE_AZURE_AI_API_VERSION ||
                       (typeof process !== 'undefined' && process.env?.AZURE_AI_API_VERSION) ||
-                      '2025-05-01';
+                      '2025-04-01-preview';
 
     if (!projectEndpoint || !apiKey || !connectionId) {
       throw new APIError(

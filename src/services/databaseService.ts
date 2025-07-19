@@ -3,8 +3,10 @@ import { getEnv } from '../utils/getEnv';
 import {
   ResearchStep,
   ResearchSection,
-  ModelType
+  ModelType,
+  EffortType
 } from '../types';
+import { AzureOpenAIService } from './azureOpenAIService';
 
 interface DatabaseConfig {
   host: string;
@@ -247,27 +249,17 @@ export class DatabaseService {
             $$ LANGUAGE plpgsql;
           `);
 
-          // Create function for content summarization
+          // TODO: Replace with azure_openai.create_response when available
+          // For now, summarization will be handled through AzureOpenAIService
+          // Create placeholder function that returns NULL
           await client.query(`
             CREATE OR REPLACE FUNCTION summarize_content(input_text TEXT)
             RETURNS TEXT
             AS $$
             BEGIN
-              RETURN azure_openai.create_chat_completion(
-                deployment_name => '${this.aiConfig.deploymentName}',
-                messages => jsonb_build_array(
-                  jsonb_build_object(
-                    'role', 'system',
-                    'content', 'Summarize the following research content in 2-3 sentences.'
-                  ),
-                  jsonb_build_object(
-                    'role', 'user',
-                    'content', input_text
-                  )
-                ),
-                api_key => '${this.aiConfig.openaiKey}',
-                resource_name => '${this.aiConfig.openaiEndpoint}'
-              );
+              -- Placeholder: Will be replaced with azure_openai.create_response
+              -- when the PostgreSQL extension supports the Responses API
+              RETURN NULL;
             END;
             $$ LANGUAGE plpgsql;
           `);
@@ -310,35 +302,52 @@ export class DatabaseService {
       try {
         await client.query('BEGIN');
 
-        // Generate embedding and summary in database
+        // Generate embedding using database function (if available)
+        let embedding: number[] | null = null;
+        if (this.aiConfig.openaiEndpoint && this.aiConfig.openaiKey) {
+          const embeddingResult = await client.query(
+            'SELECT generate_embedding($1) as embedding',
+            [step.content]
+          );
+          embedding = embeddingResult.rows[0]?.embedding;
+        }
+
+        // Generate summary using AzureOpenAIService (Responses API)
+        let summary: string | null = null;
+        try {
+          const azureOpenAI = AzureOpenAIService.getInstance();
+          // Only summarize if content is a string (not React.ReactNode)
+          if (typeof step.content === 'string') {
+            summary = await azureOpenAI.summarizeContent(step.content, 2);
+          }
+        } catch (error) {
+          console.warn('Failed to generate summary via Responses API:', error);
+        }
+
+        // Insert or update the research step
         await client.query(`
-          WITH step_ai AS (
-            SELECT
-              generate_embedding($1) as embedding,
-              summarize_content($1) as summary
-          )
           INSERT INTO research_steps
           (session_id, step_id, type, query, content, parent_id, metadata, embedding, summary)
-          SELECT $2, $3, $4, $5, $1, $6, $7, embedding, summary
-          FROM step_ai
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           ON CONFLICT (step_id)
           DO UPDATE SET
-            type = $4,
-            query = $5,
-            content = $1,
+            type = $3,
+            query = $4,
+            content = $5,
             parent_id = $6,
             metadata = $7,
-            embedding = EXCLUDED.embedding,
-            summary = EXCLUDED.summary
-          RETURNING summary`,
+            embedding = $8,
+            summary = $9`,
           [
-            step.content,
             sessionId,
             step.id,
             step.type,
             step.query,
+            step.content,
             parentId,
-            JSON.stringify(step.metadata || {})
+            JSON.stringify(step.metadata || {}),
+            embedding,
+            summary
           ]
         );
 
@@ -576,33 +585,32 @@ export class DatabaseService {
           .filter(Boolean)
           .join('\n\n');
 
-        // Generate insights using Azure OpenAI
-        const insightResult = await client.query(`
-          SELECT azure_openai.create_chat_completion(
-            deployment_name => $1,
-            messages => jsonb_build_array(
-              jsonb_build_object(
-                'role', 'system',
-                'content', 'Analyze the research and provide 3 key insights, patterns, or recommendations.'
-              ),
-              jsonb_build_object(
-                'role', 'user',
-                'content', $2
-              )
-            ),
-            api_key => $3,
-            resource_name => $4
-          ) as insights`,
-          [
-            this.aiConfig.deploymentName,
-            combinedContent,
-            this.aiConfig.openaiKey,
-            this.aiConfig.openaiEndpoint
-          ]
-        );
+        // Generate insights using AzureOpenAIService (Responses API)
+        let insightsText = '';
+        try {
+          const azureOpenAI = AzureOpenAIService.getInstance();
+          const prompt = `Analyze the following research summaries and provide 3 key insights, patterns, or recommendations. Format each insight as a numbered list (1. 2. 3.).
+
+Research Content:
+${combinedContent}
+
+Insights:`;
+
+          const response = await azureOpenAI.generateResponse(
+            prompt,
+            EffortType.MEDIUM,
+            false,
+            0.7,
+            1000
+          );
+          insightsText = response.text;
+        } catch (error) {
+          console.error('Failed to generate insights via Responses API:', error);
+          return [];
+        }
 
         // Save insights
-        const insights = this.parseInsights(insightResult.rows[0]?.insights);
+        const insights = this.parseInsights(insightsText);
         for (const insight of insights) {
           await client.query(
             `INSERT INTO research_insights

@@ -63,21 +63,24 @@ export class ResearchStrategyService {
     query: string,
     queryType: QueryType,
     model: ModelType,
-    _effort: EffortType,
-    performComprehensiveResearch?: (query: string, model: ModelType, effort: EffortType) => Promise<EnhancedResearchResults>,
-    performResearchWithEvaluation?: (query: string, model: ModelType, effort: EffortType) => Promise<EnhancedResearchResults>
+    effort: EffortType,
+    performComprehensiveResearch?: (query: string, model: ModelType, effort: EffortType, onProgress?: (message: string) => void) => Promise<EnhancedResearchResults>,
+    performResearchWithEvaluation?: (query: string, model: ModelType, effort: EffortType, onProgress?: (message: string) => void) => Promise<EnhancedResearchResults>,
+    onProgress?: (message: string) => void
   ): Promise<ResearchResponse> {
+    onProgress?.(`Initiating ${queryType} research strategy...`);
+    
     switch (queryType) {
       case 'factual':
-        return this.handleFactualQuery(query, model, _effort);
+        return this.handleFactualQuery(query, model, effort, onProgress);
       case 'analytical':
-        return this.handleAnalyticalQuery(query, model, _effort, performResearchWithEvaluation);
+        return this.handleAnalyticalQuery(query, model, effort, performResearchWithEvaluation, onProgress);
       case 'comparative':
-        return this.handleComparativeQuery(query, model, _effort, performComprehensiveResearch);
+        return this.handleComparativeQuery(query, model, effort, performComprehensiveResearch, onProgress);
       case 'exploratory':
-        return this.handleExploratoryQuery(query, model, _effort, performComprehensiveResearch);
+        return this.handleExploratoryQuery(query, model, effort, performComprehensiveResearch, onProgress);
       default:
-        return this.handleExploratoryQuery(query, model, _effort, performComprehensiveResearch);
+        return this.handleExploratoryQuery(query, model, effort, performComprehensiveResearch, onProgress);
     }
   }
 
@@ -87,9 +90,13 @@ export class ResearchStrategyService {
   private async handleFactualQuery(
     query: string,
     model: ModelType,
-    effort: EffortType
+    effort: EffortType,
+    onProgress?: (message: string) => void
   ): Promise<ResearchResponse> {
     try {
+      onProgress?.('Generating search queries for verified sources...');
+      onProgress?.('tool_used:factual_search');
+      
       const generateText = this.modelProvider.generateText.bind(this.modelProvider);
       
       // Generate focused search queries for factual information
@@ -101,14 +108,17 @@ export class ResearchStrategyService {
       );
 
       // Perform web research
+      onProgress?.('Conducting web research on verified sources...');
       const research = await this.webResearchService.performWebResearch(
         searchQueries,
         model,
         effort,
-        generateText
+        generateText,
+        onProgress
       );
 
       // Generate final answer
+      onProgress?.('Finalizing factual answer...');
       const answer = await this.webResearchService.generateFinalAnswer(
         query,
         research.aggregatedFindings,
@@ -142,15 +152,21 @@ export class ResearchStrategyService {
     query: string,
     model: ModelType,
     _effort: EffortType,
-    performResearchWithEvaluation?: (query: string, model: ModelType, effort: EffortType) => Promise<EnhancedResearchResults>
+    performResearchWithEvaluation?: (query: string, model: ModelType, effort: EffortType, onProgress?: (message: string) => void) => Promise<EnhancedResearchResults>,
+    onProgress?: (message: string) => void
   ): Promise<ResearchResponse> {
     try {
+      onProgress?.('Initiating analytical research with evaluation...');
+      onProgress?.('tool_used:analytical_research');
+      
       if (!performResearchWithEvaluation) {
         // Fallback to basic research
-        return this.handleFactualQuery(query, model, EffortType.HIGH);
+        onProgress?.('Falling back to basic factual research...');
+        return this.handleFactualQuery(query, model, EffortType.HIGH, onProgress);
       }
 
-      const result = await performResearchWithEvaluation(query, model, EffortType.HIGH);
+      onProgress?.('Performing comprehensive research with quality evaluation...');
+      const result = await performResearchWithEvaluation(query, model, EffortType.HIGH, onProgress);
 
       return {
         text: result.synthesis,
@@ -177,15 +193,21 @@ export class ResearchStrategyService {
     query: string,
     model: ModelType,
     _effort: EffortType,
-    performComprehensiveResearch?: (query: string, model: ModelType, effort: EffortType) => Promise<EnhancedResearchResults>
+    performComprehensiveResearch?: (query: string, model: ModelType, effort: EffortType, onProgress?: (message: string) => void) => Promise<EnhancedResearchResults>,
+    onProgress?: (message: string) => void
   ): Promise<ResearchResponse> {
     try {
+      onProgress?.('Initiating comparative analysis research...');
+      onProgress?.('tool_used:comparative_research');
+      
       if (!performComprehensiveResearch) {
         // Fallback to basic research
-        return this.handleFactualQuery(query, model, EffortType.MEDIUM);
+        onProgress?.('Falling back to basic research for comparison...');
+        return this.handleFactualQuery(query, model, EffortType.MEDIUM, onProgress);
       }
 
-      const result = await performComprehensiveResearch(query, model, EffortType.MEDIUM);
+      onProgress?.('Comprehensive research initiated for comparative analysis...');
+      const result = await performComprehensiveResearch(query, model, EffortType.MEDIUM, onProgress);
 
       return {
         text: result.synthesis,
@@ -212,15 +234,21 @@ export class ResearchStrategyService {
     query: string,
     model: ModelType,
     _effort: EffortType,
-    performComprehensiveResearch?: (query: string, model: ModelType, effort: EffortType) => Promise<EnhancedResearchResults>
+    performComprehensiveResearch?: (query: string, model: ModelType, effort: EffortType, onProgress?: (message: string) => void) => Promise<EnhancedResearchResults>,
+    onProgress?: (message: string) => void
   ): Promise<ResearchResponse> {
     try {
+      onProgress?.('Initiating exploratory research...');
+      onProgress?.('tool_used:exploratory_research');
+      
       if (!performComprehensiveResearch) {
         // Fallback to basic research
-        return this.handleFactualQuery(query, model, EffortType.MEDIUM);
+        onProgress?.('Falling back to basic research for exploration...');
+        return this.handleFactualQuery(query, model, EffortType.MEDIUM, onProgress);
       }
 
-      const result = await performComprehensiveResearch(query, model, EffortType.MEDIUM);
+      onProgress?.('Comprehensive research initiated for exploration...');
+      const result = await performComprehensiveResearch(query, model, EffortType.MEDIUM, onProgress);
 
       return {
         text: result.synthesis,

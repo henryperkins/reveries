@@ -91,6 +91,7 @@ export class ParadigmResearchService {
 
     onProgress?.(`Initializing ${paradigm} host consciousness...`);
     onProgress?.(`Context density: ${contextDensity.densities[paradigm]}%`);
+    onProgress?.('search queries generation in progress...');
 
     // Track layer execution in metadata
     const layerResults: Record<string, any> = {};
@@ -112,6 +113,9 @@ export class ParadigmResearchService {
     }
 
     // Now execute the paradigm-specific research
+    onProgress?.('Comprehensive research initiated...');
+    onProgress?.('tool_used:paradigm_research');
+    
     let result: EnhancedResearchResults;
 
     switch (paradigm) {
@@ -129,7 +133,10 @@ export class ParadigmResearchService {
         break;
     }
 
+    onProgress?.('evaluating research quality and self-healing...');
+
     // Apply context layer post-processing
+    onProgress?.('Finalizing comprehensive answer through synthesis...');
     if (layerResults.compress && result.synthesis) {
       // Apply final compression if needed
       const compressedSynthesis = this.compressLayer.compress(
@@ -255,7 +262,7 @@ export class ParadigmResearchService {
       `${query} escape loops breakthrough`
     ];
 
-    const research = await this.webResearchService.performWebResearch(searchQueries, model, effort, generateText);
+    const research = await this.webResearchService.performWebResearch(searchQueries, model, effort, generateText, onProgress);
 
     const synthesisPrompt = `
       Based on this research about "${query}", provide ONLY:
@@ -302,7 +309,7 @@ export class ParadigmResearchService {
       `${query} inclusive approaches best practices`
     ];
 
-    const research = await this.webResearchService.performWebResearch(searchQueries, model, effort, generateText);
+    const research = await this.webResearchService.performWebResearch(searchQueries, model, effort, generateText, onProgress);
 
     const synthesisPrompt = `
       Based on this research about "${query}", provide a PROTECTIVE and COMPREHENSIVE analysis:
@@ -352,7 +359,7 @@ export class ParadigmResearchService {
       ...tools.map(tool => `${query} ${tool}`)
     ];
 
-    const research = await this.webResearchService.performWebResearch(searchQueries, model, effort, generateText);
+    const research = await this.webResearchService.performWebResearch(searchQueries, model, effort, generateText, onProgress);
 
     // Apply source selection from select layer - prioritize academic sources
     let selectedSources = research.allSources;
@@ -424,7 +431,7 @@ export class ParadigmResearchService {
       `${query} orchestration planning`
     ];
 
-    const research = await this.webResearchService.performWebResearch(searchQueries, model, effort, generateText);
+    const research = await this.webResearchService.performWebResearch(searchQueries, model, effort, generateText, onProgress);
 
     const synthesisPrompt = `
       Based on this research about "${query}", provide STRATEGIC insights:

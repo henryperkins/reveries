@@ -97,7 +97,7 @@ class AzureOpenAIEmbeddingProvider implements EmbeddingProvider {
       .replace(/\/+$/, '')             // trim trailing slash(es)
       .replace(/\/openai$/, '');       // remove redundant /openai
     this.deploymentName = deploymentName || getEnv('VITE_AZURE_OPENAI_EMBEDDING_DEPLOYMENT', 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT') || 'text-embedding-ada-002';
-    this.apiVersion = getEnv('VITE_AZURE_OPENAI_API_VERSION', 'AZURE_OPENAI_API_VERSION') || '2025-04-01-preview';
+    this.apiVersion = getEnv('VITE_AZURE_OPENAI_EMBEDDING_API_VERSION', 'AZURE_OPENAI_EMBEDDING_API_VERSION') || '2024-10-21';
   }
 
   async isAvailable(): Promise<boolean> {

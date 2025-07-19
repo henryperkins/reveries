@@ -14,7 +14,7 @@ const mockConfig = {
   VITE_AZURE_AI_PROJECT_ENDPOINT: 'https://test-project.openai.azure.com/',
   VITE_AZURE_AI_AGENT_API_KEY: 'test-agent-key',
   VITE_BING_CONNECTION_ID: 'test-bing-connection',
-  VITE_AZURE_AI_API_VERSION: '2025-05-01'
+  VITE_AZURE_AI_API_VERSION: '2025-04-01-preview'
 };
 
 describe('Azure AI Agent Service Integration', () => {

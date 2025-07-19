@@ -348,7 +348,8 @@ export class ResearchAgentService {
         model,
         effort,
         this.performComprehensiveResearch.bind(this),
-        this.performResearchWithEvaluation.bind(this)
+        this.performResearchWithEvaluation.bind(this),
+        onProgress
       );
 
       // Convert response to EnhancedResearchResults

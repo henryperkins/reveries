@@ -233,7 +233,65 @@ export interface EnhancedResearchResults {
   };
 }
 
-// Add Azure OpenAI specific types
+// Azure OpenAI Responses API types
+export interface ResponsesRequest {
+  model: string;
+  input: string | Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string | Array<{
+      type: 'input_text' | 'output_text';
+      text: string;
+    }>;
+  }>;
+  max_output_tokens?: number;
+  temperature?: number;
+  reasoning?: {
+    effort: 'low' | 'medium' | 'high';
+  };
+  stream?: boolean;
+  background?: boolean;
+  tools?: Array<{
+    type: 'function' | 'mcp';
+    function?: {
+      name: string;
+      description: string;
+      parameters: any;
+    };
+  }>;
+  previous_response_id?: string;
+}
+
+export interface ResponsesResponse {
+  id: string;
+  object: 'response';
+  created_at: number;
+  model: string;
+  status: 'completed' | 'in_progress' | 'queued' | 'failed' | 'cancelled';
+  output: Array<{
+    id: string;
+    role: 'assistant';
+    content: Array<{
+      type: 'output_text';
+      text: string;
+    }>;
+  }>;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    total_tokens: number;
+    output_tokens_details?: {
+      reasoning_tokens: number;
+    };
+  };
+  reasoning?: {
+    content?: string;
+    encrypted_content?: string;
+  };
+}
+
+// Legacy Chat Completion types - DEPRECATED
+// Use ResponsesRequest and ResponsesResponse instead
+/** @deprecated Use ResponsesRequest instead */
 export interface O3ChatCompletionRequest {
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
   maxCompletionTokens?: number;
@@ -241,6 +299,7 @@ export interface O3ChatCompletionRequest {
   stream?: boolean;
 }
 
+/** @deprecated Use ResponsesResponse instead */
 export interface O3ChatCompletionResponse {
   id: string;
   content: string;
