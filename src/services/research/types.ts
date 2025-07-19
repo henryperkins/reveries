@@ -104,10 +104,8 @@ export interface ParadigmResearchContext {
   onProgress?: (message: string) => void;
 }
 
-export interface ContextDensity {
-  phase: ResearchPhase;
-  density: number;
-}
+// Re-export canonical ContextDensity from main types
+export type { ContextDensity } from '@/types';
 
 // ResearchSection is now imported from main types file
 

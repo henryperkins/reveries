@@ -192,10 +192,8 @@ export class ResearchAgentService {
       const phase = metadata?.phase || 'discovery';
       const contextDensity = this.contextEngineering.adaptContextDensity(phase, paradigm);
 
-      // Process through context layers
-      const contextLayers: ContextLayer[] = ['write', 'select'];
-      if (phase === 'synthesis') contextLayers.push('compress');
-      if (paradigm === 'dolores' || paradigm === 'bernard') contextLayers.push('isolate');
+      // Process through context layers using paradigm-specific sequence
+      const contextLayers = this.contextEngineering.getLayerSequence(paradigm);
 
       // Create enhanced onProgress that tracks layers
       const enhancedOnProgress = (message: string) => {
@@ -292,10 +290,7 @@ export class ResearchAgentService {
       return {
         ...response,
         paradigmProbabilities: paradigmProbs,
-        contextDensity: {
-          phase: phase,
-          density: contextDensity.averageDensity || 0.5
-        },
+        contextDensity,
         contextLayers
       };
     } catch (error) {

@@ -1,4 +1,4 @@
-import { HostParadigm, PyramidLayer, ResearchPhase } from '@/types';
+import { HostParadigm, PyramidLayer, ResearchPhase, ContextDensity } from '@/types';
 import type { ContextLayer } from '@/types';
 import { DEFAULT_CONTEXT_WINDOW_METRICS } from '@/constants';
 
@@ -47,11 +47,7 @@ export class ContextEngineeringService {
   adaptContextDensity(
     phase: ResearchPhase,
     paradigm?: HostParadigm | null
-  ): {
-    averageDensity: number;
-    dominantParadigm: HostParadigm;
-    densities: Record<HostParadigm, number>;
-  } {
+  ): ContextDensity {
     // Normalize phase names to match DEFAULT_CONTEXT_WINDOW_METRICS
     const phaseMap: Record<string, string> = {
       'analyzing': 'synthesis',
@@ -78,9 +74,11 @@ export class ContextEngineeringService {
       console.warn(`No metrics found for phase: ${phase} (normalized: ${normalizedPhase}), using defaults`);
       const averageDensity = Object.values(defaultDensities).reduce((a, b) => a + b) / Object.values(defaultDensities).length;
       return {
+        phase,
         averageDensity,
         dominantParadigm: defaultParadigm,
-        densities: defaultDensities
+        densities: defaultDensities,
+        density: averageDensity
       };
     }
 
@@ -110,7 +108,7 @@ export class ContextEngineeringService {
 
     const averageDensity = Object.values(densities).reduce((a, b) => a + b) / 4;
 
-    return { averageDensity, dominantParadigm, densities };
+    return { phase, averageDensity, dominantParadigm, densities, density: averageDensity };
   }
 
   /**

@@ -162,11 +162,13 @@ export interface ResearchResponse {
   sources: ResearchSource[];
 }
 
-// Context Density interface
+// Context Density interface (canonical)
 export interface ContextDensity {
-  averageDensity: number;
+  phase: ResearchPhase;
   dominantParadigm: HostParadigm;
   densities: Record<HostParadigm, number>;
+  averageDensity: number;
+  density?: number; // backward-compat flat %
 }
 
 /**

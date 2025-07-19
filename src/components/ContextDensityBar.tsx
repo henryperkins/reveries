@@ -20,7 +20,7 @@ interface ContextDensityBarProps {
 export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
   densities,
   dominantContext,
-  phase = 'analyzing',
+  phase = 'synthesis',
   showLabels = true,
   paradigm,
   showHostColors = false
