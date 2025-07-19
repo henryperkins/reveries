@@ -26,9 +26,7 @@ import {
 } from './research/types';
 import {
   ContextLayerExecutionContext,
-  ContextLayerResult,
-  EnhancedResearchMetadata,
-  ExtendedResearchResponse
+  ContextLayerResult
 } from './contextLayers/types';
 
 // Import all sub-services
@@ -401,138 +399,86 @@ export class ResearchAgentService {
         }
       };
 
-      // Execute context layers explicitly for better progress tracking
-      let layerResults: any = {};
+      // Execute context layers with proper data flow
+      const layerResults: Record<string, ContextLayerResult> = {};
 
       for (const layer of contextLayers) {
         metadata?.onProgress?.(`layer_progress:${layer}`);
         metadata?.onProgress?.(`Executing ${layer} layer for ${paradigm} paradigm...`);
 
-        // Estimate cost for scheduling service (resource-intensive layers get higher cost)
-        const layerCosts = { 'write': 1, 'select': 2, 'compress': 3, 'isolate': 4 };
-        const layerCost = layerCosts[layer] || 1;
+        const layerResult = await this.executeContextLayer(layer, {
+          query,
+          paradigm,
+          density: contextDensity.averageDensity || 50,
+          layerResults,
+          sources: undefined,
+          content: undefined,
+          model: model.model,
+          effort: model.effort,
+          onProgress: metadata?.onProgress,
+        });
 
-        try {
-          switch (layer) {
-            case 'write':
-              this.writeLayer.write('query_context', { query, paradigm, phase }, contextDensity.averageDensity || 50, paradigm);
-              layerResults.writeLayer = 'completed';
-              break;
-
-            case 'select':
-              // Get some initial sources for selection (from memory or previous research)
-              const cachedSources = this.memoryService.getCachedSources(query) || [];
-              const selectedSources = await this.selectLayer.selectSources(query, cachedSources, paradigm, 5);
-              layerResults.selectedSources = selectedSources;
-              break;
-
-            case 'compress':
-              if (layerResults.selectedSources && layerResults.selectedSources.length > 0) {
-                // Use scheduling service for compression (resource-intensive)
-                const compressTaskId = `compress-${paradigm}-${Date.now()}`;
-                this.schedulingService.addTask(
-                  compressTaskId,
-                  layerCost,
-                  paradigm,
-                  async () => {
-                    metadata?.onProgress?.('Compressing research for synthesis phase');
-                    const sourcesText = layerResults.selectedSources.map((s: any) => s.snippet || s.title || '').join(' ');
-
-                    // --- FIX: convert density % → token budget --------------------
-                    const rawTokens = this.compressLayer.estimateTokens(sourcesText);
-                    const targetTokens = Math.max(
-                      20,                                   // keep a sane minimum
-                      Math.round(rawTokens * ((contextDensity.averageDensity || 50) / 100))
-                    );
-                    //----------------------------------------------------------------
-
-                    const compressed = this.compressLayer.compress(sourcesText, targetTokens, paradigm);
-                    layerResults.compressedContent = compressed;
-                    metadata?.onProgress?.('Research compression complete, moving to quality evaluation');
-                    return compressed;
-                  },
-                  2 // Higher priority for compression
-                );
-
-                // Wait for completion (simplified - in production would poll task status)
-                await new Promise(resolve => setTimeout(resolve, 100));
-                const compressTask = this.schedulingService.getTaskStatus(compressTaskId);
-                if (compressTask?.status === 'completed') {
-                  layerResults.compressedContent = compressTask.result;
-                }
-              }
-              break;
-
-            case 'isolate':
-              // Use scheduling service for isolation (most resource-intensive)
-              const isolateTaskId = `isolate-${paradigm}-${Date.now()}`;
-              this.schedulingService.addTask(
-                isolateTaskId,
-                layerCost,
-                paradigm,
-                async () => {
-                  // Isolate execution context for analysis-heavy paradigms
-                  const taskId = await this.isolateLayer.isolate(query, paradigm, {
-                    content: layerResults.compressedContent || query,
-                    sources: layerResults.selectedSources || []
-                  }, async (task: string, context: any) => {
-                    // Simple analysis function for the isolation layer
-                    return `Analyzed task: ${task} with context: ${JSON.stringify(context, null, 2)}`;
-                  });
-                  // Wait (≤ sandbox timeout) for the actual analysis output
-                  const isolatedResult = await this.isolateLayer.waitForTask(taskId);
-                  layerResults.isolatedAnalysis = isolatedResult;
-                  return isolatedResult;
-                },
-                3 // Highest priority for isolation
-              );
-
-              // Wait for completion (simplified - in production would poll task status)
-              await new Promise(resolve => setTimeout(resolve, 200));
-              const isolateTask = this.schedulingService.getTaskStatus(isolateTaskId);
-              if (isolateTask?.status === 'completed') {
-                layerResults.isolatedAnalysis = isolateTask.result;
-              }
-              break;
+        if (layerResult && !layerResult.error) {
+          layerResults[layer] = layerResult;
+          console.log(`[${paradigm}] ${layer} layer completed:`, {
+            hasResult: !!layerResult,
+            resultKeys: Object.keys(layerResult),
+          });
+        } else if (layerResult?.error) {
+          console.warn(`[${paradigm}] ${layer} layer error:`, layerResult.error);
+          if (layerResult.fallback) {
+            layerResults[layer] = layerResult.fallback;
           }
-        } catch (error) {
-          console.warn(`Layer ${layer} execution failed:`, error);
-          // Continue with other layers even if one fails
         }
 
-        // Brief delay for UX
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
 
-      // Route query using research strategy with adaptive timeout and extension mechanism
-      const researchPromise = this.routeResearchQuery(query, model, EffortType.MEDIUM, enhancedOnProgress);
-
-      // Implement timeout extension mechanism for complex queries
-      let result: EnhancedResearchResults;
-      result = await this.executeWithTimeoutExtension(
-        researchPromise,
-        query,
-        paradigm,
-        phase,
-        enhancedOnProgress
-      );
-
-      // Create response in the expected format
-      const response: ResearchResponse = {
-        text: result.synthesis,
-        sources: result.sources.map(s => ({
-          name: s.title || 'Unknown Source',
-          url: s.url,
-          snippet: s.snippet || '',
-          relevanceScore: s.relevanceScore || 0.5
-        }))
+      // Add layer results to metadata
+      const enhancedMetadata: any = {
+        phase: metadata?.phase,
+        onProgress: metadata?.onProgress,
+        contextLayers: {
+          executed: contextLayers,
+          results: layerResults,
+          paradigm,
+          density: contextDensity,
+        },
       };
 
+      // Route query based on type
+      let response: ResearchResponse;
+
+      // When calling research methods, pass the enhanced metadata
+      const queryType = this.strategyService.classifyQueryType(query);
+      if (queryType === "factual") {
+        response = await this.paradigmService.performHostBasedResearch(
+          query,
+          paradigm,
+          queryType,
+          model.model,
+          model.effort,
+          enhancedMetadata.onProgress
+        );
+      } else {
+        response = await this.strategyService.handleQuery(
+          query,
+          queryType,
+          model.model,
+          model.effort,
+          this.performComprehensiveResearch.bind(this),
+          this.performResearchWithEvaluation.bind(this),
+          enhancedMetadata.onProgress
+        );
+      }
+
+      // Include context layer info in final response
       return {
         ...response,
         paradigmProbabilities: paradigmProbs,
         contextDensity,
-        contextLayers
+        contextLayers,
+        layerResults,
       };
     } catch (error) {
       console.error('Error processing query:', error);
