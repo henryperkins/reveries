@@ -48,13 +48,12 @@ export class ContextEngineeringService {
     phase: ResearchPhase,
     paradigm?: HostParadigm | null
   ): ContextDensity {
-    // Normalize phase names to match DEFAULT_CONTEXT_WINDOW_METRICS
-    const phaseMap: Record<string, string> = {
+    // Map common aliases to standard phases
+    const phaseMap: Record<string, ResearchPhase> = {
       'analyzing': 'synthesis',
-      'discovery': 'problem_definition',
-      'exploration': 'data_collection',
-      'synthesis': 'synthesis',
-      'validation': 'action'
+      'problem_definition': 'discovery',
+      'data_collection': 'exploration',
+      'action': 'validation'
     };
     
     const normalizedPhase = phaseMap[phase] || phase;

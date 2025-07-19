@@ -8,6 +8,8 @@ interface Task {
   status: 'pending' | 'running' | 'completed' | 'failed';
   retryCount: number;
   executeFunction: () => Promise<any>;
+  result?: any;
+  error?: string;
 }
 
 export class SchedulingService {
@@ -87,10 +89,12 @@ export class SchedulingService {
     this.runningTasks.add(task.id);
 
     try {
-      await task.executeFunction();
+      const result = await task.executeFunction();
+      task.result = result;
       task.status = 'completed';
     } catch (error) {
       console.warn(`Task ${task.id} failed:`, error);
+      task.error = error instanceof Error ? error.message : String(error);
       task.retryCount++;
 
       if (task.retryCount < this.MAX_RETRIES) {

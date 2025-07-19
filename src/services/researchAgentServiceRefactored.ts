@@ -43,6 +43,7 @@ import { WriteLayerService } from './contextLayers/writeLayer';
 import { SelectLayerService } from './contextLayers/selectLayer';
 import { CompressLayerService } from './contextLayers/compressLayer';
 import { IsolateLayerService } from './contextLayers/isolateLayer';
+import { SchedulingService } from './contextLayers/schedulingService';
 
 export class ResearchAgentService {
   private static instance: ResearchAgentService | null = null;
@@ -66,6 +67,7 @@ export class ResearchAgentService {
   private selectLayer: SelectLayerService;
   private compressLayer: CompressLayerService;
   private isolateLayer: IsolateLayerService;
+  private schedulingService: SchedulingService;
 
   // State
   private lastParadigmProbabilities: ParadigmProbabilities | null = null;
@@ -87,6 +89,7 @@ export class ResearchAgentService {
     this.selectLayer = SelectLayerService.getInstance();
     this.compressLayer = CompressLayerService.getInstance();
     this.isolateLayer = IsolateLayerService.getInstance();
+    this.schedulingService = SchedulingService.getInstance();
 
     // Initialize database service if available (server-side only)
     try {
@@ -218,6 +221,10 @@ export class ResearchAgentService {
         metadata?.onProgress?.(`layer_progress:${layer}`);
         metadata?.onProgress?.(`Executing ${layer} layer for ${paradigm} paradigm...`);
 
+        // Estimate cost for scheduling service (resource-intensive layers get higher cost)
+        const layerCosts = { 'write': 1, 'select': 2, 'compress': 3, 'isolate': 4 };
+        const layerCost = layerCosts[layer] || 1;
+
         try {
           switch (layer) {
             case 'write':
@@ -234,33 +241,71 @@ export class ResearchAgentService {
 
             case 'compress':
               if (layerResults.selectedSources && layerResults.selectedSources.length > 0) {
-                metadata?.onProgress?.('Compressing research for synthesis phase');
-                const sourcesText = layerResults.selectedSources.map((s: any) => s.snippet || s.title || '').join(' ');
-                
-                // --- FIX: convert density % → token budget --------------------
-                const rawTokens = this.compressLayer.estimateTokens(sourcesText);
-                const targetTokens = Math.max(
-                  20,                                   // keep a sane minimum
-                  Math.round(rawTokens * ((contextDensity.averageDensity || 50) / 100))
+                // Use scheduling service for compression (resource-intensive)
+                const compressTaskId = `compress-${paradigm}-${Date.now()}`;
+                this.schedulingService.addTask(
+                  compressTaskId,
+                  layerCost,
+                  paradigm,
+                  async () => {
+                    metadata?.onProgress?.('Compressing research for synthesis phase');
+                    const sourcesText = layerResults.selectedSources.map((s: any) => s.snippet || s.title || '').join(' ');
+                    
+                    // --- FIX: convert density % → token budget --------------------
+                    const rawTokens = this.compressLayer.estimateTokens(sourcesText);
+                    const targetTokens = Math.max(
+                      20,                                   // keep a sane minimum
+                      Math.round(rawTokens * ((contextDensity.averageDensity || 50) / 100))
+                    );
+                    //----------------------------------------------------------------
+                    
+                    const compressed = this.compressLayer.compress(sourcesText, targetTokens, paradigm);
+                    layerResults.compressedContent = compressed;
+                    metadata?.onProgress?.('Research compression complete, moving to quality evaluation');
+                    return compressed;
+                  },
+                  2 // Higher priority for compression
                 );
-                //----------------------------------------------------------------
                 
-                const compressed = this.compressLayer.compress(sourcesText, targetTokens, paradigm);
-                layerResults.compressedContent = compressed;
-                metadata?.onProgress?.('Research compression complete, moving to quality evaluation');
+                // Wait for completion (simplified - in production would poll task status)
+                await new Promise(resolve => setTimeout(resolve, 100));
+                const compressTask = this.schedulingService.getTaskStatus(compressTaskId);
+                if (compressTask?.status === 'completed') {
+                  layerResults.compressedContent = compressTask.result;
+                }
               }
               break;
 
             case 'isolate':
-              // Isolate execution context for analysis-heavy paradigms
-              const isolationResult = await this.isolateLayer.isolate(query, paradigm, {
-                content: layerResults.compressedContent || query,
-                sources: layerResults.selectedSources || []
-              }, async (task: string, context: any) => {
-                // Simple analysis function for the isolation layer
-                return `Analyzed task: ${task} with context: ${JSON.stringify(context, null, 2)}`;
-              });
-              layerResults.isolatedAnalysis = isolationResult;
+              // Use scheduling service for isolation (most resource-intensive)
+              const isolateTaskId = `isolate-${paradigm}-${Date.now()}`;
+              this.schedulingService.addTask(
+                isolateTaskId,
+                layerCost,
+                paradigm,
+                async () => {
+                  // Isolate execution context for analysis-heavy paradigms
+                  const taskId = await this.isolateLayer.isolate(query, paradigm, {
+                    content: layerResults.compressedContent || query,
+                    sources: layerResults.selectedSources || []
+                  }, async (task: string, context: any) => {
+                    // Simple analysis function for the isolation layer
+                    return `Analyzed task: ${task} with context: ${JSON.stringify(context, null, 2)}`;
+                  });
+                  // Wait (≤ sandbox timeout) for the actual analysis output
+                  const isolatedResult = await this.isolateLayer.waitForTask(taskId);
+                  layerResults.isolatedAnalysis = isolatedResult;
+                  return isolatedResult;
+                },
+                3 // Highest priority for isolation
+              );
+              
+              // Wait for completion (simplified - in production would poll task status)
+              await new Promise(resolve => setTimeout(resolve, 200));
+              const isolateTask = this.schedulingService.getTaskStatus(isolateTaskId);
+              if (isolateTask?.status === 'completed') {
+                layerResults.isolatedAnalysis = isolateTask.result;
+              }
               break;
           }
         } catch (error) {

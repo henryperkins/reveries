@@ -32,39 +32,32 @@ export const DEFAULT_EFFORT: EffortType = EffortType.MEDIUM;
  * Default Context Window Density metrics adapted for Westworld host paradigms.
  * These values guide UI visualizations and agent heuristics for each research phase.
  */
-import { ContextWindowMetrics, ResearchPhase } from './types';
+import { ContextWindowMetrics } from './types';
 
 export const DEFAULT_CONTEXT_WINDOW_METRICS: ContextWindowMetrics[] = [
   {
-    phase: 'problem_definition' as ResearchPhase,
+    phase: 'discovery',
     dolores: 60,
     teddy: 80,
     bernard: 70,
     maeve: 85,
   },
   {
-    phase: 'data_collection' as ResearchPhase,
+    phase: 'exploration',
     dolores: 70,
     teddy: 90,
     bernard: 85,
     maeve: 60,
   },
   {
-    phase: 'analysis' as ResearchPhase,
-    dolores: 50,
-    teddy: 70,
-    bernard: 95,
-    maeve: 80,
-  },
-  {
-    phase: 'synthesis' as ResearchPhase,
+    phase: 'synthesis',
     dolores: 80,
     teddy: 85,
     bernard: 90,
     maeve: 70,
   },
   {
-    phase: 'action' as ResearchPhase,
+    phase: 'validation',
     dolores: 95,
     teddy: 75,
     bernard: 60,

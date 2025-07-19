@@ -351,7 +351,7 @@ const App: React.FC = () => {
             startProgressTimeout('synthesizing', TIMEOUTS.PROGRESS_SYNTHESIS * multiplier);
           } else if (message.includes('O3 model') && message.includes('processing')) {
             // Special handling for O3 background task progress
-            onProgress?.(`O3 reasoning in progress: ${message}`);
+            console.log(`O3 reasoning in progress: ${message}`);
             // Reset timeout to give O3 more time
             progressTimeoutMgr.reset(TIMEOUTS.PROGRESS_RESEARCH * 8, (attempt) =>
               console.warn(`O3 extended timeout, advancing (attempt ${attempt})`)
