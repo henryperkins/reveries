@@ -52,7 +52,17 @@ export class ContextEngineeringService {
     dominantParadigm: HostParadigm;
     densities: Record<HostParadigm, number>;
   } {
-    const metrics = DEFAULT_CONTEXT_WINDOW_METRICS.find(m => m.phase === phase);
+    // Normalize phase names to match DEFAULT_CONTEXT_WINDOW_METRICS
+    const phaseMap: Record<string, string> = {
+      'analyzing': 'synthesis',
+      'discovery': 'problem_definition',
+      'exploration': 'data_collection',
+      'synthesis': 'synthesis',
+      'validation': 'action'
+    };
+    
+    const normalizedPhase = phaseMap[phase] || phase;
+    const metrics = DEFAULT_CONTEXT_WINDOW_METRICS.find(m => m.phase === normalizedPhase);
 
     // Default fallback with error handling
     const defaultDensity = 75;
@@ -65,9 +75,10 @@ export class ContextEngineeringService {
     };
 
     if (!metrics) {
-      console.warn(`No metrics found for phase: ${phase}, using defaults`);
+      console.warn(`No metrics found for phase: ${phase} (normalized: ${normalizedPhase}), using defaults`);
+      const averageDensity = Object.values(defaultDensities).reduce((a, b) => a + b) / Object.values(defaultDensities).length;
       return {
-        averageDensity: defaultDensity,
+        averageDensity,
         dominantParadigm: defaultParadigm,
         densities: defaultDensities
       };
@@ -132,7 +143,8 @@ export class ContextEngineeringService {
    * Quick helper to check if a given layer is first for a paradigm
    */
   isFirstLayer(paradigm: HostParadigm, layer: ContextLayer): boolean {
-    return this.getLayerSequence(paradigm)[0] === layer;
+    const sequence = this.getLayerSequence(paradigm);
+    return sequence && sequence.length > 0 && sequence[0] === layer;
   }
 
   /**
