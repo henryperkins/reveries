@@ -21,7 +21,8 @@ import {
   FunctionCallHistory
 } from '@/types'
 import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
-import { DEFAULT_MODEL } from '@/constants'
+import { DEFAULT_MODEL, TIMEOUTS } from '@/constants'
+import { useTimeoutManager } from '@/utils/timeoutManager'
 import '@/App.css'
 
 const App: React.FC = () => {
@@ -71,8 +72,11 @@ const App: React.FC = () => {
   // Map tool-name -> context live-call id so we can mark completion
   const liveCallIdMap = useRef<Record<string, string>>({});
   
-  // Progress timeout ref for cleanup
-  const progressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Timeout manager for centralized cleanup
+  const timeoutManager = useTimeoutManager();
+  
+  // Progress ref to track current value (fixes race condition)
+  const currentProgressRef = useRef<number>(0);
   
   // Progress state machine helper
   const updateProgressState = useCallback((phase: typeof progressState, message?: string) => {
@@ -111,7 +115,9 @@ const App: React.FC = () => {
     };
     
     setProgressState(phase);
-    setProgress(progressMap[phase]);
+    const newProgress = progressMap[phase];
+    setProgress(newProgress);
+    currentProgressRef.current = newProgress;
     
     // Complete previous spinning steps
     if (phase !== 'idle') {
@@ -163,36 +169,40 @@ const App: React.FC = () => {
 
     setIsLoading(true)
     setProgress(0)
+    currentProgressRef.current = 0;
     setProgressState('idle')
     setCurrentLayer(null)
     setRealTimeContextDensities(null)
     setLiveFunctionCalls([])
     clearError()
 
-    // Progress timeout protection helper
+    // Progress timeout protection helper with timeout manager
     const startProgressTimeout = (phase: string, timeoutMs: number) => {
-      if (progressTimeoutRef.current) {
-        clearTimeout(progressTimeoutRef.current);
-      }
-      progressTimeoutRef.current = setTimeout(() => {
+      const timeoutKey = `progress-${phase}`;
+      
+      timeoutManager.set(timeoutKey, () => {
         console.warn(`Progress timeout in ${phase} phase, advancing to next phase`);
+        
+        // Use ref to get current progress value (fixes race condition)
+        const currentProgress = currentProgressRef.current;
+        
         // Force advance to next phase based on current progress
-        if (progress < 25) updateProgressState('routing', `Timeout in ${phase}, continuing...`);
-        else if (progress < 40) updateProgressState('researching', `Timeout in ${phase}, continuing...`);
-        else if (progress < 60) updateProgressState('evaluating', `Timeout in ${phase}, continuing...`);
-        else if (progress < 80) updateProgressState('synthesizing', `Timeout in ${phase}, continuing...`);
+        if (currentProgress < 25) updateProgressState('routing', `Timeout in ${phase}, continuing...`);
+        else if (currentProgress < 40) updateProgressState('researching', `Timeout in ${phase}, continuing...`);
+        else if (currentProgress < 60) updateProgressState('evaluating', `Timeout in ${phase}, continuing...`);
+        else if (currentProgress < 80) updateProgressState('synthesizing', `Timeout in ${phase}, continuing...`);
         else updateProgressState('complete');
       }, timeoutMs);
     };
 
     // Extended global research timeout to accommodate new adaptive timeouts
-    const globalTimeout = setTimeout(() => {
+    timeoutManager.set('global-research', () => {
       if (isLoading) {
         console.warn('Global research timeout reached');
         updateProgressState('complete');
         setIsLoading(false);
       }
-    }, 600000); // 10-minute global timeout for complex research
+    }, TIMEOUTS.GLOBAL_RESEARCH);
 
     try {
       // Create initial step
@@ -267,7 +277,7 @@ const App: React.FC = () => {
             addToolUsed(toolName);
 
             // Fallback completion timeout for operations without explicit completion signal
-            setTimeout(() => {
+            timeoutManager.set(`tool-fallback-${toolName}`, () => {
               // Local state update
               setLiveFunctionCalls((prev) =>
                 prev.map((call) =>
@@ -282,7 +292,7 @@ const App: React.FC = () => {
               if (id) {
                 updateLiveCall(id, { status: 'completed', endTime: Date.now() });
               }
-            }, 10000);
+            }, TIMEOUTS.TOOL_FALLBACK);
 
             // Also propagate to current spinning step's toolsUsed
             setResearch((prev) =>
@@ -303,20 +313,20 @@ const App: React.FC = () => {
           // Structured progress state machine based on message patterns
           if (message.includes('Query classified as:')) {
             updateProgressState('analyzing', message);
-            startProgressTimeout('analyzing', 30000); // 30s timeout for analysis
+            startProgressTimeout('analyzing', TIMEOUTS.PROGRESS_ANALYSIS);
           } else if (message.includes('Routing to') && message.includes('paradigm')) {
             updateProgressState('routing', message);
-            startProgressTimeout('routing', 15000); // 15s timeout for routing
+            startProgressTimeout('routing', TIMEOUTS.PROGRESS_ROUTING);
           } else if (message.includes('search queries') || message.includes('Comprehensive research')) {
             updateProgressState('researching', message);
-            startProgressTimeout('researching', 60000); // 60s timeout for research
+            startProgressTimeout('researching', TIMEOUTS.PROGRESS_RESEARCH);
           } else if (message.includes('quality') || message.includes('evaluating') || message.includes('self-healing')) {
             updateProgressState('evaluating', message);
-            startProgressTimeout('evaluating', 30000); // 30s timeout for evaluation
+            startProgressTimeout('evaluating', TIMEOUTS.PROGRESS_EVALUATION);
           } else if (message.includes('Finalizing') || message.includes('synthesis') || message.includes('comprehensive answer')) {
             updateProgressState('synthesizing', message);
             setCurrentLayer('compress');
-            startProgressTimeout('synthesizing', 30000); // 30s timeout for synthesis
+            startProgressTimeout('synthesizing', TIMEOUTS.PROGRESS_SYNTHESIS);
           }
           
           // Update any existing steps with more detailed content
@@ -435,15 +445,20 @@ const App: React.FC = () => {
       // On error, show partial progress but don't complete
       setProgress(prev => prev > 0 ? prev : 10)
     } finally {
-      // Clean up timeouts
-      if (progressTimeoutRef.current) {
-        clearTimeout(progressTimeoutRef.current);
-      }
-      clearTimeout(globalTimeout);
+      // Clean up all research-related timeouts
+      timeoutManager.clear('global-research');
+      timeoutManager.clear('progress-analyzing');
+      timeoutManager.clear('progress-routing');
+      timeoutManager.clear('progress-researching');
+      timeoutManager.clear('progress-evaluating');
+      timeoutManager.clear('progress-synthesizing');
       
       setIsLoading(false)
       // Complete progress before reset for visual feedback
-      setTimeout(() => setProgress(0), 1000)
+      timeoutManager.set('progress-reset', () => {
+        setProgress(0);
+        currentProgressRef.current = 0;
+      }, TIMEOUTS.PROGRESS_RESET);
       setCurrentLayer(null)
       // Keep context densities to show final results
     }
@@ -678,6 +693,7 @@ const App: React.FC = () => {
               showSegments={true}
               showShimmer={true}
               animate={true}
+              onError={(error) => console.error('ProgressMeter error:', error)}
             />
           </div>
         )}

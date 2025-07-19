@@ -39,6 +39,8 @@ export interface ProgressMeterProps {
   }>;
   /** Layout mode */
   layout?: 'default' | 'compact' | 'inline';
+  /** Error callback for configuration issues */
+  onError?: (error: string) => void;
 }
 
 export const ProgressMeter: React.FC<ProgressMeterProps> = ({
@@ -58,6 +60,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
   gradientClass,
   stackedSegments = [],
   layout = 'default',
+  onError,
 }) => {
   // Validate and clamp value between 0 and 100
   const percentage = (() => {
@@ -84,7 +87,10 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
           const classes = getParadigmClasses(paradigm);
           return classes.gradient;
         }
-        return 'bg-gray-500';
+        // Log warning and notify parent of configuration issue
+        console.warn('ProgressMeter: paradigm variant used but no paradigm provided');
+        onError?.('Missing paradigm configuration');
+        return 'bg-gray-500 animate-pulse'; // Visual indication of error
         
       case 'gradient':
         return gradientClass || 'bg-gradient-to-r from-westworld-gold to-westworld-copper';
@@ -110,6 +116,22 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
   if (variant === 'stacked' && stackedSegments.length > 0) {
     const totalValue = stackedSegments.reduce((sum, seg) => sum + seg.value, 0);
     
+    // Validate and warn about overflow
+    if (totalValue > 100) {
+      console.warn(`ProgressMeter: stacked segments total ${totalValue}% exceeds 100%. Normalizing values.`);
+      onError?.(`Stacked segments exceed 100% (${totalValue}%)`);
+    }
+    
+    // Normalize segments if needed
+    const normalizedSegments = totalValue > 100 
+      ? stackedSegments.map(seg => ({
+          ...seg,
+          value: (seg.value / totalValue) * 100
+        }))
+      : stackedSegments;
+    
+    const finalTotalValue = Math.min(totalValue, 100);
+    
     return (
       <div className={`w-full ${className}`}>
         {/* Header with label */}
@@ -120,7 +142,15 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
             </span>
             {showPercentage && (
               <span className="text-xs font-mono text-gray-500">
-                {Math.round(totalValue)}%
+                {Math.round(finalTotalValue)}%
+                {totalValue > 100 && (
+                  <span 
+                    className="text-red-500 ml-1" 
+                    title={`Original total: ${Math.round(totalValue)}%`}
+                  >
+                    ⚠️
+                  </span>
+                )}
               </span>
             )}
           </div>
@@ -130,13 +160,13 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
         <div
           className={`relative w-full ${sizeClasses[size]} bg-gray-200 rounded-full overflow-hidden shadow-inner`}
           role="progressbar"
-          aria-valuenow={totalValue}
+          aria-valuenow={finalTotalValue}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-label={label}
         >
           <div className="flex h-full">
-            {stackedSegments.map((segment, index) => {
+            {normalizedSegments.map((segment, index) => {
               const segmentClasses = segment.paradigm
                 ? getParadigmClasses(segment.paradigm).gradient
                 : segment.color;
@@ -146,7 +176,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
                   key={index}
                   className={`${segmentClasses} ${animate ? 'transition-all duration-500' : ''}`}
                   style={{ width: `${segment.value}%` }}
-                  title={segment.label || `${segment.value}%`}
+                  title={segment.label || `${Math.round(segment.value)}%`}
                 />
               );
             })}
@@ -154,9 +184,9 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
         </div>
         
         {/* Legend for stacked segments */}
-        {layout !== 'compact' && stackedSegments.some(s => s.label) && (
+        {layout !== 'compact' && normalizedSegments.some(s => s.label) && (
           <div className="flex flex-wrap gap-2 mt-2">
-            {stackedSegments.map((segment, index) => (
+            {normalizedSegments.map((segment, index) => (
               segment.label && (
                 <div key={index} className="flex items-center gap-1 text-xs">
                   <div
@@ -234,6 +264,13 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
                 className="flex-1 border-r border-westworld-tan/30 last:border-r-0"
               />
             ))}
+          </div>
+        )}
+        
+        {/* Error indicator for missing paradigm */}
+        {variant === 'paradigm' && !paradigm && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-xs text-red-500" title="Missing paradigm configuration">⚠️</span>
           </div>
         )}
       </div>
