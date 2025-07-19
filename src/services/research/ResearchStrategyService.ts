@@ -3,11 +3,11 @@
  * Handles different research strategies based on query type
  */
 
-import { ModelType, EffortType, QueryType } from '../../types';
-import { ResearchResponse, EnhancedResearchResults } from '../research/types';
+import { ModelType, EffortType, QueryType } from '@/types';
+import { ResearchResponse, EnhancedResearchResults } from '@/services/research/types';
 import { WebResearchService } from './WebResearchService';
 // import { EvaluationService } from './EvaluationService';
-import { ModelProviderService } from '../providers/ModelProviderService';
+import { ModelProviderService } from '@/services/providers/ModelProviderService';
 
 export class ResearchStrategyService {
   private static instance: ResearchStrategyService;

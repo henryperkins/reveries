@@ -9,8 +9,8 @@ import type {
   HostParadigm,
   ResearchMemoryEntry,
   CachedResult
-} from '../research/types';
-import { ResearchUtilities } from '../utils/ResearchUtilities';
+} from '@/services/research/types';
+import { ResearchUtilities } from '@/utils/ResearchUtilities';
 
 export class ResearchMemoryService {
   private static instance: ResearchMemoryService;

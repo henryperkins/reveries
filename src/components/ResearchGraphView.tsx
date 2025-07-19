@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ResearchGraphManager, generateMermaidDiagram } from '../researchGraph';
+import { ResearchGraphManager, generateMermaidDiagram } from '@/researchGraph';
 import { ChartBarIcon, ArrowDownTrayIcon, XMarkIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowsPointingOutIcon } from './icons';
-import { GraphLayoutEngine, getNodeStyle } from '../utils/graphLayout';
-import { formatDuration } from '../utils/exportUtils';
+import { GraphLayoutEngine, getNodeStyle } from '@/utils/graphLayout';
+import { formatDuration } from '@/utils/exportUtils';
 
 interface ResearchGraphViewProps {
   graphManager: ResearchGraphManager;

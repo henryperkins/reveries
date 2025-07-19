@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { RateLimiter } from '../services/rateLimiter';
+import { RateLimiter } from '@/services/rateLimiter';
 
 interface Stats {
   tokensUsedLastMinute: number;

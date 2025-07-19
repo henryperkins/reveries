@@ -3,7 +3,7 @@
  * Integrates with existing research enhancement pipeline
  */
 
-import { EffortType, Citation, ModelType } from '../types';
+import { EffortType, Citation, ModelType } from '@/types';
 import { RateLimiter } from './rateLimiter';
 import { APIError, withRetry } from './errorHandler';
 import { ResearchUtilities } from './utils/ResearchUtilities';

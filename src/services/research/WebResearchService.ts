@@ -3,10 +3,10 @@
  * Handles web search, research operations, and source management
  */
 
-import { ModelType, EffortType, Citation } from '../../types';
-import { WebResearchResult } from '../research/types';
-import { ResearchUtilities } from '../utils/ResearchUtilities';
-import { ResearchMemoryService } from '../memory/ResearchMemoryService';
+import { ModelType, EffortType, Citation } from '@/types';
+import { WebResearchResult } from '@/services/research/types';
+import { ResearchUtilities } from '@/utils/ResearchUtilities';
+import { ResearchMemoryService } from '@/services/memory/ResearchMemoryService';
 
 export class WebResearchService {
   private static instance: WebResearchService;

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { APIError } from '../services/errorHandler';
+import { APIError } from '@/services/errorHandler';
 
 export interface ErrorState {
   message: string;

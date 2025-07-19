@@ -1,21 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { APIError, ErrorBoundary } from '../errorHandler';
-import { AzureOpenAIService } from '../azureOpenAIService';
-import { AzureAIAgentService } from '../azureAIAgentService';
-import { geminiService } from '../geminiService';
-import { GrokService } from '../grokService';
-import { FunctionCallingService, FunctionCall } from '../functionCallingService';
-import { ResearchToolsService } from '../researchToolsService';
+import { APIError, ErrorBoundary } from '@/services/errorHandler';
+import { AzureOpenAIService } from '@/services/azureOpenAIService';
+import { AzureAIAgentService } from '@/services/azureAIAgentService';
+import { geminiService } from '@/services/geminiService';
+import { GrokService } from '@/services/grokService';
+import { FunctionCallingService, FunctionCall } from '@/services/functionCallingService';
+import { ResearchToolsService } from '@/services/researchToolsService';
 import {
   EffortType,
   ModelType,
   GENAI_MODEL_FLASH,
   GROK_MODEL_4,
   AZURE_O3_MODEL
-} from '../../types';
-import type { Citation } from '../../types';
-import type { ProviderResponse } from '../research/types';
+} from '@/types';
+import type { Citation } from '@/types';
+import type { ProviderResponse } from '@/services/research/types';
 
 const getGeminiApiKey = (): string => {
   const clientKey =

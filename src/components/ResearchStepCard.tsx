@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ResearchStep, ResearchStepType } from '../types';
+import { ResearchStep, ResearchStepType } from '@/types';
 import { ToolUsageIndicator } from './ToolUsageIndicator';
 
 interface ResearchStepCardProps {

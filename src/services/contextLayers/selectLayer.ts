@@ -1,4 +1,4 @@
-import { HostParadigm, Citation } from '../../types';
+import { HostParadigm, Citation } from '@/types';
 
 interface SelectionStrategy {
   paradigm: HostParadigm;

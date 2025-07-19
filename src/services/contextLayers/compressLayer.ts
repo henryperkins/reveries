@@ -1,5 +1,5 @@
-import { HostParadigm, ModelType, EffortType } from '../../types';
-import { ModelProviderService } from '../providers/ModelProviderService';
+import { HostParadigm, ModelType, EffortType } from '@/types';
+import { ModelProviderService } from '@/services/providers/ModelProviderService';
 import crypto from 'crypto';
 
 interface CompressionStrategy {

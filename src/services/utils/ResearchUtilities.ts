@@ -1,4 +1,4 @@
-import type { Citation, QueryType, EnhancedResearchResults } from '../research/types';
+import type { Citation, QueryType, EnhancedResearchResults } from '@/services/research/types';
 
 export class ResearchUtilities {
   /**

@@ -1,5 +1,5 @@
-import { EffortType, Citation } from '../types';
-import { getEnv } from '../utils/getEnv';
+import { EffortType, Citation } from '@/types';
+import { getEnv } from '@/utils/getEnv';
 
 export interface GrokResponse {
   text: string;

@@ -1,4 +1,4 @@
-import { HostParadigm } from '../../types';
+import { HostParadigm } from '@/types';
 
 interface Task {
   id: string;

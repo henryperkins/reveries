@@ -1,4 +1,4 @@
-import { ResearchStepType } from '../types';
+import { ResearchStepType } from '@/types';
 
 export interface GraphNode {
   id: string;

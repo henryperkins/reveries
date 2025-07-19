@@ -1,4 +1,4 @@
-import { databaseService } from '../services/databaseService';
+import { databaseService } from '@/services/databaseService';
 
 async function testDatabaseConnection() {
   console.log('Testing database connection...\n');

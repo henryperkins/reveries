@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { ResearchStep } from '../types';
+import { ResearchStep } from '@/types';
 
 interface SemanticSearchProps {
   onSearch: (query: string) => Promise<ResearchStep[]>;

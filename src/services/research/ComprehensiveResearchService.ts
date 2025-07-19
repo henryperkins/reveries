@@ -8,13 +8,13 @@ import {
   EffortType,
   Citation,
   EnhancedResearchResults
-} from '../../types';
+} from '@/types';
 import {
   ResearchSection
-} from '../research/types';
+} from '@/services/research/types';
 import { WebResearchService } from './WebResearchService';
-import { ModelProviderService } from '../providers/ModelProviderService';
-import { ResearchUtilities } from '../utils/ResearchUtilities';
+import { ModelProviderService } from '@/services/providers/ModelProviderService';
+import { ResearchUtilities } from '@/utils/ResearchUtilities';
 
 export class ComprehensiveResearchService {
   private static instance: ComprehensiveResearchService;

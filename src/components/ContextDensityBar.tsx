@@ -1,5 +1,6 @@
 import React from 'react'
-import { HostParadigm, ResearchPhase } from '../types'
+import { HostParadigm, ResearchPhase } from '@/types'
+import { getParadigmTheme, getParadigmClasses } from '@/theme'
 
 interface ContextDensityBarProps {
   densities: {
@@ -23,20 +24,16 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
   paradigm,
   showHostColors = false
 }) => {
-  // Paradigm color mapping
-  const paradigmColors = {
-    dolores: { primary: 'bg-red-500', gradient: 'from-red-400 to-red-600', text: 'text-red-600' },
-    teddy: { primary: 'bg-amber-500', gradient: 'from-amber-400 to-amber-600', text: 'text-amber-600' },
-    bernard: { primary: 'bg-blue-500', gradient: 'from-blue-400 to-blue-600', text: 'text-blue-600' },
-    maeve: { primary: 'bg-purple-500', gradient: 'from-purple-400 to-purple-600', text: 'text-purple-600' }
-  };
+  // Get paradigm theme and classes
+  const paradigmTheme = paradigm ? getParadigmTheme(paradigm) : null;
+  const paradigmClasses = paradigm ? getParadigmClasses(paradigm) : null;
 
   // Auto-detect dominant context if not provided
   const calculatedDominantContext = dominantContext || Object.entries(densities)
     .sort(([,a], [,b]) => b - a)[0][0];
 
-  // Get paradigm styling
-  const paradigmStyle = paradigm && showHostColors ? paradigmColors[paradigm] : null;
+  // Use paradigm styling if enabled
+  const useParadigmStyle = paradigm && showHostColors && paradigmTheme;
 
   // Phase emoji mapping
   const phaseEmojis = {
@@ -57,7 +54,7 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
         </h3>
         <div className="flex items-center gap-2">
           {paradigm && showHostColors && (
-            <span className={`text-xs px-2 py-1 rounded-full bg-gray-100 ${paradigmStyle?.text}`}>
+            <span className={`text-xs px-2 py-1 rounded-full ${paradigmClasses?.badge || 'bg-gray-100'}`}>
               {paradigm.charAt(0).toUpperCase() + paradigm.slice(1)} Mode
             </span>
           )}
@@ -67,8 +64,8 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
       <div className="space-y-3">
         {Object.entries(densities).map(([context, density]) => {
           const isDominant = context === calculatedDominantContext;
-          const barColorClass = paradigmStyle && showHostColors && isDominant
-            ? `bg-gradient-to-r ${paradigmStyle.gradient}`
+          const barColorClass = useParadigmStyle && isDominant
+            ? paradigmClasses!.gradient
             : isDominant
             ? 'bg-gradient-to-r from-westworld-gold to-westworld-copper'
             : 'bg-westworld-copper';
@@ -79,8 +76,8 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
                 <div className="flex justify-between text-sm mb-1">
                   <span className={`capitalize ${
                     isDominant 
-                      ? paradigmStyle && showHostColors 
-                        ? `font-semibold ${paradigmStyle.text}` 
+                      ? useParadigmStyle
+                        ? `font-semibold ${paradigmTheme!.text}` 
                         : 'font-semibold text-westworld-gold'
                       : ''
                   }`}>

@@ -2,7 +2,7 @@
  * Research-specific types and interfaces extracted from ResearchAgentService
  */
 
-import { Citation, QueryType, HostParadigm, ResearchPhase, ModelType, EffortType, EnhancedResearchResults } from '../../types';
+import { Citation, QueryType, HostParadigm, ResearchPhase, ModelType, EffortType, EnhancedResearchResults } from '@/types';
 
 export interface ProviderResponse {
   text: string;
@@ -64,7 +64,7 @@ export type {
   ResearchSection,
   EnhancedResearchResults,
   ParadigmProbabilities
-} from '../../types';
+} from '@/types';
 
 export interface WebResearchResult {
   aggregatedFindings: string;

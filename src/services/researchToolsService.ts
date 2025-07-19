@@ -1,6 +1,6 @@
-import { QueryType } from '../types';
+import { QueryType } from '@/types';
 import { FunctionCall, FunctionDefinition } from './functionCallingService';
-import { Citation } from '../types';
+import { Citation } from '@/types';
 
 export interface ResearchTool {
   name: string;

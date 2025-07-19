@@ -1,6 +1,6 @@
-import { HostParadigm, PyramidLayer, ResearchPhase } from '../types';
-import type { ContextLayer } from '../types';
-import { DEFAULT_CONTEXT_WINDOW_METRICS } from '../constants';
+import { HostParadigm, PyramidLayer, ResearchPhase } from '@/types';
+import type { ContextLayer } from '@/types';
+import { DEFAULT_CONTEXT_WINDOW_METRICS } from '@/constants';
 
 export class ContextEngineeringService {
   private static instance: ContextEngineeringService;

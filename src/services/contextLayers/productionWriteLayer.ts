@@ -1,7 +1,7 @@
-import { HostParadigm } from '../../types';
+import { HostParadigm } from '@/types';
 import { WriteLayerService } from './writeLayer';
-import { EmbeddingService, EmbeddingVector } from '../ai/EmbeddingService';
-import { VectorStoreAdapter, VectorStoreFactory } from '../storage/vectorStoreConfig';
+import { EmbeddingService, EmbeddingVector } from '@/services/ai/EmbeddingService';
+import { VectorStoreAdapter, VectorStoreFactory } from '@/services/storage/vectorStoreConfig';
 import crypto from 'crypto';
 
 type MemoryType = 'procedural' | 'episodic' | 'semantic';

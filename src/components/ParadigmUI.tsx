@@ -5,13 +5,15 @@ import {
   ParadigmProbabilities,
   ContextLayer,
   EnhancedResearchResults
-} from '../types';
+} from '@/types';
+import { getParadigmTheme, getParadigmClasses, PARADIGM_COLORS } from '@/theme';
 
 /* -------------------------------------------------------------------------- */
 /*                             STYLE & META DATA                              */
 /* -------------------------------------------------------------------------- */
 
-const PARADIGM_STYLES = {
+// Extended paradigm styles for non-host paradigms
+const EXTENDED_PARADIGM_STYLES = {
   factual:     { bg: 'bg-blue-50',      border: 'border-blue-200',      text: 'text-blue-700' },
   analytical:  { bg: 'bg-purple-50',    border: 'border-purple-200',    text: 'text-purple-700' },
   exploratory: { bg: 'bg-green-50',     border: 'border-green-200',     text: 'text-green-700' },
@@ -19,12 +21,25 @@ const PARADIGM_STYLES = {
   theoretical: { bg: 'bg-indigo-50',    border: 'border-indigo-200',    text: 'text-indigo-700' },
   creative:    { bg: 'bg-pink-50',      border: 'border-pink-200',      text: 'text-pink-700' },
   diagnostic:  { bg: 'bg-cyan-50',      border: 'border-cyan-200',      text: 'text-cyan-700' },
-  evaluative:  { bg: 'bg-emerald-50',   border: 'border-emerald-200',   text: 'text-emerald-700' },
-  dolores:     { bg: 'bg-yellow-50',    border: 'border-yellow-200',    text: 'text-yellow-700' },
-  teddy:       { bg: 'bg-red-50',       border: 'border-red-200',       text: 'text-red-700' },
-  bernard:     { bg: 'bg-gray-50',      border: 'border-gray-200',      text: 'text-gray-700' },
-  maeve:       { bg: 'bg-violet-50',    border: 'border-violet-200',    text: 'text-violet-700' }
+  evaluative:  { bg: 'bg-emerald-50',   border: 'border-emerald-200',   text: 'text-emerald-700' }
 } as const;
+
+// Helper to get styles for any paradigm
+function getParadigmStyles(paradigm: string) {
+  // Check if it's a host paradigm first
+  if (paradigm in PARADIGM_COLORS) {
+    const classes = getParadigmClasses(paradigm as HostParadigm);
+    const theme = getParadigmTheme(paradigm as HostParadigm);
+    return {
+      bg: theme.bg,
+      border: theme.border,
+      text: theme.text
+    };
+  }
+  // Fall back to extended styles
+  return EXTENDED_PARADIGM_STYLES[paradigm as keyof typeof EXTENDED_PARADIGM_STYLES] || 
+         { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700' };
+}
 
 /** Rich labels and emoji avatars for each host paradigm */
 const PARADIGM_INFO: Record<HostParadigm, { icon: string; name: string }> = {
@@ -43,12 +58,10 @@ export const ParadigmProbabilityBar: React.FC<{
 }> = ({ probabilities }) => {
   const paradigms: HostParadigm[] = ['dolores', 'teddy', 'bernard', 'maeve'];
 
-  const paradigmColors: Record<HostParadigm, string> = {
-    dolores: '#DC2626', // red‑600
-    teddy:   '#F59E0B', // amber‑500
-    bernard: '#3B82F6', // blue‑500
-    maeve:   '#10B981'  // emerald‑500
-  };
+  // Use centralized paradigm colors
+  const paradigmColors: Record<HostParadigm, string> = Object.fromEntries(
+    Object.entries(PARADIGM_COLORS).map(([key, theme]) => [key, theme.primary])
+  ) as Record<HostParadigm, string>;
 
   return (
     <div className="w-full">
@@ -156,12 +169,8 @@ export const ContextLayerProgress: React.FC<{
     isolate:  { emoji: '🚪', label: 'Isolate',  description: 'Focused analysis' }
   };
 
-  const paradigmColorTailwind = {
-    dolores: 'red',
-    teddy:   'amber',
-    bernard: 'blue',
-    maeve:   'emerald'
-  }[paradigm];
+  const paradigmTheme = getParadigmTheme(paradigm);
+  const paradigmClasses = getParadigmClasses(paradigm);
 
   return (
     <div className="w-full">
@@ -186,9 +195,9 @@ export const ContextLayerProgress: React.FC<{
                   'flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300',
                   isActive ? 'scale-110' : '',
                   isPast
-                    ? `bg-${paradigmColorTailwind}-500 text-white`
+                    ? `${paradigmTheme.primaryClass} text-white`
                     : isActive
-                    ? `bg-${paradigmColorTailwind}-400 animate-pulse text-white`
+                    ? `${paradigmTheme.primaryClass} animate-pulse text-white opacity-80`
                     : 'bg-gray-300 text-gray-600'
                 ].join(' ')}
               >
@@ -198,7 +207,7 @@ export const ContextLayerProgress: React.FC<{
                 <div
                   className={`text-xs font-bold ${
                     isActive
-                      ? `text-${paradigmColorTailwind}-600`
+                      ? paradigmTheme.text
                       : 'text-gray-600'
                   }`}
                 >

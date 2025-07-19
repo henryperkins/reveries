@@ -9,12 +9,12 @@ import {
   Citation,
   EnhancedResearchResults,
   ResearchState
-} from '../../types';
+} from '@/types';
 import {
   EvaluationMetadata,
   WebResearchResult
-} from '../research/types';
-import { ResearchUtilities } from '../utils/ResearchUtilities';
+} from '@/services/research/types';
+import { ResearchUtilities } from '@/utils/ResearchUtilities';
 
 export class EvaluationService {
   private static instance: EvaluationService;

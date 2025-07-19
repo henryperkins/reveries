@@ -1,11 +1,11 @@
 import { Pool } from 'pg';
-import { getEnv } from '../utils/getEnv';
+import { getEnv } from '@/utils/getEnv';
 import {
   ResearchStep,
   ResearchSection,
   ModelType,
   EffortType
-} from '../types';
+} from '@/types';
 import { AzureOpenAIService } from './azureOpenAIService';
 
 interface DatabaseConfig {

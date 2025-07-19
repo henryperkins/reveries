@@ -6,7 +6,7 @@ import {
    GENAI_MODEL_FLASH,
    GROK_MODEL_4,
    AZURE_O3_MODEL
- } from '../types';
+ } from '@/types';
 import {
   PlusIcon,
   TrashIcon,

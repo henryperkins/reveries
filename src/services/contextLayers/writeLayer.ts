@@ -1,4 +1,4 @@
-import { HostParadigm } from '../../types';
+import { HostParadigm } from '@/types';
 import crypto from 'crypto';
 
 type MemoryType = 'procedural' | 'episodic' | 'semantic';

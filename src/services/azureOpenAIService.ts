@@ -1,9 +1,9 @@
-import { EffortType, Citation, HostParadigm, ParadigmProbabilities } from '../types';
+import { EffortType, Citation, HostParadigm, ParadigmProbabilities } from '@/types';
 import { RateLimiter, estimateTokens } from './rateLimiter';
 import { APIError, withRetry } from './errorHandler';
 import { ResearchToolsService } from './researchToolsService';
 import { FunctionCallingService } from './functionCallingService';
-import { getEnv } from '../utils/getEnv';
+import { getEnv } from '@/utils/getEnv';
 
 export interface AzureOpenAIResponse {
   text: string;

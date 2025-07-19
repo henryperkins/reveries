@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from 'react';
-import { ResearchStep } from '../types';
-import { ResearchGraphManager } from '../researchGraph';
+import { ResearchStep } from '@/types';
+import { ResearchGraphManager } from '@/researchGraph';
 import { databaseService } from 'databaseService';
 
 interface PersistenceState {

@@ -1,6 +1,6 @@
 // src/components/ResearchArea.tsx
 import React, { useState } from 'react';
-import { ResearchStep, ResearchStepType } from '../types';
+import { ResearchStep, ResearchStepType } from '@/types';
 import { ResearchStepCard } from './ResearchStepCard';
 
 interface ResearchAreaProps {

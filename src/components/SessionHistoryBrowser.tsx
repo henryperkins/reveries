@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ResearchSession } from '../hooks/useEnhancedPersistedState';
+import { ResearchSession } from '@/hooks/useEnhancedPersistedState';
 import { 
   ClockIcon, 
   XMarkIcon, 

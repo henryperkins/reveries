@@ -15,7 +15,7 @@ import {
   ResearchStep,
   ResearchStepType,
   ResearchMetadata
-} from '../types';
+} from '@/types';
 import {
   EnhancedResearchResults,
   ResearchState,

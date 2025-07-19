@@ -1,4 +1,4 @@
-import { HostParadigm, HouseParadigm } from '../types';
+import { HostParadigm, HouseParadigm } from '@/types';
 
 /**
  * Bi-directional mapping between Westworld “host” paradigms and Hogwarts

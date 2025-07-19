@@ -3,7 +3,7 @@
  * Handles creation, retrieval, and management of shared research sessions
  */
 
-import { ExportedResearchData } from '../../types';
+import { ExportedResearchData } from '@/types';
 
 // Types for sharing system
 export interface ShareRequest {

@@ -3,22 +3,22 @@
  * Handles host-specific research implementations and context layer execution
  */
 
-import { ModelType, EffortType, Citation, HostParadigm, QueryType, ContextLayer } from '../../types';
+import { ModelType, EffortType, Citation, HostParadigm, QueryType, ContextLayer } from '@/types';
 import { 
   EnhancedResearchResults,
   ParadigmResearchContext,
   ContextLayerContext,
   LayerResult 
-} from '../research/types';
-import { ContextEngineeringService } from '../contextEngineeringService';
-import { ParadigmClassifier } from '../paradigmClassifier';
-import { WebResearchService } from '../research/WebResearchService';
-import { ModelProviderService } from '../providers/ModelProviderService';
-import { EvaluationService } from '../research/EvaluationService';
-import { WriteLayerService } from '../contextLayers/writeLayer';
-import { SelectLayerService } from '../contextLayers/selectLayer';
-import { CompressLayerService } from '../contextLayers/compressLayer';
-import { IsolateLayerService } from '../contextLayers/isolateLayer';
+} from '@/services/research/types';
+import { ContextEngineeringService } from '@/services/contextEngineeringService';
+import { ParadigmClassifier } from '@/services/paradigmClassifier';
+import { WebResearchService } from '@/services/research/WebResearchService';
+import { ModelProviderService } from '@/services/providers/ModelProviderService';
+import { EvaluationService } from '@/services/research/EvaluationService';
+import { WriteLayerService } from '@/services/contextLayers/writeLayer';
+import { SelectLayerService } from '@/services/contextLayers/selectLayer';
+import { CompressLayerService } from '@/services/contextLayers/compressLayer';
+import { IsolateLayerService } from '@/services/contextLayers/isolateLayer';
 
 export class ParadigmResearchService {
   private static instance: ParadigmResearchService;

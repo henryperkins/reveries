@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { Tool, SchemaType, Schema } from "@google/generative-ai";
-import { GENAI_MODEL_FLASH } from "../types";
+import { GENAI_MODEL_FLASH } from '@/types';
 
 export interface GeminiFunctionCall {
   name: string;

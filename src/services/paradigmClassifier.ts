@@ -1,4 +1,4 @@
-import { HostParadigm, ParadigmProbabilities } from "../types";
+import { HostParadigm, ParadigmProbabilities } from '@/types';
 import { EmbeddingService } from "./ai/EmbeddingService";
 
 /**

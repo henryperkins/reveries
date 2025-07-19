@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
-import { ResearchSession } from '../hooks/usePersistedState';
-import { ResearchStep, ResearchStepType, Citation, ResearchMetadata, ModelType, EffortType, HostParadigm, ParadigmProbabilities } from '../types';
-import { GraphNode, GraphEdge } from '../researchGraph';
+import { ResearchSession } from '@/hooks/usePersistedState';
+import { ResearchStep, ResearchStepType, Citation, ResearchMetadata, ModelType, EffortType, HostParadigm, ParadigmProbabilities } from '@/types';
+import { GraphNode, GraphEdge } from '@/researchGraph';
 
 export interface DatabaseConfig {
   user: string;

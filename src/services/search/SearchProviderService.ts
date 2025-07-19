@@ -3,8 +3,8 @@
  * Supports multiple search providers with fallback strategies
  */
 
-import { Citation } from '../../types';
-import { getEnv } from '../../utils/getEnv';
+import { Citation } from '@/types';
+import { getEnv } from '@/utils/getEnv';
 
 export interface SearchResult {
   title: string;

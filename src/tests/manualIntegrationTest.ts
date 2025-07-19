@@ -3,8 +3,8 @@
  * Run with: tsx src/tests/manualIntegrationTest.ts
  */
 
-import { AzureOpenAIService } from '../services/azureOpenAIService';
-import { EffortType, HostParadigm, ParadigmProbabilities } from '../types';
+import { AzureOpenAIService } from '@/services/azureOpenAIService';
+import { EffortType, HostParadigm, ParadigmProbabilities } from '@/types';
 
 async function testParadigmAwareToolIntegration() {
   console.log('🧪 Testing Azure OpenAI Paradigm-Aware Tool Integration...\n');

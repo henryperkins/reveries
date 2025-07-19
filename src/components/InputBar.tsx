@@ -4,8 +4,8 @@ import {
   LightBulbIcon,
   XMarkIcon,
 } from '@heroicons/react/24/solid';
-import { usePromptSuggestions } from '../hooks/usePromptSuggestions';
-import type { HostParadigm, ParadigmProbabilities } from '../types';
+import { usePromptSuggestions } from '@/hooks/usePromptSuggestions';
+import type { HostParadigm, ParadigmProbabilities } from '@/types';
 
 interface InputBarProps {
   onQuerySubmit: (value: string) => void;

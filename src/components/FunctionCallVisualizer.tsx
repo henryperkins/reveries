@@ -1,5 +1,5 @@
 import React from 'react';
-import { FunctionCallHistory } from '../types';
+import { FunctionCallHistory } from '@/types';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 interface FunctionCallVisualizerProps {

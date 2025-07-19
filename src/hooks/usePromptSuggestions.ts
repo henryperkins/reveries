@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { ResearchMemoryService } from "../services/memory/ResearchMemoryService";
-import { ResearchToolsService } from "../services/researchToolsService";
-import type { HostParadigm, ParadigmProbabilities } from "../types";
+import { ResearchMemoryService } from '@/services/memory/ResearchMemoryService";
+import { ResearchToolsService } from '@/services/researchToolsService";
+import type { HostParadigm, ParadigmProbabilities } from '@/types';
 
 interface Suggestion {
   text: string;

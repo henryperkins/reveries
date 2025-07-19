@@ -3,8 +3,8 @@
  * Supports multiple embedding providers with fallback strategies
  */
 
-import { HostParadigm, ParadigmProbabilities } from '../../types';
-import { getEnv } from '../../utils/getEnv';
+import { HostParadigm, ParadigmProbabilities } from '@/types';
+import { getEnv } from '@/utils/getEnv';
 
 export interface EmbeddingVector {
   values: number[];
