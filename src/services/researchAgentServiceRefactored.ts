@@ -236,7 +236,16 @@ export class ResearchAgentService {
               if (layerResults.selectedSources && layerResults.selectedSources.length > 0) {
                 metadata?.onProgress?.('Compressing research for synthesis phase');
                 const sourcesText = layerResults.selectedSources.map((s: any) => s.snippet || s.title || '').join(' ');
-                const compressed = this.compressLayer.compress(sourcesText, Math.round(contextDensity.averageDensity || 50), paradigm);
+                
+                // --- FIX: convert density % → token budget --------------------
+                const rawTokens = this.compressLayer.estimateTokens(sourcesText);
+                const targetTokens = Math.max(
+                  20,                                   // keep a sane minimum
+                  Math.round(rawTokens * ((contextDensity.averageDensity || 50) / 100))
+                );
+                //----------------------------------------------------------------
+                
+                const compressed = this.compressLayer.compress(sourcesText, targetTokens, paradigm);
                 layerResults.compressedContent = compressed;
                 metadata?.onProgress?.('Research compression complete, moving to quality evaluation');
               }
@@ -651,10 +660,10 @@ export class ResearchAgentService {
         }
         
         // Extend timeout for complex operations
-        const extensionTime = Math.min(baseTimeout * 0.5, 120000); // Max 2 minutes extension
-        currentTimeout = extensionTime;
+        const extraTime = Math.min(baseTimeout * 0.5, 120000); // add 50% (≤2 min)
+        currentTimeout += extraTime;
         
-        onProgress?.(`Research needs more time, extending timeout by ${Math.round(extensionTime/1000)}s (attempt ${extensionCount}/${maxExtensions})`);
+        onProgress?.(`Research needs more time, extending timeout by ${Math.round(extraTime/1000)}s (attempt ${extensionCount}/${maxExtensions})`);
         onProgress?.('Continuing research with extended timeout...');
         
         // Continue the loop with extended timeout

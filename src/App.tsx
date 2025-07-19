@@ -196,20 +196,32 @@ const App: React.FC = () => {
       });
     };
     
-    // Helper to get timeout value for current phase
+    // Helper to get adaptive timeout value for current phase based on model
     const getPhaseTimeoutMs = () => {
-      // Use a reasonable default that covers most phases
-      return TIMEOUTS.PROGRESS_RESEARCH; // 60s
+      const isO3Model = currentModel.includes('o3') || currentModel.includes('azure-o3');
+      const multiplier = isO3Model ? 4 : 1; // 4x longer timeouts for O3 models
+      
+      switch (progressState) {
+        case 'analyzing': return TIMEOUTS.PROGRESS_ANALYSIS * multiplier;
+        case 'routing': return TIMEOUTS.PROGRESS_ROUTING * multiplier;
+        case 'researching': return TIMEOUTS.PROGRESS_RESEARCH * multiplier;
+        case 'evaluating': return TIMEOUTS.PROGRESS_EVALUATION * multiplier;
+        case 'synthesizing': return TIMEOUTS.PROGRESS_SYNTHESIS * multiplier;
+        default: return TIMEOUTS.PROGRESS_RESEARCH * multiplier;
+      }
     };
 
-    // Extended global research timeout to accommodate new adaptive timeouts
+    // Extended global research timeout to accommodate O3 models
+    const isO3Model = currentModel.includes('o3') || currentModel.includes('azure-o3');
+    const globalTimeout = isO3Model ? TIMEOUTS.GLOBAL_RESEARCH * 3 : TIMEOUTS.GLOBAL_RESEARCH; // 30min for O3, 10min for others
+    
     timeoutManager.set('global-research', () => {
       if (isLoading) {
-        console.warn('Global research timeout reached');
+        console.warn(`Global research timeout reached (${globalTimeout/60000}min)`);
         updateProgressState('complete');
         setIsLoading(false);
       }
-    }, TIMEOUTS.GLOBAL_RESEARCH);
+    }, globalTimeout);
 
     try {
       // Create initial step
@@ -317,23 +329,33 @@ const App: React.FC = () => {
             return;
           }
           
-          // Structured progress state machine based on message patterns
+          // Structured progress state machine based on message patterns with adaptive timeouts
+          const isO3Model = currentModel.includes('o3') || currentModel.includes('azure-o3');
+          const multiplier = isO3Model ? 4 : 1; // 4x longer timeouts for O3 models
+          
           if (message.includes('Query classified as:')) {
             updateProgressState('analyzing', message);
-            startProgressTimeout('analyzing', TIMEOUTS.PROGRESS_ANALYSIS);
+            startProgressTimeout('analyzing', TIMEOUTS.PROGRESS_ANALYSIS * multiplier);
           } else if (message.includes('Routing to') && message.includes('paradigm')) {
             updateProgressState('routing', message);
-            startProgressTimeout('routing', TIMEOUTS.PROGRESS_ROUTING);
+            startProgressTimeout('routing', TIMEOUTS.PROGRESS_ROUTING * multiplier);
           } else if (message.includes('search queries') || message.includes('Comprehensive research')) {
             updateProgressState('researching', message);
-            startProgressTimeout('researching', TIMEOUTS.PROGRESS_RESEARCH);
+            startProgressTimeout('researching', TIMEOUTS.PROGRESS_RESEARCH * multiplier);
           } else if (message.includes('quality') || message.includes('evaluating') || message.includes('self-healing')) {
             updateProgressState('evaluating', message);
-            startProgressTimeout('evaluating', TIMEOUTS.PROGRESS_EVALUATION);
+            startProgressTimeout('evaluating', TIMEOUTS.PROGRESS_EVALUATION * multiplier);
           } else if (message.includes('Finalizing') || message.includes('synthesis') || message.includes('comprehensive answer')) {
             updateProgressState('synthesizing', message);
             setCurrentLayer('compress');
-            startProgressTimeout('synthesizing', TIMEOUTS.PROGRESS_SYNTHESIS);
+            startProgressTimeout('synthesizing', TIMEOUTS.PROGRESS_SYNTHESIS * multiplier);
+          } else if (message.includes('O3 model') && message.includes('processing')) {
+            // Special handling for O3 background task progress
+            onProgress?.(`O3 reasoning in progress: ${message}`);
+            // Reset timeout to give O3 more time
+            progressTimeoutMgr.reset(TIMEOUTS.PROGRESS_RESEARCH * 8, (attempt) =>
+              console.warn(`O3 extended timeout, advancing (attempt ${attempt})`)
+            );
           } else {
             // Reset timeout on any other progress message to prevent premature timeout
             progressTimeoutMgr.reset(getPhaseTimeoutMs(), (attempt) =>

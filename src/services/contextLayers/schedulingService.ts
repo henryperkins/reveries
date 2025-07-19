@@ -14,7 +14,7 @@ export class SchedulingService {
   private static instance: SchedulingService;
   private tasks: Map<string, Task> = new Map();
   private runningTasks: Set<string> = new Set();
-  
+
   // ACE-Graph scheduling parameters
   private readonly GLOBAL_BUDGET = 1000; // Token/cost budget
   private readonly CONCURRENCY_LIMIT = 8; // λ = 8 from docs
@@ -66,18 +66,19 @@ export class SchedulingService {
       });
 
     // Calculate current running cost
-    let currentRunningCost = Array.from(this.runningTasks)
+    let runningCost = Array.from(this.runningTasks)
       .map(id => this.tasks.get(id)?.cost || 0)
       .reduce((sum, cost) => sum + cost, 0);
 
     // Schedule tasks within budget and concurrency limits
     for (const task of pendingTasks) {
       if (this.runningTasks.size >= this.CONCURRENCY_LIMIT) break;
-      if (currentRunningCost + task.cost > this.GLOBAL_BUDGET) break;
+      if (runningCost + task.cost > this.GLOBAL_BUDGET) break;
 
-      // Update running cost before scheduling to prevent budget overshoot
-      currentRunningCost += task.cost;
       this.executeTask(task);
+
+      // Increase runningCost to account for scheduled task to prevent budget overshoot
+      runningCost += task.cost;
     }
   }
 
@@ -91,7 +92,7 @@ export class SchedulingService {
     } catch (error) {
       console.warn(`Task ${task.id} failed:`, error);
       task.retryCount++;
-      
+
       if (task.retryCount < this.MAX_RETRIES) {
         task.status = 'pending';
         // Exponential backoff
@@ -124,7 +125,7 @@ export class SchedulingService {
     const used = Array.from(this.runningTasks)
       .map(id => this.tasks.get(id)?.cost || 0)
       .reduce((sum, cost) => sum + cost, 0);
-    
+
     return {
       used,
       available: this.GLOBAL_BUDGET - used,

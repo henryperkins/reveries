@@ -174,8 +174,8 @@ export class ComprehensiveResearchService {
   ): Promise<ResearchSection[]> {
     const generateText = this.modelProvider.generateText.bind(this.modelProvider);
     
-    // Get batch size from environment or default to 1 (sequential)
-    const batchSize = this.getBatchSize();
+    // Get batch size from environment or default based on model type
+    const batchSize = this.getBatchSize(model);
     const results: ResearchSection[] = [];
     
     onProgress?.(`Processing ${sections.length} sections in batches of ${batchSize}...`);
@@ -255,9 +255,19 @@ export class ComprehensiveResearchService {
         }
       });
 
-      // Wait for current batch to complete before processing next batch
+      // Wait for current batch to complete with adaptive timeout for O3 models
       try {
-        const batchResults = await Promise.allSettled(batchPromises);
+        const isO3Model = model.includes('o3') || model.includes('azure-o3');
+        const batchTimeout = isO3Model ? 15 * 60 * 1000 : 5 * 60 * 1000; // 15min for O3, 5min for others
+        
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error(`Batch ${batchNumber} timed out after ${batchTimeout/1000}s`)), batchTimeout);
+        });
+        
+        const batchResults = await Promise.race([
+          Promise.allSettled(batchPromises),
+          timeoutPromise
+        ]) as PromiseSettledResult<any>[];
         
         // Process results and handle failures gracefully
         const successfulResults = batchResults
@@ -276,9 +286,11 @@ export class ComprehensiveResearchService {
           onProgress?.(`Batch ${batchNumber} completed successfully.`);
         }
         
-        // Intelligent delay between batches based on API performance
+        // Intelligent delay between batches based on API performance and model type
         if (i + batchSize < sections.length) {
-          const delayMs = Math.min(500 + (failedResults * 500), 2000); // 0.5-2s based on failures
+          const isO3Model = model.includes('o3') || model.includes('azure-o3');
+          const baseDelay = isO3Model ? 2000 : 500; // Longer delay for O3 models
+          const delayMs = Math.min(baseDelay + (failedResults * 1000), isO3Model ? 10000 : 3000);
           onProgress?.(`Pausing ${delayMs/1000}s before next batch for optimal API usage...`);
           await new Promise(resolve => setTimeout(resolve, delayMs));
         }
@@ -294,14 +306,16 @@ export class ComprehensiveResearchService {
   /**
    * Get batch size from environment or default
    */
-  private getBatchSize(): number {
+  private getBatchSize(model: ModelType): number {
     const envBatchSize = import.meta?.env?.VITE_RESEARCH_BATCH_SIZE || 
                         (typeof process !== 'undefined' && process.env.RESEARCH_BATCH_SIZE);
     const parsed = Number(envBatchSize);
     
     // Smart batching: balance API limits with parallel processing
-    // Google CSE allows 100 queries/day, so we can be more aggressive with parallel processing
-    const defaultBatchSize = 2; // Optimal balance: speed vs API limits
+    // For O3 models, use smaller batches due to longer processing times
+    // For other models, we can be more aggressive
+    const isO3Model = model.includes('o3') || model.includes('azure-o3');
+    const defaultBatchSize = isO3Model ? 1 : 3; // O3: sequential, others: parallel
     
     if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 5) {
       return parsed; // Respect environment setting with reasonable bounds

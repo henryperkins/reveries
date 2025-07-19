@@ -158,8 +158,13 @@ export class AzureOpenAIService {
               500,
             );
           }
-          console.log(`Background task started → polling ${operationUrl}`);
-          data = await this.pollBackgroundTask(operationUrl);
+          console.log(`O3 background task started → polling ${operationUrl}`);
+          // Enhanced timeout for O3 models which can take significantly longer
+          const isO3Model = this.config.deploymentName.includes('o3');
+          const timeout = isO3Model ? 20 * 60 * 1000 : 10 * 60 * 1000; // 20min for O3, 10min for others
+          data = await this.pollBackgroundTask(operationUrl, timeout, (message) => {
+            console.log(`O3 Background Task: ${message}`);
+          });
         } else
 
         if (!response.ok) {
@@ -295,11 +300,14 @@ export class AzureOpenAIService {
   private async pollBackgroundTask(
     operationUrl: string,
     timeoutMs = 10 * 60 * 1000,
+    onProgress?: (message: string) => void
   ): Promise<any> {
     const startTime = Date.now();
     let backoffMs = 1000;          // initial back-off = 1 s
     const maxBackoffMs = 60_000;   // cap back-off at 60 s
     let attempt = 0;
+    
+    onProgress?.('O3 model processing in background, polling for completion...');
 
     while (true) {
       attempt++;
@@ -323,7 +331,8 @@ export class AzureOpenAIService {
       if (resp.status === 202) {
         const retryAfter = parseInt(resp.headers.get('retry-after') ?? '0', 10);
         const waitMs = (retryAfter > 0 ? retryAfter * 1000 : backoffMs);
-        console.log(`Background task 202 (attempt ${attempt}) – waiting ${waitMs / 1000}s`);
+        const elapsedSec = Math.round((Date.now() - startTime) / 1000);
+        onProgress?.(`O3 model still processing (${elapsedSec}s elapsed), waiting ${waitMs / 1000}s...`);
         await new Promise(r => setTimeout(r, waitMs));
         backoffMs = Math.min(backoffMs * 2, maxBackoffMs);
         continue;
@@ -339,7 +348,8 @@ export class AzureOpenAIService {
           case 'running': {
             const retryAfter = parseInt(resp.headers.get('retry-after') ?? '0', 10);
             const waitMs = (retryAfter > 0 ? retryAfter * 1000 : backoffMs);
-            console.log(`Background task ${status} (attempt ${attempt}) – waiting ${waitMs / 1000}s`);
+            const elapsedSec = Math.round((Date.now() - startTime) / 1000);
+            onProgress?.(`O3 model ${status} (${elapsedSec}s elapsed), checking again in ${waitMs / 1000}s...`);
             await new Promise(r => setTimeout(r, waitMs));
             backoffMs = Math.min(backoffMs * 2, maxBackoffMs);
             continue;

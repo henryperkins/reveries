@@ -213,11 +213,10 @@ export class ContextEngineeringService {
       // analysis.
       bernard: ['select', 'write', 'compress', 'isolate'],
 
-      // Maeve seeks leverage – NOTE: isolate layer depends on selectedSources and compressedContent
-      // from select/compress layers. Consider reordering if isolate needs richer context.
-      // Current: strategic isolation first, then data gathering
-      // Alternative: ['select', 'compress', 'isolate', 'write'] for data-dependent isolation
-      maeve: ['isolate', 'select', 'compress', 'write']
+      // Maeve seeks leverage – isolate layer depends on selectedSources and compressedContent
+      // from select/compress layers. Reordered to ensure data-dependent isolation.
+      // Fixed: gather data first, then strategic isolation
+      maeve: ['select', 'compress', 'isolate', 'write']
     };
 
     return sequences[paradigm];
