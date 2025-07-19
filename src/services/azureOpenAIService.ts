@@ -62,8 +62,10 @@ export class AzureOpenAIService {
     const apiKey = getEnv('VITE_AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_API_KEY');
     const deploymentName = getEnv('VITE_AZURE_OPENAI_DEPLOYMENT', 'AZURE_OPENAI_DEPLOYMENT') || 'o3';
     // Updated API version for o3 support
-    const apiVersion = getEnv('VITE_AZURE_OPENAI_API_VERSION', 'AZURE_OPENAI_API_VERSION') ||
-                       '2025-04-01-preview';
+    // The new Responses API is currently available under the "preview" API
+    // version. Allow overriding via env but default to "preview" so users
+    // automatically pick up the latest capabilities.
+    const apiVersion = getEnv('VITE_AZURE_OPENAI_API_VERSION', 'AZURE_OPENAI_API_VERSION') || 'preview';
 
     if (!endpoint || !apiKey) {
       throw new APIError(
@@ -110,32 +112,25 @@ export class AzureOpenAIService {
         await this.rateLimiter.waitForCapacity(totalEstimatedTokens);
 
         let data: any;
-        const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
+        // ── Azure Responses API (preview) ──────────────────────────
+        const url = `${this.config.endpoint}/openai/v1/responses?api-version=${this.config.apiVersion}`;
 
         const requestBody: any = {
-          messages: [
-            {
-              role: "system",
-              content: "You are a helpful AI research assistant. Provide comprehensive, accurate responses with appropriate detail."
-            },
-            {
-              role: "user",
-              content: prompt
-            }
-          ],
-          // Use max_completion_tokens for o3 models
-          max_completion_tokens: maxTokens,
-          response_format: { type: "text" }
+          model: this.config.deploymentName,
+          input: prompt,
+          max_output_tokens: maxTokens,
         };
 
-        // Only add temperature for non-o3 models
+        // Temperature is still honoured by the Responses API, but omit for
+        // o3-style models where deterministic reasoning is preferred.
         if (!this.config.deploymentName.includes('o3')) {
           requestBody.temperature = temperature;
         }
 
-        // Add reasoning effort for o3 models
+        // Reasoning effort for paradigmatic models now sits under a
+        // top-level `reasoning` object.
         if (useReasoningEffort && this.config.deploymentName.includes('o3')) {
-          requestBody.reasoning_effort = this.mapEffortToReasoning(effort);
+          requestBody.reasoning = { effort: this.mapEffortToReasoning(effort) } as any;
         }
 
         console.log('Making Azure OpenAI request to:', url);
@@ -216,28 +211,43 @@ export class AzureOpenAIService {
           this.rateLimiter.recordTokensUsed(data.usage.total_tokens);
         }
 
-        if (!data.choices?.[0]?.message?.content) {
+        // The Responses API returns the assistant content inside the
+        // `output` array. We extract the first `output_text` item for
+        // convenience so downstream callers can continue to expect a
+        // simple `text` field.
+
+        const firstOutput = Array.isArray(data.output) ? data.output[0] : null;
+
+        let assistantText: string | undefined;
+        if (firstOutput?.content && Array.isArray(firstOutput.content)) {
+          const textPart = firstOutput.content.find((p: any) => p.type === 'output_text');
+          if (textPart && typeof textPart.text === 'string') {
+            assistantText = textPart.text;
+          }
+        }
+
+        if (!assistantText) {
           console.error('Empty or invalid response structure:', data);
           throw new APIError(
-            'Empty response from Azure OpenAI API',
+            'Empty response from Azure OpenAI Responses API',
             'EMPTY_RESPONSE',
             true
           );
         }
 
         const result: AzureOpenAIResponse = {
-          text: data.choices[0].message.content,
-          reasoningEffort: requestBody.reasoning_effort
+          text: assistantText,
+          reasoningEffort: requestBody.reasoning?.effort
         };
 
-        // Extract reasoning content if available
-        if (data.choices[0].message.reasoning_content) {
-          result.reasoningContent = data.choices[0].message.reasoning_content;
+        // Extract reasoning content if available (encrypted or plaintext)
+        if (data.reasoning?.content || data.reasoning?.encrypted_content) {
+          result.reasoningContent = data.reasoning.content || data.reasoning.encrypted_content;
         }
 
-        // Extract token usage for o3 models
-        if (data.usage?.completion_tokens_details?.reasoning_tokens) {
-          console.log(`O3 reasoning tokens used: ${data.usage.completion_tokens_details.reasoning_tokens}`);
+        // Extract token usage when provided by the service
+        if (data.usage?.output_tokens_details?.reasoning_tokens) {
+          console.log(`O3 reasoning tokens used: ${data.usage.output_tokens_details.reasoning_tokens}`);
         }
 
         return result;
