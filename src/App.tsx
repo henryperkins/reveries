@@ -22,7 +22,7 @@ import {
 } from '@/types'
 import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
 import { DEFAULT_MODEL, TIMEOUTS } from '@/constants'
-import { useTimeoutManager } from '@/utils/timeoutManager'
+import { useTimeoutManager, TimeoutManager } from '@/utils/timeoutManager'
 import '@/App.css'
 
 const App: React.FC = () => {
@@ -74,6 +74,9 @@ const App: React.FC = () => {
   
   // Timeout manager for centralized cleanup
   const timeoutManager = useTimeoutManager();
+  
+  // Progress timeout manager with reset capability
+  const progressTimeoutMgr = new TimeoutManager();
   
   // Progress ref to track current value (fixes race condition)
   const currentProgressRef = useRef<number>(0);
@@ -176,12 +179,10 @@ const App: React.FC = () => {
     setLiveFunctionCalls([])
     clearError()
 
-    // Progress timeout protection helper with timeout manager
+    // Progress timeout protection helper - starts initial timeout
     const startProgressTimeout = (phase: string, timeoutMs: number) => {
-      const timeoutKey = `progress-${phase}`;
-      
-      timeoutManager.set(timeoutKey, () => {
-        console.warn(`Progress timeout in ${phase} phase, advancing to next phase`);
+      progressTimeoutMgr.start(phase, timeoutMs, (attempt) => {
+        console.warn(`Progress timeout in ${phase} phase, advancing (attempt ${attempt})`);
         
         // Use ref to get current progress value (fixes race condition)
         const currentProgress = currentProgressRef.current;
@@ -192,7 +193,13 @@ const App: React.FC = () => {
         else if (currentProgress < 60) updateProgressState('evaluating', `Timeout in ${phase}, continuing...`);
         else if (currentProgress < 80) updateProgressState('synthesizing', `Timeout in ${phase}, continuing...`);
         else updateProgressState('complete');
-      }, timeoutMs);
+      });
+    };
+    
+    // Helper to get timeout value for current phase
+    const getPhaseTimeoutMs = () => {
+      // Use a reasonable default that covers most phases
+      return TIMEOUTS.PROGRESS_RESEARCH; // 60s
     };
 
     // Extended global research timeout to accommodate new adaptive timeouts
@@ -327,6 +334,11 @@ const App: React.FC = () => {
             updateProgressState('synthesizing', message);
             setCurrentLayer('compress');
             startProgressTimeout('synthesizing', TIMEOUTS.PROGRESS_SYNTHESIS);
+          } else {
+            // Reset timeout on any other progress message to prevent premature timeout
+            progressTimeoutMgr.reset(getPhaseTimeoutMs(), (attempt) =>
+              console.warn(`Progress timeout, advancing (attempt ${attempt})`)
+            );
           }
           
           // Update any existing steps with more detailed content
@@ -452,6 +464,7 @@ const App: React.FC = () => {
       timeoutManager.clear('progress-researching');
       timeoutManager.clear('progress-evaluating');
       timeoutManager.clear('progress-synthesizing');
+      progressTimeoutMgr.clearTimer();
       
       setIsLoading(false)
       // Complete progress before reset for visual feedback

@@ -525,7 +525,6 @@ export class AzureOpenAIService {
           input: iterationCount === 1 ? initialInput : undefined,
           previous_response_id: iterationCount > 1 ? previousResponseId : undefined,
           tools: filteredTools.length > 0 ? filteredTools : undefined,
-          tool_choice: filteredTools.length > 0 ? "auto" : undefined,
           max_output_tokens: 32000
         };
 
@@ -803,8 +802,11 @@ export class AzureOpenAIService {
 
     // Sort tools by paradigm preference, keeping all tools but prioritizing preferred ones
     return tools.sort((a, b) => {
-      const aPreferred = preferredTools.includes(a.function?.name) ? 1 : 0;
-      const bPreferred = preferredTools.includes(b.function?.name) ? 1 : 0;
+      // Handle both tool formats: { function: { name: ... } } and { name: ... }
+      const aName = a.function?.name || a.name;
+      const bName = b.function?.name || b.name;
+      const aPreferred = preferredTools.includes(aName) ? 1 : 0;
+      const bPreferred = preferredTools.includes(bName) ? 1 : 0;
       return bPreferred - aPreferred;
     });
   }
@@ -950,14 +952,23 @@ export class AzureOpenAIService {
   }
 
   private recordToolSuccess(toolName: string): void {
+    // Always delete the entry on success, even if it was expired
     this.toolFailures.delete(toolName);
   }
 
   private recordToolFailure(toolName: string): void {
-    const failures = this.toolFailures.get(toolName) || { count: 0, lastFailure: 0 };
-    failures.count++;
-    failures.lastFailure = Date.now();
-    this.toolFailures.set(toolName, failures);
+    const now = Date.now();
+    const existing = this.toolFailures.get(toolName);
+    
+    // If entry exists but is expired, start fresh count
+    if (existing && (now - existing.lastFailure > this.CIRCUIT_BREAKER_RESET_TIME)) {
+      this.toolFailures.set(toolName, { count: 1, lastFailure: now });
+    } else {
+      const failures = existing || { count: 0, lastFailure: 0 };
+      failures.count++;
+      failures.lastFailure = now;
+      this.toolFailures.set(toolName, failures);
+    }
   }
 
   private isRetryableError(error: any): boolean {
@@ -1054,7 +1065,7 @@ export class AzureOpenAIService {
     if (tools && tools.length > 0) {
       const filteredTools = this.filterToolsByParadigm(tools, paradigm);
       requestBody.tools = filteredTools;
-      requestBody.tool_choice = "auto";
+      // Note: tool_choice is not used in Responses API - tools are automatically used when provided
     }
 
     // Only add temperature for non-o3 models
@@ -1250,6 +1261,7 @@ export class AzureOpenAIService {
       toolsUsed: string[];
       iterations: number;
       previousResponseId?: string;
+      toolResults?: any[];
     },
     callbacks: {
       onChunk: (chunk: string, metadata?: any) => void;
@@ -1257,7 +1269,8 @@ export class AzureOpenAIService {
       onComplete: () => void;
       onError?: (error: Error) => void;
     },
-    maxIterations: number
+    maxIterations: number,
+    toolResultsInput?: any[]
   ): Promise<void> {
     if (context.iterations >= maxIterations) {
       callbacks.onComplete();
@@ -1286,7 +1299,7 @@ export class AzureOpenAIService {
 
     const requestBody: any = {
       model: this.config.deploymentName,
-      input: context.iterations === 1 ? inputArray : undefined,
+      input: toolResultsInput || (context.iterations === 1 ? inputArray : undefined),
       previous_response_id: context.previousResponseId,
       stream: true,
       max_output_tokens: 4096
@@ -1294,7 +1307,7 @@ export class AzureOpenAIService {
 
     if (tools && tools.length > 0) {
       requestBody.tools = tools;
-      requestBody.tool_choice = "auto";
+      // Note: tool_choice is not used in Responses API - tools are automatically used when provided
     }
 
     if (!this.config.deploymentName.includes('o3')) {
@@ -1506,11 +1519,13 @@ export class AzureOpenAIService {
             callbacks.onToolCall(toolCall, executionResult.result);
           }
 
-          // Add tool result to conversation
-          messages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: JSON.stringify(executionResult.result)
+          // Add tool result to conversation - need to convert to input array for next response
+          // Store tool result for building next request input
+          context.toolResults = context.toolResults || [];
+          context.toolResults.push({
+            type: "function_call_output",
+            call_id: toolCall.id,
+            output: JSON.stringify(executionResult.result)
           });
         } else {
           // Handle execution failure
@@ -1518,11 +1533,12 @@ export class AzureOpenAIService {
             callbacks.onToolCall(toolCall, { error: executionResult.error });
           }
 
-          // Add error to conversation
-          messages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: JSON.stringify({
+          // Add error to conversation - need to convert to input array for next response
+          context.toolResults = context.toolResults || [];
+          context.toolResults.push({
+            type: "function_call_output",
+            call_id: toolCall.id,
+            output: JSON.stringify({
               error: executionResult.error,
               success: false,
               retryable: executionResult.retryable
@@ -1539,11 +1555,12 @@ export class AzureOpenAIService {
       } catch (error) {
         console.error(`Tool execution failed for ${toolCall.function.name}:`, error);
 
-        // Add error result to conversation
-        messages.push({
-          role: "tool",
-          tool_call_id: toolCall.id,
-          content: JSON.stringify({
+        // Add error result to conversation - need to convert to input array for next response
+        context.toolResults = context.toolResults || [];
+        context.toolResults.push({
+          type: "function_call_output",
+          call_id: toolCall.id,
+          output: JSON.stringify({
             error: error instanceof Error ? error.message : 'Tool execution failed',
             success: false
           })
@@ -1552,13 +1569,24 @@ export class AzureOpenAIService {
     }
 
     // Continue streaming conversation with tool results
+    // For tool continuation, we need to send the tool results as input array
+    const nextInput: any[] = context.toolResults || [];
+    context.toolResults = []; // Clear for next iteration
+    
+    // Update the conversation to send tool results
+    const nextContext = {
+      ...context
+      // iterations will be incremented in the function call below
+    };
+    
     await this.streamConversationWithTools(
       messages,
       tools,
       effort,
-      context,
+      nextContext,
       callbacks,
-      maxIterations
+      maxIterations,
+      nextInput // Pass tool results as input
     );
   }
 

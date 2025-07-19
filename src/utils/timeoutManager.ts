@@ -5,6 +5,34 @@
 export class TimeoutManager {
   private timeouts = new Map<string, NodeJS.Timeout>();
   private intervals = new Map<string, NodeJS.Timeout>();
+  private timer?: ReturnType<typeof setTimeout>;
+  private attempts = 0;
+
+  start(_phase: string, ms: number, onTimeout: (attempt: number) => void) {
+    this.clearTimer();
+    this.attempts = 0;
+    this.timer = this.mkTimer(ms, onTimeout);
+  }
+
+  /** Push the timeout window forward (e.g. on new progress) */
+  reset(ms: number, onTimeout: (attempt: number) => void) {
+    if (!this.timer) return;
+    clearTimeout(this.timer);
+    this.timer = this.mkTimer(ms, onTimeout);
+  }
+
+  clearTimer() {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = undefined;
+  }
+
+  // helper
+  private mkTimer(ms: number, onTimeout: (attempt: number) => void) {
+    return setTimeout(() => {
+      this.attempts += 1;
+      onTimeout(this.attempts);
+    }, ms);
+  }
   
   /**
    * Set a timeout with automatic tracking and cleanup
@@ -47,6 +75,18 @@ export class TimeoutManager {
    * @param key The key of the timeout to clear
    */
   clear(key: string): void {
+    const timeoutId = this.timeouts.get(key);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      this.timeouts.delete(key);
+    }
+  }
+  
+  /**
+   * Clear a specific timeout by key (alias for clear)
+   * @param key The key of the timeout to clear
+   */
+  clearTimeout(key: string): void {
     const timeoutId = this.timeouts.get(key);
     if (timeoutId) {
       clearTimeout(timeoutId);
