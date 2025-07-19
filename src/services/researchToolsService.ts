@@ -532,6 +532,17 @@ export class ResearchToolsService {
     }));
   }
 
+  public getAzureOpenAIToolDefinitions(): any[] {
+    return Array.from(this.tools.values()).map(tool => ({
+      type: "function",
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters
+      }
+    }));
+  }
+
   public async executeTool(call: FunctionCall): Promise<any> {
     const tool = this.tools.get(call.name);
     if (!tool) {
@@ -542,6 +553,10 @@ export class ResearchToolsService {
 
   public getToolsByCategory(category: string): ResearchTool[] {
     return Array.from(this.tools.values()).filter(tool => tool.category === category);
+  }
+
+  public getTool(name: string): ResearchTool | undefined {
+    return this.tools.get(name);
   }
 
   public recommendToolsForQuery(query: string, queryType: string): string[] {

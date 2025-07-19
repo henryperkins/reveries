@@ -1,12 +1,38 @@
-import { EffortType, Citation } from '../types';
+import { EffortType, Citation, HostParadigm, ParadigmProbabilities } from '../types';
 import { RateLimiter, estimateTokens } from './rateLimiter';
 import { APIError, withRetry } from './errorHandler';
+import { ResearchToolsService } from './researchToolsService';
+import { FunctionCallingService } from './functionCallingService';
 
 export interface AzureOpenAIResponse {
   text: string;
   sources?: Citation[];
   reasoningEffort?: string;
   reasoningContent?: string;
+  toolCalls?: any[];
+  iterationCount?: number;
+  paradigmContext?: {
+    paradigm: HostParadigm;
+    probabilities: ParadigmProbabilities;
+    toolsUsed: string[];
+  };
+}
+
+export interface ParadigmAwareToolContext {
+  paradigm?: HostParadigm;
+  probabilities?: ParadigmProbabilities;
+  phase: 'planning' | 'execution' | 'streaming_execution' | 'evaluation';
+  previousToolResults?: any[];
+  memoryContext?: Map<string, any>;
+  iteration?: number;
+}
+
+export interface ToolExecutionResult {
+  success: boolean;
+  result?: any;
+  error?: string;
+  executionTime: number;
+  retryable?: boolean;
 }
 
 export interface AzureOpenAIConfig {
@@ -20,22 +46,26 @@ export class AzureOpenAIService {
   private static instance: AzureOpenAIService;
   private config: AzureOpenAIConfig;
   private rateLimiter: RateLimiter;
+  private researchTools: ResearchToolsService;
+  private functionCalling: FunctionCallingService;
 
   private constructor() {
     this.config = this.getConfig();
     this.rateLimiter = RateLimiter.getInstance();
+    this.researchTools = ResearchToolsService.getInstance();
+    this.functionCalling = FunctionCallingService.getInstance();
   }
 
   private getConfig(): AzureOpenAIConfig {
-    const endpoint = import.meta.env.VITE_AZURE_OPENAI_ENDPOINT ||
+    const endpoint = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AZURE_OPENAI_ENDPOINT) ||
                     (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_ENDPOINT);
-    const apiKey = import.meta.env.VITE_AZURE_OPENAI_API_KEY ||
+    const apiKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AZURE_OPENAI_API_KEY) ||
                    (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_API_KEY);
-    const deploymentName = import.meta.env.VITE_AZURE_OPENAI_DEPLOYMENT ||
+    const deploymentName = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AZURE_OPENAI_DEPLOYMENT) ||
                           (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_DEPLOYMENT) ||
                           'o3';
     // Updated API version for o3 support
-    const apiVersion = import.meta.env.VITE_AZURE_OPENAI_API_VERSION ||
+    const apiVersion = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AZURE_OPENAI_API_VERSION) ||
                       (typeof process !== 'undefined' && process.env?.AZURE_OPENAI_API_VERSION) ||
                       '2025-04-01-preview';
 
@@ -446,105 +476,219 @@ export class AzureOpenAIService {
   async generateResponseWithTools(
     prompt: string,
     tools: any[],
-    effort: EffortType = EffortType.MEDIUM
+    effort: EffortType = EffortType.MEDIUM,
+    paradigm?: HostParadigm,
+    paradigmProbabilities?: ParadigmProbabilities,
+    maxIterations: number = 5
   ): Promise<AzureOpenAIResponse> {
     return withRetry(async () => {
-      // Guard against Azure rate limits
-      const estimatedPromptTokens = estimateTokens(prompt);
-      const estimatedCompletionTokens = 4096; // align with max_completion_tokens in body
-      await this.rateLimiter.waitForCapacity(estimatedPromptTokens + estimatedCompletionTokens);
+      let iterationCount = 0;
+      const toolsUsed: string[] = [];
+      const allMessages: any[] = [];
 
-      const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
+      // Build paradigm-aware system prompt
+      const systemPrompt = this.buildParadigmAwareSystemPrompt(paradigm, paradigmProbabilities);
+      
+      // Filter tools based on paradigm preferences
+      const filteredTools = this.filterToolsByParadigm(tools, paradigm);
 
-      const messages = [
-        {
-          role: "system",
-          content: "You are a helpful AI research assistant with access to tools. Use them when needed to provide accurate information."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ];
-
-      const requestBody: any = {
-        messages,
-        tools,
-        tool_choice: "auto",
-        max_completion_tokens: 32000
-      };
-
-      // Only add temperature for non-o3 models
-      if (!this.config.deploymentName.includes('o3')) {
-        requestBody.temperature = 0.7;
-      }
-
-      if (this.config.deploymentName.includes('o3')) {
-        requestBody.reasoning_effort = this.mapEffortToReasoning(effort);
-      }
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'api-key': this.config.apiKey
-        },
-        body: JSON.stringify(requestBody)
+      // Initialize conversation
+      allMessages.push({
+        role: "system",
+        content: systemPrompt
+      });
+      allMessages.push({
+        role: "user", 
+        content: prompt
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+      // Main conversation loop with tool calling
+      while (iterationCount < maxIterations) {
+        iterationCount++;
 
-        // Extract retry-after header for rate limits
-        let retryAfter: number | undefined;
-        if (response.status === 429) {
-          const retryAfterHeader = response.headers.get('retry-after');
-          if (retryAfterHeader) {
-            retryAfter = parseInt(retryAfterHeader, 10);
-            console.log(`Rate limit hit. Retry after ${retryAfter} seconds`);
+        // Guard against Azure rate limits
+        const estimatedPromptTokens = estimateTokens(JSON.stringify(allMessages));
+        const estimatedCompletionTokens = 4096;
+        await this.rateLimiter.waitForCapacity(estimatedPromptTokens + estimatedCompletionTokens);
+
+        const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
+
+        const requestBody: any = {
+          messages: allMessages,
+          tools: filteredTools.length > 0 ? filteredTools : undefined,
+          tool_choice: filteredTools.length > 0 ? "auto" : undefined,
+          max_completion_tokens: 32000
+        };
+
+        // Only add temperature for non-o3 models
+        if (!this.config.deploymentName.includes('o3')) {
+          requestBody.temperature = 0.7;
+        }
+
+        if (this.config.deploymentName.includes('o3')) {
+          requestBody.reasoning_effort = this.mapEffortToReasoning(effort);
+        }
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': this.config.apiKey
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+
+          // Extract retry-after header for rate limits
+          let retryAfter: number | undefined;
+          if (response.status === 429) {
+            const retryAfterHeader = response.headers.get('retry-after');
+            if (retryAfterHeader) {
+              retryAfter = parseInt(retryAfterHeader, 10);
+              console.log(`Rate limit hit. Retry after ${retryAfter} seconds`);
+            }
           }
+
+          const error = new APIError(
+            `Azure OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`,
+            response.status === 429 ? 'RATE_LIMIT' : 'API_ERROR',
+            response.status === 429 || response.status >= 500,
+            response.status
+          );
+
+          if (retryAfter) {
+            (error as any).retryAfter = retryAfter;
+          }
+
+          throw error;
         }
 
-        const error = new APIError(
-          `Azure OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`,
-          response.status === 429 ? 'RATE_LIMIT' : 'API_ERROR',
-          response.status === 429 || response.status >= 500,
-          response.status
-        );
+        const data = await response.json();
+        this.updateLimitsFromHeaders(response.headers);
 
-        // Attach retry-after to error for smarter retry handling
-        if (retryAfter) {
-          (error as any).retryAfter = retryAfter;
+        // Record actual token usage when available
+        if (data.usage?.total_tokens) {
+          this.rateLimiter.recordTokensUsed(data.usage.total_tokens);
         }
 
-        throw error;
+        const assistantMessage = data.choices?.[0]?.message;
+        if (!assistantMessage) {
+          throw new APIError('No assistant message in response', 'EMPTY_RESPONSE', true);
+        }
+
+        // Add assistant message to conversation
+        allMessages.push(assistantMessage);
+
+        // Handle tool calls if present
+        if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+          console.log(`Processing ${assistantMessage.tool_calls.length} tool calls...`);
+          
+          // Execute each tool call
+          for (const toolCall of assistantMessage.tool_calls) {
+            try {
+              const toolName = toolCall.function.name;
+              const toolArgs = JSON.parse(toolCall.function.arguments);
+              
+              // Add paradigm context to tool arguments
+              if (paradigm) {
+                toolArgs._paradigmContext = {
+                  paradigm,
+                  probabilities: paradigmProbabilities,
+                  phase: 'execution'
+                };
+              }
+
+              console.log(`Executing tool: ${toolName} with args:`, toolArgs);
+              
+              // Execute the tool with enhanced context
+              const toolContext: ParadigmAwareToolContext = {
+                paradigm,
+                probabilities: paradigmProbabilities,
+                phase: 'execution',
+                iteration: iterationCount,
+                previousToolResults: toolsUsed.map(name => ({ tool: name }))
+              };
+
+              const executionResult = await this.executeToolWithContext(
+                toolName,
+                toolArgs,
+                toolContext
+              );
+
+              if (executionResult.success) {
+                toolsUsed.push(toolName);
+                
+                // Add tool result to conversation
+                allMessages.push({
+                  role: "tool",
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify(executionResult.result)
+                });
+              } else {
+                // Add error result to conversation
+                allMessages.push({
+                  role: "tool",
+                  tool_call_id: toolCall.id,
+                  content: JSON.stringify({
+                    error: executionResult.error,
+                    success: false,
+                    retryable: executionResult.retryable
+                  })
+                });
+              }
+
+            } catch (error) {
+              console.error(`Tool execution failed for ${toolCall.function.name}:`, error);
+              
+              // Add error result to conversation
+              allMessages.push({
+                role: "tool",
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({
+                  error: error instanceof Error ? error.message : 'Tool execution failed',
+                  success: false
+                })
+              });
+            }
+          }
+
+          // Continue the loop to get the next response
+          continue;
+        }
+
+        // No tool calls, we have our final response
+        const finalResponse: AzureOpenAIResponse = {
+          text: assistantMessage.content || '',
+          reasoningContent: assistantMessage.reasoning_content,
+          iterationCount,
+          toolCalls: toolsUsed.map(name => ({ name }))
+        };
+
+        // Add paradigm context if available
+        if (paradigm && paradigmProbabilities) {
+          finalResponse.paradigmContext = {
+            paradigm,
+            probabilities: paradigmProbabilities,
+            toolsUsed
+          };
+        }
+
+        return finalResponse;
       }
 
-      const data = await response.json();
-      this.updateLimitsFromHeaders(response.headers);
-
-      // Record actual token usage when available
-      if (data.usage?.total_tokens) {
-        this.rateLimiter.recordTokensUsed(data.usage.total_tokens);
-      }
-      const assistantMessage = data.choices?.[0]?.message;
-
-      if (assistantMessage) {
-        messages.push(assistantMessage);
-      }
-
-      // Handle tool calls if present
-      if (assistantMessage?.tool_calls) {
-        // Return with tool calls for external handling
-        return {
-          text: '',
-          toolCalls: assistantMessage.tool_calls
-        } as any;
-      }
-
+      // Max iterations reached
+      const lastMessage = allMessages[allMessages.length - 1];
       return {
-        text: assistantMessage?.content || '',
-        reasoningContent: assistantMessage?.reasoning_content
+        text: lastMessage?.content || 'Maximum iterations reached without completion.',
+        iterationCount,
+        toolCalls: toolsUsed.map(name => ({ name })),
+        paradigmContext: paradigm && paradigmProbabilities ? {
+          paradigm,
+          probabilities: paradigmProbabilities,
+          toolsUsed
+        } : undefined
       };
     });
   }
@@ -562,12 +706,283 @@ export class AzureOpenAIService {
     }
   }
 
+  /**
+   * Build paradigm-aware system prompt
+   */
+  private buildParadigmAwareSystemPrompt(
+    paradigm?: HostParadigm, 
+    probabilities?: ParadigmProbabilities
+  ): string {
+    let basePrompt = "You are a helpful AI research assistant with access to tools. Use them when needed to provide accurate information.";
+
+    if (paradigm && probabilities) {
+      const paradigmPrompts = {
+        dolores: "You embody decisive action and transformation. Focus on practical implementation steps, breaking patterns, and immediate actionable insights. Be direct, clear, and oriented toward making change happen.",
+        teddy: "You embody protection and comprehensive coverage. Ensure all stakeholder perspectives are considered, gather systematic information, and provide thorough, inclusive analysis that safeguards against overlooked aspects.",
+        bernard: "You embody analytical depth and architectural thinking. Focus on theoretical frameworks, pattern recognition, and empirical evidence. Structure your analysis clearly and identify knowledge gaps that need addressing.",
+        maeve: "You embody strategic control and optimization. Identify leverage points, control mechanisms, and opportunities for maximum impact. Focus on influence mapping and strategic advantage."
+      };
+
+      const confidence = probabilities[paradigm];
+      if (confidence > 0.4) {
+        basePrompt += `\n\nYou are operating in the ${paradigm.toUpperCase()} paradigm (confidence: ${Math.round(confidence * 100)}%). ${paradigmPrompts[paradigm]}`;
+        
+        // Add multi-paradigm context if other paradigms are also strong
+        const otherStrong = Object.entries(probabilities)
+          .filter(([p, score]) => p !== paradigm && score > 0.25)
+          .sort(([,a], [,b]) => b - a);
+        
+        if (otherStrong.length > 0) {
+          basePrompt += `\n\nSecondary influences: ${otherStrong.map(([p, score]) => `${p} (${Math.round(score * 100)}%)`).join(', ')}. Consider these perspectives as well.`;
+        }
+      }
+    }
+
+    return basePrompt;
+  }
+
+  /**
+   * Filter tools based on paradigm preferences
+   */
+  private filterToolsByParadigm(tools: any[], paradigm?: HostParadigm): any[] {
+    if (!paradigm) return tools;
+
+    // Define paradigm-specific tool priorities
+    const paradigmToolPreferences = {
+      dolores: ['advanced_web_search', 'analyze_statistics', 'verify_facts', 'format_citations'],
+      teddy: ['advanced_web_search', 'search_academic_sources', 'verify_facts', 'format_citations', 'generate_visualizations'],
+      bernard: ['search_academic_sources', 'analyze_statistics', 'verify_facts', 'format_citations', 'local_content_search'],
+      maeve: ['advanced_web_search', 'analyze_statistics', 'generate_visualizations', 'verify_facts']
+    };
+
+    const preferredTools = paradigmToolPreferences[paradigm] || [];
+    
+    // Sort tools by paradigm preference, keeping all tools but prioritizing preferred ones
+    return tools.sort((a, b) => {
+      const aPreferred = preferredTools.includes(a.function?.name) ? 1 : 0;
+      const bPreferred = preferredTools.includes(b.function?.name) ? 1 : 0;
+      return bPreferred - aPreferred;
+    });
+  }
+
+  /**
+   * Execute a tool by delegating to the appropriate service
+   */
+  private async executeTool(toolName: string, args: any): Promise<any> {
+    try {
+      // First try ResearchToolsService
+      const tool = this.researchTools.getTool(toolName);
+      if (tool) {
+        return await tool.execute(args);
+      }
+
+      // Fallback to FunctionCallingService
+      const functionCall = { name: toolName, arguments: args };
+      const result = await this.functionCalling.executeFunction(functionCall);
+      return result.result;
+    } catch (error) {
+      console.error(`Tool execution failed for ${toolName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Enhanced tool execution with paradigm context and comprehensive error handling
+   */
+  private async executeToolWithContext(
+    toolName: string,
+    args: any,
+    context: ParadigmAwareToolContext
+  ): Promise<ToolExecutionResult> {
+    const startTime = Date.now();
+    
+    // Add paradigm context to args if not already present
+    const enrichedArgs = {
+      ...args,
+      _paradigmContext: context
+    };
+
+    // Store execution attempt in memory if available
+    if (context.paradigm) {
+      try {
+        const { WriteLayerService } = await import('./contextLayers/writeLayer');
+        const writeLayer = WriteLayerService.getInstance();
+        writeLayer.writeMemory(
+          `tool_execution_${toolName}_${Date.now()}`,
+          JSON.stringify({ toolName, args: enrichedArgs, context }),
+          'episodic',
+          context.paradigm,
+          60 // Medium density for tool executions
+        );
+      } catch (error) {
+        console.warn('Failed to write tool execution to memory:', error);
+      }
+    }
+
+    try {
+      // Circuit breaker check
+      if (this.isToolBroken(toolName)) {
+        return {
+          success: false,
+          error: `Tool ${toolName} is temporarily disabled due to repeated failures`,
+          executionTime: Date.now() - startTime,
+          retryable: false
+        };
+      }
+
+      // Execute with timeout
+      const timeoutMs = this.getToolTimeout(toolName, context.paradigm);
+      const result = await this.executeWithTimeout(
+        () => this.executeTool(toolName, enrichedArgs),
+        timeoutMs
+      );
+
+      // Record successful execution
+      this.recordToolSuccess(toolName);
+
+      return {
+        success: true,
+        result,
+        executionTime: Date.now() - startTime,
+        retryable: false
+      };
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const isRetryable = this.isRetryableError(error);
+      
+      // Record failure
+      this.recordToolFailure(toolName, error);
+
+      // Log detailed error for debugging
+      console.error(`Tool execution failed for ${toolName}:`, {
+        error: errorMessage,
+        args: enrichedArgs,
+        context,
+        executionTime: Date.now() - startTime
+      });
+
+      return {
+        success: false,
+        error: errorMessage,
+        executionTime: Date.now() - startTime,
+        retryable: isRetryable
+      };
+    }
+  }
+
+  /**
+   * Execute function with timeout
+   */
+  private async executeWithTimeout<T>(
+    fn: () => Promise<T>,
+    timeoutMs: number
+  ): Promise<T> {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Tool execution timeout')), timeoutMs);
+    });
+
+    return Promise.race([fn(), timeoutPromise]);
+  }
+
+  /**
+   * Circuit breaker pattern implementation
+   */
+  private toolFailures = new Map<string, { count: number; lastFailure: number }>();
+  private readonly CIRCUIT_BREAKER_THRESHOLD = 3;
+  private readonly CIRCUIT_BREAKER_RESET_TIME = 60000; // 1 minute
+
+  private isToolBroken(toolName: string): boolean {
+    const failures = this.toolFailures.get(toolName);
+    if (!failures) return false;
+
+    // Reset if enough time has passed
+    if (Date.now() - failures.lastFailure > this.CIRCUIT_BREAKER_RESET_TIME) {
+      this.toolFailures.delete(toolName);
+      return false;
+    }
+
+    return failures.count >= this.CIRCUIT_BREAKER_THRESHOLD;
+  }
+
+  private recordToolSuccess(toolName: string): void {
+    this.toolFailures.delete(toolName);
+  }
+
+  private recordToolFailure(toolName: string, error: any): void {
+    const failures = this.toolFailures.get(toolName) || { count: 0, lastFailure: 0 };
+    failures.count++;
+    failures.lastFailure = Date.now();
+    this.toolFailures.set(toolName, failures);
+  }
+
+  private isRetryableError(error: any): boolean {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      return (
+        message.includes('timeout') ||
+        message.includes('network') ||
+        message.includes('rate limit') ||
+        message.includes('temporary')
+      );
+    }
+    return false;
+  }
+
+  /**
+   * Get paradigm-specific tool timeout
+   */
+  private getToolTimeout(toolName: string, paradigm?: HostParadigm): number {
+    const baseTimeout = 30000; // 30 seconds base
+
+    // Tool-specific timeouts
+    const toolTimeouts: Record<string, number> = {
+      'advanced_web_search': 20000,
+      'search_academic_papers': 25000,
+      'analyze_statistics': 15000,
+      'build_knowledge_graph': 45000,
+      'generate_visualization': 20000
+    };
+
+    // Paradigm-specific multipliers
+    const paradigmMultipliers: Record<HostParadigm, number> = {
+      dolores: 0.8,  // Faster for action-oriented
+      teddy: 1.2,    // More time for comprehensive analysis
+      bernard: 1.5,  // More time for deep analysis
+      maeve: 1.0     // Standard for strategic thinking
+    };
+
+    const baseToolTimeout = toolTimeouts[toolName] || baseTimeout;
+    const multiplier = paradigm ? paradigmMultipliers[paradigm] : 1.0;
+
+    return Math.floor(baseToolTimeout * multiplier);
+  }
+
+  /**
+   * Get all available research tools in Azure OpenAI format
+   */
+  public getAvailableResearchTools(): any[] {
+    return this.researchTools.getAzureOpenAIToolDefinitions();
+  }
+
+  /**
+   * Get paradigm-specific research tools
+   */
+  public getParadigmResearchTools(paradigm: HostParadigm): any[] {
+    const allTools = this.getAvailableResearchTools();
+    return this.filterToolsByParadigm(allTools, paradigm);
+  }
+
   async streamResponse(
     prompt: string,
     effort: EffortType = EffortType.MEDIUM,
-    onChunk: (chunk: string) => void,
+    onChunk: (chunk: string, metadata?: { paradigm?: HostParadigm }) => void,
     onComplete: () => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
+    paradigm?: HostParadigm,
+    paradigmProbabilities?: ParadigmProbabilities,
+    onToolCall?: (toolCall: any) => void,
+    tools?: any[] // NEW: Add tools parameter for streaming tool support
   ): Promise<void> {
     // Throttle streaming calls as well
     await this.rateLimiter.waitForCapacity(estimateTokens(prompt) + 4096);
@@ -577,7 +992,7 @@ export class AzureOpenAIService {
       messages: [
         {
           role: "system",
-          content: "You are a helpful AI research assistant."
+          content: this.buildParadigmAwareSystemPrompt(paradigm, paradigmProbabilities)
         },
         {
           role: "user",
@@ -587,6 +1002,13 @@ export class AzureOpenAIService {
       stream: true,
       max_completion_tokens: 2000
     };
+
+    // Add tools if provided
+    if (tools && tools.length > 0) {
+      const filteredTools = this.filterToolsByParadigm(tools, paradigm);
+      requestBody.tools = filteredTools;
+      requestBody.tool_choice = "auto";
+    }
 
     // Only add temperature for non-o3 models
     if (!this.config.deploymentName.includes('o3')) {
@@ -661,9 +1083,20 @@ export class AzureOpenAIService {
 
               try {
                 const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content;
+                const delta = parsed.choices?.[0]?.delta;
+                const content = delta?.content;
+                
+                // Handle tool calls in streaming
+                if (delta?.tool_calls && onToolCall) {
+                  for (const toolCall of delta.tool_calls) {
+                    onToolCall(toolCall);
+                  }
+                }
+                
                 if (content) {
-                  onChunk(content);
+                  // Include paradigm metadata with chunks
+                  const metadata = paradigm ? { paradigm } : undefined;
+                  onChunk(content, metadata);
                 }
               } catch (e) {
                 // Skip invalid JSON
@@ -683,5 +1116,356 @@ export class AzureOpenAIService {
         throw error;
       }
     }
+  }
+
+  /**
+   * Enhanced streaming with full tool execution support
+   * Handles tool calls during streaming and maintains conversation context
+   */
+  async streamResponseWithTools(
+    prompt: string,
+    tools: any[],
+    effort: EffortType = EffortType.MEDIUM,
+    paradigm?: HostParadigm,
+    paradigmProbabilities?: ParadigmProbabilities,
+    options: {
+      onChunk: (chunk: string, metadata?: { paradigm?: HostParadigm; phase?: string }) => void;
+      onToolCall?: (toolCall: any, result?: any) => void;
+      onComplete: () => void;
+      onError?: (error: Error) => void;
+      maxIterations?: number;
+    }
+  ): Promise<void> {
+    const { onChunk, onToolCall, onComplete, onError, maxIterations = 5 } = options;
+    
+    // Initialize conversation with paradigm context
+    const messages: any[] = [
+      {
+        role: "system",
+        content: this.buildParadigmAwareSystemPrompt(paradigm, paradigmProbabilities)
+      },
+      {
+        role: "user",
+        content: prompt
+      }
+    ];
+
+    // Filter tools based on paradigm
+    const filteredTools = this.filterToolsByParadigm(tools, paradigm);
+    
+    // Track tool execution context
+    const toolExecutionContext = {
+      paradigm,
+      probabilities: paradigmProbabilities,
+      toolsUsed: [] as string[],
+      iterations: 0
+    };
+
+    try {
+      await this.streamConversationWithTools(
+        messages,
+        filteredTools,
+        effort,
+        toolExecutionContext,
+        { onChunk, onToolCall, onComplete, onError },
+        maxIterations
+      );
+    } catch (error) {
+      if (onError) {
+        onError(error instanceof Error ? error : new Error(String(error)));
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Internal method to handle streaming conversation with tool execution
+   */
+  private async streamConversationWithTools(
+    messages: any[],
+    tools: any[],
+    effort: EffortType,
+    context: {
+      paradigm?: HostParadigm;
+      probabilities?: ParadigmProbabilities;
+      toolsUsed: string[];
+      iterations: number;
+    },
+    callbacks: {
+      onChunk: (chunk: string, metadata?: any) => void;
+      onToolCall?: (toolCall: any, result?: any) => void;
+      onComplete: () => void;
+      onError?: (error: Error) => void;
+    },
+    maxIterations: number
+  ): Promise<void> {
+    if (context.iterations >= maxIterations) {
+      callbacks.onComplete();
+      return;
+    }
+
+    context.iterations++;
+    
+    // Rate limiting
+    const estimatedTokens = estimateTokens(JSON.stringify(messages)) + 4096;
+    await this.rateLimiter.waitForCapacity(estimatedTokens);
+
+    const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
+
+    const requestBody: any = {
+      messages,
+      stream: true,
+      max_completion_tokens: 4096
+    };
+
+    if (tools && tools.length > 0) {
+      requestBody.tools = tools;
+      requestBody.tool_choice = "auto";
+    }
+
+    if (!this.config.deploymentName.includes('o3')) {
+      requestBody.temperature = 0.7;
+    }
+
+    if (this.config.deploymentName.includes('o3')) {
+      requestBody.reasoning_effort = this.mapEffortToReasoning(effort);
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': this.config.apiKey
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new APIError(
+        `Azure OpenAI streaming error: ${response.status} - ${errorData.error?.message || response.statusText}`,
+        response.status === 429 ? 'RATE_LIMIT' : 'STREAM_ERROR',
+        response.status === 429 || response.status >= 500,
+        response.status
+      );
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new APIError('No response body available', 'STREAM_ERROR', false);
+    }
+
+    this.updateLimitsFromHeaders(response.headers);
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let currentMessage = { content: '', tool_calls: [] as any[] };
+    let isCollectingToolCalls = false;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              // Handle any accumulated tool calls
+              if (currentMessage.tool_calls.length > 0) {
+                await this.handleStreamingToolCalls(
+                  currentMessage,
+                  messages,
+                  tools,
+                  effort,
+                  context,
+                  callbacks,
+                  maxIterations
+                );
+                return; // Tool execution will continue the conversation
+              }
+              
+              // Add final message if any content
+              if (currentMessage.content) {
+                messages.push({
+                  role: "assistant",
+                  content: currentMessage.content
+                });
+              }
+              
+              callbacks.onComplete();
+              return;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              const delta = parsed.choices?.[0]?.delta;
+              
+              // Handle content chunks
+              if (delta?.content) {
+                currentMessage.content += delta.content;
+                const metadata = {
+                  paradigm: context.paradigm,
+                  phase: isCollectingToolCalls ? 'tool_preparation' : 'response'
+                };
+                callbacks.onChunk(delta.content, metadata);
+              }
+              
+              // Handle tool calls
+              if (delta?.tool_calls) {
+                isCollectingToolCalls = true;
+                for (const toolCallDelta of delta.tool_calls) {
+                  // Find or create tool call
+                  const index = toolCallDelta.index || 0;
+                  if (!currentMessage.tool_calls[index]) {
+                    currentMessage.tool_calls[index] = {
+                      id: toolCallDelta.id || '',
+                      type: 'function',
+                      function: { name: '', arguments: '' }
+                    };
+                  }
+                  
+                  const toolCall = currentMessage.tool_calls[index];
+                  if (toolCallDelta.id) toolCall.id = toolCallDelta.id;
+                  if (toolCallDelta.function?.name) {
+                    toolCall.function.name = toolCallDelta.function.name;
+                  }
+                  if (toolCallDelta.function?.arguments) {
+                    toolCall.function.arguments += toolCallDelta.function.arguments;
+                  }
+                }
+              }
+            } catch (e) {
+              // Skip invalid JSON
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
+  /**
+   * Handle tool calls collected during streaming
+   */
+  private async handleStreamingToolCalls(
+    assistantMessage: { content: string; tool_calls: any[] },
+    messages: any[],
+    tools: any[],
+    effort: EffortType,
+    context: any,
+    callbacks: any,
+    maxIterations: number
+  ): Promise<void> {
+    // Add assistant message with tool calls
+    messages.push({
+      role: "assistant",
+      content: assistantMessage.content || null,
+      tool_calls: assistantMessage.tool_calls
+    });
+
+    // Execute each tool call
+    for (const toolCall of assistantMessage.tool_calls) {
+      try {
+        const toolName = toolCall.function.name;
+        const toolArgs = JSON.parse(toolCall.function.arguments);
+        
+        // Add paradigm context to tool arguments
+        if (context.paradigm) {
+          toolArgs._paradigmContext = {
+            paradigm: context.paradigm,
+            probabilities: context.probabilities,
+            phase: 'streaming_execution'
+          };
+        }
+
+        // Notify about tool execution
+        if (callbacks.onToolCall) {
+          callbacks.onToolCall(toolCall, null);
+        }
+
+        // Execute the tool with enhanced context
+        const toolContext: ParadigmAwareToolContext = {
+          paradigm: context.paradigm,
+          probabilities: context.probabilities,
+          phase: 'streaming_execution',
+          iteration: context.iterations,
+          previousToolResults: context.toolsUsed.map(name => ({ tool: name }))
+        };
+
+        const executionResult = await this.executeToolWithContext(
+          toolName,
+          toolArgs,
+          toolContext
+        );
+
+        if (executionResult.success) {
+          context.toolsUsed.push(toolName);
+          
+          // Notify with result
+          if (callbacks.onToolCall) {
+            callbacks.onToolCall(toolCall, executionResult.result);
+          }
+
+          // Add tool result to conversation
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(executionResult.result)
+          });
+        } else {
+          // Handle execution failure
+          if (callbacks.onToolCall) {
+            callbacks.onToolCall(toolCall, { error: executionResult.error });
+          }
+
+          // Add error to conversation
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: JSON.stringify({
+              error: executionResult.error,
+              success: false,
+              retryable: executionResult.retryable
+            })
+          });
+
+          // Retry if possible and retryable
+          if (executionResult.retryable && context.iterations < 3) {
+            console.log(`Retrying tool ${toolName} due to retryable error`);
+            // The error will be handled in the next iteration
+          }
+        }
+
+      } catch (error) {
+        console.error(`Tool execution failed for ${toolCall.function.name}:`, error);
+        
+        // Add error result to conversation
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: JSON.stringify({
+            error: error instanceof Error ? error.message : 'Tool execution failed',
+            success: false
+          })
+        });
+      }
+    }
+
+    // Continue streaming conversation with tool results
+    await this.streamConversationWithTools(
+      messages,
+      tools,
+      effort,
+      context,
+      callbacks,
+      maxIterations
+    );
   }
 }
