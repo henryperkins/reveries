@@ -185,6 +185,7 @@ class GoogleSearchProvider implements SearchProvider {
   private searchEngineId: string;
   private endpoint = 'https://www.googleapis.com/customsearch/v1';
   private rateLimit = { remaining: 100, resetTime: Date.now() + 86400000 };
+  private dailyUsage = { count: 0, date: new Date().toDateString() };
 
   constructor(apiKey?: string, searchEngineId?: string) {
     this.apiKey = apiKey || getEnv('VITE_GOOGLE_SEARCH_API_KEY', 'GOOGLE_SEARCH_API_KEY') || '';
@@ -192,13 +193,31 @@ class GoogleSearchProvider implements SearchProvider {
   }
 
   async isAvailable(): Promise<boolean> {
-    return !!this.apiKey && !!this.searchEngineId && typeof fetch !== 'undefined';
+    // Check basic availability
+    if (!this.apiKey || !this.searchEngineId || typeof fetch === 'undefined') {
+      return false;
+    }
+    
+    // Check daily quota (Google CSE free tier: 100 queries/day)
+    const today = new Date().toDateString();
+    if (this.dailyUsage.date !== today) {
+      // Reset daily usage for new day
+      this.dailyUsage = { count: 0, date: today };
+      this.rateLimit.remaining = 100;
+    }
+    
+    // Check if we have remaining quota
+    return this.dailyUsage.count < 100 && this.rateLimit.remaining > 0;
   }
 
   async search(query: string, options: SearchOptions = {}): Promise<SearchResponse> {
     if (!await this.isAvailable()) {
-      throw new Error('Google Search provider not available');
+      throw new Error('Google Search provider quota exceeded or unavailable');
     }
+    
+    // Track quota usage
+    this.dailyUsage.count++;
+    this.rateLimit.remaining = Math.max(0, 100 - this.dailyUsage.count);
 
     const searchParams = new URLSearchParams({
       key: this.apiKey,
@@ -424,10 +443,11 @@ export class SearchProviderService {
   }
 
   private initializeProviders(): void {
+    // Prioritize Google for better quality, with Bing as primary fallback
     this.providers = [
-      new BingSearchProvider(),
-      new GoogleSearchProvider(),
-      new DuckDuckGoProvider()
+      new GoogleSearchProvider(),  // Primary: Best quality, 100/day limit
+      new BingSearchProvider(),     // Fallback 1: Good quality, higher limits
+      new DuckDuckGoProvider()      // Fallback 2: Privacy-focused, basic results
     ];
   }
 
@@ -436,20 +456,27 @@ export class SearchProviderService {
     console.log(`[SearchProviderService] Checking ${this.providers.length} providers...`);
     
     for (const provider of this.providers) {
-      const isAvailable = await provider.isAvailable();
-      console.log(`[SearchProviderService] Provider ${provider.name}: ${isAvailable ? 'available' : 'not available'}`);
-      
-      if (isAvailable) {
-        const rateLimit = provider.getRateLimit();
-        console.log(`[SearchProviderService] Provider ${provider.name} rate limit: ${rateLimit.remaining} remaining`);
+      try {
+        const isAvailable = await provider.isAvailable();
+        console.log(`[SearchProviderService] Provider ${provider.name}: ${isAvailable ? 'available' : 'not available'}`);
         
-        if (rateLimit.remaining > 0) {
-          console.log(`[SearchProviderService] Selected provider: ${provider.name}`);
-          return provider;
+        if (isAvailable) {
+          const rateLimit = provider.getRateLimit();
+          console.log(`[SearchProviderService] Provider ${provider.name} rate limit: ${rateLimit.remaining} remaining`);
+          
+          if (rateLimit.remaining > 0) {
+            console.log(`[SearchProviderService] Selected provider: ${provider.name}`);
+            return provider;
+          } else {
+            console.log(`[SearchProviderService] Provider ${provider.name} rate limited, trying next...`);
+          }
         }
+      } catch (error) {
+        console.warn(`[SearchProviderService] Provider ${provider.name} check failed:`, error);
+        // Continue to next provider
       }
     }
-    throw new Error('No search providers available or rate limited');
+    throw new Error('All search providers exhausted or rate limited. Please try again later.');
   }
 
   public async search(

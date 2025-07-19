@@ -6,7 +6,7 @@
 import {
   ModelType,
   EffortType,
-  // QueryType,
+  QueryType,
   // HostParadigm,
   Citation,
   ResearchResponse,
@@ -265,31 +265,18 @@ export class ResearchAgentService {
         await new Promise(resolve => setTimeout(resolve, 50));
       }
 
-      // Route query using research strategy with timeout protection
+      // Route query using research strategy with adaptive timeout and extension mechanism
       const researchPromise = this.routeResearchQuery(query, model, EffortType.MEDIUM, enhancedOnProgress);
-      const timeoutPromise = new Promise<EnhancedResearchResults>((_, reject) => {
-        setTimeout(() => {
-          enhancedOnProgress('Research taking longer than expected, finalizing results...');
-          reject(new Error('Research timeout'));
-        }, 60000); // 60-second timeout
-      });
-
-      // Race the research against the timeout
+      
+      // Implement timeout extension mechanism for complex queries
       let result: EnhancedResearchResults;
-      try {
-        result = await Promise.race([researchPromise, timeoutPromise]);
-      } catch (error) {
-        console.warn('Research timed out, proceeding with partial results');
-        // Attempt to get partial results by setting progress to next phase
-        enhancedOnProgress('quality evaluation of partial results');
-        // Return minimal result structure to prevent UI hanging
-        result = {
-          synthesis: 'Research operation timed out. Please try again with a more specific query.',
-          sources: [],
-          queryType: 'unknown',
-          confidenceScore: 0.1
-        };
-      }
+      result = await this.executeWithTimeoutExtension(
+        researchPromise,
+        query,
+        paradigm,
+        phase,
+        enhancedOnProgress
+      );
 
       // Create response in the expected format
       const response: ResearchResponse = {
@@ -390,8 +377,9 @@ export class ResearchAgentService {
       };
     }
 
-    // Add explicit progress message to trigger 60% update in UI
+    // CRITICAL: Add explicit progress message to trigger 60% update in UI
     onProgress?.('Evaluating research quality and self-healing if needed');
+    onProgress?.('Research evaluation phase initiated');
 
     // Calculate confidence score
     result.confidenceScore = ResearchUtilities.calculateConfidenceScore(result);
@@ -621,6 +609,98 @@ export class ResearchAgentService {
       sections: (metadata as any).sections || [],
       refinementCount: (metadata as any).refinementCount || 0
     };
+  }
+
+  /**
+   * Execute research with timeout extension mechanism
+   */
+  private async executeWithTimeoutExtension(
+    researchPromise: Promise<EnhancedResearchResults>,
+    query: string,
+    paradigm: string,
+    phase: ResearchPhase,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    const baseTimeout = this.calculateAdaptiveTimeout(query, paradigm, phase);
+    let currentTimeout = baseTimeout;
+    let extensionCount = 0;
+    const maxExtensions = 3;
+    
+    onProgress?.(`Initiating research with ${Math.round(currentTimeout/1000)}s adaptive timeout`);
+    
+    while (extensionCount <= maxExtensions) {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Research timeout'));
+        }, currentTimeout);
+      });
+      
+      try {
+        const result = await Promise.race([researchPromise, timeoutPromise]);
+        return result; // Success - return the result
+      } catch (error) {
+        extensionCount++;
+        
+        if (extensionCount > maxExtensions) {
+          console.warn(`Research timed out after ${maxExtensions} extensions, proceeding with partial results`);
+          // CRITICAL FIX: Ensure progress advances past 40% by sending evaluation signal
+          onProgress?.('Research timeout occurred, transitioning to quality evaluation phase');
+          onProgress?.('Evaluating available partial research results');
+          // Return minimal result structure to prevent UI hanging
+          return {
+            synthesis: `Research operation required more time than available. The query "${query}" may be too complex or broad. Please try a more specific query.`,
+            sources: [],
+            queryType: 'factual' as QueryType,
+            confidenceScore: 0.1
+          };
+        }
+        
+        // Extend timeout for complex operations
+        const extensionTime = Math.min(baseTimeout * 0.5, 120000); // Max 2 minutes extension
+        currentTimeout = extensionTime;
+        
+        onProgress?.(`Research needs more time, extending timeout by ${Math.round(extensionTime/1000)}s (attempt ${extensionCount}/${maxExtensions})`);
+        onProgress?.('Continuing research with extended timeout...');
+        
+        // Continue the loop with extended timeout
+      }
+    }
+    
+    // Should never reach here due to the logic above, but TypeScript safety
+    throw new Error('Unexpected timeout extension state');
+  }
+
+  /**
+   * Calculate adaptive timeout based on query complexity and paradigm
+   */
+  private calculateAdaptiveTimeout(query: string, paradigm: string, phase: ResearchPhase): number {
+    // Base timeout for different phases
+    const baseTimeouts = {
+      discovery: 120000,    // 2 minutes
+      exploration: 180000,  // 3 minutes  
+      synthesis: 240000,    // 4 minutes
+      validation: 150000    // 2.5 minutes
+    };
+    
+    let timeout = baseTimeouts[phase] || 180000;
+    
+    // Adjust based on query complexity
+    const queryWords = query.split(/\s+/).length;
+    const complexityMultiplier = Math.min(1 + (queryWords - 5) * 0.1, 2.0); // Max 2x for very complex queries
+    timeout *= complexityMultiplier;
+    
+    // Adjust based on paradigm requirements
+    const paradigmMultipliers = {
+      bernard: 1.5,  // Analytical paradigm needs more time
+      dolores: 1.2,  // Self-aware paradigm moderately complex
+      maeve: 1.3,    // Strategic paradigm needs coordination time  
+      teddy: 1.0     // Narrative paradigm is straightforward
+    };
+    
+    timeout *= paradigmMultipliers[paradigm as keyof typeof paradigmMultipliers] || 1.0;
+    
+    // Ensure reasonable bounds (30s minimum, 8 minutes maximum)
+    return Math.max(30000, Math.min(timeout, 480000));
   }
 
   /**

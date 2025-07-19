@@ -72,7 +72,7 @@ const App: React.FC = () => {
   const liveCallIdMap = useRef<Record<string, string>>({});
   
   // Progress timeout ref for cleanup
-  const progressTimeoutRef = useRef<NodeJS.Timeout>();
+  const progressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Progress state machine helper
   const updateProgressState = useCallback((phase: typeof progressState, message?: string) => {
@@ -185,14 +185,14 @@ const App: React.FC = () => {
       }, timeoutMs);
     };
 
-    // Global research timeout
+    // Extended global research timeout to accommodate new adaptive timeouts
     const globalTimeout = setTimeout(() => {
       if (isLoading) {
         console.warn('Global research timeout reached');
         updateProgressState('complete');
         setIsLoading(false);
       }
-    }, 180000); // 3-minute global timeout
+    }, 600000); // 10-minute global timeout for complex research
 
     try {
       // Create initial step

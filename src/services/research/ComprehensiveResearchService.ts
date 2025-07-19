@@ -44,6 +44,8 @@ export class ComprehensiveResearchService {
   ): Promise<EnhancedResearchResults> {
     onProgress?.('Comprehensive research initiated...');
     onProgress?.('Breaking down query into research sections...');
+    
+    const startTime = Date.now();
 
     // Step 1: Break down the query into sections
     onProgress?.('tool_used:query_breakdown');
@@ -75,16 +77,33 @@ export class ComprehensiveResearchService {
 
     // Step 4: Aggregate all sources
     const allSources = this.aggregateSources(sectionResults);
+    
+    // Calculate processing time and apply quality scoring
+    const processingTime = Date.now() - startTime;
+    const confidenceScore = this.calculateConfidenceScore(sectionResults, processingTime);
+    
+    onProgress?.(`Research completed in ${Math.round(processingTime / 1000)}s with ${sectionResults.length} sections and ${allSources.length} sources`);
 
     return {
       synthesis: synthesis.text,
       sources: allSources,
       sections: sectionResults,
       queryType: 'comprehensive',
-      confidenceScore: 0.85,
+      confidenceScore,
       adaptiveMetadata: {
-        processingTime: Date.now(),
-        paradigm: undefined
+        processingTime,
+        paradigm: undefined,
+        complexityScore: sectionResults.length,
+        cacheHit: false,
+        // Store quality metrics in layerOutputs since qualityMetrics isn't in the type
+        layerOutputs: {
+          qualityMetrics: {
+            sourcesFound: allSources.length,
+            sectionsCompleted: sectionResults.length,
+            averageConfidence: sectionResults.reduce((acc, s) => acc + (s.confidence || 0), 0) / Math.max(sectionResults.length, 1),
+            processingTimeMs: processingTime
+          }
+        }
       }
     };
   }
@@ -237,13 +256,35 @@ export class ComprehensiveResearchService {
       });
 
       // Wait for current batch to complete before processing next batch
-      const batchResults = await Promise.all(batchPromises);
-      results.push(...batchResults);
-      
-      // Add a small delay between batches to help with rate limiting
-      if (i + batchSize < sections.length) {
-        onProgress?.(`Batch ${batchNumber} complete. Pausing before next batch...`);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+      try {
+        const batchResults = await Promise.allSettled(batchPromises);
+        
+        // Process results and handle failures gracefully
+        const successfulResults = batchResults
+          .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
+          .map(result => result.value);
+        
+        const failedResults = batchResults
+          .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+          .length;
+        
+        results.push(...successfulResults);
+        
+        if (failedResults > 0) {
+          onProgress?.(`Batch ${batchNumber} completed with ${failedResults} failed sections. Continuing...`);
+        } else {
+          onProgress?.(`Batch ${batchNumber} completed successfully.`);
+        }
+        
+        // Intelligent delay between batches based on API performance
+        if (i + batchSize < sections.length) {
+          const delayMs = Math.min(500 + (failedResults * 500), 2000); // 0.5-2s based on failures
+          onProgress?.(`Pausing ${delayMs/1000}s before next batch for optimal API usage...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      } catch (error) {
+        console.error(`Batch ${batchNumber} failed:`, error);
+        onProgress?.(`Batch ${batchNumber} encountered issues. Continuing with remaining batches...`);
       }
     }
 
@@ -257,7 +298,16 @@ export class ComprehensiveResearchService {
     const envBatchSize = import.meta?.env?.VITE_RESEARCH_BATCH_SIZE || 
                         (typeof process !== 'undefined' && process.env.RESEARCH_BATCH_SIZE);
     const parsed = Number(envBatchSize);
-    return Number.isFinite(parsed) && parsed >= 1 ? parsed : 1; // Default to sequential (1)
+    
+    // Smart batching: balance API limits with parallel processing
+    // Google CSE allows 100 queries/day, so we can be more aggressive with parallel processing
+    const defaultBatchSize = 2; // Optimal balance: speed vs API limits
+    
+    if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 5) {
+      return parsed; // Respect environment setting with reasonable bounds
+    }
+    
+    return defaultBatchSize; // Improved default for better performance
   }
 
   /**
@@ -291,6 +341,30 @@ export class ComprehensiveResearchService {
   /**
    * Aggregate sources from all sections
    */
+  /**
+   * Calculate confidence score based on research quality and completeness
+   */
+  private calculateConfidenceScore(sectionResults: ResearchSection[], processingTime: number): number {
+    if (sectionResults.length === 0) return 0.1;
+    
+    // Base confidence from section completion
+    const sectionConfidences = sectionResults.map(s => s.confidence || 0);
+    const avgSectionConfidence = sectionConfidences.reduce((acc, conf) => (acc || 0) + (conf || 0), 0) / Math.max(sectionConfidences.length, 1);
+    
+    // Quality factors
+    const sourceCount = sectionResults.reduce((acc, s) => acc + (s.sources?.length || 0), 0);
+    const sourceQuality = Math.min(sourceCount / (sectionResults.length * 3), 1.0); // Ideal: 3 sources per section
+    
+    // Time factor - penalize very fast (likely incomplete) or very slow (likely errored) research
+    const idealTimeMs = sectionResults.length * 30000; // 30s per section ideal
+    const timeFactor = Math.max(0.7, Math.min(1.0, idealTimeMs / Math.max(processingTime, idealTimeMs * 0.3)));
+    
+    // Combine factors
+    const confidence = (avgSectionConfidence * 0.5) + (sourceQuality * 0.3) + (timeFactor * 0.2);
+    
+    return Math.max(0.1, Math.min(1.0, confidence));
+  }
+
   private aggregateSources(sections: ResearchSection[]): Citation[] {
     const allSources: Citation[] = [];
     const seenKeys = new Set<string>();
