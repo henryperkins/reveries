@@ -6,7 +6,8 @@ import {
   ContextLayer,
   EnhancedResearchResults
 } from '@/types';
-import { getParadigmTheme, getParadigmClasses, PARADIGM_COLORS } from '@/theme';
+import { getParadigmTheme, PARADIGM_COLORS } from '@/theme';
+import { ProgressMeter } from '@/components/atoms';
 
 /* -------------------------------------------------------------------------- */
 /*                             STYLE & META DATA                              */
@@ -28,7 +29,6 @@ const EXTENDED_PARADIGM_STYLES = {
 function getParadigmStyles(paradigm: string) {
   // Check if it's a host paradigm first
   if (paradigm in PARADIGM_COLORS) {
-    const classes = getParadigmClasses(paradigm as HostParadigm);
     const theme = getParadigmTheme(paradigm as HostParadigm);
     return {
       bg: theme.bg,
@@ -66,29 +66,18 @@ export const ParadigmProbabilityBar: React.FC<{
   return (
     <div className="w-full">
       {/* stacked bar */}
-      <div className="flex h-8 overflow-hidden rounded-lg bg-gray-200 shadow-inner">
-        {paradigms.map((p) => {
-          const pct = (probabilities[p] * 100).toFixed(1);
-          return (
-            <div
-              key={p}
-              className="relative flex items-center justify-center text-xs font-bold text-white transition-all duration-500"
-              style={{
-                width: `${pct}%`,
-                backgroundColor: paradigmColors[p],
-                minWidth: parseFloat(pct) > 5 ? 'auto' : '0'
-              }}
-              title={`${PARADIGM_INFO[p].name}: ${pct}%`}
-            >
-              {parseFloat(pct) > 15 && (
-                <span className="absolute inset-0 flex items-center justify-center">
-                  {pct}%
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <ProgressMeter
+        variant="stacked"
+        stackedSegments={paradigms.map(p => ({
+          value: probabilities[p] * 100,
+          color: `bg-[${paradigmColors[p]}]`,
+          label: PARADIGM_INFO[p].name,
+          paradigm: p,
+        }))}
+        size="lg"
+        showPercentage={false}
+        animate={true}
+      />
 
       {/* legend */}
       <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
@@ -118,7 +107,7 @@ export const ParadigmIndicator: React.FC<{
   confidence?: number;
 }> = ({ paradigm, probabilities, confidence }) => {
   const info   = PARADIGM_INFO[paradigm];
-  const styles = PARADIGM_STYLES[paradigm] ?? PARADIGM_STYLES.factual;
+  const styles = getParadigmStyles(paradigm);
   const paradigmProb = probabilities?.[paradigm];
 
   return (
@@ -170,7 +159,6 @@ export const ContextLayerProgress: React.FC<{
   };
 
   const paradigmTheme = getParadigmTheme(paradigm);
-  const paradigmClasses = getParadigmClasses(paradigm);
 
   return (
     <div className="w-full">
@@ -247,12 +235,14 @@ export const ResearchAnalytics: React.FC<{
           <div className="text-2xl font-bold text-gray-700">
             {(metadata.confidenceScore * 100).toFixed(0)}%
           </div>
-          <div className="mt-1 h-2 rounded bg-gray-200">
-            <div
-              className="h-full rounded bg-blue-500"
-              style={{ width: `${metadata.confidenceScore * 100}%` }}
-            />
-          </div>
+          <ProgressMeter
+            value={metadata.confidenceScore * 100}
+            variant="minimal"
+            colorClass="bg-blue-500"
+            size="xs"
+            showPercentage={false}
+            className="mt-1"
+          />
         </div>
       )}
 
@@ -273,12 +263,14 @@ export const ResearchAnalytics: React.FC<{
           <div className="text-2xl font-bold text-gray-700">
             {(metadata.complexityScore * 100).toFixed(0)}%
           </div>
-          <div className="mt-1 h-2 rounded bg-gray-200">
-            <div
-              className="h-full rounded bg-purple-500"
-              style={{ width: `${metadata.complexityScore * 100}%` }}
-            />
-          </div>
+          <ProgressMeter
+            value={metadata.complexityScore * 100}
+            variant="minimal"
+            colorClass="bg-purple-500"
+            size="xs"
+            showPercentage={false}
+            className="mt-1"
+          />
         </div>
       )}
 

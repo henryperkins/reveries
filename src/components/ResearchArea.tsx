@@ -18,6 +18,17 @@ export const ResearchArea: React.FC<ResearchAreaProps> = ({ steps }) => {
     });
   };
 
+  // Guard against undefined or invalid steps
+  if (!steps || !Array.isArray(steps)) {
+    return (
+      <div className="research-area flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex items-center justify-center h-full text-westworld-rust">
+          <p className="text-lg">Begin your journey by entering a query above...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="research-area flex-1 overflow-y-auto p-6 space-y-4">
       {steps.length === 0 ? (

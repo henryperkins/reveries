@@ -1,6 +1,7 @@
 import React from 'react'
 import { HostParadigm, ResearchPhase } from '@/types'
 import { getParadigmTheme, getParadigmClasses } from '@/theme'
+import { ProgressMeter } from '@/components/atoms'
 
 interface ContextDensityBarProps {
   densities: {
@@ -64,11 +65,6 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
       <div className="space-y-3">
         {Object.entries(densities).map(([context, density]) => {
           const isDominant = context === calculatedDominantContext;
-          const barColorClass = useParadigmStyle && isDominant
-            ? paradigmClasses!.gradient
-            : isDominant
-            ? 'bg-gradient-to-r from-westworld-gold to-westworld-copper'
-            : 'bg-westworld-copper';
 
           return (
             <div key={context}>
@@ -87,12 +83,15 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
                   <span>{density}%</span>
                 </div>
               )}
-              <div className="bg-westworld-tan/20 rounded-full h-3">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${barColorClass}`}
-                  style={{ width: `${density}%` }}
-                />
-              </div>
+              <ProgressMeter
+                value={density}
+                variant={useParadigmStyle && isDominant ? 'paradigm' : 'gradient'}
+                paradigm={useParadigmStyle && isDominant ? paradigm : undefined}
+                showPercentage={false}
+                label=""
+                gradientClass={isDominant && !useParadigmStyle ? 'from-westworld-gold to-westworld-copper' : undefined}
+                colorClass={!isDominant ? 'bg-westworld-copper' : undefined}
+              />
             </div>
           );
         })}

@@ -10,7 +10,7 @@ import type {
   ResearchMemoryEntry,
   CachedResult
 } from '@/services/research/types';
-import { ResearchUtilities } from '@/utils/ResearchUtilities';
+import { ResearchUtilities } from '@/services/utils/ResearchUtilities';
 
 export class ResearchMemoryService {
   private static instance: ResearchMemoryService;

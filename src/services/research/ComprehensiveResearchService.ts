@@ -14,7 +14,7 @@ import {
 } from '@/services/research/types';
 import { WebResearchService } from './WebResearchService';
 import { ModelProviderService } from '@/services/providers/ModelProviderService';
-import { ResearchUtilities } from '@/utils/ResearchUtilities';
+import { ResearchUtilities } from '@/services/utils/ResearchUtilities';
 
 export class ComprehensiveResearchService {
   private static instance: ComprehensiveResearchService;

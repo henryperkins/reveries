@@ -14,7 +14,7 @@ import {
   EvaluationMetadata,
   WebResearchResult
 } from '@/services/research/types';
-import { ResearchUtilities } from '@/utils/ResearchUtilities';
+import { ResearchUtilities } from '@/services/utils/ResearchUtilities';
 
 export class EvaluationService {
   private static instance: EvaluationService;

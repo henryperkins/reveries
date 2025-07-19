@@ -5,7 +5,7 @@
 
 import { ModelType, EffortType, Citation } from '@/types';
 import { WebResearchResult } from '@/services/research/types';
-import { ResearchUtilities } from '@/utils/ResearchUtilities';
+import { ResearchUtilities } from '@/services/utils/ResearchUtilities';
 import { ResearchMemoryService } from '@/services/memory/ResearchMemoryService';
 
 export class WebResearchService {

@@ -3,9 +3,11 @@ import { ResearchAgentService } from '@/services/researchAgentServiceWrapper'
 import { FunctionCallingService } from '@/services/functionCallingService'
 import { DatabaseService } from '@/services/databaseService'
 import { ResearchGraphManager } from '@/researchGraph'
-import { Header, Controls, InputBar, ResearchArea, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar, FunctionCallVisualizer, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress, LiveFunctionCallIndicator } from '@/components'
-import { usePersistedState } from '@/hooks/usePersistedState'
-import { useResearchSessions } from '@/hooks/useEnhancedPersistedState'
+import { Header, Controls, InputBar, ResearchArea, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress } from '@/components'
+import { ProgressMeter } from '@/components/atoms'
+import { FunctionCallProvider } from '@/components/FunctionCallDock'
+import { usePersistentState } from '@/hooks/usePersistentState'
+import { useResearchSessions } from '@/hooks/usePersistedState'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
 import {
   ResearchStep,
@@ -23,7 +25,7 @@ import { DEFAULT_MODEL } from '@/constants'
 import '@/App.css'
 
 const App: React.FC = () => {
-  const [research, setResearch] = usePersistedState<ResearchStep[]>('reveries_research', [])
+  const [research, setResearch] = usePersistentState<ResearchStep[]>('reveries_research', [], { version: 1 })
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [currentModel, setCurrentModel] = useState<ModelType>(DEFAULT_MODEL)
@@ -92,7 +94,7 @@ const App: React.FC = () => {
         sources: []
       }
 
-      setResearch(prev => [...prev, initialStep])
+      setResearch(prev => [...(Array.isArray(prev) ? prev : []), initialStep])
 
       // Add to graph
       graphManager.addNode(initialStep)
@@ -173,7 +175,7 @@ const App: React.FC = () => {
               toolsUsed: [],
               recommendedTools: ['query_analysis', 'paradigm_classification']
             };
-            setResearch(prev => [...prev, generatingStep]);
+            setResearch(prev => [...(Array.isArray(prev) ? prev : []), generatingStep]);
             
           } else if (message.includes('Routing to') && message.includes('paradigm')) {
             setProgress(25);
@@ -189,7 +191,7 @@ const App: React.FC = () => {
               toolsUsed: [],
               recommendedTools: ['paradigm_routing', 'strategy_selection']
             };
-            setResearch(prev => [...prev, routingStep]);
+            setResearch(prev => [...(Array.isArray(prev) ? prev : []), routingStep]);
             
           } else if (message.includes('search queries') || message.includes('Comprehensive research')) {
             setProgress(40);
@@ -205,7 +207,7 @@ const App: React.FC = () => {
               toolsUsed: [],
               recommendedTools: ['web_search', 'google_search', 'bing_search', 'academic_search']
             };
-            setResearch(prev => [...prev, searchingStep]);
+            setResearch(prev => [...(Array.isArray(prev) ? prev : []), searchingStep]);
             
           } else if (message.includes('quality') || message.includes('evaluating') || message.includes('self-healing')) {
             setProgress(60);
@@ -221,7 +223,7 @@ const App: React.FC = () => {
               toolsUsed: [],
               recommendedTools: ['quality_evaluation', 'fact_verification', 'source_validation']
             };
-            setResearch(prev => [...prev, reflectionStep]);
+            setResearch(prev => [...(Array.isArray(prev) ? prev : []), reflectionStep]);
             
           } else if (message.includes('Finalizing') || message.includes('synthesis') || message.includes('comprehensive answer')) {
             setProgress(80);
@@ -238,7 +240,7 @@ const App: React.FC = () => {
               toolsUsed: [],
               recommendedTools: ['synthesis_engine', 'content_compression', 'narrative_generation']
             };
-            setResearch(prev => [...prev, synthesisStep]);
+            setResearch(prev => [...(Array.isArray(prev) ? prev : []), synthesisStep]);
           }
           
           // Update any existing steps with more detailed content
@@ -286,7 +288,7 @@ const App: React.FC = () => {
       )
 
       // Add final answer step
-      setResearch(prev => [...prev, finalAnswerStep])
+      setResearch(prev => [...(Array.isArray(prev) ? prev : []), finalAnswerStep])
 
       // Update paradigm information
       if ('paradigmProbabilities' in result && result.paradigmProbabilities) {
@@ -395,7 +397,7 @@ const App: React.FC = () => {
 
   const handleSelectSearchResult = useCallback((step: ResearchStep) => {
     // Add the selected result to the current research
-    setResearch(prev => [...prev, { ...step, id: crypto.randomUUID() }])
+    setResearch(prev => [...(Array.isArray(prev) ? prev : []), { ...step, id: crypto.randomUUID() }])
     setShowSemanticSearch(false)
   }, [setResearch])
 
@@ -500,7 +502,7 @@ const App: React.FC = () => {
               <ParadigmIndicator
                 paradigm={paradigm}
                 probabilities={paradigmProbabilities}
-                confidence={Math.max(...Object.values(paradigmProbabilities))}
+                confidence={paradigmProbabilities ? Math.max(...Object.values(paradigmProbabilities)) : 0}
               />
             </div>
           )}
@@ -521,15 +523,18 @@ const App: React.FC = () => {
           <div className="research-container flex flex-col">
             <ResearchArea steps={research} />
             
-            {/* Live Function Call Indicator */}
-            {enhancedMode && liveFunctionCalls.length > 0 && (
-              <LiveFunctionCallIndicator calls={liveFunctionCalls} />
-            )}
-            
-            {/* Function Call History */}
-            {enhancedMode && functionHistory.length > 0 && (
+            {/* Function Call Dock - shows both live and history */}
+            {enhancedMode && (liveFunctionCalls.length > 0 || functionHistory.length > 0) && (
               <div className="mt-4">
-                <FunctionCallVisualizer history={functionHistory} />
+                <FunctionCallProvider 
+                  initialHistory={functionHistory}
+                  initialTools={[]}
+                >
+                  <FunctionCallDock 
+                    mode={liveFunctionCalls.length > 0 ? 'live' : 'history'}
+                    showModeSelector={true}
+                  />
+                </FunctionCallProvider>
               </div>
             )}
 
@@ -583,8 +588,16 @@ const App: React.FC = () => {
         </div>
 
         {isLoading && (
-          <div className="progress-bar-container">
-            <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
+          <div className="mt-4">
+            <ProgressMeter
+              value={progress}
+              label="Research Progress"
+              variant="gradient"
+              showLoadingDots={true}
+              showSegments={true}
+              showShimmer={true}
+              animate={true}
+            />
           </div>
         )}
 

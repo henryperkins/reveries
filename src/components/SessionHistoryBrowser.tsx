@@ -26,8 +26,11 @@ export const SessionHistoryBrowser: React.FC<SessionHistoryBrowserProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSession, setSelectedSession] = useState<ResearchSession | null>(null);
 
+  // Guard against undefined or invalid sessions
+  const safeSessions = Array.isArray(sessions) ? sessions : [];
+  
   // Filter sessions based on search query
-  const filteredSessions = sessions.filter(session =>
+  const filteredSessions = safeSessions.filter(session =>
     session.query.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -63,7 +66,7 @@ export const SessionHistoryBrowser: React.FC<SessionHistoryBrowserProps> = ({
           <div className="flex items-center gap-2">
             <ClockIcon className="w-5 h-5 text-gray-500" />
             <h2 className="text-lg font-semibold">Research Session History</h2>
-            <span className="text-sm text-gray-500">({sessions.length} sessions)</span>
+            <span className="text-sm text-gray-500">({safeSessions.length} sessions)</span>
           </div>
           <button
             onClick={onClose}

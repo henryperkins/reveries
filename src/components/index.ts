@@ -9,6 +9,7 @@ export { default as ResearchGraphView } from './ResearchGraphView';
 export { ResearchStepCard } from './ResearchStepCard';
 export { ContextDensityBar } from './ContextDensityBar';
 export { FunctionCallVisualizer } from './FunctionCallVisualizer';
+export { FunctionCallDock } from './FunctionCallDock';
 export { SemanticSearch } from './SemanticSearch';
 export { SessionHistoryBrowser } from './SessionHistoryBrowser';
 export {

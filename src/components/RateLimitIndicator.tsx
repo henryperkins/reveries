@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { RateLimiter } from '@/services/rateLimiter';
+import { RateLimitBar } from '@/components/atoms';
 
 interface Stats {
   tokensUsedLastMinute: number;
@@ -45,11 +46,8 @@ export const RateLimitIndicator: React.FC<{ intervalMs?: number }> = ({
         <span>Req/min: {stats.requestsLastMinute}</span>
         <span>Tokens/min: {stats.tokensUsedLastMinute}</span>
       </div>
-      <div className="relative w-64 h-2 bg-gray-200 rounded mt-1">
-        <div
-          className="absolute inset-0 bg-westworld-rust rounded transition-all"
-          style={{ width: `${barWidth}%` }}
-        />
+      <div className="w-64 mt-1">
+        <RateLimitBar value={barWidth} />
       </div>
     </div>
   );

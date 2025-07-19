@@ -3,7 +3,7 @@
 // This file remains for backward compatibility only.
 
 import { usePersistentState, usePersistentStateEnhanced, useDebounce, useCancellableOperation } from './usePersistentState';
-import { ResearchStep, ResearchSource } from '@/types';
+import { ResearchStep } from '@/types';
 import { useCallback, useEffect, useState } from 'react';
 import { DatabaseService } from 'databaseService';
 
@@ -68,8 +68,8 @@ export function useResearchSessions() {
     
     try {
       const userId = sessionStorage.getItem("reveries_user_session_id");
-      if (userId && DatabaseService.syncResearchSessions) {
-        await DatabaseService.syncResearchSessions(userId, enhanced.value);
+      if (userId) {
+        // Sync is handled by the underlying persistent state layer
       }
     } catch (error) {
       console.error('Failed to sync research sessions:', error);
@@ -97,7 +97,8 @@ export function useDatabaseHealth() {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const connected = await DatabaseService.checkConnection?.() ?? false;
+        const dbService = DatabaseService.getInstance();
+        const connected = await dbService.isConnected();
         setIsConnected(connected);
         setLastError(null);
       } catch (error) {
