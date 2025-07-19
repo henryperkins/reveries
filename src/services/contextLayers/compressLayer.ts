@@ -174,6 +174,10 @@ export class CompressLayerService {
 
     // Re-chunk summaries and recurse
     const rechunkedSummaries = this.rechunkSummaries(summaries);
+    
+    // Add original summary hashes to trace before recursing
+    traceHashes.push(...summaries.map(s => s.hash));
+    
     return this.recursiveSummarize(rechunkedSummaries, paradigm, model, depth + 1, traceHashes);
   }
 

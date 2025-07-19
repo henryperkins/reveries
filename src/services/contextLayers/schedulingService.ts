@@ -66,15 +66,17 @@ export class SchedulingService {
       });
 
     // Calculate current running cost
-    const runningCost = Array.from(this.runningTasks)
+    let currentRunningCost = Array.from(this.runningTasks)
       .map(id => this.tasks.get(id)?.cost || 0)
       .reduce((sum, cost) => sum + cost, 0);
 
     // Schedule tasks within budget and concurrency limits
     for (const task of pendingTasks) {
       if (this.runningTasks.size >= this.CONCURRENCY_LIMIT) break;
-      if (runningCost + task.cost > this.GLOBAL_BUDGET) break;
+      if (currentRunningCost + task.cost > this.GLOBAL_BUDGET) break;
 
+      // Update running cost before scheduling to prevent budget overshoot
+      currentRunningCost += task.cost;
       this.executeTask(task);
     }
   }

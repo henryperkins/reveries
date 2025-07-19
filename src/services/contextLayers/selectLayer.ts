@@ -82,15 +82,31 @@ export class SelectLayerService {
     return SelectLayerService.instance;
   }
 
+  /**
+   * Simplified select method - requires query and sources for proper source selection
+   * Use selectSources() directly for full functionality
+   */
   async select(
     paradigm: HostParadigm,
-    _k: number = 5
+    k: number = 5,
+    query?: string,
+    sources?: Citation[]
   ): Promise<{
     recommendedTools: string[];
-    selectedSources: unknown[];
+    selectedSources: Citation[];
   }> {
+    const recommendedTools = this.recommendTools(paradigm);
+    
+    // If query and sources provided, actually select sources
+    if (query && sources && sources.length > 0) {
+      const selectedSources = await this.selectSources(query, sources, paradigm, k);
+      return { recommendedTools, selectedSources };
+    }
+    
+    // Otherwise return empty sources with warning
+    console.warn('SelectLayer.select() called without query/sources - returning empty selectedSources. Use selectSources() directly for proper source selection.');
     return {
-      recommendedTools: this.recommendTools(paradigm),
+      recommendedTools,
       selectedSources: []
     };
   }

@@ -74,7 +74,7 @@ export class ContextEngineeringService {
       console.warn(`No metrics found for phase: ${phase} (normalized: ${normalizedPhase}), using defaults`);
       const averageDensity = Object.values(defaultDensities).reduce((a, b) => a + b) / Object.values(defaultDensities).length;
       return {
-        phase,
+        phase: normalizedPhase as ResearchPhase,
         averageDensity,
         dominantParadigm: defaultParadigm,
         densities: defaultDensities,
@@ -108,7 +108,7 @@ export class ContextEngineeringService {
 
     const averageDensity = Object.values(densities).reduce((a, b) => a + b) / 4;
 
-    return { phase, averageDensity, dominantParadigm, densities, density: averageDensity };
+    return { phase: normalizedPhase as ResearchPhase, averageDensity, dominantParadigm, densities, density: averageDensity };
   }
 
   /**
@@ -146,6 +146,39 @@ export class ContextEngineeringService {
   }
 
   /**
+   * Map host paradigm densities to UI context types
+   */
+  mapDensitiesToContextTypes(densities: Record<HostParadigm, number>): {
+    narrative: number;
+    analytical: number;
+    memory: number;
+    adaptive: number;
+  } {
+    return {
+      narrative: densities.dolores,    // action-oriented → narrative
+      analytical: densities.bernard,   // analytical → analytical  
+      memory: densities.teddy,         // protective/comprehensive → memory
+      adaptive: densities.maeve        // strategic → adaptive
+    };
+  }
+
+  /**
+   * Get context density in UI format
+   */
+  getContextDensityForUI(
+    phase: ResearchPhase,
+    paradigm?: HostParadigm | null
+  ): {
+    narrative: number;
+    analytical: number;
+    memory: number;
+    adaptive: number;
+  } {
+    const contextDensity = this.adaptContextDensity(phase, paradigm);
+    return this.mapDensitiesToContextTypes(contextDensity.densities);
+  }
+
+  /**
    * Get description for host paradigm
    */
   getHostParadigmDescription(paradigm: HostParadigm): string {
@@ -180,9 +213,10 @@ export class ContextEngineeringService {
       // analysis.
       bernard: ['select', 'write', 'compress', 'isolate'],
 
-      // Maeve seeks leverage – start by isolating high-impact sub-agents,
-      // then select leverage points, compress narratives, and write closing
-      // updates.
+      // Maeve seeks leverage – NOTE: isolate layer depends on selectedSources and compressedContent
+      // from select/compress layers. Consider reordering if isolate needs richer context.
+      // Current: strategic isolation first, then data gathering
+      // Alternative: ['select', 'compress', 'isolate', 'write'] for data-dependent isolation
       maeve: ['isolate', 'select', 'compress', 'write']
     };
 
