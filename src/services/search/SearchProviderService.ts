@@ -4,6 +4,7 @@
  */
 
 import { Citation } from '../../types';
+import { getEnv } from '../../utils/getEnv';
 
 export interface SearchResult {
   title: string;
@@ -48,7 +49,6 @@ class BingSearchProvider implements SearchProvider {
   private rateLimit = { remaining: 1000, resetTime: Date.now() + 86400000 };
 
   constructor(apiKey?: string, endpoint = 'https://api.bing.microsoft.com/v7.0/search') {
-    const { getEnv } = require('../../utils/getEnv');
     this.apiKey = apiKey || getEnv('VITE_BING_SEARCH_API_KEY', 'BING_SEARCH_API_KEY') || '';
     this.endpoint = endpoint;
   }
@@ -187,7 +187,6 @@ class GoogleSearchProvider implements SearchProvider {
   private rateLimit = { remaining: 100, resetTime: Date.now() + 86400000 };
 
   constructor(apiKey?: string, searchEngineId?: string) {
-    const { getEnv } = require('../../utils/getEnv');
     this.apiKey = apiKey || getEnv('VITE_GOOGLE_SEARCH_API_KEY', 'GOOGLE_SEARCH_API_KEY') || '';
     this.searchEngineId = searchEngineId || getEnv('VITE_GOOGLE_SEARCH_ENGINE_ID', 'GOOGLE_SEARCH_ENGINE_ID') || '';
   }

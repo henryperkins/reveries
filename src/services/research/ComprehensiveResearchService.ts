@@ -141,7 +141,7 @@ export class ComprehensiveResearchService {
   }
 
   /**
-   * Research sections in parallel
+   * Research sections with controlled concurrency
    */
   private async researchSectionsInParallel(
     sections: { topic: string; description: string }[],
@@ -150,75 +150,110 @@ export class ComprehensiveResearchService {
     onProgress?: (message: string) => void
   ): Promise<ResearchSection[]> {
     const generateText = this.modelProvider.generateText.bind(this.modelProvider);
+    
+    // Get batch size from environment or default to 1 (sequential)
+    const batchSize = this.getBatchSize();
+    const results: ResearchSection[] = [];
+    
+    onProgress?.(`Processing ${sections.length} sections in batches of ${batchSize}...`);
 
-    // Create research promises for each section
-    const researchPromises = sections.map(async (section, index) => {
-      onProgress?.(`[Worker ${index + 1}] Researching: ${section.topic}`);
+    // Process sections in batches
+    for (let i = 0; i < sections.length; i += batchSize) {
+      const batch = sections.slice(i, i + batchSize);
+      const batchNumber = Math.floor(i / batchSize) + 1;
+      const totalBatches = Math.ceil(sections.length / batchSize);
+      
+      onProgress?.(`Processing batch ${batchNumber}/${totalBatches}...`);
+      
+      // Create promises for current batch
+      const batchPromises = batch.map(async (section, batchIndex) => {
+        const globalIndex = i + batchIndex;
+        onProgress?.(`[Section ${globalIndex + 1}] Researching: ${section.topic}`);
 
-      try {
-        // Generate search queries for this section
-        onProgress?.('tool_used:search_query_generation');
-        const queries = await this.webResearchService.generateSearchQueries(
-          `${section.topic}: ${section.description}`,
-          model,
-          effort,
-          generateText
-        );
+        try {
+          // Generate search queries for this section
+          onProgress?.('tool_used:search_query_generation');
+          const queries = await this.webResearchService.generateSearchQueries(
+            `${section.topic}: ${section.description}`,
+            model,
+            effort,
+            generateText
+          );
 
-        // Perform web research
-        onProgress?.('tool_used:web_search');
-        const research = await this.webResearchService.performWebResearch(
-          queries,
-          model,
-          effort,
-          generateText,
-          onProgress
-        );
+          // Perform web research
+          onProgress?.('tool_used:web_search');
+          const research = await this.webResearchService.performWebResearch(
+            queries,
+            model,
+            effort,
+            generateText,
+            onProgress
+          );
 
-        // Generate section-specific findings
-        const findingsPrompt = `
-          Based on the research findings for "${section.topic}":
-          ${research.aggregatedFindings}
+          // Generate section-specific findings
+          const findingsPrompt = `
+            Based on the research findings for "${section.topic}":
+            ${research.aggregatedFindings}
 
-          Provide a comprehensive summary addressing: ${section.description}
-          Focus on key insights, facts, and relevant information.
-        `;
+            Provide a comprehensive summary addressing: ${section.description}
+            Focus on key insights, facts, and relevant information.
+          `;
 
-        const findings = await this.modelProvider.generateText(
-          findingsPrompt,
-          model,
-          effort
-        );
+          const findings = await this.modelProvider.generateText(
+            findingsPrompt,
+            model,
+            effort
+          );
 
-        onProgress?.(`[Worker ${index + 1}] Completed research for: ${section.topic}`);
+          onProgress?.(`[Section ${globalIndex + 1}] Completed research for: ${section.topic}`);
 
-        return {
-          id: `section_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          title: section.topic,
-          content: findings.text,
-          confidence: 0.8,
-          topic: section.topic,
-          description: section.description,
-          research: findings.text,
-          sources: research.allSources
-        };
-      } catch (error) {
-        console.error(`Error researching section "${section.topic}":`, error);
-        return {
-          id: `section_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          title: section.topic,
-          content: `Unable to complete research for this section.`,
-          confidence: 0.1,
-          topic: section.topic,
-          description: section.description,
-          research: `Unable to complete research for this section.`,
-          sources: []
-        };
+          return {
+            id: `section_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            title: section.topic,
+            content: findings.text,
+            confidence: 0.8,
+            topic: section.topic,
+            description: section.description,
+            research: findings.text,
+            sources: research.allSources
+          };
+        } catch (error) {
+          console.error(`Error researching section "${section.topic}":`, error);
+          return {
+            id: `section_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            title: section.topic,
+            content: `Unable to complete research for this section.`,
+            confidence: 0.1,
+            topic: section.topic,
+            description: section.description,
+            research: `Unable to complete research for this section.`,
+            sources: []
+          };
+        }
+      });
+
+      // Wait for current batch to complete before processing next batch
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults);
+      
+      // Add a small delay between batches to help with rate limiting
+      if (i + batchSize < sections.length) {
+        onProgress?.(`Batch ${batchNumber} complete. Pausing before next batch...`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
       }
-    });
+    }
 
-    // Wait for all sections to complete
-    return Promise.all(researchPromises);
+    return results;
+  }
+  
+  /**
+   * Get batch size from environment or default
+   */
+  private getBatchSize(): number {
+    const envBatchSize = import.meta?.env?.VITE_RESEARCH_BATCH_SIZE || 
+                        (typeof process !== 'undefined' && process.env.RESEARCH_BATCH_SIZE);
+    const parsed = Number(envBatchSize);
+    return Number.isFinite(parsed) && parsed >= 1 ? parsed : 1; // Default to sequential (1)
   }
 
   /**
