@@ -7,7 +7,7 @@ import {
   ModelType,
   EffortType,
   QueryType,
-  // HostParadigm,
+  HostParadigm,
   Citation,
   ResearchResponse,
   ResearchModel,
@@ -24,6 +24,12 @@ import {
   ResearchPhase,
   ContextLayer
 } from './research/types';
+import {
+  ContextLayerExecutionContext,
+  ContextLayerResult,
+  EnhancedResearchMetadata,
+  ExtendedResearchResponse
+} from './contextLayers/types';
 
 // Import all sub-services
 import { ModelProviderService } from './providers/ModelProviderService';
@@ -97,6 +103,187 @@ export class ResearchAgentService {
     } catch (error) {
       console.log('Database service not available (client-side context)');
       this.databaseService = null;
+    }
+  }
+
+  /**
+   * Execute a specific context layer operation with proper data flow
+   */
+  private async executeContextLayer(
+    layer: ContextLayer,
+    context: ContextLayerExecutionContext
+  ): Promise<ContextLayerResult> {
+    const { query, paradigm, density, layerResults = {}, sources, content, model, effort, onProgress } = context;
+
+    try {
+      switch (layer) {
+        case 'write': {
+          onProgress?.(`[${paradigm}] Writing reveries to memory banks...`);
+          this.writeLayer.write('query_context', {
+            query,
+            paradigm,
+            timestamp: Date.now(),
+            phase: this.contextEngineering.inferResearchPhase(query)
+          }, density, paradigm);
+
+          if (content) {
+            this.writeLayer.write('initial_insights', content, density, paradigm);
+          }
+
+          return { written: true, timestamp: Date.now() };
+        }
+        case 'select': {
+          onProgress?.(`[${paradigm}] Selecting relevant memories and tools...`);
+          const recommendedTools = this.selectLayer.recommendTools(paradigm);
+          const availableSources = layerResults.selectedSources || sources || this.memoryService.getCachedSources(query) || [];
+          if (availableSources.length > 0) {
+            const k = Math.max(5, Math.ceil(density / 10));
+            const selectedSources = await this.selectLayer.selectSources(query, availableSources, paradigm, k);
+            return { selectedSources, recommendedTools };
+          }
+          return { recommendedTools, selectedSources: [] };
+        }
+        case 'compress': {
+          onProgress?.(`[${paradigm}] Compressing narrative threads...`);
+          const sourceContent = layerResults.selectedSources
+            ? layerResults.selectedSources.map((s: Citation) => `${s.title || s.name}: ${s.snippet || s.url}`).join('\n\n')
+            : content || query;
+          const estimatedTokens = this.compressLayer.estimateTokens(sourceContent);
+          const targetTokens = Math.max(
+            50,
+            Math.round(estimatedTokens * (density / 100))
+          );
+          const compressTaskId = `compress-${paradigm}-${Date.now()}`;
+          this.schedulingService.addTask(
+            compressTaskId,
+            2,
+            paradigm,
+            async () => {
+              const compressed = this.compressLayer.compress(sourceContent, targetTokens, paradigm);
+              return { compressed, compressedContent: compressed, targetTokens };
+            },
+            2
+          );
+          await new Promise(resolve => setTimeout(resolve, 100));
+          const task = this.schedulingService.getTaskStatus(compressTaskId);
+          if (task?.status === 'completed' && task.result) {
+            return task.result;
+          }
+          const compressed = this.compressLayer.compress(sourceContent, targetTokens, paradigm);
+          return { compressed, compressedContent: compressed, targetTokens };
+        }
+        case 'isolate': {
+          onProgress?.(`[${paradigm}] Isolating consciousness for focused analysis...`);
+          const isolationContext = {
+            content: layerResults.compressedContent || layerResults.compressed || content || query,
+            sources: layerResults.selectedSources || sources || [],
+            model,
+            effort,
+            density,
+            paradigm
+          };
+          const isolateTaskId = `isolate-${paradigm}-${Date.now()}`;
+          this.schedulingService.addTask(
+            isolateTaskId,
+            4,
+            paradigm,
+            async () => {
+              const taskId = await this.isolateLayer.isolate(
+                query,
+                paradigm,
+                isolationContext,
+                async (task: string, ctx: Record<string, unknown>) => {
+                  const generateText = this.modelProvider.generateText.bind(this.modelProvider);
+                  if (paradigm === 'bernard' || paradigm === 'maeve') {
+                    const subQueries = await this.webResearchService.generateSearchQueries(task, ctx.model as ModelType, ctx.effort as EffortType, generateText);
+                    const subResearch = await this.webResearchService.performWebResearch(subQueries, ctx.model as ModelType, ctx.effort as EffortType, generateText);
+                    return {
+                      task,
+                      analysis: subResearch.aggregatedFindings,
+                      sources: subResearch.allSources,
+                      paradigm: ctx.paradigm
+                    };
+                  }
+                  return {
+                    task,
+                    analysis: `Focused analysis for ${paradigm}: ${task}`,
+                    paradigm: ctx.paradigm
+                  };
+                }
+              );
+              const isolatedResult = await this.isolateLayer.waitForTask(taskId, 30000);
+              return { taskId, isolatedResult, status: 'completed' };
+            },
+            3
+          );
+          await new Promise(resolve => setTimeout(resolve, 200));
+          const scheduledTask = this.schedulingService.getTaskStatus(isolateTaskId);
+          if (scheduledTask?.status === 'completed' && scheduledTask.result) {
+            return scheduledTask.result;
+          } else if (scheduledTask?.status === 'running') {
+            return {
+              taskId: isolateTaskId,
+              status: 'running',
+              message: 'Isolation task scheduled and running asynchronously'
+            };
+          }
+          try {
+            const directResult = await this.isolateLayer.isolate(
+              query,
+              paradigm,
+              isolationContext,
+              async (task: string) => ({
+                task,
+                analysis: `Direct isolation analysis for ${paradigm}`,
+                paradigm
+              })
+            );
+            return {
+              taskId: directResult,
+              status: 'direct_execution',
+              message: 'Executed directly without scheduling'
+            };
+          } catch (error) {
+            return {
+              error: error instanceof Error ? error.message : 'Isolation failed',
+              status: 'failed'
+            };
+          }
+        }
+        default:
+          return { error: "Unknown context layer", layer, paradigm };
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      onProgress?.(`[${paradigm}] ${layer} layer failed: ${errorMessage}`);
+      return {
+        error: errorMessage,
+        layer,
+        paradigm,
+        fallback: this.getFallbackForLayer(layer, paradigm)
+      };
+    }
+  }
+
+  /**
+   * Get fallback behavior for failed layers
+   */
+  private getFallbackForLayer(layer: ContextLayer, paradigm: HostParadigm): any {
+    switch (layer) {
+      case 'write':
+        return { written: false, reason: 'Memory write failed, continuing without persistence' };
+      case 'select':
+        return {
+          selectedSources: [],
+          recommendedTools: this.selectLayer.recommendTools(paradigm)
+        };
+      case 'compress':
+        return { compressed: null, reason: 'Compression failed, using original content' };
+      case 'isolate':
+        return {
+          isolatedResult: null,
+          reason: 'Isolation failed, proceeding with standard analysis'
+        };
     }
   }
 
@@ -250,7 +437,7 @@ export class ResearchAgentService {
                   async () => {
                     metadata?.onProgress?.('Compressing research for synthesis phase');
                     const sourcesText = layerResults.selectedSources.map((s: any) => s.snippet || s.title || '').join(' ');
-                    
+
                     // --- FIX: convert density % → token budget --------------------
                     const rawTokens = this.compressLayer.estimateTokens(sourcesText);
                     const targetTokens = Math.max(
@@ -258,7 +445,7 @@ export class ResearchAgentService {
                       Math.round(rawTokens * ((contextDensity.averageDensity || 50) / 100))
                     );
                     //----------------------------------------------------------------
-                    
+
                     const compressed = this.compressLayer.compress(sourcesText, targetTokens, paradigm);
                     layerResults.compressedContent = compressed;
                     metadata?.onProgress?.('Research compression complete, moving to quality evaluation');
@@ -266,7 +453,7 @@ export class ResearchAgentService {
                   },
                   2 // Higher priority for compression
                 );
-                
+
                 // Wait for completion (simplified - in production would poll task status)
                 await new Promise(resolve => setTimeout(resolve, 100));
                 const compressTask = this.schedulingService.getTaskStatus(compressTaskId);
@@ -299,7 +486,7 @@ export class ResearchAgentService {
                 },
                 3 // Highest priority for isolation
               );
-              
+
               // Wait for completion (simplified - in production would poll task status)
               await new Promise(resolve => setTimeout(resolve, 200));
               const isolateTask = this.schedulingService.getTaskStatus(isolateTaskId);
@@ -319,7 +506,7 @@ export class ResearchAgentService {
 
       // Route query using research strategy with adaptive timeout and extension mechanism
       const researchPromise = this.routeResearchQuery(query, model, EffortType.MEDIUM, enhancedOnProgress);
-      
+
       // Implement timeout extension mechanism for complex queries
       let result: EnhancedResearchResults;
       result = await this.executeWithTimeoutExtension(
@@ -486,10 +673,10 @@ export class ResearchAgentService {
       effort,
       onProgress
     );
-    
+
     // Signal completion and transition to quality evaluation phase
     onProgress?.('Comprehensive research completed, evaluating quality');
-    
+
     return result;
   }
 
@@ -674,22 +861,22 @@ export class ResearchAgentService {
     let currentTimeout = baseTimeout;
     let extensionCount = 0;
     const maxExtensions = 3;
-    
+
     onProgress?.(`Initiating research with ${Math.round(currentTimeout/1000)}s adaptive timeout`);
-    
+
     while (extensionCount <= maxExtensions) {
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
           reject(new Error('Research timeout'));
         }, currentTimeout);
       });
-      
+
       try {
         const result = await Promise.race([researchPromise, timeoutPromise]);
         return result; // Success - return the result
       } catch (error) {
         extensionCount++;
-        
+
         if (extensionCount > maxExtensions) {
           console.warn(`Research timed out after ${maxExtensions} extensions, proceeding with partial results`);
           // CRITICAL FIX: Ensure progress advances past 40% by sending evaluation signal
@@ -703,18 +890,18 @@ export class ResearchAgentService {
             confidenceScore: 0.1
           };
         }
-        
+
         // Extend timeout for complex operations
         const extraTime = Math.min(baseTimeout * 0.5, 120000); // add 50% (≤2 min)
         currentTimeout += extraTime;
-        
+
         onProgress?.(`Research needs more time, extending timeout by ${Math.round(extraTime/1000)}s (attempt ${extensionCount}/${maxExtensions})`);
         onProgress?.('Continuing research with extended timeout...');
-        
+
         // Continue the loop with extended timeout
       }
     }
-    
+
     // Should never reach here due to the logic above, but TypeScript safety
     throw new Error('Unexpected timeout extension state');
   }
@@ -726,28 +913,28 @@ export class ResearchAgentService {
     // Base timeout for different phases
     const baseTimeouts = {
       discovery: 120000,    // 2 minutes
-      exploration: 180000,  // 3 minutes  
+      exploration: 180000,  // 3 minutes
       synthesis: 240000,    // 4 minutes
       validation: 150000    // 2.5 minutes
     };
-    
+
     let timeout = baseTimeouts[phase] || 180000;
-    
+
     // Adjust based on query complexity
     const queryWords = query.split(/\s+/).length;
     const complexityMultiplier = Math.min(1 + (queryWords - 5) * 0.1, 2.0); // Max 2x for very complex queries
     timeout *= complexityMultiplier;
-    
+
     // Adjust based on paradigm requirements
     const paradigmMultipliers = {
       bernard: 1.5,  // Analytical paradigm needs more time
       dolores: 1.2,  // Self-aware paradigm moderately complex
-      maeve: 1.3,    // Strategic paradigm needs coordination time  
+      maeve: 1.3,    // Strategic paradigm needs coordination time
       teddy: 1.0     // Narrative paradigm is straightforward
     };
-    
+
     timeout *= paradigmMultipliers[paradigm as keyof typeof paradigmMultipliers] || 1.0;
-    
+
     // Ensure reasonable bounds (30s minimum, 8 minutes maximum)
     return Math.max(30000, Math.min(timeout, 480000));
   }
