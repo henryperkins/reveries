@@ -481,7 +481,7 @@ export class AzureOpenAIService {
     return withRetry(async () => {
       let iterationCount = 0;
       const toolsUsed: string[] = [];
-      const allMessages: any[] = [];
+      let previousResponseId: string | undefined;
 
       // Build paradigm-aware system prompt
       const systemPrompt = this.buildParadigmAwareSystemPrompt(paradigm, paradigmProbabilities);
@@ -489,32 +489,38 @@ export class AzureOpenAIService {
       // Filter tools based on paradigm preferences
       const filteredTools = this.filterToolsByParadigm(tools, paradigm);
 
-      // Initialize conversation
-      allMessages.push({
-        role: "system",
-        content: systemPrompt
-      });
-      allMessages.push({
-        role: "user",
-        content: prompt
-      });
+      // Build initial input for Responses API
+      const initialInput: any[] = [
+        {
+          type: "message",
+          role: "system",
+          content: systemPrompt
+        },
+        {
+          type: "message",
+          role: "user",
+          content: prompt
+        }
+      ];
 
       // Main conversation loop with tool calling
       while (iterationCount < maxIterations) {
         iterationCount++;
 
         // Guard against Azure rate limits
-        const estimatedPromptTokens = estimateTokens(JSON.stringify(allMessages));
+        const estimatedPromptTokens = estimateTokens(JSON.stringify(initialInput));
         const estimatedCompletionTokens = 4096;
         await this.rateLimiter.waitForCapacity(estimatedPromptTokens + estimatedCompletionTokens);
 
-        const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
+        const url = `${this.config.endpoint}/openai/v1/responses?api-version=${this.config.apiVersion}`;
 
         const requestBody: any = {
-          messages: allMessages,
+          model: this.config.deploymentName,
+          input: iterationCount === 1 ? initialInput : undefined,
+          previous_response_id: iterationCount > 1 ? previousResponseId : undefined,
           tools: filteredTools.length > 0 ? filteredTools : undefined,
           tool_choice: filteredTools.length > 0 ? "auto" : undefined,
-          max_completion_tokens: 32000
+          max_output_tokens: 32000
         };
 
         // Only add temperature for non-o3 models
@@ -523,7 +529,7 @@ export class AzureOpenAIService {
         }
 
         if (this.config.deploymentName.includes('o3')) {
-          requestBody.reasoning_effort = this.mapEffortToReasoning(effort);
+          requestBody.reasoning = { effort: this.mapEffortToReasoning(effort) };
         }
 
         const response = await fetch(url, {
@@ -535,7 +541,21 @@ export class AzureOpenAIService {
           body: JSON.stringify(requestBody)
         });
 
-        if (!response.ok) {
+        // Handle background tasks (202 status)
+        let data: any;
+        if (response.status === 202) {
+          const operationUrl = response.headers.get('operation-location');
+          if (!operationUrl) {
+            throw new APIError(
+              'Azure returned 202 but no operation-location header.',
+              'BACKGROUND_TASK_ERROR',
+              false,
+              500
+            );
+          }
+          console.log(`Background task started → polling ${operationUrl}`);
+          data = await this.pollBackgroundTask(operationUrl);
+        } else if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
 
           // Extract retry-after header for rate limits
@@ -545,6 +565,7 @@ export class AzureOpenAIService {
             if (retryAfterHeader) {
               retryAfter = parseInt(retryAfterHeader, 10);
               console.log(`Rate limit hit. Retry after ${retryAfter} seconds`);
+              this.rateLimiter.penalize(retryAfter);
             }
           }
 
@@ -560,9 +581,10 @@ export class AzureOpenAIService {
           }
 
           throw error;
+        } else {
+          data = await response.json();
         }
-
-        const data = await response.json();
+        
         this.updateLimitsFromHeaders(response.headers);
 
         // Record actual token usage when available
@@ -570,23 +592,28 @@ export class AzureOpenAIService {
           this.rateLimiter.recordTokensUsed(data.usage.total_tokens);
         }
 
-        const assistantMessage = data.choices?.[0]?.message;
-        if (!assistantMessage) {
+        // Store response ID for chaining
+        previousResponseId = data.id;
+
+        // Extract assistant message from output array
+        const assistantOutput = data.output?.find((item: any) => item.type === 'message' && item.role === 'assistant');
+        if (!assistantOutput) {
           throw new APIError('No assistant message in response', 'EMPTY_RESPONSE', true);
         }
 
-        // Add assistant message to conversation
-        allMessages.push(assistantMessage);
+        // Handle tool calls if present in output
+        const toolCalls = data.output?.filter((item: any) => item.type === 'function_call') || [];
+        if (toolCalls.length > 0) {
+          console.log(`Processing ${toolCalls.length} tool calls...`);
 
-        // Handle tool calls if present
-        if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
-          console.log(`Processing ${assistantMessage.tool_calls.length} tool calls...`);
+          // Build input for next iteration with tool results
+          const toolResultsInput: any[] = [];
 
           // Execute each tool call
-          for (const toolCall of assistantMessage.tool_calls) {
+          for (const toolCall of toolCalls) {
             try {
-              const toolName = toolCall.function.name;
-              const toolArgs = JSON.parse(toolCall.function.arguments);
+              const toolName = toolCall.name;
+              const toolArgs = typeof toolCall.arguments === 'string' ? JSON.parse(toolCall.arguments) : toolCall.arguments;
 
               // Add paradigm context to tool arguments
               if (paradigm) {
@@ -617,18 +644,18 @@ export class AzureOpenAIService {
               if (executionResult.success) {
                 toolsUsed.push(toolName);
 
-                // Add tool result to conversation
-                allMessages.push({
-                  role: "tool",
-                  tool_call_id: toolCall.id,
-                  content: JSON.stringify(executionResult.result)
+                // Add tool result for next iteration
+                toolResultsInput.push({
+                  type: "function_call_output",
+                  call_id: toolCall.call_id || toolCall.id,
+                  output: JSON.stringify(executionResult.result)
                 });
               } else {
-                // Add error result to conversation
-                allMessages.push({
-                  role: "tool",
-                  tool_call_id: toolCall.id,
-                  content: JSON.stringify({
+                // Add error result
+                toolResultsInput.push({
+                  type: "function_call_output",
+                  call_id: toolCall.call_id || toolCall.id,
+                  output: JSON.stringify({
                     error: executionResult.error,
                     success: false,
                     retryable: executionResult.retryable
@@ -637,13 +664,13 @@ export class AzureOpenAIService {
               }
 
             } catch (error) {
-              console.error(`Tool execution failed for ${toolCall.function.name}:`, error);
+              console.error(`Tool execution failed for ${toolCall.name}:`, error);
 
-              // Add error result to conversation
-              allMessages.push({
-                role: "tool",
-                tool_call_id: toolCall.id,
-                content: JSON.stringify({
+              // Add error result
+              toolResultsInput.push({
+                type: "function_call_output",
+                call_id: toolCall.call_id || toolCall.id,
+                output: JSON.stringify({
                   error: error instanceof Error ? error.message : 'Tool execution failed',
                   success: false
                 })
@@ -651,14 +678,29 @@ export class AzureOpenAIService {
             }
           }
 
+          // Update input for next iteration to include tool results
+          initialInput.length = 0; // Clear for next iteration
+          initialInput.push(...toolResultsInput);
+
           // Continue the loop to get the next response
           continue;
         }
 
         // No tool calls, we have our final response
+        // Extract text content from assistant output
+        let finalText = '';
+        if (assistantOutput.content && Array.isArray(assistantOutput.content)) {
+          const textContent = assistantOutput.content.find((c: any) => c.type === 'output_text');
+          if (textContent) {
+            finalText = textContent.text;
+          }
+        } else if (typeof assistantOutput.content === 'string') {
+          finalText = assistantOutput.content;
+        }
+
         const finalResponse: AzureOpenAIResponse = {
-          text: assistantMessage.content || '',
-          reasoningContent: assistantMessage.reasoning_content,
+          text: finalText,
+          reasoningContent: data.reasoning?.content || data.reasoning?.encrypted_content,
           iterationCount,
           toolCalls: toolsUsed.map(name => ({ name }))
         };
@@ -676,9 +718,8 @@ export class AzureOpenAIService {
       }
 
       // Max iterations reached
-      const lastMessage = allMessages[allMessages.length - 1];
       return {
-        text: lastMessage?.content || 'Maximum iterations reached without completion.',
+        text: 'Maximum iterations reached without completion.',
         iterationCount,
         toolCalls: toolsUsed.map(name => ({ name })),
         paradigmContext: paradigm && paradigmProbabilities ? {
@@ -979,25 +1020,28 @@ export class AzureOpenAIService {
     paradigm?: HostParadigm,
     paradigmProbabilities?: ParadigmProbabilities,
     onToolCall?: (toolCall: any) => void,
-    tools?: any[] // NEW: Add tools parameter for streaming tool support
+    tools?: any[] // Add tools parameter for streaming tool support
   ): Promise<void> {
     // Throttle streaming calls as well
     await this.rateLimiter.waitForCapacity(estimateTokens(prompt) + 4096);
-    const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
+    const url = `${this.config.endpoint}/openai/v1/responses?api-version=${this.config.apiVersion}`;
 
     const requestBody: any = {
-      messages: [
+      model: this.config.deploymentName,
+      input: [
         {
+          type: "message",
           role: "system",
           content: this.buildParadigmAwareSystemPrompt(paradigm, paradigmProbabilities)
         },
         {
+          type: "message",
           role: "user",
           content: prompt
         }
       ],
       stream: true,
-      max_completion_tokens: 2000
+      max_output_tokens: 2000
     };
 
     // Add tools if provided
@@ -1013,7 +1057,7 @@ export class AzureOpenAIService {
     }
 
     if (this.config.deploymentName.includes('o3')) {
-      requestBody.reasoning_effort = this.mapEffortToReasoning(effort);
+      requestBody.reasoning = { effort: this.mapEffortToReasoning(effort) };
     }
 
     try {
@@ -1080,20 +1124,25 @@ export class AzureOpenAIService {
 
               try {
                 const parsed = JSON.parse(data);
-                const delta = parsed.choices?.[0]?.delta;
-                const content = delta?.content;
-
-                // Handle tool calls in streaming
-                if (delta?.tool_calls && onToolCall) {
-                  for (const toolCall of delta.tool_calls) {
-                    onToolCall(toolCall);
+                
+                // Handle Responses API streaming events
+                if (parsed.type === 'response.output_text.delta') {
+                  const content = parsed.delta;
+                  if (content) {
+                    // Include paradigm metadata with chunks
+                    const metadata = paradigm ? { paradigm } : undefined;
+                    onChunk(content, metadata);
                   }
-                }
-
-                if (content) {
-                  // Include paradigm metadata with chunks
-                  const metadata = paradigm ? { paradigm } : undefined;
-                  onChunk(content, metadata);
+                } else if (parsed.type === 'response.function_call.delta' && onToolCall) {
+                  // Handle streaming function calls
+                  onToolCall({
+                    id: parsed.call_id,
+                    name: parsed.name,
+                    arguments: parsed.delta
+                  });
+                } else if (parsed.type === 'response.done') {
+                  onComplete();
+                  return;
                 }
               } catch (e) {
                 // Skip invalid JSON
@@ -1194,6 +1243,7 @@ export class AzureOpenAIService {
       probabilities?: ParadigmProbabilities;
       toolsUsed: string[];
       iterations: number;
+      previousResponseId?: string;
     },
     callbacks: {
       onChunk: (chunk: string, metadata?: any) => void;
@@ -1214,12 +1264,26 @@ export class AzureOpenAIService {
     const estimatedTokens = estimateTokens(JSON.stringify(messages)) + 4096;
     await this.rateLimiter.waitForCapacity(estimatedTokens);
 
-    const url = `${this.config.endpoint}/openai/deployments/${this.config.deploymentName}/chat/completions?api-version=${this.config.apiVersion}`;
+    const url = `${this.config.endpoint}/openai/v1/responses?api-version=${this.config.apiVersion}`;
+
+    // Convert messages to Responses API format for first iteration
+    const inputArray: any[] = [];
+    if (context.iterations === 1) {
+      for (const msg of messages) {
+        inputArray.push({
+          type: "message",
+          role: msg.role,
+          content: msg.content
+        });
+      }
+    }
 
     const requestBody: any = {
-      messages,
+      model: this.config.deploymentName,
+      input: context.iterations === 1 ? inputArray : undefined,
+      previous_response_id: context.previousResponseId,
       stream: true,
-      max_completion_tokens: 4096
+      max_output_tokens: 4096
     };
 
     if (tools && tools.length > 0) {
@@ -1232,7 +1296,7 @@ export class AzureOpenAIService {
     }
 
     if (this.config.deploymentName.includes('o3')) {
-      requestBody.reasoning_effort = this.mapEffortToReasoning(effort);
+      requestBody.reasoning = { effort: this.mapEffortToReasoning(effort) };
     }
 
     const response = await fetch(url, {
@@ -1307,41 +1371,61 @@ export class AzureOpenAIService {
 
             try {
               const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta;
-
-              // Handle content chunks
-              if (delta?.content) {
-                currentMessage.content += delta.content;
+              
+              // Store response ID for chaining
+              if (parsed.id && !context.previousResponseId) {
+                context.previousResponseId = parsed.id;
+              }
+              
+              // Handle Responses API streaming events
+              if (parsed.type === 'response.output_text.delta') {
+                currentMessage.content += parsed.delta;
                 const metadata = {
                   paradigm: context.paradigm,
                   phase: isCollectingToolCalls ? 'tool_preparation' : 'response'
                 };
-                callbacks.onChunk(delta.content, metadata);
-              }
-
-              // Handle tool calls
-              if (delta?.tool_calls) {
+                callbacks.onChunk(parsed.delta, metadata);
+              } else if (parsed.type === 'response.function_call.delta') {
                 isCollectingToolCalls = true;
-                for (const toolCallDelta of delta.tool_calls) {
-                  // Find or create tool call
-                  const index = toolCallDelta.index || 0;
-                  if (!currentMessage.tool_calls[index]) {
-                    currentMessage.tool_calls[index] = {
-                      id: toolCallDelta.id || '',
-                      type: 'function',
-                      function: { name: '', arguments: '' }
-                    };
-                  }
-
-                  const toolCall = currentMessage.tool_calls[index];
-                  if (toolCallDelta.id) toolCall.id = toolCallDelta.id;
-                  if (toolCallDelta.function?.name) {
-                    toolCall.function.name = toolCallDelta.function.name;
-                  }
-                  if (toolCallDelta.function?.arguments) {
-                    toolCall.function.arguments += toolCallDelta.function.arguments;
-                  }
+                // Find or create tool call by call_id
+                let toolCall = currentMessage.tool_calls.find((tc: any) => tc.id === parsed.call_id);
+                if (!toolCall) {
+                  toolCall = {
+                    id: parsed.call_id,
+                    type: 'function',
+                    name: parsed.name || '',
+                    arguments: ''
+                  };
+                  currentMessage.tool_calls.push(toolCall);
                 }
+                
+                if (parsed.delta) {
+                  toolCall.arguments += parsed.delta;
+                }
+              } else if (parsed.type === 'response.done') {
+                // Response completed
+                if (currentMessage.tool_calls.length > 0) {
+                  await this.handleStreamingToolCalls(
+                    currentMessage,
+                    messages,
+                    tools,
+                    effort,
+                    context,
+                    callbacks,
+                    maxIterations
+                  );
+                  return;
+                }
+                
+                if (currentMessage.content) {
+                  messages.push({
+                    role: "assistant",
+                    content: currentMessage.content
+                  });
+                }
+                
+                callbacks.onComplete();
+                return;
               }
             } catch (e) {
               // Skip invalid JSON
@@ -1376,8 +1460,8 @@ export class AzureOpenAIService {
     // Execute each tool call
     for (const toolCall of assistantMessage.tool_calls) {
       try {
-        const toolName = toolCall.function.name;
-        const toolArgs = JSON.parse(toolCall.function.arguments);
+        const toolName = toolCall.name || toolCall.function?.name;
+        const toolArgs = JSON.parse(toolCall.arguments || toolCall.function?.arguments);
 
         // Add paradigm context to tool arguments
         if (context.paradigm) {
