@@ -1,7 +1,7 @@
 import { HostParadigm } from '../../types';
 import { WriteLayerService } from './writeLayer';
 import { EmbeddingService, EmbeddingVector } from '../ai/EmbeddingService';
-import { VectorStoreAdapter, VectorStoreFactory, VectorStoreConfig } from '../storage/vectorStoreConfig';
+import { VectorStoreAdapter, VectorStoreFactory } from '../storage/vectorStoreConfig';
 import crypto from 'crypto';
 
 type MemoryType = 'procedural' | 'episodic' | 'semantic';
@@ -33,8 +33,9 @@ interface VectorSearchResult {
  * Production-ready WriteLayer with real vector embeddings
  * Supports multiple vector store backends
  */
-export class ProductionWriteLayer extends WriteLayerService {
+export class ProductionWriteLayer {
   private static prodInstance: ProductionWriteLayer;
+  private writeLayer: WriteLayerService;
   private embeddingService: EmbeddingService;
   private vectorMemories: Map<string, VectorMemory> = new Map();
   
@@ -46,8 +47,8 @@ export class ProductionWriteLayer extends WriteLayerService {
   private readonly SIMILARITY_THRESHOLD = 0.7;
   private readonly MAX_RELATED_MEMORIES = 5;
 
-  protected constructor() {
-    super();
+  private constructor() {
+    this.writeLayer = WriteLayerService.getInstance();
     this.embeddingService = EmbeddingService.getInstance();
     this.initializeVectorStore();
   }
@@ -133,8 +134,8 @@ export class ProductionWriteLayer extends WriteLayerService {
     // Update local cache
     this.vectorMemories.set(memory.id, memory);
     
-    // Call parent class for backward compatibility
-    super.write(key, value, density, paradigm);
+    // Call writeLayer for backward compatibility
+    this.writeLayer.write(key, value, density, paradigm);
   }
 
   /**
@@ -230,7 +231,7 @@ export class ProductionWriteLayer extends WriteLayerService {
     const results: VectorSearchResult[] = [];
     
     // Search through existing memories
-    for (const [id, memory] of this.vectorMemories.entries()) {
+    for (const [, memory] of this.vectorMemories.entries()) {
       if (memory.paradigm !== paradigm) continue;
       
       const similarity = this.embeddingService.calculateSimilarity(
@@ -259,18 +260,18 @@ export class ProductionWriteLayer extends WriteLayerService {
   private async searchInMemory(
     queryEmbedding: EmbeddingVector,
     paradigm?: HostParadigm,
-    options: any
+    options?: any
   ): Promise<VectorSearchResult[]> {
     const results: VectorSearchResult[] = [];
     
-    for (const [id, memory] of this.vectorMemories.entries()) {
+    for (const [, memory] of this.vectorMemories.entries()) {
       // Apply filters
       if (paradigm && memory.paradigm !== paradigm) continue;
-      if (options.memoryTypes && !options.memoryTypes.includes(memory.type)) continue;
-      if (options.minDensity && memory.density < options.minDensity) continue;
-      if (options.timeRange) {
+      if (options?.memoryTypes && !options.memoryTypes.includes(memory.type)) continue;
+      if (options?.minDensity && memory.density < options.minDensity) continue;
+      if (options?.timeRange) {
         const timestamp = new Date(memory.timestamp);
-        if (timestamp < options.timeRange.start || timestamp > options.timeRange.end) {
+        if (timestamp < options?.timeRange?.start || timestamp > options?.timeRange?.end) {
           continue;
         }
       }

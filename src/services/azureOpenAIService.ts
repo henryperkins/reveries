@@ -852,7 +852,7 @@ export class AzureOpenAIService {
       const isRetryable = this.isRetryableError(error);
       
       // Record failure
-      this.recordToolFailure(toolName, error);
+      this.recordToolFailure(toolName);
 
       // Log detailed error for debugging
       console.error(`Tool execution failed for ${toolName}:`, {
@@ -909,7 +909,7 @@ export class AzureOpenAIService {
     this.toolFailures.delete(toolName);
   }
 
-  private recordToolFailure(toolName: string, error: any): void {
+  private recordToolFailure(toolName: string): void {
     const failures = this.toolFailures.get(toolName) || { count: 0, lastFailure: 0 };
     failures.count++;
     failures.lastFailure = Date.now();
@@ -1128,7 +1128,7 @@ export class AzureOpenAIService {
     effort: EffortType = EffortType.MEDIUM,
     paradigm?: HostParadigm,
     paradigmProbabilities?: ParadigmProbabilities,
-    options: {
+    options?: {
       onChunk: (chunk: string, metadata?: { paradigm?: HostParadigm; phase?: string }) => void;
       onToolCall?: (toolCall: any, result?: any) => void;
       onComplete: () => void;
@@ -1136,7 +1136,13 @@ export class AzureOpenAIService {
       maxIterations?: number;
     }
   ): Promise<void> {
-    const { onChunk, onToolCall, onComplete, onError, maxIterations = 5 } = options;
+    const { 
+      onChunk = () => {}, 
+      onToolCall, 
+      onComplete = () => {}, 
+      onError, 
+      maxIterations = 5 
+    } = options || {};
     
     // Initialize conversation with paradigm context
     const messages: any[] = [
@@ -1396,7 +1402,7 @@ export class AzureOpenAIService {
           probabilities: context.probabilities,
           phase: 'streaming_execution',
           iteration: context.iterations,
-          previousToolResults: context.toolsUsed.map(name => ({ tool: name }))
+          previousToolResults: context.toolsUsed.map((name: string) => ({ tool: name }))
         };
 
         const executionResult = await this.executeToolWithContext(
