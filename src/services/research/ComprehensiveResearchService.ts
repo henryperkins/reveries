@@ -56,12 +56,29 @@ export class ComprehensiveResearchService {
 
     // Step 2: Research each section in parallel
     onProgress?.('tool_used:parallel_research');
-    const sectionResults = await this.researchSectionsInParallel(
-      sections,
-      model,
-      effort,
-      onProgress
-    );
+    let sectionResults: ResearchSection[] = [];
+    try {
+      sectionResults = await this.researchSectionsInParallel(
+        sections,
+        model,
+        effort,
+        onProgress
+      );
+    } catch (error) {
+      console.warn('Research sections failed, continuing with fallback content:', error);
+      onProgress?.('Search providers unavailable, generating response from available information...');
+      // Create fallback sections when search fails
+      sectionResults = sections.map(section => ({
+        id: `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        title: section.topic,
+        content: `Unable to perform web search for "${section.topic}". This may be due to search API limits or configuration issues.`,
+        confidence: 0.3,
+        topic: section.topic,
+        description: section.description,
+        research: `Search functionality unavailable for this topic.`,
+        sources: []
+      }));
+    }
 
     // Step 3: Synthesize findings
     onProgress?.('evaluating research quality and completeness...');
@@ -176,7 +193,7 @@ export class ComprehensiveResearchService {
     
     // Get batch size from environment or default based on model type
     const batchSize = this.getBatchSize(model);
-    const results: ResearchSection[] = [];
+    let results: ResearchSection[] = [];
     
     onProgress?.(`Processing ${sections.length} sections in batches of ${batchSize}...`);
 
@@ -298,6 +315,21 @@ export class ComprehensiveResearchService {
         console.error(`Batch ${batchNumber} failed:`, error);
         onProgress?.(`Batch ${batchNumber} encountered issues. Continuing with remaining batches...`);
       }
+    }
+
+    // Ensure we always return some results, even if all batches fail
+    if (results.length === 0) {
+      onProgress?.('All research sections encountered issues. Generating fallback response...');
+      results = [{
+        id: `emergency_fallback_${Date.now()}`,
+        title: 'Research Summary',
+        content: 'Unable to perform comprehensive web research due to search provider limitations. Please check API configuration or try again later.',
+        confidence: 0.2,
+        topic: 'General Response',
+        description: 'Fallback response when research tools are unavailable',
+        research: 'Search functionality temporarily unavailable.',
+        sources: []
+      }];
     }
 
     return results;

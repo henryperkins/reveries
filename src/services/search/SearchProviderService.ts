@@ -215,9 +215,15 @@ class GoogleSearchProvider implements SearchProvider {
       throw new Error('Google Search provider quota exceeded or unavailable');
     }
     
-    // Track quota usage
+    // Track quota usage before making the request
     this.dailyUsage.count++;
     this.rateLimit.remaining = Math.max(0, 100 - this.dailyUsage.count);
+    
+    // Add request headers for better API performance (per REST API documentation)
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'User-Agent': 'Reveries-Research-Agent/1.0'
+    };
 
     const searchParams = new URLSearchParams({
       key: this.apiKey,
@@ -225,7 +231,10 @@ class GoogleSearchProvider implements SearchProvider {
       q: this.buildSearchQuery(query, options),
       num: Math.min(options.maxResults || 10, 10).toString(), // Google CSE max is 10
       gl: options.region || 'us',
-      hl: options.language || 'en'
+      hl: options.language || 'en',
+      // Additional parameters for better results (per REST API documentation)
+      fields: 'items(title,link,snippet,pagemap),searchInformation(totalResults,searchTime)',
+      prettyPrint: 'false' // Reduce response size
     });
 
     if (options.timeRange) {
@@ -238,14 +247,40 @@ class GoogleSearchProvider implements SearchProvider {
 
     try {
       const startTime = Date.now();
-      const response = await fetch(`${this.endpoint}?${searchParams}`);
-
-      if (!response.ok) {
-        throw new Error(`Google API error: ${response.status} ${response.statusText}`);
-      }
+      const response = await fetch(`${this.endpoint}?${searchParams}`, {
+        headers,
+        method: 'GET'
+      });
 
       const data = await response.json();
       const searchTime = Date.now() - startTime;
+
+      // Handle specific Google API errors according to REST API documentation
+      if (!response.ok || data.error) {
+        const error = data.error || { code: response.status, message: response.statusText };
+        
+        // Handle quota exceeded errors specifically
+        if (error.code === 403 && error.message?.includes('Quota exceeded')) {
+          console.warn(`[GoogleSearchProvider] Daily quota exceeded`);
+          this.rateLimit.remaining = 0;
+          throw new Error('Google Search API daily quota exceeded. Try again tomorrow or upgrade to paid tier.');
+        }
+        
+        // Handle invalid API key
+        if (error.code === 400 && error.message?.includes('API key not valid')) {
+          console.error(`[GoogleSearchProvider] Invalid API key`);
+          throw new Error('Google Search API key is invalid. Please check your VITE_GOOGLE_SEARCH_API_KEY configuration.');
+        }
+        
+        // Handle invalid search engine ID
+        if (error.code === 400 && error.message?.includes('Invalid Value')) {
+          console.error(`[GoogleSearchProvider] Invalid search engine ID`);
+          throw new Error('Google Custom Search Engine ID is invalid. Please check your VITE_GOOGLE_SEARCH_ENGINE_ID configuration.');
+        }
+        
+        console.error(`[GoogleSearchProvider] API Error:`, error);
+        throw new Error(`Google Search API error: ${error.message || 'Unknown error'}`);
+      }
 
       // Enhanced logging for debugging
       console.log(`[GoogleSearchProvider] Query: "${query}"`);
@@ -253,11 +288,6 @@ class GoogleSearchProvider implements SearchProvider {
       console.log(`[GoogleSearchProvider] Search time: ${searchTime}ms`);
       console.log(`[GoogleSearchProvider] Total results: ${data.searchInformation?.totalResults || 0}`);
       console.log(`[GoogleSearchProvider] Items returned: ${data.items?.length || 0}`);
-
-      if (data.error) {
-        console.error(`[GoogleSearchProvider] API Error:`, data.error);
-        throw new Error(`Google Search API error: ${data.error.message}`);
-      }
 
       const results = this.parseGoogleResults(data.items || []);
       

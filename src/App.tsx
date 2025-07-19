@@ -342,7 +342,9 @@ const App: React.FC = () => {
           } else if (message.includes('search queries') || message.includes('Comprehensive research')) {
             updateProgressState('researching', message);
             startProgressTimeout('researching', TIMEOUTS.PROGRESS_RESEARCH * multiplier);
-          } else if (message.includes('quality') || message.includes('evaluating') || message.includes('self-healing')) {
+          } else if (message.includes('quality') || message.includes('evaluating') || message.includes('self-healing') || 
+                     message.includes('evaluation') || message.includes('Research evaluation') || 
+                     message.includes('completed, evaluating') || message.includes('enhance research quality')) {
             updateProgressState('evaluating', message);
             startProgressTimeout('evaluating', TIMEOUTS.PROGRESS_EVALUATION * multiplier);
           } else if (message.includes('Finalizing') || message.includes('synthesis') || message.includes('comprehensive answer')) {
