@@ -91,18 +91,28 @@ export class ModelProviderService {
   /**
    * Generate text with appropriate model based on selection
    */
-  async generateText(prompt: string, model: ModelType, effort: EffortType): Promise<{ text: string; sources?: Citation[] }> {
+  async generateText(
+    prompt: string, 
+    model: ModelType, 
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<{ text: string; sources?: Citation[] }> {
     if (ErrorBoundary.shouldBlock()) {
       throw new APIError('Too many errors occurred. Please try again later.', 'RATE_LIMIT', false);
     }
 
     try {
+      const startTime = Date.now();
+      onProgress?.(`tool_used:${model}_api_call`);
+      
       switch (model) {
         case GENAI_MODEL_FLASH:
+          onProgress?.('tool_used:gemini_api');
           const geminiResult = await geminiService.generateContent(prompt, {
             model: GENAI_MODEL_FLASH,
             useSearch: true
           });
+          onProgress?.(`tool_used:completed:gemini_api:${startTime}`);
           if (!geminiResult || !geminiResult.text) {
             throw new Error('Gemini service returned invalid response');
           }
@@ -116,8 +126,10 @@ export class ModelProviderService {
           };
 
         case GROK_MODEL_4:
+          onProgress?.('tool_used:grok_api');
           const grokService = GrokService.getInstance();
           const grokResult = await grokService.generateResponseWithLiveSearch(prompt, effort);
+          onProgress?.(`tool_used:completed:grok_api:${startTime}`);
           return {
             text: grokResult.text,
             sources: grokResult.sources || []
@@ -126,9 +138,11 @@ export class ModelProviderService {
         case AZURE_O3_MODEL:
           // Prioritize Azure AI Agent Service with Bing Search if available
           if (this.azureAIAgent) {
+            onProgress?.('tool_used:azure_ai_agent');
             console.log('Using Azure AI Agent Service with Bing Search grounding and enhancement pipeline');
             try {
               const agentResult = await this.azureAIAgent.generateText(prompt, model, effort);
+              onProgress?.(`tool_used:completed:azure_ai_agent:${startTime}`);
               console.log(`Azure AI Agent returned ${agentResult.sources?.length || 0} sources with quality enhancement`);
               return {
                 text: agentResult.text,
@@ -141,12 +155,14 @@ export class ModelProviderService {
           }
           
           // Fallback to traditional Azure OpenAI (no web search)
+          onProgress?.('tool_used:azure_openai');
           if (!AzureOpenAIService.isAvailable()) {
             console.warn('Azure OpenAI not available, falling back to Gemini');
-            return this.generateText(prompt, GENAI_MODEL_FLASH, effort);
+            return this.generateText(prompt, GENAI_MODEL_FLASH, effort, onProgress);
           }
           const azureService = AzureOpenAIService.getInstance();
           const azureResult = await azureService.generateResponse(prompt, effort);
+          onProgress?.(`tool_used:completed:azure_openai:${startTime}`);
           if (!azureResult || !azureResult.text) {
             throw new Error('Azure OpenAI service returned invalid response');
           }

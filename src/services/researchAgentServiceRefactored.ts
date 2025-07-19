@@ -110,9 +110,10 @@ export class ResearchAgentService {
   async generateText(
     prompt: string,
     model: ModelType,
-    effort: EffortType
+    effort: EffortType,
+    onProgress?: (message: string) => void
   ): Promise<{ text: string; sources?: Citation[] }> {
-    return this.modelProvider.generateText(prompt, model, effort);
+    return this.modelProvider.generateText(prompt, model, effort, onProgress);
   }
 
   /**

@@ -84,7 +84,7 @@ export class WebResearchService {
           maxResults: 10,
           safe: true,
           timeRange: 'month' // Focus on recent results
-        });
+        }, onProgress);
 
         onProgress?.(`Found ${searchResponse.results.length} results for "${query}"`);
 
@@ -119,6 +119,7 @@ ${searchContext}
 Please provide a well-structured summary that synthesizes the information from these sources.`;
 
         try {
+          onProgress?.('tool_used:llm_summarization');
           const { text: summary, sources: additionalSources } = await generateText(
             summaryPrompt,
             model,

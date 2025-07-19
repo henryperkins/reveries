@@ -452,21 +452,29 @@ export class SearchProviderService {
     throw new Error('No search providers available or rate limited');
   }
 
-  public async search(query: string, options: SearchOptions = {}): Promise<SearchResponse> {
+  public async search(
+    query: string, 
+    options: SearchOptions = {}, 
+    onProgress?: (message: string) => void
+  ): Promise<SearchResponse> {
     const cacheKey = `${query}_${JSON.stringify(options)}`;
     
     // Check cache first
     const cached = this.cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
       console.log('Returning cached search results');
+      onProgress?.('tool_used:search_cache');
       return cached.response;
     }
 
     try {
+      const startTime = Date.now();
       const provider = await this.getAvailableProvider();
       console.log(`Using search provider: ${provider.name}`);
+      onProgress?.(`tool_used:${provider.name}_search`);
       
       const response = await provider.search(query, options);
+      onProgress?.(`tool_used:completed:${provider.name}_search:${startTime}`);
       
       // Cache the response
       this.cache.set(cacheKey, {

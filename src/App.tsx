@@ -110,25 +110,39 @@ const App: React.FC = () => {
           if (message.startsWith('tool_used:')) {
             const toolName = message.split(':')[1];
             
-            // Add to live function calls
-            const callId = crypto.randomUUID();
+            // Check if this is a completion message
+            if (message.startsWith('tool_used:completed:')) {
+              const completedToolName = message.split(':')[2];
+              const startTime = parseInt(message.split(':')[3]);
+              
+              setLiveFunctionCalls(prev => 
+                prev.map(call => 
+                  call.function === completedToolName && call.status === 'running'
+                    ? { ...call, status: 'completed', duration: Date.now() - startTime }
+                    : call
+                )
+              );
+              return;
+            }
+            
+            // Add to live function calls with real tracking
             setLiveFunctionCalls(prev => [...prev, {
-              id: callId,
+              id: crypto.randomUUID(),
               function: toolName,
               status: 'running',
               timestamp: Date.now()
             }]);
             
-            // Mark as completed after a brief delay to simulate processing
+            // Set a longer timeout for real function calls that don't get completion messages
             setTimeout(() => {
               setLiveFunctionCalls(prev => 
                 prev.map(call => 
-                  call.id === callId 
+                  call.function === toolName && call.status === 'running'
                     ? { ...call, status: 'completed', duration: Date.now() - call.timestamp }
                     : call
                 )
               );
-            }, 500);
+            }, 10000); // 10 second timeout for real operations
             
             setResearch(prev => 
               prev.map(step => {
