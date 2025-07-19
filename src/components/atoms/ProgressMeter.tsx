@@ -59,8 +59,14 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
   stackedSegments = [],
   layout = 'default',
 }) => {
-  // Clamp value between 0 and 100
-  const percentage = Math.max(0, Math.min(100, value));
+  // Validate and clamp value between 0 and 100
+  const percentage = (() => {
+    if (typeof value !== 'number' || Number.isNaN(value) || !Number.isFinite(value)) {
+      console.warn('ProgressMeter received invalid value:', value);
+      return 0;
+    }
+    return Math.max(0, Math.min(100, value));
+  })();
   
   // Get size classes
   const sizeClasses = {

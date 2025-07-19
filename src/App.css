@@ -22,7 +22,7 @@ main {
 
 /* Progress bar container styling */
 .progress-bar-container {
-    @apply fixed bottom-20 left-0 right-0 h-1 bg-westworld-tan/20 z-30;
+    @apply fixed bottom-24 left-0 right-0 h-1 bg-westworld-tan/20 z-30;
 }
 
 .progress-bar-fill {
@@ -115,7 +115,7 @@ button:active:not(:disabled) {
 /* Responsive adjustments */
 @media (max-width: 768px) {
     main {
-        padding-bottom: 140px;
+        padding-bottom: 160px; /* Extra space for mobile progress bar */
     }
 
     .research-container {
@@ -125,6 +125,11 @@ button:active:not(:disabled) {
     .modal-content {
         max-width: 95vw;
         max-height: 95vh;
+    }
+    
+    /* Mobile progress bar positioning */
+    .progress-bar-container {
+        @apply bottom-28; /* More space on mobile */
     }
 }
 

@@ -1,13 +1,13 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { ResearchAgentService } from '@/services/researchAgentServiceWrapper'
 import { FunctionCallingService } from '@/services/functionCallingService'
 import { DatabaseService } from '@/services/databaseService'
 import { ResearchGraphManager } from '@/researchGraph'
 import { Header, Controls, InputBar, ResearchArea, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress } from '@/components'
 import { ProgressMeter } from '@/components/atoms'
-import { FunctionCallProvider } from '@/components/FunctionCallDock'
 import { usePersistentState } from '@/hooks/usePersistentState'
 import { useResearchSessions } from '@/hooks/usePersistedState'
+import { useFunctionCalls } from '@/components/FunctionCallDock'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
 import {
   ResearchStep,
@@ -37,6 +37,9 @@ const App: React.FC = () => {
   const [contextLayers, setContextLayers] = useState<ContextLayer[]>([])
   const [currentLayer, setCurrentLayer] = useState<ContextLayer | null>(null)
   const [currentPhase, setCurrentPhase] = useState<ResearchPhase>('discovery')
+  
+  // Progress state machine
+  const [progressState, setProgressState] = useState<'idle' | 'analyzing' | 'routing' | 'researching' | 'evaluating' | 'synthesizing' | 'complete'>('idle')
   const { error, handleError, clearError } = useErrorHandling()
 
   const graphManager = useMemo(() => new ResearchGraphManager(), [])
@@ -47,6 +50,8 @@ const App: React.FC = () => {
   const [showSemanticSearch, setShowSemanticSearch] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [showSessionHistory, setShowSessionHistory] = useState(false)
+  // Local tracking for live function calls to avoid re-render storms while we
+  // also forward events to the shared FunctionCall context.
   const [liveFunctionCalls, setLiveFunctionCalls] = useState<Array<{
     id: string;
     function: string;
@@ -54,6 +59,84 @@ const App: React.FC = () => {
     timestamp: number;
     duration?: number;
   }>>([]);
+
+  // --- Function call context helpers --------------------------------------
+  const {
+    addLiveCall,
+    updateLiveCall,
+    addToolUsed,
+    addToHistory,
+  } = useFunctionCalls();
+
+  // Map tool-name -> context live-call id so we can mark completion
+  const liveCallIdMap = useRef<Record<string, string>>({});
+  
+  // Progress timeout ref for cleanup
+  const progressTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  // Progress state machine helper
+  const updateProgressState = useCallback((phase: typeof progressState, message?: string) => {
+    const progressMap = {
+      'idle': 0,
+      'analyzing': 15,
+      'routing': 25, 
+      'researching': 40,
+      'evaluating': 60,
+      'synthesizing': 80,
+      'complete': 100
+    };
+    
+    const stepTypeMap = {
+      'analyzing': ResearchStepType.GENERATING_QUERIES,
+      'routing': ResearchStepType.GENERATING_QUERIES,
+      'researching': ResearchStepType.WEB_RESEARCH,
+      'evaluating': ResearchStepType.REFLECTION,
+      'synthesizing': ResearchStepType.SEARCHING_FINAL_ANSWER
+    };
+    
+    const titleMap = {
+      'analyzing': 'Analyzing Query',
+      'routing': 'Selecting Research Strategy', 
+      'researching': 'Conducting Web Research',
+      'evaluating': 'Evaluating Research Quality',
+      'synthesizing': 'Synthesizing Final Answer'
+    };
+    
+    const toolMap = {
+      'analyzing': ['query_analysis', 'paradigm_classification'],
+      'routing': ['paradigm_routing', 'strategy_selection'],
+      'researching': ['web_search', 'google_search', 'bing_search', 'academic_search'],
+      'evaluating': ['quality_evaluation', 'fact_verification', 'source_validation'],
+      'synthesizing': ['synthesis_engine', 'content_compression', 'narrative_generation']
+    };
+    
+    setProgressState(phase);
+    setProgress(progressMap[phase]);
+    
+    // Complete previous spinning steps
+    if (phase !== 'idle') {
+      setResearch(prev => prev.map(step => 
+        step.isSpinning ? { ...step, isSpinning: false } : step
+      ));
+    }
+    
+    // Create new step for this phase (except idle and complete)
+    if (phase !== 'idle' && phase !== 'complete' && stepTypeMap[phase]) {
+      const newStep: ResearchStep = {
+        id: crypto.randomUUID(),
+        title: titleMap[phase],
+        icon: () => null,
+        content: message || `Starting ${phase} phase...`,
+        timestamp: new Date().toISOString(),
+        type: stepTypeMap[phase],
+        sources: [],
+        isSpinning: true,
+        toolsUsed: [],
+        recommendedTools: toolMap[phase] || []
+      };
+      setResearch(prev => [...(Array.isArray(prev) ? prev : []), newStep]);
+    }
+  }, [setResearch]);
   
   // Research sessions management
   const { sessions, addSession, deleteSession } = useResearchSessions()
@@ -62,9 +145,12 @@ const App: React.FC = () => {
   useEffect(() => {
     const history = functionCallingService.getExecutionHistory();
     setFunctionHistory(history);
+
+    // Push any new records into the shared context so they appear in the dock.
+    history.forEach((call) => addToHistory(call));
   }, [research, functionCallingService]);
 
-  const progressPhase = useCallback(() => {
+  const advancePhase = useCallback(() => {
     const phases: ResearchPhase[] = ['discovery', 'exploration', 'synthesis', 'validation'];
     const currentIndex = phases.indexOf(currentPhase);
     if (currentIndex < phases.length - 1) {
@@ -77,10 +163,36 @@ const App: React.FC = () => {
 
     setIsLoading(true)
     setProgress(0)
+    setProgressState('idle')
     setCurrentLayer(null)
     setRealTimeContextDensities(null)
     setLiveFunctionCalls([])
     clearError()
+
+    // Progress timeout protection helper
+    const startProgressTimeout = (phase: string, timeoutMs: number) => {
+      if (progressTimeoutRef.current) {
+        clearTimeout(progressTimeoutRef.current);
+      }
+      progressTimeoutRef.current = setTimeout(() => {
+        console.warn(`Progress timeout in ${phase} phase, advancing to next phase`);
+        // Force advance to next phase based on current progress
+        if (progress < 25) updateProgressState('routing', `Timeout in ${phase}, continuing...`);
+        else if (progress < 40) updateProgressState('researching', `Timeout in ${phase}, continuing...`);
+        else if (progress < 60) updateProgressState('evaluating', `Timeout in ${phase}, continuing...`);
+        else if (progress < 80) updateProgressState('synthesizing', `Timeout in ${phase}, continuing...`);
+        else updateProgressState('complete');
+      }, timeoutMs);
+    };
+
+    // Global research timeout
+    const globalTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn('Global research timeout reached');
+        updateProgressState('complete');
+        setIsLoading(false);
+      }
+    }, 180000); // 3-minute global timeout
 
     try {
       // Create initial step
@@ -110,44 +222,71 @@ const App: React.FC = () => {
           
           // Handle tool usage tracking
           if (message.startsWith('tool_used:')) {
-            const toolName = message.split(':')[1];
-            
-            // Check if this is a completion message
+            // Completion message pattern: tool_used:completed:<toolName>:<startTime>
             if (message.startsWith('tool_used:completed:')) {
-              const completedToolName = message.split(':')[2];
-              const startTime = parseInt(message.split(':')[3]);
-              
-              setLiveFunctionCalls(prev => 
-                prev.map(call => 
+              const [, , completedToolName, startTimeStr] = message.split(':');
+              const startTime = parseInt(startTimeStr, 10);
+
+              // Update local liveFunctionCalls state
+              setLiveFunctionCalls((prev) =>
+                prev.map((call) =>
                   call.function === completedToolName && call.status === 'running'
                     ? { ...call, status: 'completed', duration: Date.now() - startTime }
                     : call
                 )
               );
+
+              // Update shared context
+              const liveId = liveCallIdMap.current[completedToolName];
+              if (liveId) {
+                updateLiveCall(liveId, { status: 'completed', endTime: Date.now() });
+              }
               return;
             }
-            
-            // Add to live function calls with real tracking
-            setLiveFunctionCalls(prev => [...prev, {
-              id: crypto.randomUUID(),
-              function: toolName,
-              status: 'running',
-              timestamp: Date.now()
-            }]);
-            
-            // Set a longer timeout for real function calls that don't get completion messages
+
+            // New tool used message pattern: tool_used:<toolName>
+            const [, toolName] = message.split(':');
+
+            // Add to local live calls
+            const localId = crypto.randomUUID();
+            setLiveFunctionCalls((prev) => [
+              ...prev,
+              {
+                id: localId,
+                function: toolName,
+                status: 'running',
+                timestamp: Date.now(),
+              },
+            ]);
+
+            // Add to shared context
+            const ctxId = addLiveCall({ name: toolName, status: 'running', startTime: Date.now() });
+            liveCallIdMap.current[toolName] = ctxId;
+
+            // Track tool usage for tools view
+            addToolUsed(toolName);
+
+            // Fallback completion timeout for operations without explicit completion signal
             setTimeout(() => {
-              setLiveFunctionCalls(prev => 
-                prev.map(call => 
+              // Local state update
+              setLiveFunctionCalls((prev) =>
+                prev.map((call) =>
                   call.function === toolName && call.status === 'running'
                     ? { ...call, status: 'completed', duration: Date.now() - call.timestamp }
                     : call
                 )
               );
-            }, 10000); // 10 second timeout for real operations
-            
-            setResearch(prev => 
-              prev.map(step => {
+
+              // Context update
+              const id = liveCallIdMap.current[toolName];
+              if (id) {
+                updateLiveCall(id, { status: 'completed', endTime: Date.now() });
+              }
+            }, 10000);
+
+            // Also propagate to current spinning step's toolsUsed
+            setResearch((prev) =>
+              prev.map((step) => {
                 if (step.isSpinning) {
                   const currentTools = step.toolsUsed || [];
                   if (!currentTools.includes(toolName)) {
@@ -157,90 +296,27 @@ const App: React.FC = () => {
                 return step;
               })
             );
+
             return;
           }
           
-          // Create research steps based on actual progress messages
+          // Structured progress state machine based on message patterns
           if (message.includes('Query classified as:')) {
-            setProgress(15);
-            const generatingStep: ResearchStep = {
-              id: crypto.randomUUID(),
-              title: 'Analyzing Query',
-              icon: () => null,
-              content: message,
-              timestamp: new Date().toISOString(),
-              type: ResearchStepType.GENERATING_QUERIES,
-              sources: [],
-              isSpinning: true,
-              toolsUsed: [],
-              recommendedTools: ['query_analysis', 'paradigm_classification']
-            };
-            setResearch(prev => [...(Array.isArray(prev) ? prev : []), generatingStep]);
-            
+            updateProgressState('analyzing', message);
+            startProgressTimeout('analyzing', 30000); // 30s timeout for analysis
           } else if (message.includes('Routing to') && message.includes('paradigm')) {
-            setProgress(25);
-            const routingStep: ResearchStep = {
-              id: crypto.randomUUID(),
-              title: 'Selecting Research Strategy',
-              icon: () => null,
-              content: message,
-              timestamp: new Date().toISOString(),
-              type: ResearchStepType.GENERATING_QUERIES,
-              sources: [],
-              isSpinning: true,
-              toolsUsed: [],
-              recommendedTools: ['paradigm_routing', 'strategy_selection']
-            };
-            setResearch(prev => [...(Array.isArray(prev) ? prev : []), routingStep]);
-            
+            updateProgressState('routing', message);
+            startProgressTimeout('routing', 15000); // 15s timeout for routing
           } else if (message.includes('search queries') || message.includes('Comprehensive research')) {
-            setProgress(40);
-            const searchingStep: ResearchStep = {
-              id: crypto.randomUUID(),
-              title: 'Conducting Web Research',
-              icon: () => null,
-              content: message,
-              timestamp: new Date().toISOString(),
-              type: ResearchStepType.WEB_RESEARCH,
-              sources: [],
-              isSpinning: true,
-              toolsUsed: [],
-              recommendedTools: ['web_search', 'google_search', 'bing_search', 'academic_search']
-            };
-            setResearch(prev => [...(Array.isArray(prev) ? prev : []), searchingStep]);
-            
+            updateProgressState('researching', message);
+            startProgressTimeout('researching', 60000); // 60s timeout for research
           } else if (message.includes('quality') || message.includes('evaluating') || message.includes('self-healing')) {
-            setProgress(60);
-            const reflectionStep: ResearchStep = {
-              id: crypto.randomUUID(),
-              title: 'Evaluating Research Quality',
-              icon: () => null,
-              content: message,
-              timestamp: new Date().toISOString(),
-              type: ResearchStepType.REFLECTION,
-              sources: [],
-              isSpinning: true,
-              toolsUsed: [],
-              recommendedTools: ['quality_evaluation', 'fact_verification', 'source_validation']
-            };
-            setResearch(prev => [...(Array.isArray(prev) ? prev : []), reflectionStep]);
-            
+            updateProgressState('evaluating', message);
+            startProgressTimeout('evaluating', 30000); // 30s timeout for evaluation
           } else if (message.includes('Finalizing') || message.includes('synthesis') || message.includes('comprehensive answer')) {
-            setProgress(80);
+            updateProgressState('synthesizing', message);
             setCurrentLayer('compress');
-            const synthesisStep: ResearchStep = {
-              id: crypto.randomUUID(),
-              title: 'Synthesizing Final Answer',
-              icon: () => null,
-              content: message,
-              timestamp: new Date().toISOString(),
-              type: ResearchStepType.SEARCHING_FINAL_ANSWER,
-              sources: [],
-              isSpinning: true,
-              toolsUsed: [],
-              recommendedTools: ['synthesis_engine', 'content_compression', 'narrative_generation']
-            };
-            setResearch(prev => [...(Array.isArray(prev) ? prev : []), synthesisStep]);
+            startProgressTimeout('synthesizing', 30000); // 30s timeout for synthesis
           }
           
           // Update any existing steps with more detailed content
@@ -269,7 +345,7 @@ const App: React.FC = () => {
         }
       )
 
-      setProgress(100)
+      updateProgressState('complete')
 
       // Create final answer step
       const finalAnswerStep: ResearchStep = {
@@ -282,7 +358,7 @@ const App: React.FC = () => {
         sources: result.sources || []
       }
 
-      // Stop any spinning indicators by updating previous steps
+      // Stop any remaining spinning indicators (handled by updateProgressState, but ensure cleanup)
       setResearch(prev => 
         prev.map(step => ({ ...step, isSpinning: false }))
       )
@@ -352,17 +428,26 @@ const App: React.FC = () => {
 
 
       // Progress phase if needed
-      progressPhase()
+      advancePhase()
 
     } catch (err) {
       handleError(err as Error)
+      // On error, show partial progress but don't complete
+      setProgress(prev => prev > 0 ? prev : 10)
     } finally {
+      // Clean up timeouts
+      if (progressTimeoutRef.current) {
+        clearTimeout(progressTimeoutRef.current);
+      }
+      clearTimeout(globalTimeout);
+      
       setIsLoading(false)
-      setProgress(0)
+      // Complete progress before reset for visual feedback
+      setTimeout(() => setProgress(0), 1000)
       setCurrentLayer(null)
       // Keep context densities to show final results
     }
-  }, [isLoading, currentModel, currentPhase, researchAgent, clearError, handleError, graphManager, setResearch, progressPhase])
+  }, [isLoading, currentModel, currentPhase, researchAgent, clearError, handleError, graphManager, setResearch, advancePhase, updateProgressState, progress])
 
   const handleClear = useCallback(() => {
     setResearch([])
@@ -526,15 +611,10 @@ const App: React.FC = () => {
             {/* Function Call Dock - shows both live and history */}
             {enhancedMode && (liveFunctionCalls.length > 0 || functionHistory.length > 0) && (
               <div className="mt-4">
-                <FunctionCallProvider 
-                  initialHistory={functionHistory}
-                  initialTools={[]}
-                >
-                  <FunctionCallDock 
-                    mode={liveFunctionCalls.length > 0 ? 'live' : 'history'}
-                    showModeSelector={true}
-                  />
-                </FunctionCallProvider>
+                <FunctionCallDock 
+                  mode={liveFunctionCalls.length > 0 ? 'live' : 'history'}
+                  showModeSelector={true}
+                />
               </div>
             )}
 
@@ -587,8 +667,9 @@ const App: React.FC = () => {
           </div>
         </div>
 
+        {/* Global progress bar – positioned above input bar with proper spacing */}
         {isLoading && (
-          <div className="mt-4">
+          <div className="fixed bottom-24 left-0 right-0 z-40 px-4">
             <ProgressMeter
               value={progress}
               label="Research Progress"

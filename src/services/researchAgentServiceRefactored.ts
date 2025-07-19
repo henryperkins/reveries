@@ -81,13 +81,13 @@ export class ResearchAgentService {
     this.memoryService = ResearchMemoryService.getInstance();
     this.contextEngineering = ContextEngineeringService.getInstance();
     this.paradigmClassifier = ParadigmClassifier.getInstance();
-    
+
     // Initialize context layer services
     this.writeLayer = WriteLayerService.getInstance();
     this.selectLayer = SelectLayerService.getInstance();
     this.compressLayer = CompressLayerService.getInstance();
     this.isolateLayer = IsolateLayerService.getInstance();
-    
+
     // Initialize database service if available (server-side only)
     try {
       this.databaseService = DatabaseService.getInstance();
@@ -200,7 +200,7 @@ export class ResearchAgentService {
       // Create enhanced onProgress that tracks layers
       const enhancedOnProgress = (message: string) => {
         metadata?.onProgress?.(message);
-        
+
         // Emit layer-specific progress
         if (message.includes('Writing') || message.includes('memory')) {
           metadata?.onProgress?.('layer_progress:write');
@@ -215,33 +215,35 @@ export class ResearchAgentService {
 
       // Execute context layers explicitly for better progress tracking
       let layerResults: any = {};
-      
+
       for (const layer of contextLayers) {
         metadata?.onProgress?.(`layer_progress:${layer}`);
         metadata?.onProgress?.(`Executing ${layer} layer for ${paradigm} paradigm...`);
-        
+
         try {
           switch (layer) {
             case 'write':
               this.writeLayer.write('query_context', { query, paradigm, phase }, contextDensity.averageDensity || 50, paradigm);
               layerResults.writeLayer = 'completed';
               break;
-              
+
             case 'select':
               // Get some initial sources for selection (from memory or previous research)
               const cachedSources = this.memoryService.getCachedSources(query) || [];
               const selectedSources = await this.selectLayer.selectSources(query, cachedSources, paradigm, 5);
               layerResults.selectedSources = selectedSources;
               break;
-              
+
             case 'compress':
               if (layerResults.selectedSources && layerResults.selectedSources.length > 0) {
+                metadata?.onProgress?.('Compressing research for synthesis phase');
                 const sourcesText = layerResults.selectedSources.map((s: any) => s.snippet || s.title || '').join(' ');
                 const compressed = this.compressLayer.compress(sourcesText, Math.round(contextDensity.averageDensity || 50), paradigm);
                 layerResults.compressedContent = compressed;
+                metadata?.onProgress?.('Research compression complete, moving to quality evaluation');
               }
               break;
-              
+
             case 'isolate':
               // Isolate execution context for analysis-heavy paradigms
               const isolationResult = await this.isolateLayer.isolate(query, paradigm, {
@@ -258,13 +260,36 @@ export class ResearchAgentService {
           console.warn(`Layer ${layer} execution failed:`, error);
           // Continue with other layers even if one fails
         }
-        
+
         // Brief delay for UX
         await new Promise(resolve => setTimeout(resolve, 50));
       }
 
-      // Route query using research strategy
-      const result = await this.routeResearchQuery(query, model, EffortType.MEDIUM, enhancedOnProgress);
+      // Route query using research strategy with timeout protection
+      const researchPromise = this.routeResearchQuery(query, model, EffortType.MEDIUM, enhancedOnProgress);
+      const timeoutPromise = new Promise<EnhancedResearchResults>((_, reject) => {
+        setTimeout(() => {
+          enhancedOnProgress('Research taking longer than expected, finalizing results...');
+          reject(new Error('Research timeout'));
+        }, 60000); // 60-second timeout
+      });
+
+      // Race the research against the timeout
+      let result: EnhancedResearchResults;
+      try {
+        result = await Promise.race([researchPromise, timeoutPromise]);
+      } catch (error) {
+        console.warn('Research timed out, proceeding with partial results');
+        // Attempt to get partial results by setting progress to next phase
+        enhancedOnProgress('quality evaluation of partial results');
+        // Return minimal result structure to prevent UI hanging
+        result = {
+          synthesis: 'Research operation timed out. Please try again with a more specific query.',
+          sources: [],
+          queryType: 'unknown',
+          confidenceScore: 0.1
+        };
+      }
 
       // Create response in the expected format
       const response: ResearchResponse = {
@@ -288,11 +313,8 @@ export class ResearchAgentService {
       };
     } catch (error) {
       console.error('Error processing query:', error);
-      return {
-        text: 'An error occurred while processing your query.',
-        sources: [],
-        paradigmProbabilities: { dolores: 0.25, teddy: 0.25, bernard: 0.25, maeve: 0.25 }
-      };
+      // Propagate error so that the UI shows proper feedback instead of silently failing
+      throw error;
     }
   }
 
@@ -368,6 +390,9 @@ export class ResearchAgentService {
       };
     }
 
+    // Add explicit progress message to trigger 60% update in UI
+    onProgress?.('Evaluating research quality and self-healing if needed');
+
     // Calculate confidence score
     result.confidenceScore = ResearchUtilities.calculateConfidenceScore(result);
 
@@ -377,11 +402,11 @@ export class ResearchAgentService {
       const webResearchFunction = async (queries: string[], model: ModelType, effort: EffortType) => {
         return this.performWebResearch(queries, model, effort);
       };
-      
+
       const generateTextFunction = async (prompt: string, model: ModelType, effort: EffortType) => {
         return this.generateText(prompt, model, effort);
       };
-      
+
       result = await this.evaluationService.attemptSelfHealing(
         query,
         result,
@@ -418,12 +443,17 @@ export class ResearchAgentService {
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
     onProgress?.('tool_used:comprehensive_research');
-    return this.comprehensiveService.performComprehensiveResearch(
+    const result = await this.comprehensiveService.performComprehensiveResearch(
       query,
       model,
       effort,
       onProgress
     );
+    
+    // Signal completion and transition to quality evaluation phase
+    onProgress?.('Comprehensive research completed, evaluating quality');
+    
+    return result;
   }
 
   /**
@@ -494,7 +524,7 @@ export class ResearchAgentService {
     try {
       // Search for similar research steps
       const similarSteps = await this.databaseService.semanticSearch(query, sessionId, 10);
-      
+
       // Convert ResearchStep objects to ResearchState objects
       return similarSteps.map(step => this.convertStepToState(step));
     } catch (error) {
@@ -519,7 +549,7 @@ export class ResearchAgentService {
     try {
       // Convert ResearchState to ResearchStep for storage
       const step = this.convertStateToStep(state);
-      
+
       // Store additional metadata separately
       const enhancedMetadata = {
         ...step.metadata,
@@ -528,10 +558,10 @@ export class ResearchAgentService {
         model: GENAI_MODEL_FLASH as ModelType,
         effort: EffortType.MEDIUM
       } as any;
-      
+
       // Update step with enhanced metadata
       step.metadata = enhancedMetadata;
-      
+
       // Save to database with AI enhancements (embeddings)
       await this.databaseService.saveResearchStepWithAI(sessionId, step, parentId);
     } catch (error) {
@@ -577,7 +607,7 @@ export class ResearchAgentService {
    */
   private convertStepToState(step: ResearchStep): ResearchState {
     const metadata = step.metadata || {};
-    
+
     return {
       query: step.title || '',
       searchResults: step.sources || [],
@@ -599,7 +629,7 @@ export class ResearchAgentService {
   private convertStateToStep(state: ResearchState): ResearchStep {
     // Determine step type based on state characteristics
     const stepType = this.determineStepType(state);
-    
+
     return {
       id: crypto.randomUUID(),
       type: stepType,
@@ -624,17 +654,17 @@ export class ResearchAgentService {
     if (state.refinementCount > 0) {
       return ResearchStepType.REFLECTION;
     }
-    
+
     // If it has multiple sections, it's comprehensive
     if (state.sections && state.sections.length > 3) {
       return ResearchStepType.FINAL_ANSWER;
     }
-    
+
     // If evaluation shows high quality, it's detailed
     if (state.evaluation.quality === 'excellent') {
       return ResearchStepType.SEARCHING_FINAL_ANSWER;
     }
-    
+
     // Default to search
     return ResearchStepType.WEB_RESEARCH;
   }

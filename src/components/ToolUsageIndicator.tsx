@@ -10,13 +10,23 @@ interface ToolUsageIndicatorProps {
   recommendedTools?: string[];
 }
 
-// Legacy wrapper - use FunctionCallDock with mode="tools" instead
+// Legacy wrapper around FunctionCallDock for backward compatibility.
+// Emits a deprecation warning **once** per session instead of every render.
+let warned = false;
+
 export const ToolUsageIndicator: React.FC<ToolUsageIndicatorProps> = () => {
-  console.warn('ToolUsageIndicator is deprecated. Please use FunctionCallDock with mode="tools" instead.');
-  
+  React.useEffect(() => {
+    if (!warned) {
+      console.warn(
+        'ToolUsageIndicator is deprecated. Please migrate to FunctionCallDock. This warning will appear only once.'
+      );
+      warned = true;
+    }
+  }, []);
+
   return (
-    <FunctionCallDock 
-      mode="tools" 
+    <FunctionCallDock
+      mode="tools"
       showModeSelector={false}
     />
   );

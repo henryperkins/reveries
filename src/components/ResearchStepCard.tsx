@@ -2,7 +2,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ResearchStep, ResearchStepType } from '@/types';
-import { ToolUsageIndicator } from './ToolUsageIndicator';
+import { FunctionCallDock } from './FunctionCallDock';
 
 interface ResearchStepCardProps {
   step: ResearchStep;
@@ -139,11 +139,12 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
             )}
           </div>
 
-          {/* Tool Usage Indicator */}
+          {/* Function-call dock (tools mode) */}
           {(step.toolsUsed || step.recommendedTools) && (
-            <ToolUsageIndicator
-              toolsUsed={step.toolsUsed}
-              recommendedTools={step.recommendedTools}
+            <FunctionCallDock
+              mode="tools"
+              showModeSelector={false}
+              initialTools={step.toolsUsed ?? []}
             />
           )}
 

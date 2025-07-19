@@ -221,10 +221,14 @@ export function usePersistentStateEnhanced<T>(
   options: PersistenceOptions = {}
 ): PersistenceState<T> {
   const [value, setValue, clearValue] = usePersistentState(key, defaultValue, options);
-  const [isDatabaseConnected, setIsDatabaseConnected] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const [syncError, setSyncError] = useState<Error | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  // Local meta‐state used by legacy consumers of this hook.
+  // Only the getter parts are required, so we purposefully ignore
+  // the setter returned by `useState` to avoid unused-variable
+  // TypeScript errors when `noUnusedLocals` is enabled.
+  const [isDatabaseConnected] = useState(false);
+  const [lastSyncTime] = useState<Date | undefined>(undefined);
+  const [syncError] = useState<Error | undefined>(undefined);
+  const [isInitialized] = useState(false);
 
   return {
     value,

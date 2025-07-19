@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { HistoryView } from './HistoryView';
 import { LiveView } from './LiveView';
 import { ToolsView } from './ToolsView';
-import { FunctionCallProvider, useFunctionCalls } from './FunctionCallContext';
+import { useFunctionCalls } from './FunctionCallContext';
 
 export type DockMode = 'history' | 'live' | 'tools';
 
@@ -11,6 +11,8 @@ interface FunctionCallDockProps {
   className?: string;
   showModeSelector?: boolean;
   maxHeight?: string;
+  /** Pre-populate the dock with tools already used (e.g. per research step) */
+  initialTools?: string[];
 }
 
 const FunctionCallDockContent: React.FC<FunctionCallDockProps> = ({
@@ -51,7 +53,7 @@ const FunctionCallDockContent: React.FC<FunctionCallDockProps> = ({
       )}
 
       {/* Content Area */}
-      <div 
+      <div
         className="overflow-auto rounded-lg border border-gray-200"
         style={{ maxHeight }}
       >
@@ -63,12 +65,19 @@ const FunctionCallDockContent: React.FC<FunctionCallDockProps> = ({
   );
 };
 
+/**
+ * FunctionCallDock
+ *
+ * NOTE:
+ * A global <FunctionCallProvider> is already mounted at the application root
+ * (see [`src/index.tsx:14`](src/index.tsx:14)). Wrapping the dock with an
+ * additional provider created an isolated React context, preventing the dock
+ * from receiving updates (e.g., tool usage) pushed via `useFunctionCalls` in
+ * other parts of the app. We remove the nested provider so the dock consumes
+ * the shared context.
+ */
 export const FunctionCallDock: React.FC<FunctionCallDockProps> = (props) => {
-  return (
-    <FunctionCallProvider>
-      <FunctionCallDockContent {...props} />
-    </FunctionCallProvider>
-  );
+  return <FunctionCallDockContent {...props} />;
 };
 
 // Re-export context and types
