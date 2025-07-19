@@ -3,12 +3,10 @@ export { Controls } from './Controls';
 export { ErrorDisplay } from './ErrorDisplay';
 export { Header } from './Header';
 export { InputBar } from './InputBar';
-export { ProgressBar } from './ProgressBar';
 export { ResearchArea } from './ResearchArea';
 export { default as ResearchGraphView } from './ResearchGraphView';
 export { ResearchStepCard } from './ResearchStepCard';
 export { ContextDensityBar } from './ContextDensityBar';
-export { FunctionCallVisualizer } from './FunctionCallVisualizer';
 export { FunctionCallDock } from './FunctionCallDock';
 export { SemanticSearch } from './SemanticSearch';
 export { SessionHistoryBrowser } from './SessionHistoryBrowser';
@@ -21,8 +19,12 @@ export {
 } from './ParadigmUI';
 export { ErrorBoundary } from './ErrorBoundary';
 export { RateLimitIndicator } from './RateLimitIndicator';
-export { ToolUsageIndicator } from './ToolUsageIndicator';
-export { LiveFunctionCallIndicator } from './LiveFunctionCallIndicator';
+
+// Legacy components - DEPRECATED - use modern equivalents:
+// - ProgressBar → ProgressMeter from '@/components/atoms'
+// - FunctionCallVisualizer → FunctionCallDock with mode="history"
+// - LiveFunctionCallIndicator → FunctionCallDock with mode="live"
+// - ToolUsageIndicator → FunctionCallDock with mode="tools"
 
 // Export icons separately
 export * as Icons from './icons';

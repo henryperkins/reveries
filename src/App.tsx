@@ -6,7 +6,6 @@ import { ResearchGraphManager } from '@/researchGraph'
 import { Header, Controls, InputBar, ResearchArea, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress } from '@/components'
 import { ProgressMeter } from '@/components/atoms'
 import { usePersistentState } from '@/hooks/usePersistentState'
-import { useResearchSessions } from '@/hooks/usePersistedState'
 import { useFunctionCalls } from '@/components/FunctionCallDock'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
 import {
@@ -25,6 +24,21 @@ import { DEFAULT_MODEL, TIMEOUTS } from '@/constants'
 import { useTimeoutManager, TimeoutManager } from '@/utils/timeoutManager'
 import '@/App.css'
 
+interface ResearchSession {
+  id: string;
+  query: string;
+  timestamp: number;
+  steps: ResearchStep[];
+  graphData?: string;
+  completed: boolean;
+  duration?: number;
+  model?: string;
+  effort?: string;
+  paradigm?: HostParadigm | null;
+  paradigmProbabilities?: ParadigmProbabilities | null;
+  phase?: ResearchPhase;
+}
+
 const App: React.FC = () => {
   const [research, setResearch] = usePersistentState<ResearchStep[]>('reveries_research', [], { version: 1 })
   const [isLoading, setIsLoading] = useState(false)
@@ -38,7 +52,7 @@ const App: React.FC = () => {
   const [contextLayers, setContextLayers] = useState<ContextLayer[]>([])
   const [currentLayer, setCurrentLayer] = useState<ContextLayer | null>(null)
   const [currentPhase, setCurrentPhase] = useState<ResearchPhase>('discovery')
-  
+
   // Progress state machine
   const [progressState, setProgressState] = useState<'idle' | 'analyzing' | 'routing' | 'researching' | 'evaluating' | 'synthesizing' | 'complete'>('idle')
   const { error, handleError, clearError } = useErrorHandling()
@@ -51,15 +65,6 @@ const App: React.FC = () => {
   const [showSemanticSearch, setShowSemanticSearch] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [showSessionHistory, setShowSessionHistory] = useState(false)
-  // Local tracking for live function calls to avoid re-render storms while we
-  // also forward events to the shared FunctionCall context.
-  const [liveFunctionCalls, setLiveFunctionCalls] = useState<Array<{
-    id: string;
-    function: string;
-    status: 'pending' | 'running' | 'completed' | 'failed';
-    timestamp: number;
-    duration?: number;
-  }>>([]);
 
   // --- Function call context helpers --------------------------------------
   const {
@@ -67,32 +72,41 @@ const App: React.FC = () => {
     updateLiveCall,
     addToolUsed,
     addToHistory,
+    liveCalls
   } = useFunctionCalls();
 
   // Map tool-name -> context live-call id so we can mark completion
   const liveCallIdMap = useRef<Record<string, string>>({});
-  
+
   // Timeout manager for centralized cleanup
   const timeoutManager = useTimeoutManager();
-  
-  // Progress timeout manager with reset capability
-  const progressTimeoutMgr = new TimeoutManager();
-  
+
+  // Progress timeout manager with stable identity across renders
+  const progressTimeoutMgrRef = useRef<TimeoutManager>(new TimeoutManager());
+  const progressTimeoutMgr   = progressTimeoutMgrRef.current;
+
+  // Ensure all progress-related timers are cleared when the component unmounts
+  useEffect(() => {
+    return () => {
+      progressTimeoutMgr.clearAll();
+    };
+  }, []);
+
   // Progress ref to track current value (fixes race condition)
   const currentProgressRef = useRef<number>(0);
-  
+
   // Progress state machine helper
   const updateProgressState = useCallback((phase: typeof progressState, message?: string) => {
     const progressMap = {
       'idle': 0,
       'analyzing': 15,
-      'routing': 25, 
+      'routing': 25,
       'researching': 40,
       'evaluating': 60,
       'synthesizing': 80,
       'complete': 100
     };
-    
+
     const stepTypeMap = {
       'analyzing': ResearchStepType.GENERATING_QUERIES,
       'routing': ResearchStepType.GENERATING_QUERIES,
@@ -100,15 +114,15 @@ const App: React.FC = () => {
       'evaluating': ResearchStepType.REFLECTION,
       'synthesizing': ResearchStepType.SEARCHING_FINAL_ANSWER
     };
-    
+
     const titleMap = {
       'analyzing': 'Analyzing Query',
-      'routing': 'Selecting Research Strategy', 
+      'routing': 'Selecting Research Strategy',
       'researching': 'Conducting Web Research',
       'evaluating': 'Evaluating Research Quality',
       'synthesizing': 'Synthesizing Final Answer'
     };
-    
+
     const toolMap = {
       'analyzing': ['query_analysis', 'paradigm_classification'],
       'routing': ['paradigm_routing', 'strategy_selection'],
@@ -116,19 +130,19 @@ const App: React.FC = () => {
       'evaluating': ['quality_evaluation', 'fact_verification', 'source_validation'],
       'synthesizing': ['synthesis_engine', 'content_compression', 'narrative_generation']
     };
-    
+
     setProgressState(phase);
     const newProgress = progressMap[phase];
     setProgress(newProgress);
     currentProgressRef.current = newProgress;
-    
+
     // Complete previous spinning steps
     if (phase !== 'idle') {
-      setResearch(prev => prev.map(step => 
+      setResearch(prev => prev.map(step =>
         step.isSpinning ? { ...step, isSpinning: false } : step
       ));
     }
-    
+
     // Create new step for this phase (except idle and complete)
     if (phase !== 'idle' && phase !== 'complete' && stepTypeMap[phase]) {
       const newStep: ResearchStep = {
@@ -144,11 +158,22 @@ const App: React.FC = () => {
         recommendedTools: toolMap[phase] || []
       };
       setResearch(prev => [...(Array.isArray(prev) ? prev : []), newStep]);
+
+      // Keep research graph in sync
+      graphManager.addNode(newStep);
     }
-  }, [setResearch]);
-  
+  }, [setResearch, graphManager]);
+
   // Research sessions management
-  const { sessions, addSession, deleteSession } = useResearchSessions()
+  const [sessions, setSessions] = usePersistentState<ResearchSession[]>('research_sessions', [], { version: 1 })
+
+  const addSession = useCallback((session: ResearchSession) => {
+    setSessions(prev => [...prev, session].slice(-10)); // Keep last 10 sessions
+  }, [setSessions]);
+
+  const deleteSession = useCallback((id: string) => {
+    setSessions(prev => prev.filter(s => s.id !== id));
+  }, [setSessions]);
 
   // Update function history when research changes
   useEffect(() => {
@@ -176,17 +201,16 @@ const App: React.FC = () => {
     setProgressState('idle')
     setCurrentLayer(null)
     setRealTimeContextDensities(null)
-    setLiveFunctionCalls([])
     clearError()
 
     // Progress timeout protection helper - starts initial timeout
     const startProgressTimeout = (phase: string, timeoutMs: number) => {
       progressTimeoutMgr.start(phase, timeoutMs, (attempt) => {
         console.warn(`Progress timeout in ${phase} phase, advancing (attempt ${attempt})`);
-        
+
         // Use ref to get current progress value (fixes race condition)
         const currentProgress = currentProgressRef.current;
-        
+
         // Force advance to next phase based on current progress
         if (currentProgress < 25) updateProgressState('routing', `Timeout in ${phase}, continuing...`);
         else if (currentProgress < 40) updateProgressState('researching', `Timeout in ${phase}, continuing...`);
@@ -195,12 +219,12 @@ const App: React.FC = () => {
         else updateProgressState('complete');
       });
     };
-    
+
     // Helper to get adaptive timeout value for current phase based on model
     const getPhaseTimeoutMs = () => {
       const isO3Model = currentModel.includes('o3') || currentModel.includes('azure-o3');
       const multiplier = isO3Model ? 4 : 1; // 4x longer timeouts for O3 models
-      
+
       switch (progressState) {
         case 'analyzing': return TIMEOUTS.PROGRESS_ANALYSIS * multiplier;
         case 'routing': return TIMEOUTS.PROGRESS_ROUTING * multiplier;
@@ -214,7 +238,7 @@ const App: React.FC = () => {
     // Extended global research timeout to accommodate O3 models
     const isO3Model = currentModel.includes('o3') || currentModel.includes('azure-o3');
     const globalTimeout = isO3Model ? TIMEOUTS.GLOBAL_RESEARCH * 3 : TIMEOUTS.GLOBAL_RESEARCH; // 30min for O3, 10min for others
-    
+
     timeoutManager.set('global-research', () => {
       if (isLoading) {
         console.warn(`Global research timeout reached (${globalTimeout/60000}min)`);
@@ -242,28 +266,19 @@ const App: React.FC = () => {
 
       // Process with enhanced research agent using processQuery
       const result = await researchAgent.processQuery(
-        input, 
-        currentModel, 
+        input,
+        currentModel,
         {
           phase: currentPhase,
           onProgress: (message: string) => {
           console.log('🔄 Research Progress:', message);
-          
+
           // Handle tool usage tracking
           if (message.startsWith('tool_used:')) {
             // Completion message pattern: tool_used:completed:<toolName>:<startTime>
             if (message.startsWith('tool_used:completed:')) {
               const [, , completedToolName, startTimeStr] = message.split(':');
               const startTime = parseInt(startTimeStr, 10);
-
-              // Update local liveFunctionCalls state
-              setLiveFunctionCalls((prev) =>
-                prev.map((call) =>
-                  call.function === completedToolName && call.status === 'running'
-                    ? { ...call, status: 'completed', duration: Date.now() - startTime }
-                    : call
-                )
-              );
 
               // Update shared context
               const liveId = liveCallIdMap.current[completedToolName];
@@ -276,18 +291,6 @@ const App: React.FC = () => {
             // New tool used message pattern: tool_used:<toolName>
             const [, toolName] = message.split(':');
 
-            // Add to local live calls
-            const localId = crypto.randomUUID();
-            setLiveFunctionCalls((prev) => [
-              ...prev,
-              {
-                id: localId,
-                function: toolName,
-                status: 'running',
-                timestamp: Date.now(),
-              },
-            ]);
-
             // Add to shared context
             const ctxId = addLiveCall({ name: toolName, status: 'running', startTime: Date.now() });
             liveCallIdMap.current[toolName] = ctxId;
@@ -297,15 +300,6 @@ const App: React.FC = () => {
 
             // Fallback completion timeout for operations without explicit completion signal
             timeoutManager.set(`tool-fallback-${toolName}`, () => {
-              // Local state update
-              setLiveFunctionCalls((prev) =>
-                prev.map((call) =>
-                  call.function === toolName && call.status === 'running'
-                    ? { ...call, status: 'completed', duration: Date.now() - call.timestamp }
-                    : call
-                )
-              );
-
               // Context update
               const id = liveCallIdMap.current[toolName];
               if (id) {
@@ -328,11 +322,11 @@ const App: React.FC = () => {
 
             return;
           }
-          
+
           // Structured progress state machine based on message patterns with adaptive timeouts
           const isO3Model = currentModel.includes('o3') || currentModel.includes('azure-o3');
           const multiplier = isO3Model ? 4 : 1; // 4x longer timeouts for O3 models
-          
+
           if (message.includes('Query classified as:')) {
             updateProgressState('analyzing', message);
             startProgressTimeout('analyzing', TIMEOUTS.PROGRESS_ANALYSIS * multiplier);
@@ -342,8 +336,8 @@ const App: React.FC = () => {
           } else if (message.includes('search queries') || message.includes('Comprehensive research')) {
             updateProgressState('researching', message);
             startProgressTimeout('researching', TIMEOUTS.PROGRESS_RESEARCH * multiplier);
-          } else if (message.includes('quality') || message.includes('evaluating') || message.includes('self-healing') || 
-                     message.includes('evaluation') || message.includes('Research evaluation') || 
+          } else if (message.includes('quality') || message.includes('evaluating') || message.includes('self-healing') ||
+                     message.includes('evaluation') || message.includes('Research evaluation') ||
                      message.includes('completed, evaluating') || message.includes('enhance research quality')) {
             updateProgressState('evaluating', message);
             startProgressTimeout('evaluating', TIMEOUTS.PROGRESS_EVALUATION * multiplier);
@@ -364,10 +358,10 @@ const App: React.FC = () => {
               console.warn(`Progress timeout, advancing (attempt ${attempt})`)
             );
           }
-          
+
           // Update any existing steps with more detailed content
           if (message.includes('[Dolores]') || message.includes('[Teddy]') || message.includes('[Bernard]')) {
-            setResearch(prev => 
+            setResearch(prev =>
               prev.map(step => {
                 if (step.isSpinning && step.type === ResearchStepType.REFLECTION) {
                   return { ...step, content: step.content + '\n\n' + message };
@@ -398,14 +392,14 @@ const App: React.FC = () => {
         id: crypto.randomUUID(),
         title: 'Research Complete',
         icon: () => null,
-        content: 'synthesis' in result ? result.synthesis : (result as any).text,
+        content: 'synthesis' in result ? String(result.synthesis) : String((result as { text: string }).text),
         timestamp: new Date().toISOString(),
         type: ResearchStepType.FINAL_ANSWER,
         sources: result.sources || []
       }
 
       // Stop any remaining spinning indicators (handled by updateProgressState, but ensure cleanup)
-      setResearch(prev => 
+      setResearch(prev =>
         prev.map(step => ({ ...step, isSpinning: false }))
       )
 
@@ -424,18 +418,18 @@ const App: React.FC = () => {
 
       // Update context information
       setContextLayers('contextLayers' in result ? result.contextLayers || [] : [])
-      
+
       // Update context densities with real data
       if ('contextDensity' in result && result.contextDensity) {
         const density = result.contextDensity.density || 0.5;
         const phase = result.contextDensity.phase || currentPhase;
-        
+
         // Calculate realistic context densities based on phase and paradigm
         let analytical = Math.floor(density * 100);
         let narrative = 20;
         let memory = 15;
         let adaptive = 25;
-        
+
         // Adjust based on paradigm
         if (paradigm === 'bernard') {
           analytical += 20;
@@ -450,7 +444,7 @@ const App: React.FC = () => {
           narrative += 10;
           memory += 15;
         }
-        
+
         // Adjust based on phase
         if (phase === 'discovery') {
           analytical += 10;
@@ -463,7 +457,7 @@ const App: React.FC = () => {
           analytical += 15;
           memory += 10;
         }
-        
+
         setRealTimeContextDensities({
           narrative: Math.min(narrative, 100),
           analytical: Math.min(analytical, 100),
@@ -489,7 +483,7 @@ const App: React.FC = () => {
       timeoutManager.clear('progress-evaluating');
       timeoutManager.clear('progress-synthesizing');
       progressTimeoutMgr.clearTimer();
-      
+
       setIsLoading(false)
       // Complete progress before reset for visual feedback
       timeoutManager.set('progress-reset', () => {
@@ -502,12 +496,13 @@ const App: React.FC = () => {
   }, [isLoading, currentModel, currentPhase, researchAgent, clearError, handleError, graphManager, setResearch, advancePhase, updateProgressState, progress])
 
   const handleClear = useCallback(() => {
-    setResearch([])
-    setParadigm(null)
-    setParadigmProbabilities(null)
-    functionCallingService.resetToolState()
-    setFunctionHistory([])
-  }, [setResearch, functionCallingService])
+    setResearch([]);
+    setParadigm(null);
+    setParadigmProbabilities(null);
+    graphManager.reset();
+    functionCallingService.resetToolState();
+    setFunctionHistory([]);
+  }, [setResearch, functionCallingService, graphManager]);
 
   const handleToggleGraph = useCallback(() => {
     setShowGraph(prev => !prev)
@@ -538,7 +533,7 @@ const App: React.FC = () => {
     setShowSemanticSearch(false)
   }, [setResearch])
 
-  const handleLoadSession = useCallback((session: any) => {
+  const handleLoadSession = useCallback((session: ResearchSession) => {
     // Load session data into current state
     setResearch(session.steps)
     setParadigm(session.paradigm || null)
@@ -552,8 +547,8 @@ const App: React.FC = () => {
 
     const session = {
       id: crypto.randomUUID(),
-      query: typeof research[0]?.content === 'string' 
-        ? research[0].content 
+      query: typeof research[0]?.content === 'string'
+        ? research[0].content
         : research[0]?.title || 'Untitled Session',
       timestamp: Date.now(),
       steps: research,
@@ -593,11 +588,11 @@ const App: React.FC = () => {
   // Calculate context densities - use real data when available, fallback to progress-based
   const contextDensities = useMemo(() => {
     if (!isLoading) return null
-    
+
     if (realTimeContextDensities) {
       return realTimeContextDensities
     }
-    
+
     // Fallback to progress-based estimation during initial loading
     const base = progress / 100
     return {
@@ -606,7 +601,7 @@ const App: React.FC = () => {
       memory: Math.floor(base * 20 + 10),
       adaptive: Math.floor(base * 20 + 10)
     }
-  }, [isLoading, progress, realTimeContextDensities])
+  }, [progress, realTimeContextDensities, isLoading])
 
   return (
     <div className="app min-h-screen bg-gradient-to-br from-westworld-cream to-westworld-beige text-westworld-black">
@@ -659,12 +654,12 @@ const App: React.FC = () => {
 
           <div className="research-container flex flex-col">
             <ResearchArea steps={research} />
-            
+
             {/* Function Call Dock - shows both live and history */}
-            {enhancedMode && (liveFunctionCalls.length > 0 || functionHistory.length > 0) && (
+            {enhancedMode && (liveCalls.length > 0 || functionHistory.length > 0) && (
               <div className="mt-4">
-                <FunctionCallDock 
-                  mode={liveFunctionCalls.length > 0 ? 'live' : 'history'}
+                <FunctionCallDock
+                  mode={liveCalls.length > 0 ? 'live' : 'history'}
                   showModeSelector={true}
                 />
               </div>

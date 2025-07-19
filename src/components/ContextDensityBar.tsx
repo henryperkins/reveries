@@ -10,7 +10,6 @@ interface ContextDensityBarProps {
     memory: number
     adaptive: number
   }
-  dominantContext?: string
   phase?: ResearchPhase | string
   showLabels?: boolean
   paradigm?: HostParadigm
@@ -19,7 +18,6 @@ interface ContextDensityBarProps {
 
 export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
   densities,
-  dominantContext,
   phase = 'synthesis',
   showLabels = true,
   paradigm,
@@ -29,20 +27,19 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
   const paradigmTheme = paradigm ? getParadigmTheme(paradigm) : null;
   const paradigmClasses = paradigm ? getParadigmClasses(paradigm) : null;
 
-  // Auto-detect dominant context if not provided
-  const calculatedDominantContext = dominantContext || Object.entries(densities)
+  // Auto-detect dominant context
+  const calculatedDominantContext = Object.entries(densities)
     .sort(([,a], [,b]) => b - a)[0][0];
 
   // Use paradigm styling if enabled
   const useParadigmStyle = paradigm && showHostColors && paradigmTheme;
 
-  // Phase emoji mapping
+  // Phase emoji mapping (only for research phases, not progress states)
   const phaseEmojis = {
     discovery: '🔍',
     exploration: '🌟',
     synthesis: '🔬',
-    validation: '✅',
-    analyzing: '⚡'
+    validation: '✅'
   };
 
   const phaseEmoji = phaseEmojis[phase as keyof typeof phaseEmojis] || '⚡';
@@ -71,9 +68,9 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
               {showLabels && (
                 <div className="flex justify-between text-sm mb-1">
                   <span className={`capitalize ${
-                    isDominant 
+                    isDominant
                       ? useParadigmStyle
-                        ? `font-semibold ${paradigmTheme!.text}` 
+                        ? `font-semibold ${paradigmTheme!.text}`
                         : 'font-semibold text-westworld-gold'
                       : ''
                   }`}>

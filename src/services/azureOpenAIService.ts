@@ -57,6 +57,20 @@ export class AzureOpenAIService {
     this.functionCalling = FunctionCallingService.getInstance();
   }
 
+  /**
+   * Validate function_call_output structure according to Responses API spec
+   */
+  private validateFunctionCallOutput(output: any): boolean {
+    return (
+      output &&
+      typeof output === 'object' &&
+      output.type === 'function_call_output' &&
+      typeof output.call_id === 'string' &&
+      output.call_id.length > 0 &&
+      typeof output.output === 'string'
+    );
+  }
+
   private getConfig(): AzureOpenAIConfig {
     const endpoint = getEnv('VITE_AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_ENDPOINT');
     const apiKey = getEnv('VITE_AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_API_KEY');
@@ -532,11 +546,20 @@ export class AzureOpenAIService {
 
         const requestBody: any = {
           model: this.config.deploymentName,
-          input: iterationCount === 1 ? initialInput : undefined,
-          previous_response_id: iterationCount > 1 ? previousResponseId : undefined,
-          tools: filteredTools.length > 0 ? filteredTools : undefined,
           max_output_tokens: 32000
         };
+
+        // Handle input vs previous_response_id properly
+        if (iterationCount === 1) {
+          requestBody.input = initialInput;
+        } else {
+          requestBody.previous_response_id = previousResponseId;
+        }
+
+        // Add tools if available
+        if (filteredTools.length > 0) {
+          requestBody.tools = filteredTools;
+        }
 
         // Only add temperature for non-o3 models
         if (!this.config.deploymentName.includes('o3')) {
@@ -660,36 +683,66 @@ export class AzureOpenAIService {
                 toolsUsed.push(toolName);
 
                 // Add tool result for next iteration
-                toolResultsInput.push({
+                const callId = toolCall.call_id || toolCall.id;
+                if (!callId) {
+                  console.warn('Tool call missing call_id, skipping result');
+                  continue;
+                }
+                const toolResult = {
                   type: "function_call_output",
-                  call_id: toolCall.call_id || toolCall.id,
+                  call_id: callId,
                   output: JSON.stringify(executionResult.result)
-                });
+                };
+                if (this.validateFunctionCallOutput(toolResult)) {
+                  toolResultsInput.push(toolResult);
+                } else {
+                  console.warn('Invalid tool result format, skipping:', toolResult);
+                }
               } else {
                 // Add error result
-                toolResultsInput.push({
+                const callId = toolCall.call_id || toolCall.id;
+                if (!callId) {
+                  console.warn('Tool call missing call_id, skipping error result');
+                  continue;
+                }
+                const errorResult = {
                   type: "function_call_output",
-                  call_id: toolCall.call_id || toolCall.id,
+                  call_id: callId,
                   output: JSON.stringify({
                     error: executionResult.error,
                     success: false,
                     retryable: executionResult.retryable
                   })
-                });
+                };
+                if (this.validateFunctionCallOutput(errorResult)) {
+                  toolResultsInput.push(errorResult);
+                } else {
+                  console.warn('Invalid error result format, skipping:', errorResult);
+                }
               }
 
             } catch (error) {
               console.error(`Tool execution failed for ${toolCall.name}:`, error);
 
               // Add error result
-              toolResultsInput.push({
+              const callId = toolCall.call_id || toolCall.id;
+              if (!callId) {
+                console.warn('Tool call missing call_id, skipping error result');
+                continue;
+              }
+              const errorResult = {
                 type: "function_call_output",
-                call_id: toolCall.call_id || toolCall.id,
+                call_id: callId,
                 output: JSON.stringify({
                   error: error instanceof Error ? error.message : 'Tool execution failed',
                   success: false
                 })
-              });
+              };
+              if (this.validateFunctionCallOutput(errorResult)) {
+                toolResultsInput.push(errorResult);
+              } else {
+                console.warn('Invalid error result format, skipping:', errorResult);
+              }
             }
           }
 
@@ -1309,11 +1362,22 @@ export class AzureOpenAIService {
 
     const requestBody: any = {
       model: this.config.deploymentName,
-      input: toolResultsInput || (context.iterations === 1 ? inputArray : undefined),
-      previous_response_id: context.previousResponseId,
       stream: true,
       max_output_tokens: 4096
     };
+
+    // Handle input vs previous_response_id properly
+    if (toolResultsInput && toolResultsInput.length > 0) {
+      // Tool results from previous iteration
+      requestBody.input = toolResultsInput;
+      requestBody.previous_response_id = context.previousResponseId;
+    } else if (context.iterations === 1) {
+      // First iteration - use initial input
+      requestBody.input = inputArray;
+    } else {
+      // Subsequent iteration without tool results
+      requestBody.previous_response_id = context.previousResponseId;
+    }
 
     if (tools && tools.length > 0) {
       requestBody.tools = tools;
@@ -1421,7 +1485,6 @@ export class AzureOpenAIService {
                 if (!toolCall) {
                   toolCall = {
                     id: parsed.call_id,
-                    type: 'function',
                     name: parsed.name || '',
                     arguments: ''
                   };
@@ -1532,11 +1595,16 @@ export class AzureOpenAIService {
           // Add tool result to conversation - need to convert to input array for next response
           // Store tool result for building next request input
           context.toolResults = context.toolResults || [];
-          context.toolResults.push({
+          const toolResult = {
             type: "function_call_output",
             call_id: toolCall.id,
             output: JSON.stringify(executionResult.result)
-          });
+          };
+          if (this.validateFunctionCallOutput(toolResult)) {
+            context.toolResults.push(toolResult);
+          } else {
+            console.warn('Invalid streaming tool result format:', toolResult);
+          }
         } else {
           // Handle execution failure
           if (callbacks.onToolCall) {
@@ -1545,7 +1613,7 @@ export class AzureOpenAIService {
 
           // Add error to conversation - need to convert to input array for next response
           context.toolResults = context.toolResults || [];
-          context.toolResults.push({
+          const errorResult = {
             type: "function_call_output",
             call_id: toolCall.id,
             output: JSON.stringify({
@@ -1553,7 +1621,12 @@ export class AzureOpenAIService {
               success: false,
               retryable: executionResult.retryable
             })
-          });
+          };
+          if (this.validateFunctionCallOutput(errorResult)) {
+            context.toolResults.push(errorResult);
+          } else {
+            console.warn('Invalid streaming error result format:', errorResult);
+          }
 
           // Retry if possible and retryable
           if (executionResult.retryable && context.iterations < 3) {
@@ -1567,14 +1640,19 @@ export class AzureOpenAIService {
 
         // Add error result to conversation - need to convert to input array for next response
         context.toolResults = context.toolResults || [];
-        context.toolResults.push({
+        const errorResult = {
           type: "function_call_output",
           call_id: toolCall.id,
           output: JSON.stringify({
             error: error instanceof Error ? error.message : 'Tool execution failed',
             success: false
           })
-        });
+        };
+        if (this.validateFunctionCallOutput(errorResult)) {
+          context.toolResults.push(errorResult);
+        } else {
+          console.warn('Invalid streaming error result format:', errorResult);
+        }
       }
     }
 
