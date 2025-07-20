@@ -149,15 +149,15 @@ const App: React.FC = () => {
     // Skip creating cards for research phase - these are redundant with FunctionCallDock
     // Only create cards for meaningful phases with actual content
     const skipPhases = ['researching', 'routing'];
-    const shouldCreateCard = phase !== 'idle' && 
-                           phase !== 'complete' && 
-                           stepTypeMap[phase] && 
+    const shouldCreateCard = phase !== 'idle' &&
+                           phase !== 'complete' &&
+                           stepTypeMap[phase] &&
                            !skipPhases.includes(phase) &&
                            !createdPhaseCardsRef.current.has(phase);
 
     if (shouldCreateCard) {
       createdPhaseCardsRef.current.add(phase);
-      
+
       const newStep: ResearchStep = {
         id: crypto.randomUUID(),
         title: titleMap[phase],
@@ -309,9 +309,9 @@ const App: React.FC = () => {
             const [, toolName] = message.split(':');
 
             // Add to shared context with description
-            const ctxId = addLiveCall({ 
-              name: toolName, 
-              status: 'running', 
+            const ctxId = addLiveCall({
+              name: toolName,
+              status: 'running',
               startTime: Date.now(),
               context: `Processing ${input.substring(0, 100)}${input.length > 100 ? '...' : ''}`
             });
@@ -382,13 +382,13 @@ const App: React.FC = () => {
           }
 
           // Update any existing steps with more detailed content
-          if (message.includes('[Dolores]') || message.includes('[Teddy]') || message.includes('[Bernard]') || 
+          if (message.includes('[Dolores]') || message.includes('[Teddy]') || message.includes('[Bernard]') ||
               message.includes('[Maeve]') || message.includes('evaluation') || message.includes('quality')) {
             setResearch(prev => {
-              const hasReflectionStep = prev.some(step => 
+              const hasReflectionStep = prev.some(step =>
                 step.isSpinning && (step.type === ResearchStepType.REFLECTION || step.type === ResearchStepType.GENERATING_QUERIES)
               );
-              
+
               if (hasReflectionStep) {
                 // Update existing reflection/evaluation step
                 return prev.map(step => {
