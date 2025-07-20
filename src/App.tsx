@@ -761,7 +761,7 @@ const App: React.FC = () => {
 
         {/* Global progress bar – positioned above input bar with proper spacing */}
         {isLoading && (
-          <div className="fixed bottom-24 left-0 right-0 z-40 px-4">
+          <div className="fixed bottom-40 left-0 right-0 z-40 px-4">
             <ProgressMeter
               value={progress}
               label="Research Progress"

@@ -22,7 +22,7 @@ main {
 
 /* Progress bar container styling */
 .progress-bar-container {
-    @apply fixed bottom-24 left-0 right-0 h-1 bg-westworld-tan/20 z-30;
+    @apply fixed bottom-40 left-0 right-0 h-1 bg-westworld-tan/20 z-30;
 }
 
 .progress-bar-fill {
@@ -129,7 +129,7 @@ button:active:not(:disabled) {
     
     /* Mobile progress bar positioning */
     .progress-bar-container {
-        @apply bottom-28; /* More space on mobile */
+        @apply bottom-44; /* More space on mobile */
     }
 }
 
