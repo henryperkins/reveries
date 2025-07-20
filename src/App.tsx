@@ -45,6 +45,8 @@ const App: React.FC = () => {
   const { error, handleError, clearError } = useErrorHandling()
 
   const graphManager = useMemo(() => new ResearchGraphManager(), [])
+  // Track the last node ID for parent-child relationships
+  const lastNodeIdRef = useRef<string | null>(null)
   const researchAgent = useMemo(() => ResearchAgentService.getInstance(), [])
   const functionCallingService = useMemo(() => FunctionCallingService.getInstance(), [])
   const databaseService = useMemo(() => DatabaseService.getInstance(), [])
@@ -159,8 +161,9 @@ const App: React.FC = () => {
       };
       setResearch(prev => [...(Array.isArray(prev) ? prev : []), newStep]);
 
-      // Keep research graph in sync
-      graphManager.addNode(newStep);
+      // Keep research graph in sync with parent-child relationships
+      graphManager.addNode(newStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
+      lastNodeIdRef.current = newStep.id;
     }
 
     // Reset phase tracking on completion
@@ -207,6 +210,7 @@ const App: React.FC = () => {
     setCurrentLayer(null)
     setRealTimeContextDensities(null)
     clearError()
+    lastNodeIdRef.current = null; // Reset node tracking for new query
 
     // Progress timeout protection helper - starts initial timeout
     const startProgressTimeout = (phase: string, timeoutMs: number) => {
@@ -266,8 +270,9 @@ const App: React.FC = () => {
 
       setResearch(prev => [...(Array.isArray(prev) ? prev : []), initialStep])
 
-      // Add to graph
-      graphManager.addNode(initialStep)
+      // Add to graph and track as root node
+      graphManager.addNode(initialStep);
+      lastNodeIdRef.current = initialStep.id;
 
       // Process with enhanced research agent using processQuery
       const result = await researchAgent.processQuery(
@@ -397,6 +402,9 @@ const App: React.FC = () => {
                   isSpinning: true,
                   toolsUsed: []
                 };
+                // Add to graph manager with parent relationship
+                graphManager.addNode(newStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
+                lastNodeIdRef.current = newStep.id;
                 return [...prev, newStep];
               }
               return prev;
@@ -437,6 +445,10 @@ const App: React.FC = () => {
 
       // Add final answer step
       setResearch(prev => [...(Array.isArray(prev) ? prev : []), finalAnswerStep])
+      
+      // Add final answer to graph with parent relationship
+      graphManager.addNode(finalAnswerStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
+      lastNodeIdRef.current = finalAnswerStep.id;
 
       // Update paradigm information
       if ('paradigmProbabilities' in result && result.paradigmProbabilities) {
@@ -534,6 +546,7 @@ const App: React.FC = () => {
     graphManager.reset();
     functionCallingService.resetToolState();
     setFunctionHistory([]);
+    lastNodeIdRef.current = null; // Reset node tracking
   }, [setResearch, functionCallingService, graphManager]);
 
   const handleToggleGraph = useCallback(() => {
