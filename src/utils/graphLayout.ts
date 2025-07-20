@@ -23,17 +23,45 @@ export class GraphLayoutEngine {
   private nodeHeight = 60;
   private levelHeight = 120;
   private horizontalSpacing = 250;
-  private layoutCache = new Map<string, { nodes: GraphNode[]; edges: GraphEdge[] }>();
+  private layoutCache = new Map<string, { nodes: GraphNode[]; edges: GraphEdge[]; size: number }>();
+  private maxCacheSize = 50; // Limit cache size to prevent memory issues
+  private maxCacheMemory = 10 * 1024 * 1024; // 10MB limit
 
-  private generateCacheKey(nodes: { id: string; level?: number }[], edges: { source: string; target: string; type: string }[]): string {
-    // Create a stable cache key based on node IDs, positions, and edge connections
-    const nodeKey = nodes.map(n => `${n.id}:${n.level || 0}`).sort().join('|');
+  private generateCacheKey(nodes: { id: string; level?: number; type: ResearchStepType; label: string }[], edges: { source: string; target: string; type: string }[]): string {
+    // Create a stable cache key that includes all layout-affecting properties
+    const nodeKey = nodes.map(n => `${n.id}:${n.level || 0}:${n.type}:${n.label.substring(0, 20)}`).sort().join('|');
     const edgeKey = edges.map(e => `${e.source}-${e.target}-${e.type}`).sort().join('|');
     return `${nodeKey}::${edgeKey}`;
   }
 
+  private estimateCacheEntrySize(nodes: GraphNode[], edges: GraphEdge[]): number {
+    // Rough estimation of memory usage in bytes
+    const nodeSize = nodes.length * 300; // ~300 bytes per node
+    const edgeSize = edges.length * 200; // ~200 bytes per edge
+    return nodeSize + edgeSize;
+  }
+
   clearCache(): void {
     this.layoutCache.clear();
+  }
+
+  private evictOldEntries(): void {
+    // Evict entries if cache is too large
+    if (this.layoutCache.size > this.maxCacheSize) {
+      const entriesToDelete = this.layoutCache.size - this.maxCacheSize + 10; // Delete extra to avoid frequent evictions
+      const keys = Array.from(this.layoutCache.keys()).slice(0, entriesToDelete);
+      keys.forEach(key => this.layoutCache.delete(key));
+    }
+
+    // Evict by memory usage
+    let totalMemory = 0;
+    const entries = Array.from(this.layoutCache.entries());
+    for (const [key, value] of entries) {
+      totalMemory += value.size;
+      if (totalMemory > this.maxCacheMemory) {
+        this.layoutCache.delete(key);
+      }
+    }
   }
 
   layoutGraph(nodes: { id: string; level?: number; type: ResearchStepType; label: string }[], edges: { source: string; target: string; type: 'sequential' | 'dependency' | 'error' }[]): { nodes: GraphNode[]; edges: GraphEdge[] } {
@@ -41,8 +69,23 @@ export class GraphLayoutEngine {
     const cacheKey = this.generateCacheKey(nodes, edges);
     const cached = this.layoutCache.get(cacheKey);
     if (cached) {
-      return cached;
+      return { nodes: cached.nodes, edges: cached.edges };
     }
+
+    // Adaptive spacing for large graphs
+    const maxNodesPerLevel = Math.max(...Object.values(
+      nodes.reduce((acc, node) => {
+        const level = node.level || 0;
+        acc[level] = (acc[level] || 0) + 1;
+        return acc;
+      }, {} as Record<number, number>)
+    ));
+
+    // Reduce spacing for graphs with many nodes
+    const adaptiveSpacing = maxNodesPerLevel > 10
+      ? Math.max(180, this.horizontalSpacing - (maxNodesPerLevel - 10) * 10)
+      : this.horizontalSpacing;
+
     // Group nodes by level
     const levels = new Map<number, typeof nodes>();
     nodes.forEach(node => {
@@ -56,13 +99,13 @@ export class GraphLayoutEngine {
     // Calculate positions
     const layoutNodes: GraphNode[] = [];
     levels.forEach((levelNodes, level) => {
-      const levelWidth = levelNodes.length * this.horizontalSpacing;
-      const startX = -levelWidth / 2 + this.horizontalSpacing / 2;
+      const levelWidth = levelNodes.length * adaptiveSpacing;
+      const startX = -levelWidth / 2 + adaptiveSpacing / 2;
 
       levelNodes.forEach((node, index) => {
         layoutNodes.push({
           id: node.id,
-          x: startX + index * this.horizontalSpacing,
+          x: startX + index * adaptiveSpacing,
           y: level * this.levelHeight,
           width: this.nodeWidth,
           height: this.nodeHeight,
@@ -73,7 +116,7 @@ export class GraphLayoutEngine {
       });
     });
 
-    // Calculate edge paths
+    // Calculate edge paths with improved bezier curves
     const layoutEdges: GraphEdge[] = edges.map(edge => {
       const sourceNode = layoutNodes.find(n => n.id === edge.source);
       const targetNode = layoutNodes.find(n => n.id === edge.target);
@@ -87,13 +130,16 @@ export class GraphLayoutEngine {
         };
       }
 
-      // Calculate bezier curve control points
+      // Calculate bezier curve control points with better curves for different layouts
       const startX = sourceNode.x + sourceNode.width / 2;
       const startY = sourceNode.y + sourceNode.height;
       const endX = targetNode.x + targetNode.width / 2;
       const endY = targetNode.y;
 
-      const controlY = (startY + endY) / 2;
+      const levelDiff = Math.abs((targetNode.level || 0) - (sourceNode.level || 0));
+      const controlY = levelDiff > 1
+        ? (startY + endY) / 2 + (levelDiff * 20) // More pronounced curve for distant levels
+        : (startY + endY) / 2;
 
       return {
         source: edge.source,
@@ -109,18 +155,14 @@ export class GraphLayoutEngine {
     });
 
     const result = { nodes: layoutNodes, edges: layoutEdges };
-    
-    // Cache the result
-    this.layoutCache.set(cacheKey, result);
-    
-    // Limit cache size to prevent memory issues
-    if (this.layoutCache.size > 100) {
-      const firstKey = this.layoutCache.keys().next().value;
-      if (firstKey !== undefined) {
-        this.layoutCache.delete(firstKey);
-      }
-    }
-    
+    const entrySize = this.estimateCacheEntrySize(layoutNodes, layoutEdges);
+
+    // Cache the result with size information
+    this.layoutCache.set(cacheKey, { ...result, size: entrySize });
+
+    // Manage cache size
+    this.evictOldEntries();
+
     return result;
   }
 

@@ -3,7 +3,8 @@ import { ResearchAgentService } from '@/services/researchAgentServiceWrapper'
 import { FunctionCallingService } from '@/services/functionCallingService'
 import { DatabaseService } from '@/services/databaseService'
 import { ResearchGraphManager } from '@/researchGraph'
-import { Header, Controls, InputBar, ResearchArea, ResearchGraphView, ErrorDisplay, ParadigmIndicator, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress } from '@/components'
+import { Header, Controls, InputBar, ResearchArea, ErrorDisplay, ParadigmIndicator, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress } from '@/components'
+import ResearchGraphView from '@/components/ResearchGraphViewNew';
 import { ProgressMeter } from '@/components/atoms'
 import { usePersistentState } from '@/hooks/usePersistentState'
 import { useFunctionCalls } from '@/components/FunctionCallDock'
@@ -168,7 +169,7 @@ const App: React.FC = () => {
     }
   }, [setResearch, graphManager]);
 
-  // Research sessions management  
+  // Research sessions management
   const [sessions, setSessions] = usePersistentState<ResearchSession[]>('research_sessions', [], { version: 1 })
 
   const addSession = useCallback((session: ResearchSession) => {

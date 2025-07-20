@@ -13,6 +13,19 @@ import {
   ResearchPhase
 } from './types';
 
+// Event system for reactive updates
+export type GraphEvent =
+  | { type: 'node-added'; nodeId: string; node: GraphNode }
+  | { type: 'node-updated'; nodeId: string; node: GraphNode }
+  | { type: 'node-completed'; nodeId: string; duration: number }
+  | { type: 'node-error'; nodeId: string; error: string }
+  | { type: 'edge-added'; edgeId: string; edge: GraphEdge }
+  | { type: 'edge-removed'; edgeId: string }
+  | { type: 'graph-reset' }
+  | { type: 'batch-update'; nodeIds: string[] };
+
+export type GraphEventListener = (event: GraphEvent) => void;
+
 export interface GraphNode {
     id: string;
     stepId: string;
@@ -52,10 +65,13 @@ export interface ResearchGraph {
 
 export class ResearchGraphManager {
     private graph: ResearchGraph;
-    private startTime: number;
+    private startTime: number | null = null; // Set when first node is added
     private nodeTimestamps: Map<string, number>;
     private lastNodeTimestamp: number | null;
     private graphVersion: number;
+    private listeners: Set<GraphEventListener> = new Set();
+    private batchingEnabled = false;
+    private pendingEvents: GraphEvent[] = [];
 
     constructor() {
         this.graph = {
@@ -64,10 +80,72 @@ export class ResearchGraphManager {
             rootNode: null,
             currentPath: []
         };
-        this.startTime = Date.now();
         this.nodeTimestamps = new Map();
         this.lastNodeTimestamp = null;
         this.graphVersion = 0;
+    }
+
+    /**
+     * Subscribe to graph events for reactive updates
+     */
+    subscribe(listener: GraphEventListener): () => void {
+        this.listeners.add(listener);
+        return () => this.listeners.delete(listener);
+    }
+
+    /**
+     * Emit an event to all subscribers
+     */
+    private emit(event: GraphEvent): void {
+        if (this.batchingEnabled) {
+            this.pendingEvents.push(event);
+        } else {
+            this.listeners.forEach(listener => {
+                try {
+                    listener(event);
+                } catch (error) {
+                    console.error('Error in graph event listener:', error);
+                }
+            });
+        }
+    }
+
+    /**
+     * Enable batching for bulk operations
+     */
+    startBatch(): void {
+        this.batchingEnabled = true;
+        this.pendingEvents = [];
+    }
+
+    /**
+     * Flush all pending events and disable batching
+     */
+    endBatch(): void {
+        if (this.pendingEvents.length > 0) {
+            const nodeIds = this.pendingEvents
+                .filter((e): e is Extract<GraphEvent, { nodeId: string }> =>
+                    'nodeId' in e && typeof e.nodeId === 'string')
+                .map(e => e.nodeId);
+
+            if (nodeIds.length > 0) {
+                this.emit({ type: 'batch-update', nodeIds });
+            }
+
+            // Emit individual events too for specific listeners
+            this.pendingEvents.forEach(event => {
+                this.listeners.forEach(listener => {
+                    try {
+                        listener(event);
+                    } catch (error) {
+                        console.error('Error in graph event listener:', error);
+                    }
+                });
+            });
+        }
+
+        this.batchingEnabled = false;
+        this.pendingEvents = [];
     }
 
     /**
@@ -98,6 +176,11 @@ export class ResearchGraphManager {
     ): GraphNode {
         const nodeId = `node-${step.id}`;
         const timestamp = Date.now();
+
+        // Initialize startTime when first node is added
+        if (this.startTime === null) {
+            this.startTime = timestamp;
+        }
 
         // Ensure metadata includes all available information
         const enrichedMetadata: ResearchMetadata = {
@@ -152,6 +235,10 @@ export class ResearchGraphManager {
         }
 
         this.lastNodeTimestamp = timestamp;
+
+        // Emit event
+        this.emit({ type: 'node-added', nodeId, node: newNode });
+
         return newNode;
     }
 
@@ -176,13 +263,21 @@ export class ResearchGraphManager {
         return `node-${stepId}`;
     }
 
-    // Public method to update node duration
+        // Public method to update node duration - preserves existing duration if set
     updateNodeDuration(nodeId: string): void {
         const node = this.graph.nodes.get(nodeId);
         const startedAt = this.getNodeTimestamp(nodeId);
-        if (node && startedAt) {
-            node.duration = Date.now() - startedAt;
-            this.incrementVersion();
+        if (node && startedAt && node.metadata) {
+            // Only update if duration hasn't been set yet to avoid double-counting
+            if (!node.duration) {
+                const duration = Date.now() - startedAt;
+                node.duration = duration;
+                node.metadata.processingTime = duration;
+                this.incrementVersion();
+
+                // Emit completion event
+                this.emit({ type: 'node-completed', nodeId, duration });
+            }
         }
     }
 
@@ -245,7 +340,7 @@ export class ResearchGraphManager {
      * Get all edges connected to a specific node (incoming or outgoing)
      */
     public getConnectedEdges(nodeId: string): GraphEdge[] {
-        return this.getEdges().filter(edge => 
+        return this.getEdges().filter(edge =>
             edge.source === nodeId || edge.target === nodeId
         );
     }
@@ -254,7 +349,7 @@ export class ResearchGraphManager {
      * Check if two nodes are connected by an edge
      */
     public areNodesConnected(sourceId: string, targetId: string): boolean {
-        return this.getEdges().some(edge => 
+        return this.getEdges().some(edge =>
             edge.source === sourceId && edge.target === targetId
         );
     }
@@ -274,17 +369,28 @@ export class ResearchGraphManager {
     public updateEdge(edgeId: string, updates: Partial<GraphEdge>): boolean {
         const edge = this.graph.edges.get(edgeId);
         if (!edge) return false;
-        
+
         const updatedEdge = { ...edge, ...updates };
         this.graph.edges.set(edgeId, updatedEdge);
         this.incrementVersion();
         return true;
     }
 
-    // Add an edge between nodes
+    // Add an edge between nodes with proper uniqueness
     addEdge(sourceId: string, targetId: string, type: GraphEdge['type'], label?: string): void {
+        // Generate unique edge ID using counter to avoid collisions
+        const baseId = `edge-${sourceId}-${targetId}-${type}`;
+        let edgeId = label ? `${baseId}-${label}` : baseId;
+
+        // Ensure uniqueness by checking existing edges
+        let counter = 0;
+        while (this.graph.edges.has(edgeId)) {
+            edgeId = `${baseId}-${counter}`;
+            counter++;
+        }
+
         const edge: GraphEdge = {
-            id: `edge-${sourceId}-${targetId}-${type}`,
+            id: edgeId,
             source: sourceId,
             target: targetId,
             type,
@@ -293,23 +399,27 @@ export class ResearchGraphManager {
 
         this.graph.edges.set(edge.id, edge);
         this.incrementVersion();
+
+        // Emit event
+        this.emit({ type: 'edge-added', edgeId, edge });
     }
 
-    // Mark a node as errored
+        // Mark a node as errored
     markNodeError(nodeId: string, errorMessage: string): void {
         const node = this.graph.nodes.get(nodeId);
         if (node && node.metadata) {
-            node.metadata = {
-                ...node.metadata,
-                errorDetails: { message: errorMessage, retryable: false }
-            };
+            node.type = ResearchStepType.ERROR;
+            node.metadata.errorMessage = errorMessage;
             this.incrementVersion();
 
-            // Add error edge to show where the error occurred
-            const lastSuccessfulNode = this.getLastSuccessfulNode();
-            if (lastSuccessfulNode && lastSuccessfulNode.id !== nodeId) {
-                this.addEdge(lastSuccessfulNode.id, nodeId, 'error', 'Error occurred');
+            // Add error edge from last successful node if it exists
+            const lastSuccessful = this.getLastSuccessfulNode();
+            if (lastSuccessful && lastSuccessful.id !== nodeId) {
+                this.addEdge(lastSuccessful.id, nodeId, 'error', 'Error occurred');
             }
+
+            // Emit error event
+            this.emit({ type: 'node-error', nodeId, error: errorMessage });
         }
     }
 
@@ -324,7 +434,7 @@ export class ResearchGraphManager {
         return null;
     }
 
-    // Get graph statistics
+    // Get graph statistics with improved accuracy
     getStatistics(): {
         totalNodes: number;
         totalDuration: number;
@@ -335,28 +445,44 @@ export class ResearchGraphManager {
         uniqueCitations: number;
     } {
         const nodes = Array.from(this.graph.nodes.values());
-        const totalDuration = Date.now() - this.startTime;
-        const durations = nodes.map(n => n.duration || 0).filter(d => d > 0);
-        const averageStepDuration = durations.length > 0
-            ? durations.reduce((a, b) => a + b, 0) / durations.length
+        const totalDuration = this.startTime ? Date.now() - this.startTime : 0;
+
+        // Get all nodes that have completed and have actual durations
+        const completedNodes = nodes.filter(n => n.duration && n.duration > 0);
+        const averageStepDuration = completedNodes.length > 0
+            ? completedNodes.reduce((sum, node) => sum + (node.duration || 0), 0) / completedNodes.length
             : 0;
 
         const errorCount = nodes.filter(n => n.type === ResearchStepType.ERROR).length;
-        const successRate = nodes.length > 0 ? (nodes.length - errorCount) / nodes.length : 0;
+        const successRate = nodes.length > 0 ? (nodes.length - errorCount) / nodes.length : 1;
 
-        const sourcesCollected = nodes.reduce((acc, node) =>
-            acc + (node.metadata?.sourcesCount || 0), 0
-        );
+        // More accurate source counting - avoid double counting
+        const sourcesCollected = nodes.reduce((acc, node) => {
+            // Use sourcesCount from metadata if available, otherwise count from data
+            const metadataCount = node.metadata?.sourcesCount || 0;
+            const dataCount = node.data?.sources?.length || 0;
+            return acc + Math.max(metadataCount, dataCount);
+        }, 0);
 
         // Count unique citations across all nodes
         const allCitations = new Set<string>();
         nodes.forEach(node => {
+            // Check both metadata sections and data sources
             if (node.metadata?.sections) {
                 node.metadata.sections.forEach(section => {
                     if (section.sources) {
                         section.sources.forEach(source => {
                             if (source.url) allCitations.add(source.url);
                         });
+                    }
+                });
+            }
+            if (node.data?.sources) {
+                node.data.sources.forEach(source => {
+                    if (source.url) {
+                        allCitations.add(source.url);
+                    } else if (source.title) {
+                        allCitations.add(source.title);
                     }
                 });
             }
@@ -468,8 +594,8 @@ export class ResearchGraphManager {
             },
             metadata: {
                 sessionId,
-                startTime: new Date(this.startTime).toISOString(),
-                endTime: new Date(this.startTime + stats.totalDuration).toISOString(),
+                startTime: this.startTime ? new Date(this.startTime).toISOString() : new Date().toISOString(),
+                endTime: this.startTime ? new Date(this.startTime + stats.totalDuration).toISOString() : new Date().toISOString(),
                 primaryModel,
                 primaryEffort,
                 queryType,
@@ -539,7 +665,7 @@ export class ResearchGraphManager {
         };
     }
 
-    // Reset the graph
+    // Reset the graph with proper cleanup
     reset(): void {
         this.graph = {
             nodes: new Map(),
@@ -547,9 +673,53 @@ export class ResearchGraphManager {
             rootNode: null,
             currentPath: []
         };
-        this.startTime = Date.now();
+        this.startTime = null;
         this.nodeTimestamps.clear();
+        this.lastNodeTimestamp = null;
         this.graphVersion = 0;
+        this.incrementVersion();
+
+        // Emit reset event
+        this.emit({ type: 'graph-reset' });
+    }
+
+    /**
+     * Archive old nodes to prevent memory growth in long sessions
+     * Keeps only recent nodes and critical path
+     */
+    archiveOldNodes(maxNodes = 100): void {
+        const nodes = Array.from(this.graph.nodes.values());
+        if (nodes.length <= maxNodes) return;
+
+        // Sort by timestamp and keep the most recent nodes
+        nodes.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        const nodesToKeep = new Set(nodes.slice(0, maxNodes).map(n => n.id));
+
+        // Always keep the critical path (from root to current)
+        let current = this.graph.rootNode;
+        while (current) {
+            nodesToKeep.add(current);
+            const node = this.graph.nodes.get(current);
+            current = node?.children[0] || null; // Follow main path
+        }
+
+        // Remove old nodes and their edges
+        this.startBatch();
+        for (const [nodeId] of this.graph.nodes) {
+            if (!nodesToKeep.has(nodeId)) {
+                this.graph.nodes.delete(nodeId);
+                this.nodeTimestamps.delete(nodeId);
+
+                // Remove associated edges
+                for (const [edgeId, edge] of this.graph.edges) {
+                    if (edge.source === nodeId || edge.target === nodeId) {
+                        this.graph.edges.delete(edgeId);
+                    }
+                }
+            }
+        }
+        this.endBatch();
+
         this.incrementVersion();
     }
 
@@ -596,7 +766,7 @@ export class ResearchGraphManager {
             // Import DatabaseService dynamically to avoid circular dependencies
             const { DatabaseService } = await import('./services/databaseService');
             const databaseService = DatabaseService.getInstance();
-            
+
             if (databaseService) {
                 const graphData = this.serialize();
                 await databaseService.saveResearchGraph(sessionId, graphData);
@@ -616,7 +786,7 @@ export class ResearchGraphManager {
             // Import DatabaseService dynamically to avoid circular dependencies
             const { DatabaseService } = await import('./services/databaseService');
             const databaseService = DatabaseService.getInstance();
-            
+
             if (databaseService) {
                 const graphData = await databaseService.getResearchGraph(sessionId);
                 if (graphData) {
@@ -626,7 +796,7 @@ export class ResearchGraphManager {
         } catch (error) {
             console.error('Failed to load persisted research graph:', error);
         }
-        
+
         return null;
     }
 
@@ -657,18 +827,18 @@ export class ResearchGraphManager {
             // Use embedding service for semantic similarity instead of deprecated service
             const { EmbeddingService } = await import('./services/ai/EmbeddingService');
             const embeddingService = EmbeddingService.getInstance();
-            
+
             const nodeEmbedding = await embeddingService.generateEmbedding(node.title);
             const similarNodes: { node: GraphNode; similarity: number }[] = [];
-            
+
             // Compare with other nodes in the graph
             for (const [otherNodeId, otherNode] of this.graph.nodes.entries()) {
                 if (otherNodeId === nodeId) continue;
-                
+
                 try {
                     const otherEmbedding = await embeddingService.generateEmbedding(otherNode.title);
                     const similarity = embeddingService.calculateSimilarity(nodeEmbedding, otherEmbedding);
-                    
+
                     if (similarity >= threshold) {
                         similarNodes.push({ node: otherNode, similarity });
                     }
@@ -676,7 +846,7 @@ export class ResearchGraphManager {
                     console.warn(`Failed to calculate similarity for node ${otherNodeId}:`, error);
                 }
             }
-            
+
             return similarNodes.sort((a, b) => b.similarity - a.similarity);
         } catch (error) {
             console.error('Semantic search failed:', error);
@@ -707,24 +877,35 @@ export function getNodeColor(type: ResearchStepType): string {
     }
 }
 
-// Helper to generate mermaid diagram from graph
+// Helper to generate mermaid diagram from graph with unique node IDs
 export function generateMermaidDiagram(manager: ResearchGraphManager): string {
     const graphData = manager.exportForVisualization();
     let mermaid = 'graph TD\n';
 
-    // Add nodes
-    graphData.nodes.forEach(node => {
-        const label = node.label.replace(/"/g, "'");
-        const shape = node.type === ResearchStepType.ERROR ? '((' : node.type === ResearchStepType.FINAL_ANSWER ? '[[' : '[';
-        const endShape = node.type === ResearchStepType.ERROR ? '))' : node.type === ResearchStepType.FINAL_ANSWER ? ']]' : ']';
-        mermaid += `    ${node.id}${shape}"${label}"${endShape}\n`;
+    // Create unique node IDs to avoid title collisions
+    const nodeIdMap = new Map<string, string>();
+    graphData.nodes.forEach((node, index) => {
+        const safeTitle = node.label.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20);
+        const uniqueId = `${safeTitle}_${node.id.split('-').pop() || index}`;
+        nodeIdMap.set(node.id, uniqueId);
     });
 
-    // Add edges
+    // Add nodes with unique IDs and safe labels
+    graphData.nodes.forEach(node => {
+        const uniqueId = nodeIdMap.get(node.id) || node.id;
+        const safeLabel = node.label.replace(/"/g, "'");
+        const shape = node.type === ResearchStepType.ERROR ? '((' : node.type === ResearchStepType.FINAL_ANSWER ? '[[' : '[';
+        const endShape = node.type === ResearchStepType.ERROR ? '))' : node.type === ResearchStepType.FINAL_ANSWER ? ']]' : ']';
+        mermaid += `    ${uniqueId}${shape}"${safeLabel}"${endShape}\n`;
+    });
+
+    // Add edges using unique IDs
     graphData.edges.forEach(edge => {
+        const sourceId = nodeIdMap.get(edge.source) || edge.source;
+        const targetId = nodeIdMap.get(edge.target) || edge.target;
         const arrow = edge.type === 'error' ? '-..->' : '-->';
         const label = edge.label ? `|${edge.label}|` : '';
-        mermaid += `    ${edge.source} ${arrow}${label} ${edge.target}\n`;
+        mermaid += `    ${sourceId} ${arrow}${label} ${targetId}\n`;
     });
 
     // Add styling
@@ -732,9 +913,13 @@ export function generateMermaidDiagram(manager: ResearchGraphManager): string {
     mermaid += '    classDef success fill:#efe,stroke:#6f6,stroke-width:2px\n';
     mermaid += '    classDef processing fill:#eef,stroke:#66f,stroke-width:2px\n';
 
-    // Apply styles to nodes
-    const errorNodes = graphData.nodes.filter(n => n.type === ResearchStepType.ERROR).map(n => n.id);
-    const successNodes = graphData.nodes.filter(n => n.type === ResearchStepType.FINAL_ANSWER).map(n => n.id);
+    // Apply styles to nodes using unique IDs
+    const errorNodes = graphData.nodes
+        .filter(n => n.type === ResearchStepType.ERROR)
+        .map(n => nodeIdMap.get(n.id) || n.id);
+    const successNodes = graphData.nodes
+        .filter(n => n.type === ResearchStepType.FINAL_ANSWER)
+        .map(n => nodeIdMap.get(n.id) || n.id);
 
     if (errorNodes.length > 0) {
         mermaid += `    class ${errorNodes.join(',')} error\n`;
