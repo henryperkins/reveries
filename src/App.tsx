@@ -3,7 +3,12 @@ import { ResearchAgentService } from '@/services/researchAgentServiceWrapper'
 import { FunctionCallingService } from '@/services/functionCallingService'
 import { DatabaseService } from '@/services/databaseService'
 import { ResearchGraphManager } from '@/researchGraph'
-import { Header, Controls, InputBar, ResearchArea, ErrorDisplay, ParadigmIndicator, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress } from '@/components'
+import { TopNavigation } from '@/components/TopNavigation'
+import { ReverieHeader } from '@/components/ReverieHeader'
+import { ResearchView } from '@/components/ResearchView'
+import { SessionsView } from '@/components/SessionsView'
+import { AnalyticsView } from '@/components/AnalyticsView'
+import { InputBar, ErrorDisplay, ParadigmIndicator, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress, Controls } from '@/components'
 import ResearchGraphView from '@/components/ResearchGraphView';
 import { ProgressMeter } from '@/components/atoms'
 import { usePersistentState } from '@/hooks/usePersistentState'
@@ -39,6 +44,7 @@ const App: React.FC = () => {
   const [contextLayers, setContextLayers] = useState<ContextLayer[]>([])
   const [currentLayer, setCurrentLayer] = useState<ContextLayer | null>(null)
   const [currentPhase, setCurrentPhase] = useState<ResearchPhase>('discovery')
+  const [activeTab, setActiveTab] = useState('research')
 
   // Progress state machine
   const [progressState, setProgressState] = useState<'idle' | 'analyzing' | 'routing' | 'researching' | 'evaluating' | 'synthesizing' | 'complete'>('idle')
@@ -649,145 +655,176 @@ const App: React.FC = () => {
   }, [progress, realTimeContextDensities, isLoading])
 
   return (
-    <div className="app min-h-screen bg-gradient-to-br from-westworld-cream to-westworld-beige text-westworld-black">
-      <Header />
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
+      <TopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      
+      <main className="max-w-7xl mx-auto px-4 py-8 pb-24">
+        <ReverieHeader />
+        
+        {activeTab === 'research' && (
+          <>
+            <Controls
+              selectedEffort={effort}
+              onEffortChange={setEffort}
+              selectedModel={currentModel}
+              onModelChange={setCurrentModel}
+              onNewSearch={handleClear}
+              onExport={research.length > 0 ? handleExport : undefined}
+              onToggleGraph={graphManager.getNodes().length > 0 ? handleToggleGraph : undefined}
+              isLoading={isLoading}
+              enhancedMode={enhancedMode}
+              onEnhancedModeChange={handleEnhancedModeChange}
+            />
 
-      <main className="container mx-auto px-4 py-8 scrollbar-westworld">
-        <Controls
-          selectedEffort={effort}
-          onEffortChange={setEffort}
-          selectedModel={currentModel}
-          onModelChange={setCurrentModel}
-          onNewSearch={handleClear}
-          onExport={research.length > 0 ? handleExport : undefined}
-          onToggleGraph={graphManager.getNodes().length > 0 ? handleToggleGraph : undefined}
-          isLoading={isLoading}
-          enhancedMode={enhancedMode}
-          onEnhancedModeChange={handleEnhancedModeChange}
-        />
+            {error && (
+              <ErrorDisplay error={error.message} onDismiss={clearError} />
+            )}
 
-        {error && (
-          <ErrorDisplay error={error.message} onDismiss={clearError} />
-        )}
-
-        <ResearchGraphView graphManager={graphManager} isOpen={showGraph} onClose={handleToggleGraph} />
-
-        <div className="space-y-6">
-          {/* Show paradigm UI when detected */}
-          {paradigm && paradigmProbabilities && !isLoading && (
-            <div className="animate-fade-in">
-              <ParadigmIndicator
-                paradigm={paradigm}
-                probabilities={paradigmProbabilities}
-                confidence={paradigmProbabilities ? Math.max(...Object.values(paradigmProbabilities)) : 0}
-              />
-            </div>
-          )}
-
-          {/* Show context density during processing */}
-          {isLoading && contextDensities && (
-            <div className="animate-slide-up">
-              <ContextDensityBar
-                densities={contextDensities}
-                phase={currentPhase}
-                paradigm={paradigm || undefined}
-                showHostColors={enhancedMode}
-                showLabels={true}
-              />
-            </div>
-          )}
-
-          <div className="research-container flex flex-col">
-            <ResearchArea steps={research} />
-
-            {/* Function Call Dock - shows both live and history */}
-            {enhancedMode && (liveCalls.length > 0 || functionHistory.length > 0) && (
-              <div className="mt-4">
-                <FunctionCallDock
-                  mode={liveCalls.length > 0 ? 'live' : 'history'}
-                  showModeSelector={true}
+            <ResearchGraphView graphManager={graphManager} isOpen={showGraph} onClose={handleToggleGraph} />
+            {/* Show paradigm UI when detected */}
+            {paradigm && paradigmProbabilities && !isLoading && (
+              <div className="animate-fade-in mb-6">
+                <ParadigmIndicator
+                  paradigm={paradigm}
+                  probabilities={paradigmProbabilities}
+                  confidence={paradigmProbabilities ? Math.max(...Object.values(paradigmProbabilities)) : 0}
                 />
               </div>
             )}
 
-            {/* Semantic Search */}
-            {enhancedMode && (
-              <div className="mt-4 p-4 bg-white rounded-lg shadow">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-700">Semantic Search</h3>
-                  <button
-                    onClick={() => setShowSemanticSearch(!showSemanticSearch)}
-                    className="text-xs text-blue-600 hover:text-blue-800"
-                  >
-                    {showSemanticSearch ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-                {showSemanticSearch && (
-                  <SemanticSearch
-                    onSearch={handleSemanticSearch}
-                    isSearching={isSearching}
-                    onSelectResult={handleSelectSearchResult}
+            {/* Show context density during processing */}
+            {isLoading && contextDensities && (
+              <div className="animate-slide-up mb-6">
+                <ContextDensityBar
+                  densities={contextDensities}
+                  phase={currentPhase}
+                  paradigm={paradigm || undefined}
+                  showHostColors={enhancedMode}
+                  showLabels={true}
+                />
+              </div>
+            )}
+
+            <div className="research-container flex flex-col">
+              <ResearchView 
+                steps={research}
+                activeModel={currentModel}
+                confidence={paradigmProbabilities ? Math.max(...Object.values(paradigmProbabilities)) : 0}
+                sourceCount={research.flatMap(s => s.sources || []).length}
+                paradigm={paradigm}
+                isLoading={isLoading}
+                progressState={progressState}
+              />
+
+              {/* Function Call Dock - shows both live and history */}
+              {enhancedMode && (liveCalls.length > 0 || functionHistory.length > 0) && (
+                <div className="mt-4">
+                  <FunctionCallDock
+                    mode={liveCalls.length > 0 ? 'live' : 'history'}
+                    showModeSelector={true}
                   />
-                )}
-              </div>
-            )}
-
-            {/* Session Management */}
-            {enhancedMode && (
-              <div className="mt-4 p-4 bg-white rounded-lg shadow">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-700">Session Management</h3>
-                  <span className="text-xs text-gray-500">{sessions.length} saved sessions</span>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowSessionHistory(true)}
-                    className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Browse History
-                  </button>
-                  <button
-                    onClick={handleSaveCurrentSession}
-                    disabled={research.length === 0}
-                    className="flex-1 px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Save Session
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+              )}
 
-        {/* Global progress bar – positioned above input bar with proper spacing */}
-        {isLoading && (
-          <div className="fixed bottom-40 left-0 right-0 z-40 px-4">
-            <ProgressMeter
-              value={progress}
-              label="Research Progress"
-              variant="gradient"
-              showLoadingDots={true}
-              showSegments={true}
-              showShimmer={true}
-              animate={true}
-              onError={(error) => console.error('ProgressMeter error:', error)}
-            />
+              {/* Semantic Search */}
+              {enhancedMode && (
+                <div className="mt-4 p-4 bg-white rounded-lg shadow">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-700">Semantic Search</h3>
+                    <button
+                      onClick={() => setShowSemanticSearch(!showSemanticSearch)}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      {showSemanticSearch ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  {showSemanticSearch && (
+                    <SemanticSearch
+                      onSearch={handleSemanticSearch}
+                      isSearching={isSearching}
+                      onSelectResult={handleSelectSearchResult}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Session Management */}
+              {enhancedMode && (
+                <div className="mt-4 p-4 bg-white rounded-lg shadow">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-700">Session Management</h3>
+                    <span className="text-xs text-gray-500">{sessions.length} saved sessions</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowSessionHistory(true)}
+                      className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Browse History
+                    </button>
+                    <button
+                      onClick={handleSaveCurrentSession}
+                      disabled={research.length === 0}
+                      className="flex-1 px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Save Session
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+        
+        {activeTab === 'sessions' && (
+          <SessionsView 
+            sessions={sessions}
+            onLoadSession={handleLoadSession}
+          />
+        )}
+        
+        {activeTab === 'analytics' && (
+          <AnalyticsView />
+        )}
+        
+        {activeTab === 'settings' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-6">Settings</h3>
+            <p className="text-gray-600">Settings panel coming soon...</p>
           </div>
         )}
 
-        <div className="input-bar">
-          <InputBar
-            onQuerySubmit={handleSubmit}
-            isLoading={isLoading}
-            currentParadigm={paradigm || undefined}
-            paradigmProbabilities={paradigmProbabilities || undefined}
+      </main>
+
+      {/* Global progress bar – positioned above input bar with proper spacing */}
+      {isLoading && (
+        <div className="progress-meter-container px-4">
+          <ProgressMeter
+            value={progress}
+            label="Research Progress"
+            variant="gradient"
+            showLoadingDots={true}
+            showSegments={true}
+            showShimmer={true}
+            animate={true}
+            onError={(error) => console.error('ProgressMeter error:', error)}
           />
         </div>
-      </main>
+      )}
+
+      {/* Fixed Input Bar - only show on research tab */}
+      {activeTab === 'research' && (
+        <InputBar
+          onQuerySubmit={handleSubmit}
+          isLoading={isLoading}
+          currentParadigm={paradigm || undefined}
+          paradigmProbabilities={paradigmProbabilities || undefined}
+        />
+      )}
 
       {/* Paradigm Dashboard */}
       {paradigmProbabilities && (
-        <div className="fixed top-4 right-4 z-50">
+        <div className="paradigm-dashboard">
           <ParadigmDashboard
             paradigm={paradigm || 'bernard'}
             probabilities={paradigmProbabilities}
