@@ -154,22 +154,49 @@ export class ModelProviderService {
             }
           }
           
-          // Fallback to traditional Azure OpenAI (no web search)
+          // Fallback to Azure OpenAI with agentic tools for research capabilities
           onProgress?.('tool_used:azure_openai');
           if (!AzureOpenAIService.isAvailable()) {
             console.warn('Azure OpenAI not available, falling back to Gemini');
             return this.generateText(prompt, GENAI_MODEL_FLASH, effort, onProgress);
           }
           const azureService = AzureOpenAIService.getInstance();
-          const azureResult = await azureService.generateResponse(prompt, effort);
-          onProgress?.(`tool_used:completed:azure_openai:${startTime}`);
-          if (!azureResult || !azureResult.text) {
-            throw new Error('Azure OpenAI service returned invalid response');
+          
+          // Get available research tools for agentic workflow
+          const researchTools = azureService.getAvailableResearchTools();
+          
+          if (researchTools && researchTools.length > 0) {
+            // Use agentic workflow with tools for enhanced research capabilities
+            console.log(`Using Azure O3 with ${researchTools.length} research tools for agentic workflow`);
+            const azureResult = await azureService.generateResponseWithTools(
+              prompt,
+              researchTools,
+              effort,
+              undefined, // paradigm (optional)
+              undefined, // paradigmProbabilities (optional)
+              5 // maxIterations
+            );
+            onProgress?.(`tool_used:completed:azure_openai_with_tools:${startTime}`);
+            if (!azureResult || !azureResult.text) {
+              throw new Error('Azure OpenAI service returned invalid response');
+            }
+            return {
+              text: azureResult.text,
+              sources: azureResult.sources || []
+            };
+          } else {
+            // Fallback to basic response without tools
+            console.log('No research tools available, using basic Azure O3 response');
+            const azureResult = await azureService.generateResponse(prompt, effort);
+            onProgress?.(`tool_used:completed:azure_openai:${startTime}`);
+            if (!azureResult || !azureResult.text) {
+              throw new Error('Azure OpenAI service returned invalid response');
+            }
+            return {
+              text: azureResult.text,
+              sources: azureResult.sources || []
+            };
           }
-          return {
-            text: azureResult.text,
-            sources: azureResult.sources || []
-          };
 
         default:
           throw new APIError(`Unsupported model: ${model}`, 'INVALID_MODEL', false);
@@ -293,7 +320,7 @@ export class ModelProviderService {
   }
 
   /**
-   * Generate text using Azure OpenAI service
+   * Generate text using Azure OpenAI service with agentic tools support
    */
   private async generateTextWithAzureOpenAI(prompt: string, effort: EffortType, _useSearch: boolean): Promise<ProviderResponse> {
     void _useSearch;
@@ -301,8 +328,30 @@ export class ModelProviderService {
       throw new APIError("Azure OpenAI service not initialized", "SERVICE_ERROR", false);
     }
     try {
-      const response = await this.azureOpenAI.generateText(prompt, effort);
-      return { text: response.text, sources: [] };
+      // Get available research tools for agentic workflow
+      const researchTools = this.azureOpenAI.getAvailableResearchTools();
+      
+      if (researchTools && researchTools.length > 0) {
+        // Use agentic workflow with tools for enhanced research capabilities
+        console.log(`Using Azure O3 with ${researchTools.length} research tools for agentic workflow`);
+        const response = await this.azureOpenAI.generateResponseWithTools(
+          prompt,
+          researchTools,
+          effort,
+          undefined, // paradigm (optional)
+          undefined, // paradigmProbabilities (optional)
+          5 // maxIterations
+        );
+        return { 
+          text: response.text, 
+          sources: response.sources || [] 
+        };
+      } else {
+        // Fallback to basic response without tools
+        console.log('No research tools available, using basic Azure O3 response');
+        const response = await this.azureOpenAI.generateText(prompt, effort);
+        return { text: response.text, sources: [] };
+      }
     } catch (error) {
       throw new APIError(`Azure OpenAI API request failed: ${error instanceof Error ? error.message : 'Unknown error'}`, "API_ERROR", true);
     }

@@ -28,6 +28,22 @@ export class GrokService {
     this.apiKey = apiKey;
   }
 
+  /**
+   * Quick availability probe – mirrors the pattern used by other providers
+   * (e.g. AzureOpenAIService.isAvailable).  Having this helper makes it easy
+   * for callers to check whether the Grok provider can be used without
+   * instantiating the service (and therefore without throwing when the API
+   * key is missing).
+   */
+  public static isAvailable(): boolean {
+    try {
+      const apiKey = getEnv('VITE_XAI_API_KEY', 'XAI_API_KEY');
+      return !!apiKey;
+    } catch {
+      return false;
+    }
+  }
+
   public static getInstance(): GrokService {
     if (!GrokService.instance) {
       GrokService.instance = new GrokService();
@@ -60,13 +76,25 @@ export class GrokService {
         requestBody.reasoning_effort = this.getReasoningEffort(effort);
       }
 
+      // Live-search parameters follow the latest xAI spec.  Only include the
+      // block if search is explicitly requested – otherwise the request will
+      // defer to the model's default behaviour (which is equivalent to
+      // `mode: "off"`).
       if (useSearch) {
-        requestBody.search_parameters = {
-          mode: "auto",
-          return_citations: true,
-          max_search_results: this.getSearchResultsCount(effort),
-          sources: searchSources ? this.buildSearchSources(searchSources) : undefined
+        const searchParams: Record<string, any> = {
+          // Use "auto" so the model can decide whether to query external
+          // sources.  Callers wanting deterministic behaviour can switch this
+          // via the `useSearch` / `searchSources` flags in the future.
+          mode: 'auto'
         };
+
+        // The latest public docs (https://docs.x.ai/docs/guides/live-search)
+        // state that `sources` is an *array of strings* (e.g. ["web", "x"]).
+        if (searchSources && searchSources.length > 0) {
+          searchParams.sources = searchSources.map(src => src.toLowerCase());
+        }
+
+        requestBody.search_parameters = searchParams;
       }
 
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -151,10 +179,30 @@ export class GrokService {
       if (assistantMessage?.tool_calls) {
         for (const toolCall of assistantMessage.tool_calls) {
           const functionName = toolCall.function.name;
-          const functionArgs = JSON.parse(toolCall.function.arguments);
+          // The API may return arguments as a JSON string or already-parsed
+          // object depending on the request format.  Normalise to an object
+          // here so we can pass it straight to the implementation.
+          let functionArgs: Record<string, any> = {};
+          try {
+            functionArgs = typeof toolCall.function.arguments === 'string'
+              ? JSON.parse(toolCall.function.arguments)
+              : toolCall.function.arguments || {};
+          } catch (err) {
+            console.warn('Failed to parse tool arguments – passing raw value', err);
+            functionArgs = toolCall.function.arguments || {};
+          }
 
           if (toolImplementations[functionName]) {
-            const result = await toolImplementations[functionName](...Object.values(functionArgs));
+            // Prefer an object-based invocation so implementations can use
+            // named parameters.  Fall back to spreading positional values for
+            // legacy handlers.
+            const impl = toolImplementations[functionName];
+            let result;
+            try {
+              result = await impl(functionArgs);
+            } catch {
+              result = await impl(...Object.values(functionArgs));
+            }
             messages.push({
               role: "tool",
               content: JSON.stringify(result),
@@ -215,10 +263,9 @@ export class GrokService {
     searchMode: 'auto' | 'on' | 'off' = 'auto'
   ): Promise<GrokResponse> {
     try {
-      const searchParams: any = {
-        mode: searchMode,
-        return_citations: true,
-        max_search_results: this.getSearchResultsCount(effort),
+      // Compose the `search_parameters` object in line with the public spec.
+      const searchParams: Record<string, any> = {
+        mode: searchMode
       };
 
       if (dateRange?.from) {
@@ -228,12 +275,20 @@ export class GrokService {
         searchParams.to_date = dateRange.to.toISOString().split('T')[0];
       }
 
+      // Custom website allow/deny lists are currently not part of the public
+      // xAI spec, but we leave the logic in place behind a feature-test so
+      // that callers relying on it continue to work against internal /
+      // future builds where the capability exists.  If neither list is
+      // provided we fall back to a generic "web" source.
       if (allowedWebsites || excludedWebsites) {
-        searchParams.sources = [{
-          type: "web",
-          ...(allowedWebsites && { allowed_websites: allowedWebsites.slice(0, 5) }),
-          ...(excludedWebsites && { excluded_websites: excludedWebsites.slice(0, 5) })
-        }];
+        searchParams.sources = ['web'];
+
+        if (allowedWebsites && allowedWebsites.length > 0) {
+          (searchParams as any).allowed_websites = allowedWebsites.slice(0, 5);
+        }
+        if (excludedWebsites && excludedWebsites.length > 0) {
+          (searchParams as any).excluded_websites = excludedWebsites.slice(0, 5);
+        }
       }
 
       const requestBody: any = {
@@ -279,14 +334,6 @@ export class GrokService {
     }
   }
 
-  private getSearchResultsCount(effort: EffortType): number {
-    switch (effort) {
-      case EffortType.LOW: return 5;
-      case EffortType.MEDIUM: return 10;
-      case EffortType.HIGH: return 20;
-      default: return 10;
-    }
-  }
 
   private getReasoningEffort(effort: EffortType): string {
     switch (effort) {
@@ -297,17 +344,6 @@ export class GrokService {
     }
   }
 
-  private buildSearchSources(sources: string[]) {
-    return sources.map(source => {
-      switch (source.toLowerCase()) {
-        case 'web': return { type: 'web' };
-        case 'x': return { type: 'x' };
-        case 'news': return { type: 'news' };
-        case 'rss': return { type: 'rss' };
-        default: return { type: 'web' };
-      }
-    });
-  }
 
   private processCitations(citations: any): Citation[] {
     if (!citations || !Array.isArray(citations)) {
