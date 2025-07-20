@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* Remove explicit any usage and improve type safety */
 import {
   ResearchStep,
   ResearchStepType,
@@ -606,7 +606,7 @@ export class ResearchGraphManager {
                 id: node.id,
                 type: node.type,
                 title: node.title,
-                content: (node as any).content ?? node.title,
+                content: 'content' in node ? (node as { content: string }).content : node.title,
                 timestamp: node.timestamp,
                 duration: node.metadata?.processingTime,
                 sources: sourcesByStep[node.id] || [],
@@ -619,7 +619,7 @@ export class ResearchGraphManager {
                         id: node.stepId,
                         type: node.type,
                         title: node.title,
-                        content: (node as any).content ?? node.title,
+                        content: 'content' in node ? (node as { content: string }).content : node.title,
                         icon: () => null,
                         timestamp: node.timestamp,
                         sources: sourcesByStep[node.id] || []

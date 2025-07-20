@@ -1,8 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { ResearchGraphManager, generateMermaidDiagram } from '@/researchGraph';
-import { ChartBarIcon, ArrowDownTrayIcon, XMarkIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowsPointingOutIcon } from './icons';
-import { GraphLayoutEngine, getNodeStyle } from '@/utils/graphLayout';
+import { GraphLayoutEngine, getNodeStyle, GraphNode, GraphEdge } from '@/utils/graphLayout';
 import { formatDuration } from '@/utils/exportUtils';
+import { ChartBarIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon,
+         ArrowPathIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
+import GraphAccessibilityLayer from './GraphAccessibilityLayer';
 
 interface ResearchGraphViewProps {
   graphManager: ResearchGraphManager;
@@ -10,26 +12,71 @@ interface ResearchGraphViewProps {
   onClose: () => void;
 }
 
-export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManager, isOpen, onClose }) => {
-  const [stats, setStats] = useState(() => graphManager?.getStatistics() || {
-    totalNodes: 0,
-    totalDuration: 0,
-    averageStepDuration: 0,
-    errorCount: 0,
-    successRate: 0,
-    sourcesCollected: 0,
-    uniqueCitations: 0
-  });
-  const [graphVersion, setGraphVersion] = useState(0);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+interface ViewState {
+  zoom: number;
+  pan: { x: number; y: number };
+  selectedNode: string | null;
+  hoveredNode: string | null;
+  isDragging: boolean;
+  dragStart: { x: number; y: number };
+}
 
+interface LayoutData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  version: number;
+}
+
+// WCAG AA compliant color palette
+const THEME = {
+  background: '#faf9f7',
+  cardBackground: '#ffffff',
+  border: '#d1d5db',
+  text: '#1f2937',
+  textSecondary: '#4b5563',
+  accent: '#3b82f6',
+  error: '#dc2626',
+  success: '#059669',
+  warning: '#d97706'
+};
+
+export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
+  graphManager,
+  isOpen,
+  onClose
+}) => {
+  // Consolidated view state
+  const [viewState, setViewState] = useState<ViewState>({
+    zoom: 1,
+    pan: { x: 0, y: 0 },
+    selectedNode: null,
+    hoveredNode: null,
+    isDragging: false,
+    dragStart: { x: 0, y: 0 }
+  });
+
+  // Accessibility layer state
+  const [showAccessibilityLayer, setShowAccessibilityLayer] = useState(false);
+
+  const [stats, setStats] = useState(() =>
+    graphManager?.getStatistics() || {
+      totalNodes: 0,
+      totalDuration: 0,
+      averageStepDuration: 0,
+      errorCount: 0,
+      successRate: 0,
+      sourcesCollected: 0,
+      uniqueCitations: 0
+    }
+  );
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const layoutEngine = useRef(new GraphLayoutEngine());
+  const animationFrameRef = useRef<number | undefined>(undefined);
+  const redrawNeeded = useRef(false);
+
+  // Unsubscribe function for the graph manager
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   // Poll for graph version changes
   useEffect(() => {
