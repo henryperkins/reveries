@@ -103,7 +103,7 @@ class BingSearchProvider implements SearchProvider {
       }
 
       const results = this.parseBingResults(data.webPages?.value || []);
-      
+
       return {
         results,
         totalResults: data.webPages?.totalEstimatedMatches,
@@ -161,7 +161,7 @@ class BingSearchProvider implements SearchProvider {
   private calculateRelevance(result: any): number {
     // Simple relevance calculation based on available metadata
     let score = 0.5;
-    
+
     if (result.name && result.name.length > 10) score += 0.1;
     if (result.snippet && result.snippet.length > 50) score += 0.1;
     if (result.dateLastCrawled) {
@@ -169,7 +169,7 @@ class BingSearchProvider implements SearchProvider {
       if (daysSinceUpdate < 30) score += 0.1;
       if (daysSinceUpdate < 7) score += 0.1;
     }
-    
+
     return Math.min(score, 1.0);
   }
 
@@ -197,7 +197,7 @@ class GoogleSearchProvider implements SearchProvider {
     if (!this.apiKey || !this.searchEngineId || typeof fetch === 'undefined') {
       return false;
     }
-    
+
     // Check daily quota (Google CSE free tier: 100 queries/day)
     const today = new Date().toDateString();
     if (this.dailyUsage.date !== today) {
@@ -205,7 +205,7 @@ class GoogleSearchProvider implements SearchProvider {
       this.dailyUsage = { count: 0, date: today };
       this.rateLimit.remaining = 100;
     }
-    
+
     // Check if we have remaining quota
     return this.dailyUsage.count < 100 && this.rateLimit.remaining > 0;
   }
@@ -214,11 +214,11 @@ class GoogleSearchProvider implements SearchProvider {
     if (!await this.isAvailable()) {
       throw new Error('Google Search provider quota exceeded or unavailable');
     }
-    
+
     // Track quota usage before making the request
     this.dailyUsage.count++;
     this.rateLimit.remaining = Math.max(0, 100 - this.dailyUsage.count);
-    
+
     // Add request headers for better API performance (per REST API documentation)
     const headers: Record<string, string> = {
       'Accept': 'application/json',
@@ -258,26 +258,26 @@ class GoogleSearchProvider implements SearchProvider {
       // Handle specific Google API errors according to REST API documentation
       if (!response.ok || data.error) {
         const error = data.error || { code: response.status, message: response.statusText };
-        
+
         // Handle quota exceeded errors specifically
         if (error.code === 403 && error.message?.includes('Quota exceeded')) {
           console.warn(`[GoogleSearchProvider] Daily quota exceeded`);
           this.rateLimit.remaining = 0;
           throw new Error('Google Search API daily quota exceeded. Try again tomorrow or upgrade to paid tier.');
         }
-        
+
         // Handle invalid API key
         if (error.code === 400 && error.message?.includes('API key not valid')) {
           console.error(`[GoogleSearchProvider] Invalid API key`);
           throw new Error('Google Search API key is invalid. Please check your VITE_GOOGLE_SEARCH_API_KEY configuration.');
         }
-        
+
         // Handle invalid search engine ID
         if (error.code === 400 && error.message?.includes('Invalid Value')) {
           console.error(`[GoogleSearchProvider] Invalid search engine ID`);
           throw new Error('Google Custom Search Engine ID is invalid. Please check your VITE_GOOGLE_SEARCH_ENGINE_ID configuration.');
         }
-        
+
         console.error(`[GoogleSearchProvider] API Error:`, error);
         throw new Error(`Google Search API error: ${error.message || 'Unknown error'}`);
       }
@@ -290,7 +290,7 @@ class GoogleSearchProvider implements SearchProvider {
       console.log(`[GoogleSearchProvider] Items returned: ${data.items?.length || 0}`);
 
       const results = this.parseGoogleResults(data.items || []);
-      
+
       // Log sample results for debugging
       if (results.length > 0) {
         console.log(`[GoogleSearchProvider] Sample result:`, {
@@ -299,7 +299,7 @@ class GoogleSearchProvider implements SearchProvider {
           snippet: results[0].snippet.substring(0, 100) + '...'
         });
       }
-      
+
       return {
         results,
         totalResults: parseInt(data.searchInformation?.totalResults || '0', 10),
@@ -357,11 +357,11 @@ class GoogleSearchProvider implements SearchProvider {
   private calculateRelevance(result: any): number {
     // Simple relevance calculation
     let score = 0.5;
-    
+
     if (result.title && result.title.length > 10) score += 0.1;
     if (result.snippet && result.snippet.length > 50) score += 0.1;
     if (result.pagemap?.metatags) score += 0.1;
-    
+
     return Math.min(score, 1.0);
   }
 
@@ -403,7 +403,7 @@ class DuckDuckGoProvider implements SearchProvider {
       const searchTime = Date.now() - startTime;
 
       const results = this.parseDuckDuckGoResults(data);
-      
+
       return {
         results,
         totalResults: results.length,
@@ -484,16 +484,16 @@ export class SearchProviderService {
   private async getAvailableProvider(): Promise<SearchProvider> {
     // Try providers in order until one is available
     console.log(`[SearchProviderService] Checking ${this.providers.length} providers...`);
-    
+
     for (const provider of this.providers) {
       try {
         const isAvailable = await provider.isAvailable();
         console.log(`[SearchProviderService] Provider ${provider.name}: ${isAvailable ? 'available' : 'not available'}`);
-        
+
         if (isAvailable) {
           const rateLimit = provider.getRateLimit();
           console.log(`[SearchProviderService] Provider ${provider.name} rate limit: ${rateLimit.remaining} remaining`);
-          
+
           if (rateLimit.remaining > 0) {
             console.log(`[SearchProviderService] Selected provider: ${provider.name}`);
             return provider;
@@ -510,12 +510,12 @@ export class SearchProviderService {
   }
 
   public async search(
-    query: string, 
-    options: SearchOptions = {}, 
+    query: string,
+    options: SearchOptions = {},
     onProgress?: (message: string) => void
   ): Promise<SearchResponse> {
     const cacheKey = `${query}_${JSON.stringify(options)}`;
-    
+
     // Check cache first
     const cached = this.cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
@@ -529,10 +529,10 @@ export class SearchProviderService {
       const provider = await this.getAvailableProvider();
       console.log(`Using search provider: ${provider.name}`);
       onProgress?.(`tool_used:${provider.name}_search`);
-      
+
       const response = await provider.search(query, options);
       onProgress?.(`tool_used:completed:${provider.name}_search:${startTime}`);
-      
+
       // Cache the response
       this.cache.set(cacheKey, {
         response,
@@ -547,7 +547,7 @@ export class SearchProviderService {
   }
 
   public async searchMultiple(queries: string[], options: SearchOptions = {}): Promise<SearchResponse[]> {
-    const promises = queries.map(query => 
+    const promises = queries.map(query =>
       this.search(query, options).catch(error => {
         console.error(`Search failed for query "${query}":`, error);
         return {
@@ -576,7 +576,7 @@ export class SearchProviderService {
 
   public async testProviders(): Promise<Array<{provider: string; available: boolean; error?: string}>> {
     const results = [];
-    
+
     for (const provider of this.providers) {
       try {
         const available = await provider.isAvailable();
@@ -585,26 +585,34 @@ export class SearchProviderService {
           await provider.search('test', { maxResults: 1 });
           results.push({ provider: provider.name, available: true });
         } else {
-          results.push({ 
-            provider: provider.name, 
-            available: false, 
-            error: 'Provider not configured' 
+          results.push({
+            provider: provider.name,
+            available: false,
+            error: 'Provider not configured'
           });
         }
       } catch (error) {
-        results.push({ 
-          provider: provider.name, 
-          available: false, 
+        results.push({
+          provider: provider.name,
+          available: false,
           error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
     }
-    
+
     return results;
   }
 
   public clearCache(): void {
     this.cache.clear();
+  }
+
+  /**
+   * Disable a provider by name at runtime (e.g., skip Google CSE when Gemini Flash
+   * has built-in `google_search` grounding).
+   */
+  public disableProvider(providerName: string): void {
+    this.providers = this.providers.filter(p => p.name !== providerName);
   }
 
   public getCacheStats(): { size: number; oldestEntry: number } {

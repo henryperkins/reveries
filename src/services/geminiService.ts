@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { Tool, SchemaType, Schema } from "@google/generative-ai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { GENAI_MODEL_FLASH } from '@/types';
 
 export interface GeminiFunctionCall {
@@ -70,9 +71,11 @@ const getGeminiApiKey = (): string => {
 
 export class GeminiService {
   private geminiAI: GoogleGenerativeAI;
+  private genAI: GoogleGenAI;
 
   constructor() {
     this.geminiAI = new GoogleGenerativeAI(getGeminiApiKey());
+    this.genAI = new GoogleGenAI({ apiKey: getGeminiApiKey() });
   }
 
   async generateContent(
@@ -123,17 +126,26 @@ export class GeminiService {
             type: fn.parameters.type as SchemaType,
             properties: Object.fromEntries(
               Object.entries(fn.parameters.properties).map(([key, value]) => {
-                // Ensure each property matches Schema type
+                // Map string types to Type enum for better compatibility
+                const typeMap: Record<string, string> = {
+                  'string': 'STRING',
+                  'number': 'NUMBER',
+                  'boolean': 'BOOLEAN',
+                  'object': 'OBJECT',
+                  'array': 'ARRAY'
+                };
+                const mappedType = typeMap[value.type.toLowerCase()] || value.type;
+                
                 if (value.enum) {
                   return [key, {
-                    type: value.type,
+                    type: mappedType,
                     description: value.description,
                     enum: value.enum,
                     format: "enum"
                   } as Schema];
                 }
                 return [key, {
-                  type: value.type,
+                  type: mappedType,
                   description: value.description
                 } as Schema];
               })
@@ -279,6 +291,140 @@ export class GeminiService {
       text: result.text,
       sources: result.sources || []
     };
+  }
+
+  /**
+   * Generate content with function calling using the new @google/genai pattern
+   * This method demonstrates the official API pattern from the docs
+   */
+  async generateWithGenAI(
+    prompt: string,
+    functions: Array<{
+      name: string;
+      description: string;
+      parameters: {
+        type: string;
+        properties: Record<string, {
+          type: string;
+          description: string;
+          enum?: string[];
+        }>;
+        required: string[];
+      };
+    }>,
+    options: Omit<GeminiServiceOptions, 'functions'> = {}
+  ): Promise<{
+    text: string;
+    functionCalls?: Array<{
+      name: string;
+      args: Record<string, unknown>;
+    }>;
+    sources?: { name: string; url?: string }[];
+  }> {
+    try {
+      // Convert function declarations to new format
+      const functionDeclarations = functions.map(fn => ({
+        name: fn.name,
+        description: fn.description,
+        parameters: {
+          type: Type.OBJECT,
+          properties: Object.fromEntries(
+            Object.entries(fn.parameters.properties).map(([key, value]) => {
+              let propType = Type.STRING;
+              switch (value.type.toLowerCase()) {
+                case 'number':
+                  propType = Type.NUMBER;
+                  break;
+                case 'boolean':
+                  propType = Type.BOOLEAN;
+                  break;
+                case 'object':
+                  propType = Type.OBJECT;
+                  break;
+                case 'array':
+                  propType = Type.ARRAY;
+                  break;
+              }
+              
+              const prop: Record<string, unknown> = {
+                type: propType,
+                description: value.description
+              };
+              
+              if (value.enum) {
+                prop.enum = value.enum;
+              }
+              
+              return [key, prop];
+            })
+          ),
+          required: fn.parameters.required
+        }
+      }));
+
+      // Build tools array with function declarations and optionally Google Search
+      const tools: Array<{ functionDeclarations?: typeof functionDeclarations; googleSearch?: Record<string, never> }> = [];
+      
+      if (functionDeclarations.length > 0) {
+        tools.push({
+          functionDeclarations
+        });
+      }
+      
+      if (options.useSearch) {
+        tools.push({
+          googleSearch: {}
+        });
+      }
+
+      const config = {
+        tools
+      };
+
+      const contents = [
+        {
+          role: 'user',
+          parts: [{ text: prompt }]
+        }
+      ];
+
+      const response = await this.genAI.models.generateContent({
+        model: options.model || GENAI_MODEL_FLASH,
+        contents,
+        config
+      });
+
+      const text = response.text || '';
+      const functionCalls = response.functionCalls
+        ?.filter(fc => fc.name) // Filter out calls without names
+        .map(fc => ({
+          name: fc.name as string,
+          args: fc.args || {}
+        }));
+      
+      // Extract sources if Google Search was used
+      const sources: { name: string; url?: string }[] = [];
+      if (options.useSearch && response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+        const chunks = response.candidates[0].groundingMetadata.groundingChunks;
+        sources.push(
+          ...chunks
+            .filter((chunk: { web?: { uri?: string; title?: string } }) => chunk.web && chunk.web.uri)
+            .map((chunk: { web?: { uri?: string; title?: string } }) => ({
+              name: chunk.web?.title || 'Web Source',
+              url: chunk.web?.uri
+            }))
+        );
+      }
+
+      return {
+        text,
+        functionCalls,
+        ...(sources.length > 0 ? { sources } : {})
+      };
+    } catch (error) {
+      console.error('GenAI API error:', error);
+      throw new Error(`GenAI generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 }
 

@@ -157,11 +157,12 @@ export class RateLimiter {
         // At least 1s to avoid a busy loop.
         const waitMs = Math.max(tokenWaitMs, requestWaitMs, 1_000);
         // Leave critical section *before* we wait so others may proceed.
-      } finally {
         release();
+        
+        await new Promise(r => setTimeout(r, waitMs));
+      } finally {
+        // release already called above
       }
-
-      await new Promise(r => setTimeout(r, waitMs));
       // Loop again after waiting.
     }
   }

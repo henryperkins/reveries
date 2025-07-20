@@ -74,10 +74,15 @@ export class WebResearchService {
     // Import search provider service
     const { SearchProviderService } = await import('../search/SearchProviderService');
     const searchService = SearchProviderService.getInstance();
+    // When using Gemini-2.5-Flash, rely on the model’s native `google_search`
+    // grounding and disable Google Custom Search to avoid redundant calls.
+    if (model === 'gemini-2.5-flash') {
+      searchService.disableProvider('google');
+    }
 
     for (const query of queries) {
       onProgress?.(`Searching for: "${query}"`);
-      
+
       try {
         // Perform real web search
         const searchResponse = await searchService.search(query, {
@@ -95,7 +100,7 @@ export class WebResearchService {
 
         // Convert search results to citations
         const searchCitations = searchService.convertToCitations(searchResponse.results);
-        
+
         // Add unique sources
         searchCitations.forEach(source => {
           const sourceKey = ResearchUtilities.normalizeSourceKey(source);
@@ -149,7 +154,7 @@ Please provide a well-structured summary that synthesizes the information from t
             .slice(0, 3)
             .map(result => `**${result.title}**\n${result.snippet}\nSource: ${result.url}`)
             .join('\n\n');
-          
+
           findingsOutputParts.push(`## ${query}\n\n${fallbackSummary}`);
           onProgress?.(`Used raw search results for "${query}" due to summarization error`);
         }
@@ -157,21 +162,21 @@ Please provide a well-structured summary that synthesizes the information from t
       } catch (searchError) {
         console.error(`Error searching for "${query}":`, searchError);
         onProgress?.(`Search failed for "${query}", trying LLM fallback...`);
-        
+
         // Fallback to LLM-only approach if search fails
         try {
           const fallbackPrompt = `Provide information about: "${query}". Focus on factual information and insights based on your training data. If you don't have reliable information about this topic, state that clearly.`;
-          
+
           const { text, sources } = await generateText(
             fallbackPrompt,
             model,
             effort
           );
-          
+
           if (text && text.trim()) {
             findingsOutputParts.push(`## ${query}\n\n${text}\n\n*Note: This information is based on training data as web search was unavailable.*`);
           }
-          
+
           if (sources) {
             sources.forEach(source => {
               const sourceKey = ResearchUtilities.normalizeSourceKey(source);
@@ -181,7 +186,7 @@ Please provide a well-structured summary that synthesizes the information from t
               }
             });
           }
-          
+
           onProgress?.(`Used LLM fallback for "${query}"`);
         } catch (fallbackError) {
           console.error(`Fallback failed for query "${query}":`, fallbackError);

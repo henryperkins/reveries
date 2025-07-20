@@ -117,8 +117,6 @@ export class SelectLayerService {
     paradigm: HostParadigm,
     k: number
   ): Promise<Citation[]> {
-    const strategy = this.strategies[paradigm];
-
     // ACE-Graph hybrid retrieval: combine semantic and keyword scoring
     const hybridResults = this.hybridRetrieve(query, sources, paradigm);
 
