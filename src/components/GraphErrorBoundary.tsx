@@ -223,7 +223,7 @@ export function GraphCanvasErrorBoundary({ children }: { children: ReactNode }) 
       }}
     >
       {children}
-    </GraphCanvasErrorBoundary>
+    </GraphErrorBoundary>
   );
 }
 

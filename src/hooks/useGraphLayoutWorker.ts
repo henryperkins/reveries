@@ -156,13 +156,14 @@ export function useFallbackGraphLayout(): UseGraphLayoutWorkerResult {
       // Convert worker types to main thread types
       const mainThreadNodes = nodes.map(node => ({
         id: node.id,
-        title: node.title,
+        label: node.title,  // GraphLayoutEngine expects 'label' not 'title'
         type: node.type,
         level: node.level,
         x: 0,
         y: 0,
         width: 200,
-        height: 60
+        height: 60,
+        title: node.title
       }));
 
       const mainThreadEdges = edges.map(edge => ({

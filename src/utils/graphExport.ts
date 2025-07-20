@@ -7,7 +7,7 @@ import { ResearchGraphManager, generateMermaidDiagram } from '@/researchGraph';
 import { LayoutNode, LayoutEdge } from './graphLayoutWorker';
 
 export interface ExportOptions {
-  format: 'png' | 'svg' | 'json' | 'mermaid';
+  format?: 'png' | 'svg' | 'json' | 'mermaid';
   filename?: string;
   quality?: number; // For PNG export
   backgroundColor?: string;
@@ -385,7 +385,7 @@ export class GraphExportService {
       .replace(/'/g, '&apos;');
   }
 
-  private drawLegend(ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number): void {
+  private drawLegend(ctx: CanvasRenderingContext2D, canvasWidth: number, _canvasHeight: number): void {
     const legendX = canvasWidth - 200;
     const legendY = 20;
     const legendWidth = 180;
@@ -424,7 +424,7 @@ export class GraphExportService {
     });
   }
 
-  private generateSVGLegend(width: number, height: number): string {
+  private generateSVGLegend(width: number, _height: number): string {
     const legendX = width - 200;
     const legendY = 20;
 
@@ -498,8 +498,8 @@ export class GraphExportService {
 
 // Convenience functions for direct use
 export async function exportGraphToPNG(
-  canvas: HTMLCanvasElement,
-  options?: ExportOptions
+  _canvas: HTMLCanvasElement,
+  _options?: ExportOptions
 ): Promise<void> {
   // This requires a graph manager instance, so it's mainly for use within components
   throw new Error('exportGraphToPNG requires GraphExportService instance');

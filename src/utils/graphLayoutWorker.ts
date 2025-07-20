@@ -67,7 +67,7 @@ class WorkerGraphLayoutEngine {
 
       // Calculate positions
       const layoutNodes: LayoutNode[] = [];
-      const maxLevel = Math.max(...nodes.map(n => n.level));
+      // const maxLevel = Math.max(...nodes.map(n => n.level)); // Not currently used
 
       levels.forEach((levelNodes, level) => {
         // Adaptive spacing for large graphs

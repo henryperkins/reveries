@@ -4,7 +4,7 @@ import { FunctionCallingService } from '@/services/functionCallingService'
 import { DatabaseService } from '@/services/databaseService'
 import { ResearchGraphManager } from '@/researchGraph'
 import { Header, Controls, InputBar, ResearchArea, ErrorDisplay, ParadigmIndicator, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress } from '@/components'
-import ResearchGraphView from '@/components/ResearchGraphViewNew';
+import ResearchGraphView from '@/components/ResearchGraphView';
 import { ProgressMeter } from '@/components/atoms'
 import { usePersistentState } from '@/hooks/usePersistentState'
 import { useFunctionCalls } from '@/components/FunctionCallDock'

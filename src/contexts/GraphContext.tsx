@@ -231,15 +231,14 @@ export function useGraphOperations() {
       }
     },
     
-    updateNode: async (nodeId: string, updates: any) => {
+    updateNodeDuration: async (nodeId: string) => {
       if (!graphManager) throw new Error('Graph manager not available');
       
       try {
-        const result = await graphManager.updateNodeDuration(nodeId, updates);
+        graphManager.updateNodeDuration(nodeId);
         refreshGraph();
-        return result;
       } catch (error) {
-        console.error('Failed to update node:', error);
+        console.error('Failed to update node duration:', error);
         throw error;
       }
     },

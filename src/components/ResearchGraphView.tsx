@@ -78,268 +78,327 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
   // Unsubscribe function for the graph manager
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
-  // Poll for graph version changes
-  useEffect(() => {
-    if (!isOpen || !graphManager) return;
+  // Memoized layout data with version tracking
+  const graphVersion = graphManager?.getVersion() || 0;
+  const layoutData = useMemo<LayoutData>(() => {
+    if (!graphManager) {
+      return { nodes: [], edges: [], version: 0 };
+    }
 
-    const checkVersion = () => {
-      const currentVersion = graphManager.getVersion();
-      if (currentVersion !== graphVersion) {
-        setGraphVersion(currentVersion);
-        setStats(graphManager.getStatistics());
-      }
+    try {
+      const graphData = graphManager.exportForVisualization();
+      const { nodes, edges } = layoutEngine.current.layoutGraph(
+        graphData.nodes,
+        graphData.edges
+      );
+
+      return {
+        nodes,
+        edges,
+        version: graphVersion
+      };
+    } catch (error) {
+      console.error('Error generating layout:', error);
+      return { nodes: [], edges: [], version: 0 };
+    }
+  }, [graphManager, graphVersion]);
+
+  // Subscribe to graph events for reactive updates
+  useEffect(() => {
+    if (!graphManager || !isOpen) return;
+
+    const handleGraphEvent = () => {
+      // Update stats immediately
+      setStats(graphManager.getStatistics());
+      // Mark for redraw
+      redrawNeeded.current = true;
     };
 
-    // Check immediately
-    checkVersion();
+    // Subscribe to graph events
+    unsubscribeRef.current = graphManager.subscribe(handleGraphEvent);
 
-    // Check periodically for updates
-    const interval = setInterval(checkVersion, 100);
-    return () => clearInterval(interval);
-  }, [isOpen, graphManager, graphVersion]);
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, [graphManager, isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
+  // Main drawing function - split from event handling
+  const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !isOpen) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * window.devicePixelRatio;
-    canvas.height = rect.height * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    try {
+      // Reset transform to avoid cumulative scaling issues
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    // Clear canvas
-    ctx.clearRect(0, 0, rect.width, rect.height);
-
-    // Apply transformations
-    ctx.save();
-    ctx.translate(rect.width / 2 + pan.x, 100 + pan.y);
-    ctx.scale(zoom, zoom);
-
-    // Get graph data and layout
-    const graphData = graphManager.exportForVisualization();
-    const { nodes: layoutNodes, edges: layoutEdges } = layoutEngine.current.layoutGraph(
-      graphData.nodes,
-      graphData.edges
-    );
-
-    // Draw edges
-    layoutEdges.forEach(edge => {
-      if (edge.points.length < 2) return;
-
-      ctx.beginPath();
-      ctx.moveTo(edge.points[0].x, edge.points[0].y);
-
-      if (edge.points.length === 4) {
-        // Bezier curve
-        ctx.bezierCurveTo(
-          edge.points[1].x, edge.points[1].y,
-          edge.points[2].x, edge.points[2].y,
-          edge.points[3].x, edge.points[3].y
-        );
-      } else {
-        // Linear
-        edge.points.forEach((point, i) => {
-          if (i > 0) ctx.lineTo(point.x, point.y);
-        });
-      }
-
-      // Style based on edge type
-      if (edge.type === 'error') {
-        ctx.strokeStyle = '#dc2626';
-        ctx.setLineDash([5, 5]);
-        ctx.lineWidth = 2;
-      } else {
-        ctx.strokeStyle = '#c8b8a8';
-        ctx.setLineDash([]);
-        ctx.lineWidth = 1.5;
-      }
-
-      ctx.stroke();
-
-      // Draw arrow
-      if (edge.points.length >= 2) {
-        const lastPoint = edge.points[edge.points.length - 1];
-        const prevPoint = edge.points[edge.points.length - 2];
-        const angle = Math.atan2(lastPoint.y - prevPoint.y, lastPoint.x - prevPoint.x);
-
-        ctx.save();
-        ctx.translate(lastPoint.x, lastPoint.y);
-        ctx.rotate(angle);
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-10, -5);
-        ctx.lineTo(-10, 5);
-        ctx.closePath();
-        ctx.fillStyle = edge.type === 'error' ? '#dc2626' : '#c8b8a8';
-        ctx.fill();
-        ctx.restore();
-      }
-    });
-
-    // Draw nodes
-    layoutNodes.forEach(node => {
-      const style = getNodeStyle(node.type);
-      const isHovered = node.id === hoveredNode;
-      const isSelected = node.id === selectedNode;
-
-      // Shadow for depth
-      if (isHovered || isSelected) {
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-        ctx.shadowBlur = 10;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 4;
-      }
-
-      // Node background with gradient
-      const gradient = ctx.createLinearGradient(
-        node.x, node.y,
-        node.x, node.y + node.height
-      );
-
-      // Extract the two hexadecimal colors defined in the background
-      // gradient string returned by getNodeStyle. We fall back to a pair
-      // of neutral slate colours if the regex fails for any reason.
-      const bgColors =
-        style.background.match(/#[0-9a-f]{6}/gi) || ['#64748b', '#475569'];
-
-      /**
-       * NOTE:
-       * `CanvasGradient.addColorStop()` expects a **single colour value**.
-       * The previous implementation attempted to pass the entire linear-gradient
-       * CSS string which causes a runtime `SyntaxError` in Chrome/Firefox:
-       *   "Failed to execute 'addColorStop' on 'CanvasGradient' …"
-       *
-       * We therefore explicitly pass only the hexadecimal colours extracted
-       * above. On hover we simply re-use the same colours (we could apply
-       * a lightening function, but keeping it simple avoids additional
-       * computation and still provides the correct visual feedback via
-       * the drop-shadow that is already rendered for hovered/selected nodes).
-       */
-      gradient.addColorStop(0, bgColors[0]);
-      gradient.addColorStop(1, bgColors[1]);
-
-      // Draw rounded rectangle
-      const radius = 8;
-      ctx.beginPath();
-      ctx.moveTo(node.x + radius, node.y);
-      ctx.lineTo(node.x + node.width - radius, node.y);
-      ctx.quadraticCurveTo(node.x + node.width, node.y, node.x + node.width, node.y + radius);
-      ctx.lineTo(node.x + node.width, node.y + node.height - radius);
-      ctx.quadraticCurveTo(node.x + node.width, node.y + node.height, node.x + node.width - radius, node.y + node.height);
-      ctx.lineTo(node.x + radius, node.y + node.height);
-      ctx.quadraticCurveTo(node.x, node.y + node.height, node.x, node.y + node.height - radius);
-      ctx.lineTo(node.x, node.y + radius);
-      ctx.quadraticCurveTo(node.x, node.y, node.x + radius, node.y);
-      ctx.closePath();
-
-      ctx.fillStyle = gradient;
-      ctx.fill();
-
-      // Border
-      ctx.strokeStyle = isSelected ? '#fbbf24' : style.border;
-      ctx.lineWidth = isSelected ? 3 : 1.5;
-      ctx.stroke();
-
-      // Reset shadow
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 0;
-
-      // Icon
-      if (style.icon) {
-        ctx.font = '20px sans-serif';
-        ctx.fillStyle = style.textColor;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(style.icon, node.x + 10, node.y + node.height / 2);
-      }
-
-      // Text
-      ctx.font = isHovered ? 'bold 13px sans-serif' : '12px sans-serif';
-      ctx.fillStyle = style.textColor;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      // Truncate text if too long
-      let text = node.title;
-      const maxWidth = node.width - (style.icon ? 50 : 20);
-      const textWidth = ctx.measureText(text).width;
-
-      if (textWidth > maxWidth) {
-        while (ctx.measureText(text + '...').width > maxWidth && text.length > 0) {
-          text = text.slice(0, -1);
-        }
-        text += '...';
-      }
-
-      ctx.fillText(text, node.x + node.width / 2 + (style.icon ? 10 : 0), node.y + node.height / 2);
-
-      // Duration badge
-      const nodeData = graphData.nodes.find(n => n.id === node.id);
-      if (nodeData?.metadata?.duration) {
-        const duration = formatDuration(nodeData.metadata.duration);
-        ctx.font = '10px sans-serif';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.textAlign = 'right';
-        ctx.fillText(duration, node.x + node.width - 10, node.y + node.height - 10);
-      }
-    });
-
-    ctx.restore();
-
-    // Handle mouse events
-    const handleMouseMove = (e: MouseEvent) => {
+      // Set canvas size
       const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left - rect.width / 2 - pan.x) / zoom;
-      const y = (e.clientY - rect.top - 100 - pan.y) / zoom;
+      const dpr = window.devicePixelRatio || 1;
 
-      // Check hover
-      const hovered = layoutNodes.find(node =>
+      if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+      }
+
+      // Clear canvas
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      // Apply transformations
+      ctx.save();
+      ctx.translate(rect.width / 2 + viewState.pan.x, 100 + viewState.pan.y);
+      ctx.scale(viewState.zoom, viewState.zoom);
+
+      // Draw edges first
+      layoutData.edges.forEach(edge => {
+        if (edge.points.length < 2) return;
+
+        ctx.beginPath();
+        ctx.moveTo(edge.points[0].x, edge.points[0].y);
+
+        if (edge.points.length === 4) {
+          // Bezier curve
+          ctx.bezierCurveTo(
+            edge.points[1].x, edge.points[1].y,
+            edge.points[2].x, edge.points[2].y,
+            edge.points[3].x, edge.points[3].y
+          );
+        } else {
+          // Linear
+          edge.points.forEach((point, i) => {
+            if (i > 0) ctx.lineTo(point.x, point.y);
+          });
+        }
+
+        // Style based on edge type with improved contrast
+        if (edge.type === 'error') {
+          ctx.strokeStyle = THEME.error;
+          ctx.setLineDash([5, 5]);
+          ctx.lineWidth = 2;
+        } else {
+          ctx.strokeStyle = '#94a3b8'; // Better contrast than original
+          ctx.setLineDash([]);
+          ctx.lineWidth = 1.5;
+        }
+
+        ctx.stroke();
+
+        // Draw arrow
+        if (edge.points.length >= 2) {
+          const lastPoint = edge.points[edge.points.length - 1];
+          const prevPoint = edge.points[edge.points.length - 2];
+          const angle = Math.atan2(lastPoint.y - prevPoint.y, lastPoint.x - prevPoint.x);
+
+          ctx.save();
+          ctx.translate(lastPoint.x, lastPoint.y);
+          ctx.rotate(angle);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(-10, -5);
+          ctx.lineTo(-10, 5);
+          ctx.closePath();
+          ctx.fillStyle = edge.type === 'error' ? THEME.error : '#94a3b8';
+          ctx.fill();
+          ctx.restore();
+        }
+      });
+
+      // Draw nodes
+      layoutData.nodes.forEach(node => {
+        const style = getNodeStyle(node.type);
+        const isHovered = node.id === viewState.hoveredNode;
+        const isSelected = node.id === viewState.selectedNode;
+
+        // Shadow for depth
+        if (isHovered || isSelected) {
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+          ctx.shadowBlur = 10;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 4;
+        }
+
+        // Node background with gradient
+        const gradient = ctx.createLinearGradient(
+          node.x, node.y,
+          node.x, node.y + node.height
+        );
+
+        // Extract colors from style.background
+        const bgColors = style.background.match(/#[0-9a-f]{6}/gi) || ['#64748b', '#475569'];
+        gradient.addColorStop(0, bgColors[0]);
+        gradient.addColorStop(1, bgColors[1]);
+
+        // Draw rounded rectangle
+        const radius = 8;
+        ctx.beginPath();
+        ctx.moveTo(node.x + radius, node.y);
+        ctx.lineTo(node.x + node.width - radius, node.y);
+        ctx.quadraticCurveTo(node.x + node.width, node.y, node.x + node.width, node.y + radius);
+        ctx.lineTo(node.x + node.width, node.y + node.height - radius);
+        ctx.quadraticCurveTo(node.x + node.width, node.y + node.height, node.x + node.width - radius, node.y + node.height);
+        ctx.lineTo(node.x + radius, node.y + node.height);
+        ctx.quadraticCurveTo(node.x, node.y + node.height, node.x, node.y + node.height - radius);
+        ctx.lineTo(node.x, node.y + radius);
+        ctx.quadraticCurveTo(node.x, node.y, node.x + radius, node.y);
+        ctx.closePath();
+
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // Border with improved visibility
+        ctx.strokeStyle = isSelected ? THEME.warning : style.border;
+        ctx.lineWidth = isSelected ? 3 : 1.5;
+        ctx.stroke();
+
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+
+        // Icon
+        if (style.icon) {
+          ctx.font = '20px sans-serif';
+          ctx.fillStyle = style.textColor;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(style.icon, node.x + 10, node.y + node.height / 2);
+        }
+
+        // Text with better contrast
+        ctx.font = isHovered ? 'bold 13px sans-serif' : '12px sans-serif';
+        ctx.fillStyle = style.textColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Truncate text if too long
+        let text = node.title;
+        const maxWidth = node.width - (style.icon ? 50 : 20);
+        const textWidth = ctx.measureText(text).width;
+
+        if (textWidth > maxWidth) {
+          while (ctx.measureText(text + '...').width > maxWidth && text.length > 0) {
+            text = text.slice(0, -1);
+          }
+          text += '...';
+        }
+
+        ctx.fillText(text, node.x + node.width / 2 + (style.icon ? 10 : 0), node.y + node.height / 2);
+
+        // Duration badge
+        const nodeData = layoutData.nodes.find(n => n.id === node.id);
+        if (nodeData) {
+          // Try to get duration from graph manager
+          const graphNode = graphManager?.getNodes().find(n => n.id === node.id);
+          const duration = graphNode?.duration;
+          if (duration) {
+            const durationText = formatDuration(duration);
+            ctx.font = '10px sans-serif';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.textAlign = 'right';
+            ctx.fillText(durationText, node.x + node.width - 10, node.y + node.height - 10);
+          }
+        }
+      });
+
+      ctx.restore();
+    } catch (error) {
+      console.error('Error drawing canvas:', error);
+      // Draw error message
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.font = '16px sans-serif';
+      ctx.fillStyle = THEME.error;
+      ctx.textAlign = 'center';
+      ctx.fillText('Error rendering graph', canvas.width / 2, canvas.height / 2);
+    }
+  }, [layoutData, viewState, isOpen, graphManager]);
+
+  // Throttled drawing function using requestAnimationFrame
+  const requestRedraw = useCallback(() => {
+    if (animationFrameRef.current) return;
+
+    animationFrameRef.current = requestAnimationFrame(() => {
+      animationFrameRef.current = undefined;
+      if (redrawNeeded.current) {
+        drawCanvas();
+        redrawNeeded.current = false;
+      }
+    });
+  }, [drawCanvas]);
+
+  // Request redraw when layout data or view state changes
+  useEffect(() => {
+    redrawNeeded.current = true;
+    requestRedraw();
+  }, [layoutData, viewState, requestRedraw]);
+
+  // Mouse event handlers - separated from drawing
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !isOpen) return;
+
+    const getMousePosition = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (e.clientX - rect.left - rect.width / 2 - viewState.pan.x) / viewState.zoom,
+        y: (e.clientY - rect.top - 100 - viewState.pan.y) / viewState.zoom
+      };
+    };
+
+    const findNodeAtPosition = (x: number, y: number) => {
+      return layoutData.nodes.find(node =>
         x >= node.x && x <= node.x + node.width &&
         y >= node.y && y <= node.y + node.height
       );
+    };
 
-      if (hovered) {
-        setHoveredNode(hovered.id);
-        canvas.style.cursor = 'pointer';
-      } else {
-        setHoveredNode(null);
-        canvas.style.cursor = isDragging ? 'grabbing' : 'grab';
+    const handleMouseMove = (e: MouseEvent) => {
+      if (viewState.isDragging) return;
+
+      const { x, y } = getMousePosition(e);
+      const hovered = findNodeAtPosition(x, y);
+
+      const newHoveredNode = hovered?.id || null;
+      if (newHoveredNode !== viewState.hoveredNode) {
+        setViewState(prev => ({ ...prev, hoveredNode: newHoveredNode }));
+        canvas.style.cursor = hovered ? 'pointer' : 'grab';
       }
     };
 
     const handleMouseDown = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left - rect.width / 2 - pan.x) / zoom;
-      const y = (e.clientY - rect.top - 100 - pan.y) / zoom;
-
-      const clicked = layoutNodes.find(node =>
-        x >= node.x && x <= node.x + node.width &&
-        y >= node.y && y <= node.y + node.height
-      );
+      const { x, y } = getMousePosition(e);
+      const clicked = findNodeAtPosition(x, y);
 
       if (clicked) {
-        setSelectedNode(clicked.id);
+        setViewState(prev => ({ ...prev, selectedNode: clicked.id }));
       } else {
-        setIsDragging(true);
-        setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+        setViewState(prev => ({
+          ...prev,
+          isDragging: true,
+          dragStart: { x: e.clientX - prev.pan.x, y: e.clientY - prev.pan.y }
+        }));
+        canvas.style.cursor = 'grabbing';
       }
     };
 
     const handleMouseUp = () => {
-      setIsDragging(false);
+      setViewState(prev => ({ ...prev, isDragging: false }));
+      canvas.style.cursor = 'grab';
     };
 
     const handleMouseLeave = () => {
-      setHoveredNode(null);
-      setIsDragging(false);
+      setViewState(prev => ({
+        ...prev,
+        hoveredNode: null,
+        isDragging: false
+      }));
+      canvas.style.cursor = 'default';
     };
 
     canvas.addEventListener('mousemove', handleMouseMove);
@@ -353,21 +412,24 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
       canvas.removeEventListener('mouseup', handleMouseUp);
       canvas.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [graphManager, isOpen, zoom, pan, hoveredNode, selectedNode, isDragging, graphVersion]);
+  }, [layoutData, viewState, isOpen]);
 
   // Handle dragging
   useEffect(() => {
-    if (!isDragging) return;
+    if (!viewState.isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      setPan({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
+      setViewState(prev => ({
+        ...prev,
+        pan: {
+          x: e.clientX - prev.dragStart.x,
+          y: e.clientY - prev.dragStart.y
+        }
+      }));
     };
 
     const handleMouseUp = () => {
-      setIsDragging(false);
+      setViewState(prev => ({ ...prev, isDragging: false }));
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -377,22 +439,129 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dragStart]);
+  }, [viewState.isDragging, viewState.dragStart]);
 
-  // Handle zoom
+  // Enhanced zoom handling with extended range
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !isOpen) return;
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      setZoom(prev => Math.max(0.1, Math.min(3, prev * delta)));
+      setViewState(prev => ({
+        ...prev,
+        zoom: Math.max(0.1, Math.min(10, prev.zoom * delta)) // Extended zoom range
+      }));
     };
 
-    canvas.addEventListener('wheel', handleWheel);
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', handleWheel);
+  }, [isOpen]);
+
+  // UI action handlers - defined before keyboard handler that uses them
+  const handleZoomIn = useCallback(() => {
+    setViewState(prev => ({
+      ...prev,
+      zoom: Math.min(10, prev.zoom * 1.2)
+    }));
   }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setViewState(prev => ({
+      ...prev,
+      zoom: Math.max(0.1, prev.zoom / 1.2)
+    }));
+  }, []);
+
+  const handleResetView = useCallback(() => {
+    setViewState(prev => ({
+      ...prev,
+      zoom: 1,
+      pan: { x: 0, y: 0 },
+      selectedNode: null
+    }));
+  }, []);
+
+  // Enhanced keyboard accessibility
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'Escape':
+          if (showAccessibilityLayer) {
+            setShowAccessibilityLayer(false);
+          } else {
+            onClose();
+          }
+          break;
+          
+        case 'a':
+        case 'A':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            setShowAccessibilityLayer(prev => !prev);
+          }
+          break;
+          
+        case 'r':
+        case 'R':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            handleResetView();
+          }
+          break;
+          
+        case '=':
+        case '+':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            handleZoomIn();
+          }
+          break;
+          
+        case '-':
+        case '_':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            handleZoomOut();
+          }
+          break;
+          
+        case 'ArrowLeft':
+          if (e.ctrlKey) {
+            e.preventDefault();
+            setViewState(prev => ({ ...prev, pan: { ...prev.pan, x: prev.pan.x + 50 } }));
+          }
+          break;
+          
+        case 'ArrowRight':
+          if (e.ctrlKey) {
+            e.preventDefault();
+            setViewState(prev => ({ ...prev, pan: { ...prev.pan, x: prev.pan.x - 50 } }));
+          }
+          break;
+          
+        case 'ArrowUp':
+          if (e.ctrlKey) {
+            e.preventDefault();
+            setViewState(prev => ({ ...prev, pan: { ...prev.pan, y: prev.pan.y + 50 } }));
+          }
+          break;
+          
+        case 'ArrowDown':
+          if (e.ctrlKey) {
+            e.preventDefault();
+            setViewState(prev => ({ ...prev, pan: { ...prev.pan, y: prev.pan.y - 50 } }));
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, showAccessibilityLayer, handleResetView, handleZoomIn, handleZoomOut]);
 
   // Handle canvas resize
   useEffect(() => {
@@ -400,67 +569,95 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
     if (!canvas || !isOpen) return;
 
     const resizeObserver = new ResizeObserver(() => {
-      // Force re-render by incrementing a dummy state
-      setGraphVersion(prev => prev + 0.001);
+      redrawNeeded.current = true;
+      requestRedraw();
     });
 
     resizeObserver.observe(canvas);
     return () => resizeObserver.disconnect();
-  }, [isOpen]);
+  }, [isOpen, requestRedraw]);
 
-  // Early return after all hooks
-  if (!graphManager) {
-    console.error('ResearchGraphView requires a valid graphManager instance')
-    return null
-  }
-
-  if (!isOpen) return null;
-
-  const exportMermaid = () => {
-    const mermaidCode = generateMermaidDiagram(graphManager);
-    const blob = new Blob([mermaidCode], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'research-graph.mmd';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const resetView = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  };
-
-  // Get selected node details
-  const getSelectedNodeDetails = () => {
-    if (!selectedNode) return null;
-
-    const graphData = graphManager.exportForVisualization();
-    const node = graphData.nodes.find(n => n.id === selectedNode);
-
-    if (!node) return null;
-
-    return {
-      title: node.label,
-      type: node.type,
-      metadata: node.metadata
+  // Cleanup animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
-  };
+  }, []);
+
+  // Export handlers
+
+  const handleExportMermaid = useCallback(() => {
+    if (!graphManager) return;
+
+    try {
+      const mermaidCode = generateMermaidDiagram(graphManager);
+      const blob = new Blob([mermaidCode], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'research-graph.mmd';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting graph:', error);
+    }
+  }, [graphManager]);
+
+  // Get selected node details with error handling
+  const getSelectedNodeDetails = useCallback(() => {
+    if (!viewState.selectedNode || !graphManager) return null;
+
+    try {
+      const nodes = graphManager.getNodes();
+      const node = nodes.find(n => n.id === viewState.selectedNode);
+      return node ? {
+        title: node.title,
+        type: node.type,
+        metadata: node.metadata,
+        timestamp: node.timestamp,
+        duration: node.duration
+      } : null;
+    } catch (error) {
+      console.error('Error getting node details:', error);
+      return null;
+    }
+  }, [viewState.selectedNode, graphManager]);
 
   const selectedDetails = getSelectedNodeDetails();
 
+  // Early return if not open or no manager
+  if (!isOpen || !graphManager) return null;
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-westworld-beige rounded-xl max-w-7xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
-        <div className="p-6 border-b border-westworld-tan flex justify-between items-center bg-gradient-to-r from-westworld-beige to-westworld-tan/20">
-          <h2 className="text-2xl font-bold text-westworld-gold flex items-center gap-2">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="graph-title"
+    >
+      <div
+        className="bg-white rounded-xl max-w-7xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
+        style={{ backgroundColor: THEME.cardBackground }}
+      >
+        <div
+          className="p-6 border-b flex justify-between items-center"
+          style={{ borderColor: THEME.border, backgroundColor: THEME.background }}
+        >
+          <h2
+            id="graph-title"
+            className="text-2xl font-bold flex items-center gap-2"
+            style={{ color: THEME.text }}
+          >
             <ChartBarIcon className="w-6 h-6" />
             Research Graph Analysis
           </h2>
           <button
             onClick={onClose}
-            className="text-westworld-rust hover:text-westworld-gold transition-colors"
+            className="transition-colors p-2 rounded"
+            style={{ color: THEME.textSecondary }}
+            aria-label="Close graph view (Escape key)"
           >
             <XMarkIcon className="w-6 h-6" />
           </button>
@@ -469,69 +666,113 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
         <div className="flex h-[calc(90vh-100px)]">
           {/* Main Graph Area */}
           <div className="flex-1 p-6 overflow-hidden">
-            {/* Graph Controls */}
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-4" role="toolbar" aria-label="Graph controls">
               <button
-                onClick={() => setZoom(prev => Math.min(3, prev * 1.2))}
-                className="p-2 bg-black/20 rounded hover:bg-black/30 transition-colors text-white"
-                title="Zoom In"
+                onClick={handleZoomIn}
+                className="px-3 py-2 rounded transition-colors"
+                style={{
+                  backgroundColor: THEME.accent,
+                  color: 'white'
+                }}
+                aria-label="Zoom in"
               >
-                <MagnifyingGlassPlusIcon className="w-5 h-5" />
+                <ArrowsPointingOutIcon className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setZoom(prev => Math.max(0.1, prev / 1.2))}
-                className="p-2 bg-black/20 rounded hover:bg-black/30 transition-colors text-white"
-                title="Zoom Out"
+                onClick={handleZoomOut}
+                className="px-3 py-2 rounded transition-colors"
+                style={{
+                  backgroundColor: THEME.accent,
+                  color: 'white'
+                }}
+                aria-label="Zoom out"
               >
-                <MagnifyingGlassMinusIcon className="w-5 h-5" />
+                <ArrowsPointingInIcon className="w-4 h-4" />
               </button>
               <button
-                onClick={resetView}
-                className="p-2 bg-black/20 rounded hover:bg-black/30 transition-colors text-white"
-                title="Reset View"
+                onClick={handleResetView}
+                className="px-3 py-2 rounded transition-colors"
+                style={{
+                  backgroundColor: THEME.accent,
+                  color: 'white'
+                }}
+                aria-label="Reset view"
               >
-                <ArrowsPointingOutIcon className="w-5 h-5" />
+                <ArrowPathIcon className="w-4 h-4" />
               </button>
-              <div className="ml-auto text-sm text-westworld-copper">
-                Zoom: {(zoom * 100).toFixed(0)}%
-              </div>
+              <button
+                onClick={handleExportMermaid}
+                className="px-3 py-2 rounded transition-colors"
+                style={{
+                  backgroundColor: THEME.success,
+                  color: 'white'
+                }}
+                aria-label="Export as Mermaid diagram"
+              >
+                <DocumentArrowDownIcon className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Graph Canvas */}
-            <div className="bg-black/20 rounded-lg overflow-hidden" style={{ height: 'calc(100% - 60px)' }}>
-              <canvas
-                ref={canvasRef}
-                className="w-full h-full"
-                style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)' }}
-              />
-            </div>
+            <canvas
+              ref={canvasRef}
+              className="w-full h-full border rounded"
+              style={{
+                borderColor: THEME.border,
+                backgroundColor: THEME.background
+              }}
+              role="img"
+              aria-label={`Research graph with ${layoutData.nodes.length} nodes and ${layoutData.edges.length} connections`}
+            />
+
+            {layoutData.nodes.length === 0 && (
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ color: THEME.textSecondary }}
+              >
+                <p>No research steps to display yet.</p>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
-          <div className="w-80 border-l border-westworld-tan p-6 overflow-y-auto bg-gradient-to-b from-westworld-beige to-westworld-tan/10">
+          <div
+            className="w-80 border-l p-6 overflow-y-auto"
+            style={{
+              borderColor: THEME.border,
+              backgroundColor: THEME.background
+            }}
+          >
             {/* Statistics */}
             <div className="mb-6">
-              <h3 className="text-lg font-semibold text-westworld-gold mb-3">Statistics</h3>
-              <div className="space-y-3">
-                <div className="bg-black/10 rounded p-3">
-                  <div className="text-westworld-gold text-sm">Total Steps</div>
-                  <div className="text-xl font-bold text-white">{stats.totalNodes}</div>
+              <h3 className="text-lg font-semibold mb-3" style={{ color: THEME.text }}>
+                Graph Statistics
+              </h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span style={{ color: THEME.textSecondary }}>Total Nodes:</span>
+                  <span style={{ color: THEME.text }}>{stats.totalNodes}</span>
                 </div>
-                <div className="bg-black/10 rounded p-3">
-                  <div className="text-westworld-gold text-sm">Success Rate</div>
-                  <div className="text-xl font-bold text-white">{(stats.successRate * 100).toFixed(0)}%</div>
+                <div className="flex justify-between">
+                  <span style={{ color: THEME.textSecondary }}>Duration:</span>
+                  <span style={{ color: THEME.text }}>{formatDuration(stats.totalDuration)}</span>
                 </div>
-                <div className="bg-black/10 rounded p-3">
-                  <div className="text-westworld-gold text-sm">Sources Found</div>
-                  <div className="text-xl font-bold text-white">{stats.sourcesCollected}</div>
+                <div className="flex justify-between">
+                  <span style={{ color: THEME.textSecondary }}>Avg Step:</span>
+                  <span style={{ color: THEME.text }}>{formatDuration(stats.averageStepDuration)}</span>
                 </div>
-                <div className="bg-black/10 rounded p-3">
-                  <div className="text-westworld-gold text-sm">Unique Citations</div>
-                  <div className="text-xl font-bold text-white">{stats.uniqueCitations}</div>
+                <div className="flex justify-between">
+                  <span style={{ color: THEME.textSecondary }}>Success Rate:</span>
+                  <span style={{ color: THEME.text }}>
+                    {isNaN(stats.successRate) ? '0%' : `${(stats.successRate * 100).toFixed(1)}%`}
+                  </span>
                 </div>
-                <div className="bg-black/10 rounded p-3">
-                  <div className="text-westworld-gold text-sm">Total Duration</div>
-                  <div className="text-xl font-bold text-white">{formatDuration(stats.totalDuration)}</div>
+                <div className="flex justify-between">
+                  <span style={{ color: THEME.textSecondary }}>Sources:</span>
+                  <span style={{ color: THEME.text }}>{stats.sourcesCollected}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span style={{ color: THEME.textSecondary }}>Citations:</span>
+                  <span style={{ color: THEME.text }}>{stats.uniqueCitations}</span>
                 </div>
               </div>
             </div>
@@ -539,40 +780,59 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
             {/* Selected Node Details */}
             {selectedDetails && (
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-westworld-gold mb-3">Selected Node</h3>
-                <div className="bg-black/10 rounded p-4">
-                  <h4 className="font-medium text-white mb-2">{selectedDetails.title}</h4>
-                  <div className="text-sm text-westworld-copper space-y-1">
+                <h3 className="text-lg font-semibold mb-3" style={{ color: THEME.text }}>
+                  Selected Node
+                </h3>
+                <div
+                  className="p-4 rounded border"
+                  style={{
+                    borderColor: THEME.border,
+                    backgroundColor: THEME.cardBackground
+                  }}
+                >
+                  <h4 className="font-medium mb-2" style={{ color: THEME.text }}>
+                    {selectedDetails.title}
+                  </h4>
+                  <div className="text-sm space-y-1" style={{ color: THEME.textSecondary }}>
                     <div>Type: {selectedDetails.type}</div>
-                    {selectedDetails.metadata?.duration && (
-                      <div>Duration: {formatDuration(selectedDetails.metadata.duration)}</div>
+                    {selectedDetails.duration && (
+                      <div>Duration: {formatDuration(selectedDetails.duration)}</div>
                     )}
                     {selectedDetails.metadata?.sourcesCount && (
                       <div>Sources: {selectedDetails.metadata.sourcesCount}</div>
-                    )}
-                    {selectedDetails.metadata?.errorMessage && (
-                      <div className="text-red-400">Error: {selectedDetails.metadata.errorMessage}</div>
                     )}
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Export Options */}
+            {/* Usage Instructions */}
             <div>
-              <h3 className="text-lg font-semibold text-westworld-gold mb-3">Export</h3>
-              <button
-                onClick={exportMermaid}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-westworld-gold text-black rounded hover:bg-westworld-rust hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-westworld-gold focus:ring-offset-2 focus:ring-offset-westworld-beige"
-                aria-label="Export graph as Mermaid diagram"
-              >
-                <ArrowDownTrayIcon className="w-5 h-5" aria-hidden="true" />
-                Export as Mermaid
-              </button>
+              <h3 className="text-lg font-semibold mb-3" style={{ color: THEME.text }}>
+                Controls
+              </h3>
+              <div className="text-sm space-y-2" style={{ color: THEME.textSecondary }}>
+                <div>• Click nodes to select and view details</div>
+                <div>• Drag to pan the view</div>
+                <div>• Scroll to zoom in/out</div>
+                <div>• Press Escape to close</div>
+                <div>• Ctrl+A to toggle accessibility view</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Accessibility Layer */}
+      {showAccessibilityLayer && (
+        <GraphAccessibilityLayer
+          selectedNodeId={viewState.selectedNode}
+          hoveredNodeId={viewState.hoveredNode}
+          onNodeSelect={(nodeId) => setViewState(prev => ({ ...prev, selectedNode: nodeId }))}
+          onNodeHover={(nodeId) => setViewState(prev => ({ ...prev, hoveredNode: nodeId }))}
+          isVisible={showAccessibilityLayer}
+        />
+      )}
     </div>
   );
 };
