@@ -535,11 +535,9 @@ export class ResearchToolsService {
   public getAzureOpenAIToolDefinitions(): any[] {
     return Array.from(this.tools.values()).map(tool => ({
       type: "function",
-      function: {
-        name: tool.name,
-        description: tool.description,
-        parameters: tool.parameters
-      }
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.parameters
     }));
   }
 

@@ -559,6 +559,7 @@ export class AzureOpenAIService {
         // Add tools if available
         if (filteredTools.length > 0) {
           requestBody.tools = filteredTools;
+          console.log('Tool format being sent to Azure API:', JSON.stringify(filteredTools[0], null, 2));
         }
 
         // Only add temperature for non-o3 models

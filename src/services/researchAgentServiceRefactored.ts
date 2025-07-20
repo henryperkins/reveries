@@ -256,7 +256,8 @@ export class ResearchAgentService {
                   return { task, analysis: `Focused analysis for ${paradigm}: ${task}`, paradigm: ctx.paradigm };
                 }
               );
-              const isolatedResult = await this.isolateLayer.waitForTask(taskId, 30_000);
+              const timeoutMs = this.calculateAdaptiveTimeout(query, paradigm, 'exploration');
+              const isolatedResult = await this.isolateLayer.waitForTask(taskId, timeoutMs);
               return { taskId, isolatedResult, status: 'completed' };
             },
             3
@@ -451,7 +452,7 @@ export class ResearchAgentService {
           effort,
           enhancedMeta.onProgress
         );
-        
+
         // Convert to expected ResearchResponse format
         response = {
           text: (paradigmResponse as any).synthesis || (paradigmResponse as any).text || '',
@@ -472,7 +473,7 @@ export class ResearchAgentService {
           this.performResearchWithEvaluation.bind(this),
           enhancedMeta.onProgress
         );
-        
+
         // Convert to expected ResearchResponse format
         response = {
           text: (strategyResponse as any).synthesis || strategyResponse.text || '',

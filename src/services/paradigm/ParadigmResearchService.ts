@@ -3,10 +3,9 @@
  * Handles host-specific research implementations and context layer execution
  */
 
-import { ModelType, EffortType, Citation, HostParadigm, QueryType, ContextLayer } from '@/types';
+import { ModelType, EffortType, HostParadigm, QueryType, ContextLayer } from '@/types';
 import { 
   EnhancedResearchResults,
-  ParadigmResearchContext,
   ContextLayerContext,
   LayerResult 
 } from '@/services/research/types';
@@ -19,6 +18,7 @@ import { WriteLayerService } from '@/services/contextLayers/writeLayer';
 import { SelectLayerService } from '@/services/contextLayers/selectLayer';
 import { CompressLayerService } from '@/services/contextLayers/compressLayer';
 import { IsolateLayerService } from '@/services/contextLayers/isolateLayer';
+import { ResearchContext, ResearchContextManager } from './ResearchContext';
 
 export class ParadigmResearchService {
   private static instance: ParadigmResearchService;
@@ -28,6 +28,7 @@ export class ParadigmResearchService {
   private webResearchService: WebResearchService;
   private modelProvider: ModelProviderService;
   private evaluationService: EvaluationService;
+  private contextManager: ResearchContextManager;
   
   // Context layers
   private writeLayer: WriteLayerService;
@@ -41,6 +42,7 @@ export class ParadigmResearchService {
     this.webResearchService = WebResearchService.getInstance();
     this.modelProvider = ModelProviderService.getInstance();
     this.evaluationService = EvaluationService.getInstance();
+    this.contextManager = ResearchContextManager.getInstance();
     
     // Initialize context layers
     this.writeLayer = WriteLayerService.getInstance();
@@ -84,6 +86,9 @@ export class ParadigmResearchService {
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
+    // Create unified context
+    const context = this.contextManager.createContext(query, paradigm, model, effort);
+    
     // Get context engineering configuration
     const phase = this.contextEngineering.inferResearchPhase(query);
     const contextDensity = this.contextEngineering.adaptContextDensity(phase, paradigm);
@@ -93,12 +98,9 @@ export class ParadigmResearchService {
     onProgress?.(`Context density: ${contextDensity.densities[paradigm]}%`);
     onProgress?.('search queries generation in progress...');
 
-    // Track layer execution in metadata
-    const layerResults: Record<string, any> = {};
-
     // Execute context layers in paradigm-specific order
     for (const layer of layers) {
-      const result = await this.executeContextLayer(layer, {
+      const result = await this.executeContextLayer(layer, context, {
         query,
         paradigm,
         density: contextDensity.densities[paradigm],
@@ -108,7 +110,7 @@ export class ParadigmResearchService {
       });
 
       if (result) {
-        layerResults[layer] = result;
+        this.contextManager.recordLayerOutput(context, layer, result);
       }
     }
 
@@ -120,31 +122,36 @@ export class ParadigmResearchService {
 
     switch (paradigm) {
       case 'dolores':
-        result = await this.performDoloresResearch({ query, model, effort, layerResults, onProgress });
+        result = await this.performDoloresResearch(context, onProgress);
         break;
       case 'teddy':
-        result = await this.performTeddyResearch({ query, model, effort, layerResults, onProgress });
+        result = await this.performTeddyResearch(context, onProgress);
         break;
       case 'bernard':
-        result = await this.performBernardResearch({ query, model, effort, layerResults, onProgress });
+        result = await this.performBernardResearch(context, onProgress);
         break;
       case 'maeve':
-        result = await this.performMaeveResearch({ query, model, effort, layerResults, onProgress });
+        result = await this.performMaeveResearch(context, onProgress);
         break;
     }
+    
+    // Wait for all async tasks to complete
+    await this.waitForAllTasks(context, onProgress);
 
     onProgress?.('evaluating research quality and self-healing...');
 
-    // Apply context layer post-processing
+    // Aggregate all findings including async results
+    const aggregatedFindings = this.contextManager.aggregateFindings(context);
+    
+    // Generate final synthesis with ALL context
     onProgress?.('Finalizing comprehensive answer through synthesis...');
-    if (layerResults.compress && result.synthesis) {
-      // Apply final compression if needed
-      const compressedSynthesis = this.compressLayer.compress(
-        result.synthesis,
-        contextDensity.densities[paradigm] * 15,
-        paradigm
-      );
-      result.synthesis = compressedSynthesis;
+    const finalSynthesis = await this.generateFinalSynthesis(context, result.synthesis, aggregatedFindings);
+    result.synthesis = finalSynthesis;
+    
+    // Apply compression if needed
+    const compressLayer = context.layers.get('compress');
+    if (compressLayer?.data?.compressed) {
+      context.findings.compressedContent = compressLayer.data.compressed;
     }
 
     // Store final results in memory
@@ -155,13 +162,14 @@ export class ParadigmResearchService {
       timestamp: Date.now()
     }, contextDensity.densities[paradigm], paradigm);
 
-    // Add layer execution info to metadata
+    // Add complete context info to metadata
     result.adaptiveMetadata = {
       ...result.adaptiveMetadata,
       contextLayers: {
         executed: layers,
-        results: layerResults
-      }
+        results: Object.fromEntries(context.layers)
+      },
+      processingTime: Date.now() - context.startTime
     };
 
     return result;
@@ -172,6 +180,7 @@ export class ParadigmResearchService {
    */
   private async executeContextLayer(
     layer: ContextLayer,
+    researchContext: ResearchContext,
     context: ContextLayerContext
   ): Promise<LayerResult | undefined> {
     const { query, paradigm, density, sources, content, model, effort, onProgress } = context;
@@ -191,7 +200,11 @@ export class ParadigmResearchService {
         if (content) {
           this.writeLayer.write('initial_insights', content, density, paradigm);
         }
-        break;
+        
+        // Retrieve relevant memories for context
+        const memories = this.writeLayer.getParadigmMemories(paradigm);
+        researchContext.findings.memories = Array.from(memories.values()).slice(0, 5); // Keep top 5 relevant
+        return undefined; // Write layer just stores, doesn't return data
 
       case 'select':
         onProgress?.(`[${paradigm}] Selecting relevant memories and tools...`);
@@ -208,6 +221,7 @@ export class ParadigmResearchService {
             paradigm,
             k
           );
+          researchContext.findings.selectedSources = selectedSources;
           return { selectedSources, recommendedTools };
         }
 
@@ -216,9 +230,11 @@ export class ParadigmResearchService {
       case 'compress':
         onProgress?.(`[${paradigm}] Compressing narrative threads...`);
 
-        if (content) {
+        if (content || researchContext.findings.mainResearch) {
           const targetTokens = density * 10; // Density determines compression level
-          const compressed = this.compressLayer.compress(content, targetTokens, paradigm);
+          const toCompress = content || researchContext.findings.mainResearch || '';
+          const compressed = this.compressLayer.compress(toCompress, targetTokens, paradigm);
+          researchContext.findings.compressedContent = compressed;
           return { compressed };
         }
         break;
@@ -240,15 +256,90 @@ export class ParadigmResearchService {
           }
         );
 
+        // Track the async task
+        this.contextManager.addPendingTask(researchContext, taskId);
         return { taskId };
     }
   }
 
   /**
+   * Wait for all pending tasks to complete
+   */
+  private async waitForAllTasks(context: ResearchContext, onProgress?: (message: string) => void): Promise<void> {
+    if (context.pendingTasks.size === 0) return;
+    
+    onProgress?.(`Waiting for ${context.pendingTasks.size} isolated tasks to complete...`);
+    
+    const timeout = context.paradigm === 'bernard' ? 60000 : 30000; // Longer for analytical paradigms
+    const startTime = Date.now();
+    
+    // Wait for each pending task
+    const taskPromises = Array.from(context.pendingTasks).map(async (taskId) => {
+      try {
+        const result = await this.isolateLayer.waitForTask(taskId, timeout);
+        this.contextManager.completeTask(context, taskId, result);
+        onProgress?.(`Isolated task ${taskId} completed`);
+      } catch (error) {
+        console.error(`Task ${taskId} failed:`, error);
+        this.contextManager.completeTask(context, taskId, { error: error instanceof Error ? error.message : String(error) });
+      }
+    });
+    
+    // Wait for all with timeout
+    await Promise.race([
+      Promise.all(taskPromises),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Task synchronization timeout')), timeout)
+      )
+    ]).catch(error => {
+      console.warn('Some tasks did not complete in time:', error);
+      // Continue with partial results
+    });
+    
+    onProgress?.(`Task synchronization completed in ${Date.now() - startTime}ms`);
+  }
+  
+  /**
+   * Generate final synthesis incorporating ALL context
+   */
+  private async generateFinalSynthesis(
+    context: ResearchContext,
+    initialSynthesis: string,
+    aggregatedFindings: string
+  ): Promise<string> {
+    // If no additional findings, return initial synthesis
+    if (!aggregatedFindings || aggregatedFindings === initialSynthesis) {
+      return initialSynthesis;
+    }
+    
+    // Merge initial synthesis with all aggregated findings
+    const mergePrompt = `
+      Merge the following research findings into a cohesive, comprehensive response:
+      
+      Initial Synthesis:
+      ${initialSynthesis}
+      
+      Additional Context and Findings:
+      ${aggregatedFindings}
+      
+      Create a unified response that:
+      1. Integrates all findings coherently
+      2. Avoids redundancy
+      3. Maintains the ${context.paradigm} paradigm perspective
+      4. Highlights key insights from isolated analyses
+      
+      Keep the same structure and tone as the initial synthesis.
+    `;
+    
+    const result = await this.modelProvider.generateText(mergePrompt, context.model, context.effort);
+    return result.text;
+  }
+
+  /**
    * Dolores: Action-oriented research
    */
-  private async performDoloresResearch(context: ParadigmResearchContext): Promise<EnhancedResearchResults> {
-    const { query, model, effort, layerResults: _layerResults, onProgress } = context;
+  private async performDoloresResearch(context: ResearchContext, onProgress?: (message: string) => void): Promise<EnhancedResearchResults> {
+    const { query, model, effort } = context;
     
     onProgress?.('Dolores paradigm: Breaking loops, seeking transformative actions...');
 
@@ -263,6 +354,9 @@ export class ParadigmResearchService {
     ];
 
     const research = await this.webResearchService.performWebResearch(searchQueries, model, effort, generateText, onProgress);
+    
+    // Store main research in context
+    context.findings.mainResearch = research.aggregatedFindings;
 
     const synthesisPrompt = `
       Based on this research about "${query}", provide ONLY:
@@ -294,8 +388,8 @@ export class ParadigmResearchService {
   /**
    * Teddy: Protective, comprehensive research
    */
-  private async performTeddyResearch(context: ParadigmResearchContext): Promise<EnhancedResearchResults> {
-    const { query, model, effort, layerResults: _layerResults, onProgress } = context;
+  private async performTeddyResearch(context: ResearchContext, onProgress?: (message: string) => void): Promise<EnhancedResearchResults> {
+    const { query, model, effort } = context;
     
     onProgress?.('Teddy paradigm: Gathering all perspectives, protecting all stakeholders...');
 
@@ -310,6 +404,9 @@ export class ParadigmResearchService {
     ];
 
     const research = await this.webResearchService.performWebResearch(searchQueries, model, effort, generateText, onProgress);
+    
+    // Store main research in context
+    context.findings.mainResearch = research.aggregatedFindings;
 
     const synthesisPrompt = `
       Based on this research about "${query}", provide a PROTECTIVE and COMPREHENSIVE analysis:
@@ -341,31 +438,34 @@ export class ParadigmResearchService {
   /**
    * Bernard: Analytical, pattern-focused research
    */
-  private async performBernardResearch(context: ParadigmResearchContext): Promise<EnhancedResearchResults> {
-    const { query, model, effort, layerResults, onProgress } = context;
+  private async performBernardResearch(context: ResearchContext, onProgress?: (message: string) => void): Promise<EnhancedResearchResults> {
+    const { query, model, effort } = context;
     
     onProgress?.('Bernard paradigm: Constructing architectural frameworks...');
 
     const generateText = this.modelProvider.generateText.bind(this.modelProvider);
 
     // Use selected tools if available
-    const tools = layerResults.select?.recommendedTools || [];
+    const selectLayer = context.layers.get('select');
+    const tools = selectLayer?.data?.recommendedTools || [];
 
     // Focus on intellectual rigor and pattern recognition
     const searchQueries = [
       `${query} architectural research peer reviewed`,
       `${query} pattern frameworks models`,
       `${query} systematic analysis architecture`,
-      ...tools.map(tool => `${query} ${tool}`)
+      ...tools.map((tool: string) => `${query} ${tool}`)
     ];
 
     const research = await this.webResearchService.performWebResearch(searchQueries, model, effort, generateText, onProgress);
+    
+    // Store main research in context
+    context.findings.mainResearch = research.aggregatedFindings;
 
-    // Apply source selection from select layer - prioritize academic sources
-    let selectedSources = research.allSources;
-    if (layerResults.select?.selectedSources) {
-      selectedSources = layerResults.select.selectedSources as Citation[];
-    }
+    // Use pre-selected sources if available, otherwise use all sources
+    const selectedSources = context.findings.selectedSources.length > 0 
+      ? context.findings.selectedSources 
+      : research.allSources;
 
     const synthesisPrompt = `
       Based on this research about "${query}", provide:
@@ -416,8 +516,8 @@ export class ParadigmResearchService {
   /**
    * Maeve: Strategy-focused research
    */
-  private async performMaeveResearch(context: ParadigmResearchContext): Promise<EnhancedResearchResults> {
-    const { query, model, effort, layerResults: _layerResults, onProgress } = context;
+  private async performMaeveResearch(context: ResearchContext, onProgress?: (message: string) => void): Promise<EnhancedResearchResults> {
+    const { query, model, effort } = context;
     
     onProgress?.('Maeve paradigm: Orchestrating strategic narratives...');
 
@@ -432,6 +532,9 @@ export class ParadigmResearchService {
     ];
 
     const research = await this.webResearchService.performWebResearch(searchQueries, model, effort, generateText, onProgress);
+    
+    // Store main research in context
+    context.findings.mainResearch = research.aggregatedFindings;
 
     const synthesisPrompt = `
       Based on this research about "${query}", provide STRATEGIC insights:
