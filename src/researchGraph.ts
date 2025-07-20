@@ -24,6 +24,7 @@ export interface GraphNode {
     parents: string[]; // IDs of parent nodes
     metadata?: ResearchMetadata;
     data?: ResearchStep;
+    level?: number; // Hierarchical level for layout
 }
 
 export interface GraphNodeMetadata {
@@ -54,6 +55,7 @@ export class ResearchGraphManager {
     private startTime: number;
     private nodeTimestamps: Map<string, number>;
     private lastNodeTimestamp: number | null;
+    private graphVersion: number;
 
     constructor() {
         this.graph = {
@@ -65,6 +67,21 @@ export class ResearchGraphManager {
         this.startTime = Date.now();
         this.nodeTimestamps = new Map();
         this.lastNodeTimestamp = null;
+        this.graphVersion = 0;
+    }
+
+    /**
+     * Get the current graph version (increments on mutations)
+     */
+    getVersion(): number {
+        return this.graphVersion;
+    }
+
+    /**
+     * Increment version to signal graph changes
+     */
+    private incrementVersion(): void {
+        this.graphVersion++;
     }
 
     /**
@@ -79,28 +96,6 @@ export class ResearchGraphManager {
             phase?: ResearchPhase;
         }
     ): GraphNode {
-        const node: GraphNode = {
-            id: step.id,
-            stepId: step.id,
-            type: step.type,
-            title: step.title || '',
-            timestamp: step.timestamp || new Date().toISOString(),
-            children: [],
-            parents: parentId ? [parentId] : [],
-            data: step,
-            metadata: {
-                model: metadata?.model || GENAI_MODEL_FLASH,
-                effort: metadata?.effort || EffortType.MEDIUM,
-                paradigmProbabilities: metadata?.paradigmProbabilities,
-                contextDensity: typeof metadata?.contextDensity === 'object'
-                    ? metadata.contextDensity.averageDensity
-                    : metadata?.contextDensity,
-                phase: metadata?.phase
-            }
-        };
-
-        this.graph.nodes.set(node.id, node);
-
         const nodeId = `node-${step.id}`;
         const timestamp = Date.now();
 
@@ -117,6 +112,15 @@ export class ResearchGraphManager {
             phase: metadata?.phase
         };
 
+        // Calculate hierarchical level
+        let level = 0;
+        if (parentId) {
+            const parentNode = this.graph.nodes.get(parentId);
+            if (parentNode && parentNode.level !== undefined) {
+                level = parentNode.level + 1;
+            }
+        }
+
         const newNode: GraphNode = {
             id: nodeId,
             stepId: step.id,
@@ -125,11 +129,14 @@ export class ResearchGraphManager {
             timestamp: new Date(timestamp).toISOString(),
             children: [],
             parents: parentId ? [parentId] : [],
-            metadata: enrichedMetadata
+            metadata: enrichedMetadata,
+            level,
+            data: step
         };
 
         this.graph.nodes.set(nodeId, newNode);
         this.graph.currentPath.push(nodeId);
+        this.incrementVersion();
 
         // 🔑 start timing immediately
         this.nodeTimestamps.set(nodeId, timestamp);
@@ -173,7 +180,10 @@ export class ResearchGraphManager {
     updateNodeDuration(nodeId: string): void {
         const node = this.graph.nodes.get(nodeId);
         const startedAt = this.getNodeTimestamp(nodeId);
-        if (node && startedAt) node.duration = Date.now() - startedAt;
+        if (node && startedAt) {
+            node.duration = Date.now() - startedAt;
+            this.incrementVersion();
+        }
     }
 
     // Public method to update node metadata
@@ -181,6 +191,7 @@ export class ResearchGraphManager {
         const node = this.graph.nodes.get(nodeId);
         if (node && node.metadata) {
             node.metadata = { ...node.metadata, ...metadata };
+            this.incrementVersion();
         }
     }
 
@@ -252,7 +263,9 @@ export class ResearchGraphManager {
      * Remove an edge by ID
      */
     public removeEdge(edgeId: string): boolean {
-        return this.graph.edges.delete(edgeId);
+        const result = this.graph.edges.delete(edgeId);
+        if (result) this.incrementVersion();
+        return result;
     }
 
     /**
@@ -264,13 +277,14 @@ export class ResearchGraphManager {
         
         const updatedEdge = { ...edge, ...updates };
         this.graph.edges.set(edgeId, updatedEdge);
+        this.incrementVersion();
         return true;
     }
 
     // Add an edge between nodes
     addEdge(sourceId: string, targetId: string, type: GraphEdge['type'], label?: string): void {
         const edge: GraphEdge = {
-            id: `edge-${sourceId}-${targetId}`,
+            id: `edge-${sourceId}-${targetId}-${type}`,
             source: sourceId,
             target: targetId,
             type,
@@ -278,6 +292,7 @@ export class ResearchGraphManager {
         };
 
         this.graph.edges.set(edge.id, edge);
+        this.incrementVersion();
     }
 
     // Mark a node as errored
@@ -288,6 +303,7 @@ export class ResearchGraphManager {
                 ...node.metadata,
                 errorDetails: { message: errorMessage, retryable: false }
             };
+            this.incrementVersion();
 
             // Add error edge to show where the error occurred
             const lastSuccessfulNode = this.getLastSuccessfulNode();
@@ -516,7 +532,8 @@ export class ResearchGraphManager {
                 id: node.id,
                 label: node.title,
                 type: node.type,
-                metadata: node.metadata
+                metadata: node.metadata,
+                level: node.level
             })),
             edges: Array.from(this.graph.edges.values()),
         };
@@ -532,6 +549,8 @@ export class ResearchGraphManager {
         };
         this.startTime = Date.now();
         this.nodeTimestamps.clear();
+        this.graphVersion = 0;
+        this.incrementVersion();
     }
 
     // Find all paths from root to leaf nodes
@@ -566,7 +585,8 @@ export class ResearchGraphManager {
             rootNode: this.graph.rootNode,
             currentPath: this.graph.currentPath,
             startTime: this.startTime,
-            lastNodeTimestamp: this.lastNodeTimestamp
+            lastNodeTimestamp: this.lastNodeTimestamp,
+            graphVersion: this.graphVersion
         });
     }
 
@@ -621,6 +641,7 @@ export class ResearchGraphManager {
         manager.graph.currentPath = parsed.currentPath;
         manager.startTime = parsed.startTime;
         manager.lastNodeTimestamp = parsed.lastNodeTimestamp;
+        manager.graphVersion = parsed.graphVersion || 0;
 
         return manager;
     }

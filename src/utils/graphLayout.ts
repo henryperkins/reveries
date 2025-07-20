@@ -23,10 +23,28 @@ export class GraphLayoutEngine {
   private nodeHeight = 60;
   private levelHeight = 120;
   private horizontalSpacing = 250;
+  private layoutCache = new Map<string, { nodes: GraphNode[]; edges: GraphEdge[] }>();
 
-  layoutGraph(nodes: any[], edges: any[]): { nodes: GraphNode[]; edges: GraphEdge[] } {
+  private generateCacheKey(nodes: { id: string; level?: number }[], edges: { source: string; target: string; type: string }[]): string {
+    // Create a stable cache key based on node IDs, positions, and edge connections
+    const nodeKey = nodes.map(n => `${n.id}:${n.level || 0}`).sort().join('|');
+    const edgeKey = edges.map(e => `${e.source}-${e.target}-${e.type}`).sort().join('|');
+    return `${nodeKey}::${edgeKey}`;
+  }
+
+  clearCache(): void {
+    this.layoutCache.clear();
+  }
+
+  layoutGraph(nodes: { id: string; level?: number; type: ResearchStepType; label: string }[], edges: { source: string; target: string; type: 'sequential' | 'dependency' | 'error' }[]): { nodes: GraphNode[]; edges: GraphEdge[] } {
+    // Check cache first
+    const cacheKey = this.generateCacheKey(nodes, edges);
+    const cached = this.layoutCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
     // Group nodes by level
-    const levels = new Map<number, any[]>();
+    const levels = new Map<number, typeof nodes>();
     nodes.forEach(node => {
       const level = node.level || 0;
       if (!levels.has(level)) {
@@ -90,11 +108,24 @@ export class GraphLayoutEngine {
       };
     });
 
-    return { nodes: layoutNodes, edges: layoutEdges };
+    const result = { nodes: layoutNodes, edges: layoutEdges };
+    
+    // Cache the result
+    this.layoutCache.set(cacheKey, result);
+    
+    // Limit cache size to prevent memory issues
+    if (this.layoutCache.size > 100) {
+      const firstKey = this.layoutCache.keys().next().value;
+      if (firstKey !== undefined) {
+        this.layoutCache.delete(firstKey);
+      }
+    }
+    
+    return result;
   }
 
   // Force-directed layout for complex graphs
-  forceDirectedLayout(nodes: any[], edges: any[], iterations: number = 100): GraphNode[] {
+  forceDirectedLayout(nodes: { id: string; type: ResearchStepType; title: string; level?: number; x?: number; y?: number; width?: number; height?: number; fx?: number; fy?: number }[], edges: { source: string; target: string }[], iterations: number = 100): GraphNode[] {
     const layoutNodes: GraphNode[] = nodes.map((node) => ({
       id: node.id,
       x: node.x || 0,

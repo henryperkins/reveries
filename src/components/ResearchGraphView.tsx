@@ -20,6 +20,7 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
     sourcesCollected: 0,
     uniqueCitations: 0
   });
+  const [graphVersion, setGraphVersion] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -30,17 +31,28 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
 
   const layoutEngine = useRef(new GraphLayoutEngine());
 
-  // Early return after all hooks
-  if (!graphManager) {
-    console.error('ResearchGraphView requires a valid graphManager instance')
-    return null
-  }
+  // Poll for graph version changes
+  useEffect(() => {
+    if (!isOpen || !graphManager) return;
+
+    const checkVersion = () => {
+      const currentVersion = graphManager.getVersion();
+      if (currentVersion !== graphVersion) {
+        setGraphVersion(currentVersion);
+        setStats(graphManager.getStatistics());
+      }
+    };
+
+    // Check immediately
+    checkVersion();
+
+    // Check periodically for updates
+    const interval = setInterval(checkVersion, 100);
+    return () => clearInterval(interval);
+  }, [isOpen, graphManager, graphVersion]);
 
   useEffect(() => {
     if (!isOpen) return;
-
-    // Update stats
-    setStats(graphManager.getStatistics());
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -294,7 +306,7 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
       canvas.removeEventListener('mouseup', handleMouseUp);
       canvas.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [graphManager, isOpen, zoom, pan, hoveredNode, selectedNode, isDragging]);
+  }, [graphManager, isOpen, zoom, pan, hoveredNode, selectedNode, isDragging, graphVersion]);
 
   // Handle dragging
   useEffect(() => {
@@ -334,6 +346,26 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
     canvas.addEventListener('wheel', handleWheel);
     return () => canvas.removeEventListener('wheel', handleWheel);
   }, []);
+
+  // Handle canvas resize
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !isOpen) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      // Force re-render by incrementing a dummy state
+      setGraphVersion(prev => prev + 0.001);
+    });
+
+    resizeObserver.observe(canvas);
+    return () => resizeObserver.disconnect();
+  }, [isOpen]);
+
+  // Early return after all hooks
+  if (!graphManager) {
+    console.error('ResearchGraphView requires a valid graphManager instance')
+    return null
+  }
 
   if (!isOpen) return null;
 
@@ -484,9 +516,10 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({ graphManag
               <h3 className="text-lg font-semibold text-westworld-gold mb-3">Export</h3>
               <button
                 onClick={exportMermaid}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-westworld-gold text-black rounded hover:bg-westworld-rust hover:text-white transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-westworld-gold text-black rounded hover:bg-westworld-rust hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-westworld-gold focus:ring-offset-2 focus:ring-offset-westworld-beige"
+                aria-label="Export graph as Mermaid diagram"
               >
-                <ArrowDownTrayIcon className="w-5 h-5" />
+                <ArrowDownTrayIcon className="w-5 h-5" aria-hidden="true" />
                 Export as Mermaid
               </button>
             </div>
