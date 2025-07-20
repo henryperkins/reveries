@@ -9,6 +9,8 @@ export interface LiveFunctionCall {
   endTime?: number;
   duration?: number;
   error?: string;
+  context?: string; // Human-readable description of what this function is doing
+  arguments?: Record<string, any>; // Function arguments for context
 }
 
 interface FunctionCallContextType {

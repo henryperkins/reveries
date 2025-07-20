@@ -7,6 +7,8 @@ import {
   ChartBarIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
+import { Tooltip } from '@/components/atoms';
+import { getToolPurpose } from '@/utils/functionDescriptions';
 
 interface ToolsViewProps {
   toolsUsed: string[];
@@ -92,17 +94,19 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
   const renderTool = (toolName: string, isRecommended: boolean = false) => {
     const category = toolCategories[categorizeToolName(toolName)];
     const Icon = category.icon;
+    const purpose = getToolPurpose(toolName);
     
     return (
-      <div
-        key={toolName}
-        className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${
-          category.bgColor
-        } ${category.color} ${isRecommended ? 'opacity-60' : ''}`}
-      >
-        <Icon className="w-4 h-4 mr-1.5" />
-        {formatToolName(toolName)}
-      </div>
+      <Tooltip key={toolName} content={purpose} position="top">
+        <div
+          className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium cursor-help ${
+            category.bgColor
+          } ${category.color} ${isRecommended ? 'opacity-60' : ''}`}
+        >
+          <Icon className="w-4 h-4 mr-1.5" />
+          {formatToolName(toolName)}
+        </div>
+      </Tooltip>
     );
   };
 

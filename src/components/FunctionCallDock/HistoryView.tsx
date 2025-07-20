@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { FunctionCallHistory } from '@/types';
+import { Tooltip } from '@/components/atoms';
+import { getFunctionDescription } from '@/utils/functionDescriptions';
 
 interface HistoryViewProps {
   history: FunctionCallHistory[];
@@ -60,7 +62,12 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history }) => {
                     <ChevronRightIcon className="w-4 h-4" />
                   )}
                 </span>
-                <span className="font-mono text-cyan-400">{call.function}</span>
+                <Tooltip 
+                  content={call.context || getFunctionDescription(call.function, call.arguments)} 
+                  position="right"
+                >
+                  <span className="font-mono text-cyan-400">{call.function}</span>
+                </Tooltip>
               </div>
               <span className="text-xs text-gray-500">
                 {new Date(call.timestamp).toLocaleTimeString()}
@@ -70,6 +77,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history }) => {
             {/* Expanded Details */}
             {isExpanded && (
               <div className="px-8 pb-4 space-y-3">
+                {/* Description */}
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">What it did:</div>
+                  <div className="text-sm text-gray-300">
+                    {call.context || getFunctionDescription(call.function, call.arguments)}
+                  </div>
+                </div>
+
                 {/* Arguments */}
                 <div>
                   <div className="text-xs text-gray-400 mb-1">Arguments:</div>

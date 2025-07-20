@@ -95,6 +95,9 @@ const App: React.FC = () => {
   // Progress ref to track current value (fixes race condition)
   const currentProgressRef = useRef<number>(0);
 
+  // Track which phase cards have been created to prevent duplicates
+  const createdPhaseCardsRef = useRef<Set<string>>(new Set());
+
   // Progress state machine helper
   const updateProgressState = useCallback((phase: typeof progressState, message?: string) => {
     const progressMap = {
@@ -143,8 +146,18 @@ const App: React.FC = () => {
       ));
     }
 
-    // Create new step for this phase (except idle and complete)
-    if (phase !== 'idle' && phase !== 'complete' && stepTypeMap[phase]) {
+    // Skip creating cards for research phase - these are redundant with FunctionCallDock
+    // Only create cards for meaningful phases with actual content
+    const skipPhases = ['researching', 'routing'];
+    const shouldCreateCard = phase !== 'idle' && 
+                           phase !== 'complete' && 
+                           stepTypeMap[phase] && 
+                           !skipPhases.includes(phase) &&
+                           !createdPhaseCardsRef.current.has(phase);
+
+    if (shouldCreateCard) {
+      createdPhaseCardsRef.current.add(phase);
+      
       const newStep: ResearchStep = {
         id: crypto.randomUUID(),
         title: titleMap[phase],
@@ -161,6 +174,11 @@ const App: React.FC = () => {
 
       // Keep research graph in sync
       graphManager.addNode(newStep);
+    }
+
+    // Reset phase tracking on completion
+    if (phase === 'complete') {
+      createdPhaseCardsRef.current.clear();
     }
   }, [setResearch, graphManager]);
 
@@ -277,8 +295,7 @@ const App: React.FC = () => {
           if (message.startsWith('tool_used:')) {
             // Completion message pattern: tool_used:completed:<toolName>:<startTime>
             if (message.startsWith('tool_used:completed:')) {
-              const [, , completedToolName, startTimeStr] = message.split(':');
-              const startTime = parseInt(startTimeStr, 10);
+              const [, , completedToolName] = message.split(':');
 
               // Update shared context
               const liveId = liveCallIdMap.current[completedToolName];
@@ -291,8 +308,13 @@ const App: React.FC = () => {
             // New tool used message pattern: tool_used:<toolName>
             const [, toolName] = message.split(':');
 
-            // Add to shared context
-            const ctxId = addLiveCall({ name: toolName, status: 'running', startTime: Date.now() });
+            // Add to shared context with description
+            const ctxId = addLiveCall({ 
+              name: toolName, 
+              status: 'running', 
+              startTime: Date.now(),
+              context: `Processing ${input.substring(0, 100)}${input.length > 100 ? '...' : ''}`
+            });
             liveCallIdMap.current[toolName] = ctxId;
 
             // Track tool usage for tools view
@@ -360,15 +382,38 @@ const App: React.FC = () => {
           }
 
           // Update any existing steps with more detailed content
-          if (message.includes('[Dolores]') || message.includes('[Teddy]') || message.includes('[Bernard]')) {
-            setResearch(prev =>
-              prev.map(step => {
-                if (step.isSpinning && step.type === ResearchStepType.REFLECTION) {
-                  return { ...step, content: step.content + '\n\n' + message };
-                }
-                return step;
-              })
-            );
+          if (message.includes('[Dolores]') || message.includes('[Teddy]') || message.includes('[Bernard]') || 
+              message.includes('[Maeve]') || message.includes('evaluation') || message.includes('quality')) {
+            setResearch(prev => {
+              const hasReflectionStep = prev.some(step => 
+                step.isSpinning && (step.type === ResearchStepType.REFLECTION || step.type === ResearchStepType.GENERATING_QUERIES)
+              );
+              
+              if (hasReflectionStep) {
+                // Update existing reflection/evaluation step
+                return prev.map(step => {
+                  if (step.isSpinning && (step.type === ResearchStepType.REFLECTION || step.type === ResearchStepType.GENERATING_QUERIES)) {
+                    return { ...step, content: step.content + '\n\n' + message };
+                  }
+                  return step;
+                });
+              } else if (message.includes('[') && message.includes(']')) {
+                // Only create a new reflection step if we have actual host content
+                const newStep: ResearchStep = {
+                  id: crypto.randomUUID(),
+                  title: 'Research Evaluation',
+                  icon: () => null,
+                  content: message,
+                  timestamp: new Date().toISOString(),
+                  type: ResearchStepType.REFLECTION,
+                  sources: [],
+                  isSpinning: true,
+                  toolsUsed: []
+                };
+                return [...prev, newStep];
+              }
+              return prev;
+            });
           }
 
           // Handle layer progress messages

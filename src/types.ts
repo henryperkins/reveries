@@ -132,6 +132,7 @@ export interface FunctionCallHistory {
   arguments: Record<string, any>;
   result: any;
   timestamp: number;
+  context?: string; // Human-readable description of what this function is doing
 }
 
 export type HostParadigm = 'dolores' | 'teddy' | 'bernard' | 'maeve';
