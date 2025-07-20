@@ -93,7 +93,7 @@ export class RateLimiter {
     if (!RateLimiter.instance) {
       // Support both Node (process.env) and Vite (import.meta.env) runtimes.
       const env: Record<string, string | undefined> = {
-        ...(typeof process !== 'undefined' ? (process.env as any) : {}),
+        ...(typeof process !== 'undefined' ? (process.env as Record<string, string | undefined>) : {}),
         ...(typeof import.meta !== 'undefined'
           ? ((import.meta as unknown as { env: Record<string, string | undefined> }).env)
           : {})
@@ -155,7 +155,7 @@ export class RateLimiter {
         const tokenWaitMs = tokensNeeded / this.config.maxTokensPerMinute * 60_000;
         const requestWaitMs = requestsNeeded * (60_000 / this.config.maxRequestsPerMinute);
         // At least 1s to avoid a busy loop.
-        var waitMs = Math.max(tokenWaitMs, requestWaitMs, 1_000);
+        const waitMs = Math.max(tokenWaitMs, requestWaitMs, 1_000);
         // Leave critical section *before* we wait so others may proceed.
       } finally {
         release();

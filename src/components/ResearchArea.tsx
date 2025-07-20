@@ -13,7 +13,11 @@ export const ResearchArea: React.FC<ResearchAreaProps> = ({ steps }) => {
   const toggleStep = (stepId: string) => {
     setExpandedSteps(prev => {
       const updated = new Set(prev);
-      updated.has(stepId) ? updated.delete(stepId) : updated.add(stepId);
+      if (updated.has(stepId)) {
+        updated.delete(stepId);
+      } else {
+        updated.add(stepId);
+      }
       return updated;
     });
   };

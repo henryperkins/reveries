@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { DatabaseService } from "databaseService";
+import { ResearchStep } from '@/types';
+import { ResearchGraphManager } from '@/researchGraph';
 
 const STORAGE_PREFIX = "reveries_";
 const DEFAULT_VERSION = 1;
@@ -280,4 +282,333 @@ export function useCancellableOperation() {
   }, [cancelCurrent]);
 
   return { setCancelFunction, cancelCurrent };
+}
+
+// Research session interface
+export interface ResearchSession {
+  id: string;
+  query: string;
+  timestamp: number;
+  steps: ResearchStep[];
+  graphData?: string;
+  completed: boolean;
+  duration?: number;
+  model?: string;
+  effort?: string;
+  paradigm?: any;
+  paradigmProbabilities?: any;
+  phase?: any;
+}
+
+// Research sessions hook with database sync
+export function useResearchSessions() {
+  const enhanced = usePersistentStateEnhanced<ResearchSession[]>(
+    'research_sessions',
+    [],
+    { 
+      version: 1,
+      enableDatabase: import.meta.env.VITE_ENABLE_DATABASE_PERSISTENCE === "true"
+    }
+  );
+
+  const addSession = useCallback((session: ResearchSession) => {
+    enhanced.setValue(prev => [...prev, session].slice(-10)); // Keep last 10 sessions
+  }, [enhanced]);
+
+  const updateSession = useCallback((id: string, updates: Partial<ResearchSession>) => {
+    enhanced.setValue(prev =>
+      prev.map(session =>
+        session.id === id ? { ...session, ...updates } : session
+      )
+    );
+  }, [enhanced]);
+
+  const getSession = useCallback((id: string) => {
+    return enhanced.value.find(s => s.id === id);
+  }, [enhanced.value]);
+
+  const deleteSession = useCallback((id: string) => {
+    enhanced.setValue(prev => prev.filter(s => s.id !== id));
+  }, [enhanced]);
+
+  const syncWithDatabase = useCallback(async () => {
+    if (!enhanced.isDatabaseConnected) return;
+    
+    try {
+      const userId = sessionStorage.getItem("reveries_user_session_id");
+      if (userId) {
+        // Sync is handled by the underlying persistent state layer
+      }
+    } catch (error) {
+      console.error('Failed to sync research sessions:', error);
+    }
+  }, [enhanced.isDatabaseConnected]);
+
+  return {
+    sessions: enhanced.value,
+    addSession,
+    updateSession,
+    getSession,
+    deleteSession,
+    clearSessions: enhanced.clearValue,
+    syncWithDatabase,
+    isDatabaseConnected: enhanced.isDatabaseConnected,
+    isOnline: navigator.onLine
+  };
+}
+
+// Enhanced persistence hook with research-specific features
+interface EnhancedPersistenceState {
+  isConnected: boolean;
+  isSyncing: boolean;
+  lastSyncTime: Date | null;
+  syncError: string | null;
+}
+
+export function useEnhancedPersistence(sessionId: string) {
+  const [persistenceState, setPersistenceState] = useState<EnhancedPersistenceState>({
+    isConnected: false,
+    isSyncing: false,
+    lastSyncTime: null,
+    syncError: null,
+  });
+
+  // Check database connectivity
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const dbService = DatabaseService.getInstance();
+        await dbService.getRecentSessions(sessionId, 1);
+        setPersistenceState(prev => ({ ...prev, isConnected: true }));
+      } catch (error) {
+        console.warn('Database not available, using localStorage fallback');
+        setPersistenceState(prev => ({
+          ...prev,
+          isConnected: false,
+          syncError: 'Database connection failed'
+        }));
+      }
+    };
+    checkConnection();
+  }, [sessionId]);
+
+  // Save to localStorage
+  const saveToLocalStorage = useCallback((key: string, data: any) => {
+    try {
+      localStorage.setItem(`reveries_${sessionId}_${key}`, JSON.stringify(data));
+    } catch (error) {
+      console.error('LocalStorage save failed:', error);
+    }
+  }, [sessionId]);
+
+  // Load from localStorage
+  const loadFromLocalStorage = useCallback((key: string) => {
+    try {
+      const data = localStorage.getItem(`reveries_${sessionId}_${key}`);
+      return data ? JSON.parse(data) : null;
+    } catch (error) {
+      console.error('LocalStorage load failed:', error);
+      return null;
+    }
+  }, [sessionId]);
+
+  // Save research step with hybrid storage
+  const saveResearchStep = useCallback(async (
+    step: ResearchStep,
+    parentId?: string
+  ) => {
+    setPersistenceState(prev => ({ ...prev, isSyncing: true }));
+
+    // Always save to localStorage first
+    const localSteps = loadFromLocalStorage('steps') || [];
+    localSteps.push({ step, parentId, timestamp: new Date().toISOString() });
+    saveToLocalStorage('steps', localSteps);
+
+    // Try to save to database if connected
+    if (persistenceState.isConnected) {
+      try {
+        const dbService = DatabaseService.getInstance();
+        await dbService.saveResearchStep(sessionId, step, parentId);
+        setPersistenceState(prev => ({
+          ...prev,
+          isSyncing: false,
+          lastSyncTime: new Date(),
+          syncError: null
+        }));
+      } catch (error) {
+        console.error('Database save failed:', error);
+        setPersistenceState(prev => ({
+          ...prev,
+          isSyncing: false,
+          syncError: 'Failed to sync to database'
+        }));
+      }
+    } else {
+      setPersistenceState(prev => ({ ...prev, isSyncing: false }));
+    }
+  }, [sessionId, persistenceState.isConnected, saveToLocalStorage, loadFromLocalStorage]);
+
+  // Save research graph
+  const saveResearchGraph = useCallback(async (graphManager: ResearchGraphManager) => {
+    const graphData = {
+      nodes: graphManager.getNodes(),
+      edges: graphManager.getEdges(),
+      statistics: graphManager.getStatistics(),
+    };
+
+    // Save to localStorage
+    saveToLocalStorage('graph', graphData);
+
+    // Use the built-in persistence method which handles database connectivity automatically
+    try {
+      await graphManager.persistGraph(sessionId);
+    } catch (error) {
+      console.error('Graph persistence failed:', error);
+    }
+  }, [sessionId, saveToLocalStorage]);
+
+  // Load research data
+  const loadResearchData = useCallback(async (): Promise<{
+    steps: ResearchStep[],
+    graph: any,
+    session: any
+  } | null> => {
+    // Try database first
+    if (persistenceState.isConnected) {
+      try {
+        const dbService = DatabaseService.getInstance();
+        const [session, graph, steps] = await Promise.all([
+          dbService.getResearchSession(sessionId),
+          dbService.getResearchGraph(sessionId),
+          dbService.getResearchSteps(sessionId),
+        ]);
+
+        if (session || graph || steps.length > 0) {
+          return { session, graph, steps };
+        }
+      } catch (error) {
+        console.error('Database load failed:', error);
+      }
+    }
+
+    // Fallback to localStorage
+    const localSteps = loadFromLocalStorage('steps') || [];
+    const localGraph = loadFromLocalStorage('graph');
+    const localSession = loadFromLocalStorage('session');
+
+    if (localSteps.length > 0 || localGraph || localSession) {
+      return {
+        steps: localSteps.map((item: any) => item.step),
+        graph: localGraph,
+        session: localSession,
+      };
+    }
+
+    return null;
+  }, [sessionId, persistenceState.isConnected, loadFromLocalStorage]);
+
+  // Sync localStorage to database when connection is restored
+  useEffect(() => {
+    if (!persistenceState.isConnected) return;
+
+    const syncLocalToDatabase = async () => {
+      try {
+        const localSteps = loadFromLocalStorage('steps') || [];
+        const localGraph = loadFromLocalStorage('graph');
+        const localSession = loadFromLocalStorage('session');
+        const dbService = DatabaseService.getInstance();
+
+        if (localSession) {
+          await dbService.saveResearchSession(
+            sessionId,
+            localSession
+          );
+        }
+
+        if (localGraph) {
+          await dbService.saveResearchGraph(sessionId, localGraph);
+        }
+
+        for (const item of localSteps) {
+          await dbService.saveResearchStep(
+            sessionId,
+            item.step,
+            item.parentId
+          );
+        }
+
+        setPersistenceState(prev => ({
+          ...prev,
+          lastSyncTime: new Date(),
+          syncError: null,
+        }));
+      } catch (error) {
+        console.error('Sync to database failed:', error);
+        setPersistenceState(prev => ({
+          ...prev,
+          syncError: 'Failed to sync local data to database',
+        }));
+      }
+    };
+
+    syncLocalToDatabase();
+  }, [persistenceState.isConnected, sessionId, loadFromLocalStorage]);
+
+  return {
+    persistenceState,
+    saveResearchStep,
+    saveResearchGraph,
+    loadResearchData,
+    saveToLocalStorage,
+    loadFromLocalStorage,
+  };
+}
+
+// Database health hook
+export function useDatabaseHealth() {
+  const [isConnected, setIsConnected] = useState(false);
+  const [lastError, setLastError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const dbService = DatabaseService.getInstance();
+        const connected = await dbService.isConnected();
+        setIsConnected(connected);
+        setLastError(null);
+      } catch (error) {
+        setIsConnected(false);
+        setLastError(error as Error);
+      }
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return { isConnected, lastError };
+}
+
+// Legacy exports for backward compatibility
+export function usePersistedState<T>(
+  key: string,
+  defaultValue: T,
+  version: number = 1
+): [T, React.Dispatch<React.SetStateAction<T>>, () => void] {
+  console.warn('usePersistedState is deprecated. Please use usePersistentState instead.');
+  return usePersistentState(key, defaultValue, { version });
+}
+
+export function useEnhancedPersistedState<T>(
+  key: string,
+  defaultValue: T,
+  version: number = 1
+): [T, React.Dispatch<React.SetStateAction<T>>, () => void] {
+  console.warn('useEnhancedPersistedState is deprecated. Please use usePersistentState instead.');
+  return usePersistentState(key, defaultValue, { 
+    version,
+    enableDatabase: import.meta.env.VITE_ENABLE_DATABASE_PERSISTENCE === "true"
+  });
 }

@@ -123,7 +123,7 @@ export class SelectLayerService {
     const hybridResults = this.hybridRetrieve(query, sources, paradigm);
 
     // Apply paradigm-specific reranking
-    const rerankedResults = this.rerank(hybridResults, strategy);
+    const rerankedResults = this.rerank(hybridResults);
 
     // Return top k sources
     return rerankedResults.slice(0, k).map(result => result.source);
@@ -189,17 +189,17 @@ export class SelectLayerService {
     return Math.min(score / 5, 1);
   }
 
-  private rerank(results: RetrievalResult[], strategy: SelectionStrategy): RetrievalResult[] {
+  private rerank(results: RetrievalResult[]): RetrievalResult[] {
     // Sort by combined score
     results.sort((a, b) => b.combinedScore - a.combinedScore);
     
     // Apply MMR-style diversification for top results
-    const diversified = this.applyDiversification(results, strategy);
+    const diversified = this.applyDiversification(results);
     
     return diversified;
   }
 
-  private applyDiversification(results: RetrievalResult[], _strategy: SelectionStrategy): RetrievalResult[] {
+  private applyDiversification(results: RetrievalResult[]): RetrievalResult[] {
     const diversified: RetrievalResult[] = [];
     const used = new Set<string>();
     

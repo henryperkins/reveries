@@ -12,6 +12,12 @@ export interface EmbeddingVector {
   model: string;
 }
 
+interface OpenAIEmbeddingItem {
+  embedding: number[];
+  index: number;
+  object: string;
+}
+
 export interface SimilarityResult {
   similarity: number;
   paradigm: HostParadigm;
@@ -69,7 +75,7 @@ class OpenAIEmbeddingProvider implements EmbeddingProvider {
       }
 
       const data = await response.json();
-      return data.data.map((item: any) => ({
+      return data.data.map((item: OpenAIEmbeddingItem) => ({
         values: item.embedding,
         dimensions: item.embedding.length,
         model: 'text-embedding-3-small'
@@ -133,7 +139,7 @@ class AzureOpenAIEmbeddingProvider implements EmbeddingProvider {
       }
 
       const data = await response.json();
-      return data.data.map((item: any) => ({
+      return data.data.map((item: OpenAIEmbeddingItem) => ({
         values: item.embedding,
         dimensions: item.embedding.length,
         model: this.deploymentName
@@ -220,7 +226,7 @@ class FallbackEmbeddingProvider implements EmbeddingProvider {
       strategy: /(optimize|control|manage|strategy|leverage|narrative)/gi
     };
 
-    Object.entries(patterns).forEach(([_category, pattern], categoryIndex) => {
+    Object.entries(patterns).forEach(([, pattern], categoryIndex) => {
       const matches = (text.match(pattern) || []).length;
       if (matches > 0) {
         // Add semantic signal to specific dimensions

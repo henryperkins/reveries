@@ -23,21 +23,7 @@ import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
 import { DEFAULT_MODEL, TIMEOUTS } from '@/constants'
 import { useTimeoutManager, TimeoutManager } from '@/utils/timeoutManager'
 import '@/App.css'
-
-interface ResearchSession {
-  id: string;
-  query: string;
-  timestamp: number;
-  steps: ResearchStep[];
-  graphData?: string;
-  completed: boolean;
-  duration?: number;
-  model?: string;
-  effort?: string;
-  paradigm?: HostParadigm | null;
-  paradigmProbabilities?: ParadigmProbabilities | null;
-  phase?: ResearchPhase;
-}
+import { ResearchSession } from '@/hooks/usePersistentState'
 
 const App: React.FC = () => {
   const [research, setResearch] = usePersistentState<ResearchStep[]>('reveries_research', [], { version: 1 })
@@ -90,7 +76,7 @@ const App: React.FC = () => {
     return () => {
       progressTimeoutMgr.clearAll();
     };
-  }, []);
+  }, [progressTimeoutMgr]);
 
   // Progress ref to track current value (fixes race condition)
   const currentProgressRef = useRef<number>(0);
@@ -182,7 +168,7 @@ const App: React.FC = () => {
     }
   }, [setResearch, graphManager]);
 
-  // Research sessions management
+  // Research sessions management  
   const [sessions, setSessions] = usePersistentState<ResearchSession[]>('research_sessions', [], { version: 1 })
 
   const addSession = useCallback((session: ResearchSession) => {
@@ -200,7 +186,7 @@ const App: React.FC = () => {
 
     // Push any new records into the shared context so they appear in the dock.
     history.forEach((call) => addToHistory(call));
-  }, [research, functionCallingService]);
+  }, [research, functionCallingService, addToHistory]);
 
   const advancePhase = useCallback(() => {
     const phases: ResearchPhase[] = ['discovery', 'exploration', 'synthesis', 'validation'];
@@ -538,7 +524,7 @@ const App: React.FC = () => {
       setCurrentLayer(null)
       // Keep context densities to show final results
     }
-  }, [isLoading, currentModel, currentPhase, researchAgent, clearError, handleError, graphManager, setResearch, advancePhase, updateProgressState, progress])
+  }, [isLoading, currentModel, currentPhase, researchAgent, clearError, handleError, graphManager, setResearch, advancePhase, updateProgressState, progressTimeoutMgr, timeoutManager, addLiveCall, updateLiveCall, addToolUsed, paradigm, progressState])
 
   const handleClear = useCallback(() => {
     setResearch([]);

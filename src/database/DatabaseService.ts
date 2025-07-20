@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { ResearchSession } from '@/hooks/usePersistedState';
+import { ResearchSession } from '@/hooks/usePersistentState';
 import { ResearchStep, ResearchStepType, Citation, ResearchMetadata, ModelType, EffortType, HostParadigm, ParadigmProbabilities } from '@/types';
 import { GraphNode, GraphEdge } from '@/researchGraph';
 

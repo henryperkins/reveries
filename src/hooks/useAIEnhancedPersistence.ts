@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { ResearchStep } from '@/types';
 import { databaseService } from '@/services/databaseService';
-import { useEnhancedPersistence } from './useEnhancedPersistence';
+import { useEnhancedPersistence } from './usePersistentState';
 
 interface AIInsight {
   type: string;
