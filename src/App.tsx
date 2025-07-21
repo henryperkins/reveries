@@ -14,6 +14,7 @@ import { ProgressMeter } from '@/components/atoms'
 import { usePersistentState } from '@/hooks/usePersistentState'
 import { useFunctionCalls } from '@/components/FunctionCallDock'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
+import { ThemeToggle } from '@/theme/ThemeToggle'
 import {
   ResearchStep,
   ResearchStepType,
@@ -320,13 +321,13 @@ const App: React.FC = () => {
             addToolUsed(toolName);
 
             // Create research step for search tools
-            if (toolName.includes('search') || toolName === 'web_search' || 
+            if (toolName.includes('search') || toolName === 'web_search' ||
                 toolName === 'bing_search' || toolName === 'google_search') {
               setResearch(prev => {
-                const existingSearchStep = prev.find(step => 
+                const existingSearchStep = prev.find(step =>
                   step.type === ResearchStepType.WEB_RESEARCH && step.isSpinning
                 );
-                
+
                 if (!existingSearchStep) {
                   const newStep: ResearchStep = {
                     id: crypto.randomUUID(),
@@ -381,21 +382,21 @@ const App: React.FC = () => {
           } else if (message.includes('Routing to') && message.includes('paradigm')) {
             updateProgressState('routing', message);
             startProgressTimeout('routing', TIMEOUTS.PROGRESS_ROUTING * multiplier);
-          } else if (message.includes('search queries') || message.includes('Comprehensive research') || 
+          } else if (message.includes('search queries') || message.includes('Comprehensive research') ||
                      message.includes('Generated') || message.includes('queries for')) {
             updateProgressState('researching', message);
             startProgressTimeout('researching', TIMEOUTS.PROGRESS_RESEARCH * multiplier);
-            
+
             // Create or update GENERATING_QUERIES step for search queries
             if (message.includes('Generated') || message.includes('queries')) {
               setResearch(prev => {
-                const existingQueryStep = prev.find(step => 
+                const existingQueryStep = prev.find(step =>
                   step.type === ResearchStepType.GENERATING_QUERIES && step.isSpinning
                 );
-                
+
                 if (existingQueryStep) {
-                  return prev.map(step => 
-                    step.id === existingQueryStep.id 
+                  return prev.map(step =>
+                    step.id === existingQueryStep.id
                       ? { ...step, content: step.content + '\n' + message }
                       : step
                   );
@@ -416,17 +417,17 @@ const App: React.FC = () => {
                 }
               });
             }
-          } else if (message.includes('Searching') || message.includes('Found') || 
+          } else if (message.includes('Searching') || message.includes('Found') ||
                      message.includes('results') || message.includes('web search')) {
             // Handle web search progress
             setResearch(prev => {
-              const existingSearchStep = prev.find(step => 
+              const existingSearchStep = prev.find(step =>
                 step.type === ResearchStepType.WEB_RESEARCH && step.isSpinning
               );
-              
+
               if (existingSearchStep) {
-                return prev.map(step => 
-                  step.id === existingSearchStep.id 
+                return prev.map(step =>
+                  step.id === existingSearchStep.id
                     ? { ...step, content: step.content + '\n' + message }
                     : step
                 );
@@ -541,7 +542,7 @@ const App: React.FC = () => {
 
       // Add final answer step
       setResearch(prev => [...(Array.isArray(prev) ? prev : []), finalAnswerStep])
-      
+
       // Add final answer to graph with parent relationship
       graphManager.addNode(finalAnswerStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
       lastNodeIdRef.current = finalAnswerStep.id;
@@ -747,12 +748,15 @@ const App: React.FC = () => {
   }, [progress, realTimeContextDensities, isLoading])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
       <TopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      
+
       <main className="max-w-7xl mx-auto px-4 py-8 pb-24">
-        <ReverieHeader />
-        
+        <div className="flex justify-between items-center mb-6">
+          <ReverieHeader />
+          <ThemeToggle />
+        </div>
+
         {activeTab === 'research' && (
           <>
             <Controls
@@ -798,7 +802,7 @@ const App: React.FC = () => {
             )}
 
             <div className="research-container flex flex-col">
-              <ResearchView 
+              <ResearchView
                 steps={Array.isArray(research) ? research : []}
                 activeModel={currentModel}
                 confidence={paradigmProbabilities ? Math.max(...Object.values(paradigmProbabilities)) : 0}
@@ -867,18 +871,18 @@ const App: React.FC = () => {
             </div>
           </>
         )}
-        
+
         {activeTab === 'sessions' && (
-          <SessionsView 
+          <SessionsView
             sessions={sessions}
             onLoadSession={handleLoadSession}
           />
         )}
-        
+
         {activeTab === 'analytics' && (
           <AnalyticsView />
         )}
-        
+
         {activeTab === 'settings' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-xl font-semibold text-gray-900 mb-6">Settings</h3>

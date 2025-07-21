@@ -1,97 +1,143 @@
-import { css, keyframes } from '@emotion/css';
-import { theme } from './designTokens';
+// CSS-in-JS styles with dark mode support using CSS custom properties
+// This approach uses CSS variables for runtime theming without external dependencies
 
-// Animation keyframes
-const fadeIn = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
+// CSS variables for theme values
+export const themeVariables = `
+  :root {
+    /* Light theme colors */
+    --color-primary: #3B82F6;
+    --color-secondary: #F3F4F6;
+    --color-accent: #F59E0B;
+    --color-background: #F9FAFB;
+    --color-surface: #FFFFFF;
+    --color-text-primary: #111827;
+    --color-text-secondary: #6B7280;
+    --color-text-muted: #9CA3AF;
+    --color-border: #E5E7EB;
+    --color-success: #10B981;
+    --color-warning: #F59E0B;
+    --color-error: #EF4444;
+    --color-info: #3B82F6;
+
+    /* Westworld theme colors */
+    --color-westworld-cream: #F7F3E9;
+    --color-westworld-beige: #E8E2D5;
+    --color-westworld-tan: #D4C4A8;
+    --color-westworld-brown: #8B4513;
+    --color-westworld-darkbrown: #654321;
+    --color-westworld-nearblack: #1A1A1A;
+    --color-westworld-black: #000000;
+    --color-westworld-gold: #FFD700;
+    --color-westworld-darkgold: #B8860B;
+    --color-westworld-rust: #B7410E;
+    --color-westworld-copper: #B87333;
+    --color-westworld-darkcopper: #8B4513;
+    --color-westworld-white: #FFFFFF;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+
+    /* Border radius */
+    --radius-sm: 0.125rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --radius-full: 9999px;
+
+    /* Transitions */
+    --transition-fast: 150ms ease-in-out;
+    --transition-base: 200ms ease-in-out;
+    --transition-slow: 300ms ease-in-out;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  [data-theme="dark"] {
+    /* Dark theme colors */
+    --color-primary: #60A5FA;
+    --color-secondary: #374151;
+    --color-accent: #FBBF24;
+    --color-background: #111827;
+    --color-surface: #1F2937;
+    --color-text-primary: #F9FAFB;
+    --color-text-secondary: #9CA3AF;
+    --color-text-muted: #6B7280;
+    --color-border: #374151;
+    --color-success: #34D399;
+    --color-warning: #FBBF24;
+    --color-error: #F87171;
+    --color-info: #60A5FA;
+
+    /* Westworld dark theme colors */
+    --color-westworld-cream: #1A1A1A;
+    --color-westworld-beige: #2A2A2A;
+    --color-westworld-tan: #3A3A3A;
+    --color-westworld-brown: #B87333;
+    --color-westworld-darkbrown: #D4AF37;
+    --color-westworld-nearblack: #FAFAFA;
+    --color-westworld-black: #FFFFFF;
+    --color-westworld-gold: #F4CF57;
+    --color-westworld-darkgold: #E4BF47;
+    --color-westworld-rust: #D4733D;
+    --color-westworld-copper: #E89353;
+    --color-westworld-darkcopper: #D88343;
+    --color-westworld-white: #0A0A0A;
+
+    /* Dark shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(255, 255, 255, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(255, 255, 255, 0.1), 0 2px 4px -2px rgba(255, 255, 255, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(255, 255, 255, 0.1), 0 4px 6px -4px rgba(255, 255, 255, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(255, 255, 255, 0.1), 0 8px 10px -6px rgba(255, 255, 255, 0.1);
   }
 `;
 
-const slideUp = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-`;
-
-const shimmer = keyframes`
-  0% {
-    background-position: -200px 0;
-  }
-  100% {
-    background-position: calc(200px + 100%) 0;
-  }
-`;
-
-// Base styles with dark mode support
-export const baseStyles = {
+// Base styles object
+export const styles = {
   // Layout
-  container: css`
+  container: `
     min-height: 100vh;
-    background: linear-gradient(
-      135deg,
-      ${theme.colors.background.light} 0%,
-      ${theme.colors.background.secondary.light} 100%
-    );
-
-    [data-theme="dark"] & {
-      background: linear-gradient(
-        135deg,
-        ${theme.colors.background.dark} 0%,
-        ${theme.colors.background.secondary.dark} 100%
-      );
-    }
+    background: linear-gradient(135deg, var(--color-background) 0%, var(--color-surface) 100%);
+    transition: background var(--transition-slow);
   `,
 
   // Card styles
-  card: css`
-    background: ${theme.colors.surface.light};
-    border: 1px solid ${theme.colors.border.light};
-    border-radius: ${theme.borderRadius.lg};
-    box-shadow: ${theme.shadows.md};
-    transition: all 0.3s ease;
-
-    [data-theme="dark"] & {
-      background: ${theme.colors.surface.dark};
-      border-color: ${theme.colors.border.dark};
-      box-shadow: ${theme.shadows.dark.md};
-    }
+  card: `
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-slow);
 
     &:hover {
-      box-shadow: ${theme.shadows.lg};
-
-      [data-theme="dark"] & {
-        box-shadow: ${theme.shadows.dark.lg};
-      }
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-1px);
     }
   `,
 
   // Button styles
-  button: css`
+  button: `
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: ${theme.spacing.sm} ${theme.spacing.md};
-    font-size: ${theme.fontSize.sm};
-    font-weight: ${theme.fontWeight.medium};
-    border-radius: ${theme.borderRadius.md};
-    transition: all 0.2s ease;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-base);
     cursor: pointer;
     border: 1px solid transparent;
 
     &:focus {
       outline: none;
-      box-shadow: 0 0 0 2px ${theme.colors.primary.light}40;
+      box-shadow: 0 0 0 2px var(--color-primary)40;
     }
 
     &:disabled {
@@ -100,159 +146,103 @@ export const baseStyles = {
     }
   `,
 
-  primaryButton: css`
-    background: ${theme.colors.primary.light};
+  primaryButton: `
+    background: var(--color-primary);
     color: white;
 
     &:hover:not(:disabled) {
-      background: ${theme.colors.primary.hover.light};
-    }
-
-    [data-theme="dark"] & {
-      background: ${theme.colors.primary.dark};
-
-      &:hover:not(:disabled) {
-        background: ${theme.colors.primary.hover.dark};
-      }
+      background: var(--color-primary);
+      filter: brightness(0.9);
     }
   `,
 
-  secondaryButton: css`
-    background: ${theme.colors.secondary.light};
-    color: ${theme.colors.text.primary.light};
-    border-color: ${theme.colors.border.light};
+  secondaryButton: `
+    background: var(--color-secondary);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
 
     &:hover:not(:disabled) {
-      background: ${theme.colors.secondary.hover.light};
-    }
-
-    [data-theme="dark"] & {
-      background: ${theme.colors.secondary.dark};
-      color: ${theme.colors.text.primary.dark};
-      border-color: ${theme.colors.border.dark};
-
-      &:hover:not(:disabled) {
-        background: ${theme.colors.secondary.hover.dark};
-      }
+      background: var(--color-secondary);
+      filter: brightness(0.95);
     }
   `,
 
-  ghostButton: css`
+  ghostButton: `
     background: transparent;
-    color: ${theme.colors.text.secondary.light};
+    color: var(--color-text-secondary);
 
     &:hover:not(:disabled) {
-      background: ${theme.colors.secondary.light};
-    }
-
-    [data-theme="dark"] & {
-      color: ${theme.colors.text.secondary.dark};
-
-      &:hover:not(:disabled) {
-        background: ${theme.colors.secondary.dark};
-      }
+      background: var(--color-secondary);
     }
   `,
 
   // Input styles
-  input: css`
+  input: `
     width: 100%;
-    padding: ${theme.spacing.sm} ${theme.spacing.md};
-    font-size: ${theme.fontSize.sm};
-    border: 1px solid ${theme.colors.border.light};
-    border-radius: ${theme.borderRadius.md};
-    background: ${theme.colors.surface.light};
-    color: ${theme.colors.text.primary.light};
-    transition: all 0.2s ease;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.875rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    transition: all var(--transition-base);
 
     &:focus {
       outline: none;
-      border-color: ${theme.colors.primary.light};
-      box-shadow: 0 0 0 2px ${theme.colors.primary.light}20;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px var(--color-primary)20;
     }
 
     &::placeholder {
-      color: ${theme.colors.text.muted.light};
-    }
-
-    [data-theme="dark"] & {
-      background: ${theme.colors.surface.dark};
-      border-color: ${theme.colors.border.dark};
-      color: ${theme.colors.text.primary.dark};
-
-      &::placeholder {
-        color: ${theme.colors.text.muted.dark};
-      }
+      color: var(--color-text-muted);
     }
   `,
 
   // Text styles
   text: {
-    heading: css`
-      font-family: ${theme.fontFamily.heading};
-      font-weight: ${theme.fontWeight.bold};
-      color: ${theme.colors.text.primary.light};
-
-      [data-theme="dark"] & {
-        color: ${theme.colors.text.primary.dark};
-      }
+    heading: `
+      font-family: system-ui, -apple-system, sans-serif;
+      font-weight: 700;
+      color: var(--color-text-primary);
     `,
 
-    body: css`
-      font-family: ${theme.fontFamily.body};
-      color: ${theme.colors.text.primary.light};
-      line-height: ${theme.lineHeight.relaxed};
-
-      [data-theme="dark"] & {
-        color: ${theme.colors.text.primary.dark};
-      }
+    body: `
+      font-family: system-ui, -apple-system, sans-serif;
+      color: var(--color-text-primary);
+      line-height: 1.625;
     `,
 
-    muted: css`
-      color: ${theme.colors.text.muted.light};
-
-      [data-theme="dark"] & {
-        color: ${theme.colors.text.muted.dark};
-      }
+    muted: `
+      color: var(--color-text-muted);
     `,
   },
 
   // Animation classes
   animations: {
-    fadeIn: css`
-      animation: ${fadeIn} 0.3s ease-out;
+    fadeIn: `
+      animation: fadeIn 0.3s ease-out;
     `,
 
-    slideUp: css`
-      animation: ${slideUp} 0.3s ease-out;
+    slideUp: `
+      animation: slideUp 0.3s ease-out;
     `,
 
-    shimmer: css`
+    shimmer: `
       background: linear-gradient(
         90deg,
-        ${theme.colors.shimmer.light} 0%,
-        ${theme.colors.shimmer.secondary.light} 20%,
-        ${theme.colors.shimmer.light} 40%,
-        ${theme.colors.shimmer.light} 100%
+        var(--color-secondary) 0%,
+        var(--color-border) 20%,
+        var(--color-secondary) 40%,
+        var(--color-secondary) 100%
       );
       background-size: 200px 100%;
-      animation: ${shimmer} 1.5s infinite;
-
-      [data-theme="dark"] & {
-        background: linear-gradient(
-          90deg,
-          ${theme.colors.shimmer.dark} 0%,
-          ${theme.colors.shimmer.secondary.dark} 20%,
-          ${theme.colors.shimmer.dark} 40%,
-          ${theme.colors.shimmer.dark} 100%
-        );
-      }
+      animation: shimmer 1.5s infinite;
     `,
   },
 
   // Utility classes
   utilities: {
-    visuallyHidden: css`
+    visuallyHidden: `
       position: absolute;
       width: 1px;
       height: 1px;
@@ -264,88 +254,123 @@ export const baseStyles = {
       border: 0;
     `,
 
-    focusRing: css`
+    focusRing: `
       &:focus {
         outline: none;
-        box-shadow: 0 0 0 2px ${theme.colors.primary.light}40;
-      }
-
-      [data-theme="dark"] &:focus {
-        box-shadow: 0 0 0 2px ${theme.colors.primary.dark}40;
+        box-shadow: 0 0 0 2px var(--color-primary)40;
       }
     `,
+  },
+
+  // Component-specific styles
+  components: {
+    researchCard: `
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-md);
+      transition: all var(--transition-slow);
+
+      &:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-1px);
+      }
+    `,
+
+    progressBar: `
+      height: 4px;
+      background: var(--color-secondary);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    `,
+
+    progressFill: `
+      height: 100%;
+      background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+      transition: width var(--transition-slow);
+    `,
+  },
+
+  // Responsive styles
+  responsive: {
+    mobile: `
+      @media (max-width: 768px) {
+        padding: var(--spacing-sm);
+      }
+    `,
+
+    tablet: `
+      @media (min-width: 769px) and (max-width: 1024px) {
+        padding: var(--spacing-md);
+      }
+    `,
+
+    desktop: `
+      @media (min-width: 1025px) {
+        padding: var(--spacing-lg);
+      }
+    `,
+  },
+};
+
+// CSS keyframes
+export const keyframes = `
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
-};
 
-// Component-specific styles
-export const componentStyles = {
-  researchCard: css`
-    background: ${theme.colors.surface.light};
-    border: 1px solid ${theme.colors.border.light};
-    border-radius: ${theme.borderRadius.lg};
-    padding: ${theme.spacing.lg};
-    margin-bottom: ${theme.spacing.md};
-    transition: all 0.3s ease;
-
-    &:hover {
-      box-shadow: ${theme.shadows.lg};
-      transform: translateY(-1px);
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
     }
-
-    [data-theme="dark"] & {
-      background: ${theme.colors.surface.dark};
-      border-color: ${theme.colors.border.dark};
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
-  `,
+  }
 
-  progressBar: css`
-    height: 4px;
-    background: ${theme.colors.secondary.light};
-    border-radius: ${theme.borderRadius.full};
-    overflow: hidden;
-
-    [data-theme="dark"] & {
-      background: ${theme.colors.secondary.dark};
+  @keyframes shimmer {
+    0% {
+      background-position: -200px 0;
     }
-  `,
-
-  progressFill: css`
-    height: 100%;
-    background: linear-gradient(90deg, ${theme.colors.primary.light}, ${theme.colors.accent.light});
-    transition: width 0.3s ease;
-
-    [data-theme="dark"] & {
-      background: linear-gradient(90deg, ${theme.colors.primary.dark}, ${theme.colors.accent.dark});
+    100% {
+      background-position: calc(200px + 100%) 0;
     }
-  `,
-};
+  }
 
-// Responsive styles
-export const responsiveStyles = {
-  mobile: css`
-    @media (max-width: 768px) {
-      padding: ${theme.spacing.sm};
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
     }
-  `,
+    50% {
+      opacity: 0.5;
+    }
+  }
+`;
 
-  tablet: css`
-    @media (min-width: 769px) and (max-width: 1024px) {
-      padding: ${theme.spacing.md};
-    }
-  `,
-
-  desktop: css`
-    @media (min-width: 1025px) {
-      padding: ${theme.spacing.lg};
-    }
-  `,
-};
+// Theme transition styles
+export const themeTransition = `
+  .theme-transition * {
+    transition: background-color var(--transition-slow),
+                color var(--transition-slow),
+                border-color var(--transition-slow),
+                box-shadow var(--transition-slow);
+  }
+`;
 
 // Export for easy usage
 export const styled = {
-  ...baseStyles,
-  component: componentStyles,
-  responsive: responsiveStyles,
-  animations: baseStyles.animations,
-  utilities: baseStyles.utilities,
+  ...styles,
+  variables: themeVariables,
+  keyframes,
+  transition: themeTransition,
 };
