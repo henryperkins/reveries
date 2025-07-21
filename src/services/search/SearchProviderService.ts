@@ -42,6 +42,25 @@ export interface SearchProvider {
   getRateLimit(): { remaining: number; resetTime: number };
 }
 
+export interface ExaResearchTask {
+  id: string;
+  status: 'running' | 'completed' | 'failed';
+  instructions: string;
+  schema?: object;
+  data?: any;
+  citations?: Record<string, Citation[]>;
+  error?: string;
+  createdAt?: string;
+  completedAt?: string;
+}
+
+export interface ExaResearchTaskList {
+  requestId: string;
+  data: ExaResearchTask[];
+  hasMore: boolean;
+  nextCursor?: string;
+}
+
 // Bing Search API Provider
 class BingSearchProvider implements SearchProvider {
   name = 'bing';
@@ -381,6 +400,505 @@ class GoogleSearchProvider implements SearchProvider {
   }
 }
 
+// Exa Search Provider
+class ExaSearchProvider implements SearchProvider {
+  name = 'exa';
+  private apiKey: string;
+  private endpoint = 'https://api.exa.ai';
+  private rateLimit = { remaining: 1000, resetTime: Date.now() + 86400000 };
+  private rateLimiter = RateLimiter.getInstance();
+  private exaSDK: any = null; // Optional Exa SDK instance
+
+  constructor(apiKey?: string) {
+    this.apiKey = apiKey || getEnv('VITE_EXA_API_KEY', 'EXA_API_KEY') || '';
+    this.initializeSDK();
+  }
+
+  private async initializeSDK() {
+    try {
+      // Try to dynamically import the official Exa SDK if available
+      // Use Function constructor to avoid static analysis
+      const dynamicImport = new Function('moduleName', 'return import(moduleName)');
+      const ExaModule = await dynamicImport('exa-js').catch(() => null);
+      
+      if (ExaModule) {
+        const Exa = ExaModule.default || ExaModule;
+        this.exaSDK = new Exa(this.apiKey);
+        console.log('[ExaSearchProvider] Using official Exa SDK');
+      } else {
+        this.exaSDK = null;
+        console.log('[ExaSearchProvider] Exa SDK not found, using direct HTTP calls');
+      }
+    } catch (error) {
+      // SDK not available, fall back to HTTP calls
+      console.log('[ExaSearchProvider] Exa SDK initialization failed, using direct HTTP calls');
+      this.exaSDK = null;
+    }
+  }
+
+  async isAvailable(): Promise<boolean> {
+    return !!this.apiKey && typeof fetch !== 'undefined';
+  }
+
+  async search(query: string, options: SearchOptions = {}): Promise<SearchResponse> {
+    if (!await this.isAvailable()) {
+      throw new Error('Exa Search provider not available');
+    }
+
+    // Apply rate limiting for Exa API call
+    const estimatedTokens = estimateTokens(query) + 150; // Add overhead for API call
+    await this.rateLimiter.waitForCapacity(estimatedTokens);
+
+    const startTime = Date.now();
+
+    try {
+      // Use SDK if available, otherwise fall back to HTTP
+      if (this.exaSDK) {
+        return await this.searchWithSDK(query, options, startTime);
+      } else {
+        return await this.searchWithHTTP(query, options, startTime);
+      }
+    } catch (error) {
+      console.error('Exa search failed:', error);
+      throw error;
+    }
+  }
+
+  private async searchWithSDK(query: string, options: SearchOptions, startTime: number): Promise<SearchResponse> {
+    const searchOptions: any = {
+      query: this.buildSearchQuery(query, options),
+      type: 'auto',
+      numResults: Math.min(options.maxResults || 10, 100),
+      text: true,
+      highlights: {
+        numSentences: 3,
+        highlightsPerUrl: 2
+      }
+    };
+
+    // Add domain filtering
+    if (options.domains && options.domains.length > 0) {
+      searchOptions.includeDomains = options.domains;
+    }
+    if (options.excludeDomains && options.excludeDomains.length > 0) {
+      searchOptions.excludeDomains = options.excludeDomains;
+    }
+
+    // Add time filtering
+    if (options.timeRange) {
+      searchOptions.startCrawlDate = this.mapTimeRange(options.timeRange);
+      searchOptions.endCrawlDate = new Date().toISOString();
+    }
+
+    const data = await this.exaSDK.searchAndContents(query, searchOptions);
+    const searchTime = Date.now() - startTime;
+
+    const results = this.parseExaResults(data.results || []);
+
+    return {
+      results,
+      totalResults: data.results?.length || 0,
+      searchTime,
+      provider: this.name,
+      query
+    };
+  }
+
+  private async searchWithHTTP(query: string, options: SearchOptions, startTime: number): Promise<SearchResponse> {
+    const requestBody = {
+      query: this.buildSearchQuery(query, options),
+      type: 'auto',
+      numResults: Math.min(options.maxResults || 10, 100),
+      contents: {
+        text: true,
+        highlights: {
+          numSentences: 3,
+          highlightsPerUrl: 2
+        }
+      },
+      ...(options.domains && options.domains.length > 0 && {
+        includeDomains: options.domains
+      }),
+      ...(options.excludeDomains && options.excludeDomains.length > 0 && {
+        excludeDomains: options.excludeDomains
+      }),
+      ...(options.timeRange && {
+        startCrawlDate: this.mapTimeRange(options.timeRange),
+        endCrawlDate: new Date().toISOString()
+      })
+    };
+
+    const response = await fetch(`${this.endpoint}/search`, {
+      method: 'POST',
+      headers: {
+        'x-api-key': this.apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Exa API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const searchTime = Date.now() - startTime;
+
+    const results = this.parseExaResults(data.results || []);
+
+    return {
+      results,
+      totalResults: data.results?.length || 0,
+      searchTime,
+      provider: this.name,
+      query
+    };
+  }
+
+  private buildSearchQuery(query: string, options: SearchOptions): string {
+    let searchQuery = query;
+
+    // Exa handles domain filtering via includeDomains/excludeDomains parameters
+    // so we don't need to modify the query string for that
+
+    if (options.fileType) {
+      searchQuery += ` filetype:${options.fileType}`;
+    }
+
+    return searchQuery;
+  }
+
+  private mapTimeRange(timeRange: string): string {
+    const now = new Date();
+    const mapping: Record<string, Date> = {
+      day: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+      week: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+      month: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+      year: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+    };
+    return (mapping[timeRange] || mapping.week).toISOString();
+  }
+
+  private parseExaResults(results: any[]): SearchResult[] {
+    return results.map(result => ({
+      title: result.title || 'No title',
+      url: result.url || '',
+      snippet: this.extractSnippet(result),
+      publishedDate: result.publishedDate,
+      relevanceScore: result.score || 0.5,
+      source: 'exa'
+    }));
+  }
+
+  private extractSnippet(result: any): string {
+    // Try highlights first, then text, then fallback
+    if (result.highlights && result.highlights.length > 0) {
+      return result.highlights.join(' ... ');
+    }
+    if (result.text) {
+      // Truncate to reasonable snippet length
+      return result.text.length > 300 
+        ? result.text.substring(0, 300) + '...'
+        : result.text;
+    }
+    return result.summary || '';
+  }
+
+  getRateLimit() {
+    return this.rateLimit;
+  }
+
+  /**
+   * Get full content from URLs using Exa's contents endpoint
+   */
+  async getContents(urls: string[], options?: { text?: boolean; summary?: boolean }): Promise<any[]> {
+    if (!await this.isAvailable()) {
+      throw new Error('Exa Search provider not available');
+    }
+
+    const requestBody = {
+      urls,
+      text: options?.text ?? true,
+      summary: options?.summary ?? false
+    };
+
+    try {
+      const response = await fetch(`${this.endpoint}/contents`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': this.apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Exa Contents API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data.results || [];
+    } catch (error) {
+      console.error('Exa get contents failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Find similar links using Exa's findSimilar endpoint
+   */
+  async findSimilar(url: string, numResults: number = 10): Promise<SearchResult[]> {
+    if (!await this.isAvailable()) {
+      throw new Error('Exa Search provider not available');
+    }
+
+    const requestBody = {
+      url,
+      numResults: Math.min(numResults, 100),
+      contents: {
+        text: true,
+        highlights: {
+          numSentences: 3,
+          highlightsPerUrl: 2
+        }
+      }
+    };
+
+    try {
+      const response = await fetch(`${this.endpoint}/findSimilar`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': this.apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Exa FindSimilar API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      return this.parseExaResults(data.results || []);
+    } catch (error) {
+      console.error('Exa find similar failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a research task using Exa's research API
+   */
+  async createResearchTask(
+    instructions: string, 
+    options?: {
+      model?: 'exa-research' | 'exa-research-pro';
+      outputSchema?: object;
+      inferSchema?: boolean;
+    }
+  ): Promise<string> {
+    if (!await this.isAvailable()) {
+      throw new Error('Exa Search provider not available');
+    }
+
+    try {
+      // Use SDK if available
+      if (this.exaSDK && this.exaSDK.research) {
+        const taskOptions: any = {
+          model: options?.model || 'exa-research',
+          instructions
+        };
+
+        if (options?.outputSchema) {
+          taskOptions.outputSchema = options.outputSchema;
+        } else if (options?.inferSchema) {
+          taskOptions.inferSchema = true;
+        }
+
+        const task = await this.exaSDK.research.createTask(taskOptions);
+        return task.id;
+      } else {
+        // Fall back to HTTP
+        return await this.createResearchTaskHTTP(instructions, options);
+      }
+    } catch (error) {
+      console.error('Exa create research task failed:', error);
+      throw error;
+    }
+  }
+
+  private async createResearchTaskHTTP(
+    instructions: string,
+    options?: {
+      model?: 'exa-research' | 'exa-research-pro';
+      outputSchema?: object;
+      inferSchema?: boolean;
+    }
+  ): Promise<string> {
+    const requestBody: any = {
+      instructions,
+      model: options?.model || 'exa-research'
+    };
+
+    // Add output configuration
+    if (options?.outputSchema) {
+      requestBody.output = { schema: options.outputSchema };
+    } else if (options?.inferSchema) {
+      requestBody.output = { inferSchema: true };
+    }
+
+    const response = await fetch(`${this.endpoint}/research/v0/tasks`, {
+      method: 'POST',
+      headers: {
+        'x-api-key': this.apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Exa Research API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.id;
+  }
+
+  /**
+   * Get the status and results of a research task
+   */
+  async getResearchTask(taskId: string): Promise<ExaResearchTask> {
+    if (!await this.isAvailable()) {
+      throw new Error('Exa Search provider not available');
+    }
+
+    try {
+      // Use SDK if available
+      if (this.exaSDK && this.exaSDK.research) {
+        const task = await this.exaSDK.research.getTask(taskId);
+        return task as ExaResearchTask;
+      } else {
+        // Fall back to HTTP
+        const response = await fetch(`${this.endpoint}/research/v0/tasks/${taskId}`, {
+          method: 'GET',
+          headers: {
+            'x-api-key': this.apiKey
+          }
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Exa Research API error: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        return data as ExaResearchTask;
+      }
+    } catch (error) {
+      console.error('Exa get research task failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * List research tasks with optional pagination
+   */
+  async listResearchTasks(options?: { 
+    cursor?: string; 
+    limit?: number 
+  }): Promise<ExaResearchTaskList> {
+    if (!await this.isAvailable()) {
+      throw new Error('Exa Search provider not available');
+    }
+
+    const searchParams = new URLSearchParams();
+    if (options?.cursor) searchParams.append('cursor', options.cursor);
+    if (options?.limit) searchParams.append('limit', options.limit.toString());
+
+    try {
+      const url = `${this.endpoint}/research/v0/tasks${searchParams.toString() ? `?${searchParams}` : ''}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'x-api-key': this.apiKey
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Exa Research API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data as ExaResearchTaskList;
+    } catch (error) {
+      console.error('Exa list research tasks failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Poll a research task until completion or timeout
+   */
+  async pollResearchTask(
+    taskId: string, 
+    options?: {
+      timeoutMs?: number;
+      intervalMs?: number;
+      onProgress?: (task: ExaResearchTask) => void;
+    }
+  ): Promise<ExaResearchTask> {
+    const timeoutMs = options?.timeoutMs || 300000; // 5 minutes default
+    const intervalMs = options?.intervalMs || 3000; // 3 seconds default
+
+    try {
+      // Use SDK polling if available
+      if (this.exaSDK && this.exaSDK.research && this.exaSDK.research.pollTask) {
+        const task = await this.exaSDK.research.pollTask(taskId);
+        return task as ExaResearchTask;
+      } else {
+        // Fall back to manual polling
+        return await this.manualPollTask(taskId, timeoutMs, intervalMs, options?.onProgress);
+      }
+    } catch (error) {
+      console.error('Exa poll research task failed:', error);
+      throw error;
+    }
+  }
+
+  private async manualPollTask(
+    taskId: string,
+    timeoutMs: number,
+    intervalMs: number,
+    onProgress?: (task: ExaResearchTask) => void
+  ): Promise<ExaResearchTask> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeoutMs) {
+      const task = await this.getResearchTask(taskId);
+      
+      if (onProgress) {
+        onProgress(task);
+      }
+
+      if (task.status === 'completed') {
+        return task;
+      } else if (task.status === 'failed') {
+        throw new Error(`Research task failed: ${task.error || 'Unknown error'}`);
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, intervalMs));
+    }
+
+    throw new Error(`Research task polling timeout after ${timeoutMs}ms`);
+  }
+}
+
 // DuckDuckGo Provider (uses their instant answer API - limited)
 class DuckDuckGoProvider implements SearchProvider {
   name = 'duckduckgo';
@@ -489,11 +1007,12 @@ export class SearchProviderService {
   }
 
   private initializeProviders(): void {
-    // Prioritize Google for better quality, with Bing as primary fallback
+    // Prioritize Exa for semantic search, with traditional search as fallbacks
     this.providers = [
-      new GoogleSearchProvider(),  // Primary: Best quality, 100/day limit
-      new BingSearchProvider(),     // Fallback 1: Good quality, higher limits
-      new DuckDuckGoProvider()      // Fallback 2: Privacy-focused, basic results
+      new ExaSearchProvider(),      // Primary: Semantic search, high quality
+      new GoogleSearchProvider(),  // Fallback 1: Best traditional quality, 100/day limit
+      new BingSearchProvider(),     // Fallback 2: Good quality, higher limits
+      new DuckDuckGoProvider()      // Fallback 3: Privacy-focused, basic results
     ];
   }
 

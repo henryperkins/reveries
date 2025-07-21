@@ -61,7 +61,7 @@ main {
     @apply fixed bottom-0 left-0 right-0;
     @apply bg-westworld-cream/95 backdrop-blur-sm;
     @apply border-t border-westworld-tan/30;
-    @apply shadow-[0_-5px_20px_rgba(0, 0, 0, 0.1)];
+    box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
     z-index: var(--z-fixed-input);
     padding: 1rem;
     padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));

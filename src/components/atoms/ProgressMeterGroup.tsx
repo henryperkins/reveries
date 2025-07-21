@@ -33,7 +33,7 @@ export const ProgressMeterGroup: React.FC<ProgressMeterGroupProps> = ({
 }) => {
   if (layout === 'horizontal') {
     return (
-      <div className={`flex flex-wrap gap-4 ${className}`}>
+      <div className={`flex flex-wrap gap-4 ${className}`} role="group" aria-label="Progress meters group">
         {meters.map((meter, index) => (
           <div key={meter.id || index} className="flex-1 min-w-[200px]">
             <ProgressMeter
@@ -54,7 +54,7 @@ export const ProgressMeterGroup: React.FC<ProgressMeterGroupProps> = ({
 
   // Vertical layout (default)
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={`space-y-2 ${className}`} role="group" aria-label="Progress meters group">
       {meters.map((meter, index) => (
         <div key={meter.id || index} className="flex items-center gap-2">
           {showLabels && (
@@ -65,6 +65,7 @@ export const ProgressMeterGroup: React.FC<ProgressMeterGroupProps> = ({
           <div className="flex-1">
             <ProgressMeter
               value={meter.value}
+              label={meter.label}
               variant={variant}
               paradigm={meter.paradigm}
               colorClass={meter.color}

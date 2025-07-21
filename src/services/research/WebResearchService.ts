@@ -7,13 +7,17 @@ import { ModelType, EffortType, Citation } from '@/types';
 import { WebResearchResult } from '@/services/research/types';
 import { ResearchUtilities } from '@/services/utils/ResearchUtilities';
 import { ResearchMemoryService } from '@/services/memory/ResearchMemoryService';
+import { ResearchTaskService, StructuredResearchOutput } from './ResearchTaskService';
+import { ExaResearchTask } from '../search/SearchProviderService';
 
 export class WebResearchService {
   private static instance: WebResearchService;
   private memoryService: ResearchMemoryService;
+  private researchTaskService: ResearchTaskService;
 
   private constructor() {
     this.memoryService = ResearchMemoryService.getInstance();
+    this.researchTaskService = ResearchTaskService.getInstance();
   }
 
   public static getInstance(): WebResearchService {
@@ -24,7 +28,7 @@ export class WebResearchService {
   }
 
   /**
-   * Generate search queries based on user input
+   * Generate search queries based on user input with Exa-optimized semantic approach
    */
   async generateSearchQueries(
     userQuery: string,
@@ -39,11 +43,28 @@ export class WebResearchService {
     // Check for learned query suggestions first
     const learnedSuggestions = this.memoryService.getQuerySuggestions(userQuery);
 
-    const prompt = `Based on the user query: "${userQuery}", generate a short list of 2-3 concise search queries or key topics that would help in researching an answer.
+    // Enhanced prompt optimized for semantic search (Exa) and traditional search
+    const prompt = `You are a research assistant helping to generate diverse, effective search queries for comprehensive research.
 
-    ${learnedSuggestions.length > 0 ? `Previous successful queries for similar topics: ${learnedSuggestions.slice(0, 3).join(', ')}` : ''}
+User Query: "${userQuery}"
 
-    Return them as a comma-separated list. For example: query1, query2, query3`;
+Generate 3-4 diverse search queries that will help comprehensively research this topic. Follow these guidelines:
+
+1. **Semantic queries**: Use natural language that describes what you're looking for (good for Exa)
+   - Example: "recent breakthroughs in quantum computing applications"
+   
+2. **Specific queries**: Include technical terms, names, or specific aspects
+   - Example: "quantum supremacy IBM Google 2024"
+   
+3. **Contextual queries**: Add context about timeframe, domain, or perspective
+   - Example: "quantum computing commercial applications challenges"
+
+4. **Related queries**: Include adjacent or related topics that might provide useful context
+   - Example: "quantum algorithms cryptography implications"
+
+${learnedSuggestions.length > 0 ? `Previous successful queries for similar topics: ${learnedSuggestions.slice(0, 3).join(', ')}` : ''}
+
+Return only the search queries as a comma-separated list, without explanations or numbering.`;
 
     const result = await generateText(prompt, model, effort);
     const queries = result.text.split(',').map(q => q.trim()).filter(q => q.length > 0);
@@ -229,7 +250,7 @@ Please provide a well-structured summary that synthesizes the information from t
   }
 
   /**
-   * Generate final answer from research findings
+   * Generate final answer from research findings with enhanced synthesis
    */
   async generateFinalAnswer(
     userQuery: string,
@@ -238,16 +259,398 @@ Please provide a well-structured summary that synthesizes the information from t
     effort: EffortType,
     generateText: (prompt: string, model: ModelType, effort: EffortType) => Promise<{ text: string; sources?: Citation[] }>
   ): Promise<{ text: string; sources?: Citation[] }> {
-    const prompt = `
-      User Query: "${userQuery}"
-      Relevant Context & Findings: "${context}"
+    const prompt = `You are a research analyst synthesizing comprehensive findings to answer a user's query.
 
-      Based on the user query and the provided context, generate a comprehensive answer.
-      If you are using information from Google Search (if grounding is enabled and used), ensure to cite sources appropriately if possible within the text or provide a list.
-      The answer should be helpful, informative, and directly address the user's query.
-    `;
+User Query: "${userQuery}"
+
+Research Findings:
+${context}
+
+Instructions:
+1. **Synthesize** the information from all sources to provide a comprehensive answer
+2. **Structure** your response with clear sections if the topic is complex
+3. **Cite sources** appropriately by referencing URLs or titles from the research findings
+4. **Identify gaps** if important information is missing or contradictory
+5. **Provide insights** that connect different findings or reveal patterns
+6. **Be objective** and indicate the strength/reliability of different claims
+
+Format your response as a well-structured research synthesis that directly addresses the user's query while incorporating insights from the gathered sources.`;
 
     return generateText(prompt, model, effort);
+  }
+
+  /**
+   * Enhanced research method using Exa's semantic capabilities when available
+   */
+  async performEnhancedResearch(
+    userQuery: string,
+    model: ModelType,
+    effort: EffortType,
+    generateText: (prompt: string, model: ModelType, effort: EffortType) => Promise<{ text: string; sources?: Citation[] }>,
+    onProgress?: (message: string) => void
+  ): Promise<WebResearchResult> {
+    // Import search provider service
+    const { SearchProviderService } = await import('../search/SearchProviderService');
+    const searchService = SearchProviderService.getInstance();
+
+    // Check if Exa is available for enhanced semantic research
+    const testResults = await searchService.testProviders();
+    const exaAvailable = testResults.find(result => result.provider === 'exa' && result.available);
+
+    if (exaAvailable) {
+      onProgress?.('Using enhanced semantic research with Exa');
+      return this.performExaEnhancedResearch(userQuery, model, effort, generateText, onProgress);
+    } else {
+      onProgress?.('Using standard research workflow');
+      // Fallback to standard research
+      const queries = await this.generateSearchQueries(userQuery, model, effort, generateText, onProgress);
+      return this.performWebResearch(queries, model, effort, generateText, onProgress);
+    }
+  }
+
+  /**
+   * Exa-enhanced research workflow inspired by the Exa researcher example
+   */
+  private async performExaEnhancedResearch(
+    userQuery: string,
+    model: ModelType,
+    effort: EffortType,
+    generateText: (prompt: string, model: ModelType, effort: EffortType) => Promise<{ text: string; sources?: Citation[] }>,
+    onProgress?: (message: string) => void
+  ): Promise<WebResearchResult> {
+    const { SearchProviderService } = await import('../search/SearchProviderService');
+    const searchService = SearchProviderService.getInstance();
+    
+    onProgress?.('tool_used:exa_enhanced_research');
+
+    // Step 1: Generate diverse semantic queries optimized for Exa
+    onProgress?.('Generating semantic search queries...');
+    const queries = await this.generateSemanticQueries(userQuery, model, effort, generateText);
+    
+    const allSources: Citation[] = [];
+    const findingsOutputParts: string[] = [];
+    const uniqueSourceKeys = new Set<string>();
+
+    // Step 2: Perform multiple search rounds with different strategies
+    for (const [index, query] of queries.entries()) {
+      onProgress?.(`Researching: ${query} (${index + 1}/${queries.length})`);
+      
+      try {
+        // Use Exa's auto search type for optimal semantic matching
+        const searchResponse = await searchService.search(query, {
+          maxResults: 8, // Slightly more results for better coverage
+          safe: true,
+          timeRange: 'month'
+        }, onProgress);
+
+        if (searchResponse.results.length === 0) {
+          findingsOutputParts.push(`## ${query}\n\nNo search results found for this query.`);
+          continue;
+        }
+
+        // Convert to citations and deduplicate
+        const searchCitations = searchService.convertToCitations(searchResponse.results);
+        searchCitations.forEach(source => {
+          const sourceKey = ResearchUtilities.normalizeSourceKey(source);
+          if (!uniqueSourceKeys.has(sourceKey)) {
+            uniqueSourceKeys.add(sourceKey);
+            allSources.push(source);
+          }
+        });
+
+        // Enhanced synthesis for Exa results (better quality snippets/highlights)
+        const contextData = searchResponse.results
+          .slice(0, 6) // Use more results for Exa since they're higher quality
+          .map(result => {
+            const snippetText = result.snippet || '';
+            return `**${result.title}**\nURL: ${result.url}\nContent: ${snippetText}`;
+          })
+          .join('\n\n---\n\n');
+
+        const synthesisPrompt = `Analyze these high-quality search results for the query "${query}" and provide a comprehensive synthesis.
+
+Search Results:
+${contextData}
+
+Instructions:
+1. Extract key insights and factual information
+2. Identify important patterns or themes
+3. Note any conflicting information
+4. Synthesize into a coherent summary
+5. Highlight the most reliable and relevant findings
+
+Focus on creating a synthesis that adds analytical value beyond just summarizing the individual results.`;
+
+        const { text: synthesis } = await generateText(synthesisPrompt, model, effort);
+        
+        if (synthesis && synthesis.trim()) {
+          findingsOutputParts.push(`## ${query}\n\n${synthesis}`);
+        }
+
+        onProgress?.(`Synthesized ${searchResponse.results.length} sources for "${query}"`);
+
+      } catch (error) {
+        console.error(`Enhanced research failed for query "${query}":`, error);
+        onProgress?.(`Research failed for "${query}", continuing with other queries...`);
+      }
+    }
+
+    // Step 3: Create comprehensive synthesis
+    const aggregatedFindings = findingsOutputParts.join('\n\n---\n\n');
+
+    return {
+      aggregatedFindings,
+      allSources: ResearchUtilities.deduplicateSources(allSources)
+    };
+  }
+
+  /**
+   * Generate semantic queries optimized for Exa's capabilities
+   */
+  private async generateSemanticQueries(
+    userQuery: string,
+    model: ModelType,
+    effort: EffortType,
+    generateText: (prompt: string, model: ModelType, effort: EffortType) => Promise<{ text: string; sources?: Citation[] }>
+  ): Promise<string[]> {
+    const prompt = `Generate 3-4 diverse semantic search queries for comprehensive research on this topic:
+
+"${userQuery}"
+
+Create queries that work well with semantic/neural search (like Exa). Use these strategies:
+
+1. **Descriptive queries**: Describe what you're looking for in natural language
+   - "latest research findings on [topic]"
+   - "comprehensive overview of [topic] applications"
+
+2. **Question-based queries**: Frame as questions that would lead to informative answers
+   - "what are the current challenges in [topic]"
+   - "how does [topic] impact [relevant domain]"
+
+3. **Context-rich queries**: Include domain context and timeframes
+   - "[topic] developments in 2024"
+   - "[topic] implications for [relevant field]"
+
+4. **Comparative queries**: Explore relationships and comparisons
+   - "[topic] compared to alternatives"
+   - "[topic] advantages and limitations"
+
+Return only the search queries as a comma-separated list.`;
+
+    const result = await generateText(prompt, model, effort);
+    return result.text.split(',').map(q => q.trim()).filter(q => q.length > 0);
+  }
+
+  /**
+   * Submit asynchronous research task for complex queries
+   */
+  async submitAsyncResearch(
+    userQuery: string,
+    researchType: 'general' | 'timeline' | 'comparative' | 'technical' = 'general',
+    onProgress?: (task: ExaResearchTask) => void
+  ): Promise<string> {
+    // Enhanced instructions for better Exa research
+    const instructions = `Conduct comprehensive research on the following topic: "${userQuery}"
+
+Research Requirements:
+1. Find authoritative and recent sources
+2. Identify key themes and insights
+3. Note any conflicting information or debates
+4. Highlight practical applications or implications
+5. Identify gaps in current knowledge
+6. Provide confidence assessment for claims
+
+Focus on providing factual, well-sourced information that directly addresses the research query.`;
+
+    return this.researchTaskService.createStructuredResearch(
+      instructions,
+      researchType,
+      {
+        model: 'exa-research-pro',
+        onProgress
+      }
+    );
+  }
+
+  /**
+   * Check if a query should use async research (based on complexity/time estimation)
+   */
+  shouldUseAsyncResearch(userQuery: string): boolean {
+    // Factors that suggest async research would be beneficial:
+    const complexityIndicators = [
+      userQuery.length > 100, // Long, detailed queries
+      /\b(comprehensive|detailed|in-depth|thorough|complete)\b/i.test(userQuery),
+      /\b(history|timeline|evolution|development)\b/i.test(userQuery),
+      /\b(compare|comparison|versus|vs|differences|similarities)\b/i.test(userQuery),
+      /\b(analysis|analyze|research|study|investigation)\b/i.test(userQuery),
+      /\b(multiple|various|different|several)\b.*\b(aspects|factors|approaches|methods)\b/i.test(userQuery),
+      userQuery.split(' ').length > 15 // Long queries
+    ];
+
+    // Use async if 2+ complexity indicators are present
+    return complexityIndicators.filter(indicator => indicator).length >= 2;
+  }
+
+  /**
+   * Intelligent research routing - chooses between sync and async based on query
+   */
+  async performIntelligentResearch(
+    userQuery: string,
+    model: ModelType,
+    effort: EffortType,
+    generateText: (prompt: string, model: ModelType, effort: EffortType) => Promise<{ text: string; sources?: Citation[] }>,
+    onProgress?: (message: string) => void
+  ): Promise<WebResearchResult | { taskId: string; isAsync: true }> {
+    // Check if async research is beneficial
+    if (this.shouldUseAsyncResearch(userQuery)) {
+      onProgress?.('Query complexity detected - submitting as background research task...');
+      
+      try {
+        // Determine research type
+        let researchType: 'general' | 'timeline' | 'comparative' | 'technical' = 'general';
+        
+        if (/\b(history|timeline|evolution|development|chronology)\b/i.test(userQuery)) {
+          researchType = 'timeline';
+        } else if (/\b(compare|comparison|versus|vs|differences|similarities)\b/i.test(userQuery)) {
+          researchType = 'comparative';
+        } else if (/\b(technical|specification|implementation|algorithm|architecture)\b/i.test(userQuery)) {
+          researchType = 'technical';
+        }
+
+        const taskId = await this.submitAsyncResearch(
+          userQuery, 
+          researchType,
+          (task) => {
+            onProgress?.(`Research task ${task.status}: ${task.id}`);
+          }
+        );
+
+        onProgress?.(`Research task submitted with ID: ${taskId}`);
+        onProgress?.('You can check back later for results or continue with other queries.');
+        
+        return { taskId, isAsync: true };
+      } catch (error) {
+        onProgress?.('Failed to submit async research, falling back to standard research...');
+        console.error('Async research submission failed:', error);
+      }
+    }
+
+    // Fall back to standard research
+    onProgress?.('Using standard research workflow...');
+    return this.performEnhancedResearch(userQuery, model, effort, generateText, onProgress);
+  }
+
+  /**
+   * Get research task status and results
+   */
+  async getResearchTask(taskId: string): Promise<ExaResearchTask | null> {
+    return this.researchTaskService.getTask(taskId);
+  }
+
+  /**
+   * Wait for research task completion
+   */
+  async waitForResearchCompletion(
+    taskId: string,
+    onProgress?: (task: ExaResearchTask) => void,
+    timeoutMs?: number
+  ): Promise<ExaResearchTask> {
+    return this.researchTaskService.waitForCompletion(taskId, {
+      timeoutMs,
+      onProgress
+    });
+  }
+
+  /**
+   * Convert Exa research task results to WebResearchResult format
+   */
+  convertTaskToWebResult(task: ExaResearchTask): WebResearchResult {
+    if (task.status !== 'completed' || !task.data) {
+      return {
+        aggregatedFindings: `Research task ${task.status}: ${task.error || 'No results available'}`,
+        allSources: []
+      };
+    }
+
+    let findings = `# Research Results for: ${task.instructions}\n\n`;
+
+    // Handle structured data
+    if (typeof task.data === 'object') {
+      const data = task.data as StructuredResearchOutput;
+      
+      if (data.keyFindings) {
+        findings += `## Key Findings\n\n`;
+        data.keyFindings.forEach((finding, index) => {
+          findings += `${index + 1}. ${finding}\n`;
+        });
+        findings += '\n';
+      }
+
+      if (data.mainTopics) {
+        findings += `## Main Topics\n\n`;
+        data.mainTopics.forEach(topic => {
+          findings += `- ${topic}\n`;
+        });
+        findings += '\n';
+      }
+
+      if (data.timeline) {
+        findings += `## Timeline\n\n`;
+        data.timeline.forEach(period => {
+          findings += `### ${period.period}\n`;
+          period.events.forEach(event => {
+            findings += `- ${event}\n`;
+          });
+          findings += '\n';
+        });
+      }
+
+      if (data.recommendations) {
+        findings += `## Recommendations\n\n`;
+        data.recommendations.forEach((rec, index) => {
+          findings += `${index + 1}. ${rec}\n`;
+        });
+        findings += '\n';
+      }
+
+      if (data.gaps && data.gaps.length > 0) {
+        findings += `## Research Gaps\n\n`;
+        data.gaps.forEach(gap => {
+          findings += `- ${gap}\n`;
+        });
+        findings += '\n';
+      }
+
+      if (data.confidenceScore !== undefined) {
+        findings += `## Confidence Score\n\n${Math.round(data.confidenceScore * 100)}% confidence in findings\n\n`;
+      }
+    } else {
+      // Handle plain text data
+      findings += task.data;
+    }
+
+    // Convert citations
+    const allSources: Citation[] = [];
+    if (task.citations) {
+      Object.values(task.citations).forEach(citationGroup => {
+        if (Array.isArray(citationGroup)) {
+          allSources.push(...citationGroup);
+        }
+      });
+    }
+
+    return {
+      aggregatedFindings: findings,
+      allSources: ResearchUtilities.deduplicateSources(allSources)
+    };
+  }
+
+  /**
+   * List all research tasks
+   */
+  async listResearchTasks(): Promise<ExaResearchTask[]> {
+    const result = await this.researchTaskService.listTasks();
+    return result.data;
   }
 
   /**

@@ -120,8 +120,9 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
 
         {/* Spinning indicator in top-right corner */}
         {step.isSpinning && (
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-2 right-2" role="status" aria-label="Loading">
             <div className="w-4 h-4 border-2 border-westworld-gold border-t-transparent rounded-full animate-spin" />
+            <span className="sr-only">Loading...</span>
           </div>
         )}
         <div className="flex-1 min-w-0">
@@ -188,5 +189,4 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
       </div>
     </div>
   );
-};
 };

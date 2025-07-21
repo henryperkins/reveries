@@ -26,21 +26,21 @@
   }
 
   /* Dark mode color scheme */
-  [data-theme="dark"] {
-    /* Base colors - properly inverted for dark mode */
+  .dark {
+    /* Base colors - proper dark mode variants */
     --color-westworld-cream: #1A1512;
     --color-westworld-beige: #2A2522;
     --color-westworld-tan: #3A3532;
-    --color-westworld-brown: #D4AF37;
-    --color-westworld-darkBrown: #E4BF47;
+    --color-westworld-brown: #8B6F47;
+    --color-westworld-darkBrown: #6B5637;
     --color-westworld-nearBlack: #F5EDE4;
     --color-westworld-black: #FAF6F2;
-    --color-westworld-gold: #F4CF57;
-    --color-westworld-darkGold: #E4BF47;
-    --color-westworld-rust: #E89353;
-    --color-westworld-copper: #F4A460;
-    --color-westworld-darkCopper: #E89353;
-    --color-westworld-white: #0A0806;
+    --color-westworld-gold: #D4AF37;
+    --color-westworld-darkGold: #B8941F;
+    --color-westworld-rust: #A85732;
+    --color-westworld-copper: #C87543;
+    --color-westworld-darkCopper: #A65E36;
+    --color-westworld-white: #FFFFFF;
 
     /* Adjusted shadows for dark mode */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
