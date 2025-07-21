@@ -314,7 +314,7 @@ const App: React.FC = () => {
           if (message.startsWith('tool_used:')) {
             // Completion message pattern: tool_used:completed:<toolName>:<startTime>
             if (message.startsWith('tool_used:completed:')) {
-              const [, , completedToolName, startTime] = message.split(':');
+              const [, , completedToolName] = message.split(':');
               console.log(`✅ Tool completed: ${completedToolName}`);
 
               // Update shared context
@@ -386,9 +386,11 @@ const App: React.FC = () => {
 
             // Fallback completion timeout for operations without explicit completion signal
             // Increase timeout for research tools
+            const isO3Model = currentModel.includes('o3') || currentModel.includes('azure-o3');
+            const baseTimeout = isO3Model ? TIMEOUTS.TOOL_FALLBACK * 6 : TIMEOUTS.TOOL_FALLBACK; // 3 minutes for O3 models
             const toolTimeout = toolName.includes('research') || toolName.includes('search')
-              ? TIMEOUTS.TOOL_FALLBACK * 2
-              : TIMEOUTS.TOOL_FALLBACK;
+              ? baseTimeout * 2
+              : baseTimeout;
 
             timeoutManager.set(`tool-fallback-${toolName}`, () => {
               console.log(`⏱️ Tool timeout reached for ${toolName}, marking as completed`);
@@ -566,7 +568,7 @@ const App: React.FC = () => {
       )
       } catch (error) {
         console.error('❌ Error during O3 query processing:', error);
-        handleError(error);
+        handleError(error instanceof Error ? error : new Error(String(error)));
         return;
       }
 

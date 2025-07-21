@@ -7,7 +7,8 @@ import {
   ModelType,
   EffortType,
   Citation,
-  EnhancedResearchResults
+  EnhancedResearchResults,
+  QueryType
 } from '@/types';
 import {
   ResearchSection
@@ -15,15 +16,18 @@ import {
 import { WebResearchService } from './WebResearchService';
 import { ModelProviderService } from '@/services/providers/ModelProviderService';
 import { ResearchUtilities } from '@/services/utils/ResearchUtilities';
+import { ResearchStrategyService } from './ResearchStrategyService';
 
 export class ComprehensiveResearchService {
   private static instance: ComprehensiveResearchService;
   private webResearchService: WebResearchService;
   private modelProvider: ModelProviderService;
+  private strategyService: ResearchStrategyService;
 
   private constructor() {
     this.webResearchService = WebResearchService.getInstance();
     this.modelProvider = ModelProviderService.getInstance();
+    this.strategyService = ResearchStrategyService.getInstance();
   }
 
   public static getInstance(): ComprehensiveResearchService {
@@ -382,6 +386,13 @@ export class ComprehensiveResearchService {
   /**
    * Calculate confidence score based on research quality and completeness
    */
+  private calculateConfidence(sourceCount: number, queryType: QueryType): number {
+    // Simple confidence calculation based on source count and query type
+    const baseConfidence = Math.min(sourceCount * 0.1, 0.5);
+    const typeBoost = queryType === 'factual' ? 0.2 : 0.1;
+    return Math.min(baseConfidence + typeBoost + 0.3, 0.95);
+  }
+
   private calculateConfidenceScore(sectionResults: ResearchSection[], processingTime: number): number {
     if (sectionResults.length === 0) return 0.1;
 
@@ -495,15 +506,6 @@ export class ComprehensiveResearchService {
       complexity = 'high';
       estimatedSections = 5;
       estimatedDuration = '3-5 minutes';
-    }
-
-    return {
-      estimatedSections,
-      estimatedDuration,
-      complexity
-    };
-  }
-}
     }
 
     return {

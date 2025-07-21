@@ -175,7 +175,7 @@ export class AzureOpenAIService {
           console.log(`O3 background task started → polling ${operationUrl}`);
           // Enhanced timeout for O3 models which can take significantly longer
           const isO3Model = this.config.deploymentName.includes('o3');
-          const timeout = isO3Model ? 20 * 60 * 1000 : 10 * 60 * 1000; // 20min for O3, 10min for others
+          const timeout = isO3Model ? 30 * 60 * 1000 : 10 * 60 * 1000; // 30min for O3, 10min for others
           data = await this.pollBackgroundTask(operationUrl, timeout, (message) => {
             console.log(`O3 Background Task: ${message}`);
           });
@@ -1672,43 +1672,43 @@ export class AzureOpenAIService {
       // iterations will be incremented in the function call below
     };
 
-    await this.streamConversationWithTools(treamConversationWithTools(
+    await this.streamConversationWithTools(
       messages,
-      tools,tools,
-      effort,  effort,
+      tools,
+      effort,
       nextContext,
-      callbacks,,
-      maxIterations,rations,
-      nextInput // Pass tool results as inputut // Pass tool results as input
+      callbacks,
+      maxIterations,
+      nextInput // Pass tool results as input
     );
   }
 
   /**
-   * Summarizes content using the Responses APIummarizes content using the Responses API
-   * This replaces the database-level summarization that used azure_openai.create_chat_completion* This replaces the database-level summarization that used azure_openai.create_chat_completion
-   */   */
-  async summarizeContent(content: string, maxSentences: number = 3): Promise<string> {nc summarizeContent(content: string, maxSentences: number = 3): Promise<string> {
-    const prompt = `Summarize the following research content in ${maxSentences} sentences. Focus on key findings, insights, and important information.earch content in ${maxSentences} sentences. Focus on key findings, insights, and important information.
+   * Summarizes content using the Responses API
+   * This replaces the database-level summarization that used azure_openai.create_chat_completion
+   */
+  async summarizeContent(content: string, maxSentences: number = 3): Promise<string> {
+    const prompt = `Summarize the following research content in ${maxSentences} sentences. Focus on key findings, insights, and important information.
 
-Content:nt:
+Content:
 ${content}
 
-Summary:`;Summary:`;
+Summary:`;
 
     try {
-      const response = await this.generateResponse(      const response = await this.generateResponse(
-        prompt,ompt,
-        EffortType.LOW,        EffortType.LOW,
-        false, // No reasoning effort needed for simple summarizationalse, // No reasoning effort needed for simple summarization
+      const response = await this.generateResponse(
+        prompt,
+        EffortType.LOW,
+        false, // No reasoning effort needed for simple summarization
         0.7,
-        500 // Max tokens for summaryMax tokens for summary
+        500 // Max tokens for summary
       );
       return response.text.trim();
-    } catch (error) {(error) {
-      console.error('Failed to summarize content:', error);ize content:', error);
-      // Return first few sentences as fallback Return first few sentences as fallback
-      const sentences = content.split(/[.!?]+/).filter(s => s.trim());lit(/[.!?]+/).filter(s => s.trim());
-      return sentences.slice(0, maxSentences).join('. ') + '.';s.slice(0, maxSentences).join('. ') + '.';
+    } catch (error) {
+      console.error('Failed to summarize content:', error);
+      // Return first few sentences as fallback
+      const sentences = content.split(/[.!?]+/).filter(s => s.trim());
+      return sentences.slice(0, maxSentences).join('. ') + '.';
     }
   }
 }
