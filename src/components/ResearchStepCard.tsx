@@ -14,9 +14,8 @@ interface ResearchStepCardProps {
 export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
   step
 }) => {
-  // Fallback to a no-op component if the step lacks an icon
-  const IconComponent: React.ElementType =
-    (step.icon ?? (() => null)) as React.ElementType;
+  // Fix icon rendering with proper fallback
+  const IconComponent = step.icon || (() => <div className="w-6 h-6" />);
 
   const getStepStyles = (type: ResearchStepType) => {
     const styles: Record<ResearchStepType, {
@@ -118,7 +117,7 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
         `}>
           <IconComponent />
         </div>
-        
+
         {/* Spinning indicator in top-right corner */}
         {step.isSpinning && (
           <div className="absolute top-2 right-2">
@@ -189,4 +188,5 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
       </div>
     </div>
   );
+};
 };

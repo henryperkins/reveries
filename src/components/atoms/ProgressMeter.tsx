@@ -70,7 +70,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
     }
     return Math.max(0, Math.min(100, value));
   })();
-  
+
   // Get size classes
   const sizeClasses = {
     xs: 'h-1.5',
@@ -78,7 +78,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
     md: 'h-3',
     lg: 'h-4',
   };
-  
+
   // Get color/gradient classes based on variant
   const getBarClasses = () => {
     switch (variant) {
@@ -91,18 +91,18 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
         console.warn('ProgressMeter: paradigm variant used but no paradigm provided');
         onError?.('Missing paradigm configuration');
         return 'bg-gray-500 animate-pulse'; // Visual indication of error
-        
+
       case 'gradient':
         return gradientClass || 'bg-gradient-to-r from-westworld-gold to-westworld-copper';
-        
+
       case 'minimal':
         return colorClass || 'bg-gray-600';
-        
+
       default:
         return colorClass || 'bg-westworld-rust';
     }
   };
-  
+
   // Get text color for paradigm variant
   const getTextColor = () => {
     if (variant === 'paradigm' && paradigm) {
@@ -115,23 +115,23 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
   // Handle stacked variant
   if (variant === 'stacked' && stackedSegments.length > 0) {
     const totalValue = stackedSegments.reduce((sum, seg) => sum + seg.value, 0);
-    
+
     // Validate and warn about overflow
     if (totalValue > 100) {
       console.warn(`ProgressMeter: stacked segments total ${totalValue}% exceeds 100%. Normalizing values.`);
       onError?.(`Stacked segments exceed 100% (${totalValue}%)`);
     }
-    
+
     // Normalize segments if needed
-    const normalizedSegments = totalValue > 100 
+    const normalizedSegments = totalValue > 100
       ? stackedSegments.map(seg => ({
           ...seg,
           value: (seg.value / totalValue) * 100
         }))
       : stackedSegments;
-    
+
     const finalTotalValue = Math.min(totalValue, 100);
-    
+
     return (
       <div className={`w-full ${className}`}>
         {/* Header with label */}
@@ -144,8 +144,8 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
               <span className="text-xs font-mono text-gray-500">
                 {Math.round(finalTotalValue)}%
                 {totalValue > 100 && (
-                  <span 
-                    className="text-red-500 ml-1" 
+                  <span
+                    className="text-red-500 ml-1"
                     title={`Original total: ${Math.round(totalValue)}%`}
                   >
                     ⚠️
@@ -155,7 +155,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
             )}
           </div>
         )}
-        
+
         {/* Stacked bar */}
         <div
           className={`relative w-full ${sizeClasses[size]} bg-gray-200 rounded-full overflow-hidden shadow-inner`}
@@ -170,7 +170,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
               const segmentClasses = segment.paradigm
                 ? getParadigmClasses(segment.paradigm).gradient
                 : segment.color;
-              
+
               return (
                 <div
                   key={index}
@@ -182,7 +182,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
             })}
           </div>
         </div>
-        
+
         {/* Legend for stacked segments */}
         {layout !== 'compact' && normalizedSegments.some(s => s.label) && (
           <div className="flex flex-wrap gap-2 mt-2">
@@ -204,10 +204,10 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
       </div>
     );
   }
-  
+
   // Compact layout adjustments
   const isCompact = layout === 'compact';
-  
+
   return (
     <div className={`${isCompact ? 'flex items-center gap-2' : 'w-full'} ${className}`}>
       {/* Header with label and percentage */}
@@ -225,7 +225,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
           )}
         </div>
       )}
-      
+
       {/* Compact layout label */}
       {isCompact && label && (
         <span className={`text-xs font-medium ${getTextColor()} whitespace-nowrap`}>
@@ -266,7 +266,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
             ))}
           </div>
         )}
-        
+
         {/* Error indicator for missing paradigm */}
         {variant === 'paradigm' && !paradigm && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -308,7 +308,7 @@ export const ProgressBar: React.FC<{ value: number }> = ({ value }) => (
 );
 
 // Convenience wrapper for rate limit indicator
-export const RateLimitBar: React.FC<{ 
+export const RateLimitBar: React.FC<{
   value: number;
   label?: string;
 }> = ({ value, label = "Rate Limit" }) => (

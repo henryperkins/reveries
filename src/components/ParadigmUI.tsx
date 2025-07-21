@@ -37,7 +37,7 @@ function getParadigmStyles(paradigm: string) {
     };
   }
   // Fall back to extended styles
-  return EXTENDED_PARADIGM_STYLES[paradigm as keyof typeof EXTENDED_PARADIGM_STYLES] || 
+  return EXTENDED_PARADIGM_STYLES[paradigm as keyof typeof EXTENDED_PARADIGM_STYLES] ||
          { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700' };
 }
 
@@ -105,11 +105,56 @@ export const ParadigmIndicator: React.FC<{
   paradigm: HostParadigm;
   probabilities?: ParadigmProbabilities;
   confidence?: number;
-}> = ({ paradigm, probabilities, confidence }) => {
+  blendedParadigms?: HostParadigm[];
+}> = ({ paradigm, probabilities, confidence, blendedParadigms }) => {
   const info   = PARADIGM_INFO[paradigm];
   const styles = getParadigmStyles(paradigm);
   const paradigmProb = probabilities?.[paradigm];
 
+  // Check if we're in multi-paradigm mode
+  const isBlended = blendedParadigms && blendedParadigms.length > 1;
+
+  if (isBlended) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-600">Multi-Paradigm Mode:</span>
+          <div className="flex flex-wrap gap-2">
+            {blendedParadigms.map(p => {
+              const pInfo = PARADIGM_INFO[p];
+              const pStyles = getParadigmStyles(p);
+              const pProb = probabilities?.[p];
+
+              return (
+                <span
+                  key={p}
+                  className={[
+                    'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
+                    pStyles.bg,
+                    pStyles.border,
+                    pStyles.text
+                  ].join(' ')}
+                >
+                  <span role="img" aria-label={`${pInfo.name} icon`} className="text-base">
+                    {pInfo.icon}
+                  </span>
+                  <span>{pInfo.name.split(' ')[0]}</span>
+                  {pProb && (
+                    <span className="opacity-75">
+                      {Math.round(pProb * 100)}%
+                    </span>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+        {probabilities && <ParadigmProbabilityBar probabilities={probabilities} />}
+      </div>
+    );
+  }
+
+  // Single paradigm display (existing code)
   return (
     <span
       className={[
@@ -163,8 +208,11 @@ export const ContextLayerProgress: React.FC<{
   return (
     <div className="w-full">
       <div className="relative flex items-center justify-between">
-        {/* timeline track */}
-        <div className="absolute top-6 left-0 right-0 z-0 h-1 bg-gray-200" />
+        {/* timeline track - use CSS variable instead of hardcoded z-0 */}
+        <div
+          className="absolute top-6 left-0 right-0 h-1 bg-gray-200"
+          style={{ zIndex: 0 }}
+        />
 
         {layers.map((layer, idx) => {
           const info     = layerInfo[layer];
@@ -175,8 +223,11 @@ export const ContextLayerProgress: React.FC<{
           return (
             <div
               key={layer}
-              className="relative z-10 flex flex-col items-center"
-              style={{ width: `${100 / layers.length}%` }}
+              className="relative flex flex-col items-center"
+              style={{
+                width: `${100 / layers.length}%`,
+                zIndex: 1 // Use low z-index, not 10
+              }}
             >
               <div
                 className={[
@@ -342,6 +393,54 @@ export const ResearchAnalytics: React.FC<{
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+/* -------------------------------------------------------------------------- */
+/*                   COMPONENT: INTER-HOST COLLABORATION                      */
+/* -------------------------------------------------------------------------- */
+
+export const InterHostCollaboration: React.FC<{
+  fromHost: HostParadigm;
+  toHost: HostParadigm;
+  reason: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+}> = ({ fromHost, toHost, reason, status }) => {
+  const fromInfo = PARADIGM_INFO[fromHost];
+  const toInfo = PARADIGM_INFO[toHost];
+  const fromTheme = getParadigmTheme(fromHost);
+  const toTheme = getParadigmTheme(toHost);
+
+  const statusStyles = {
+    pending: 'bg-gray-100 text-gray-600',
+    processing: 'bg-blue-100 text-blue-700 animate-pulse',
+    completed: 'bg-green-100 text-green-700',
+    failed: 'bg-red-100 text-red-700'
+  };
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg bg-white p-3 shadow-sm">
+      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${fromTheme.bg} ${fromTheme.border} border`}>
+        <span className="text-lg">{fromInfo.icon}</span>
+      </div>
+
+      <div className="flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">{fromInfo.name.split(' ')[0]}</span>
+          <span className="text-gray-400">→</span>
+          <span className="text-sm font-medium">{toInfo.name.split(' ')[0]}</span>
+        </div>
+        <div className="text-xs text-gray-500">{reason}</div>
+      </div>
+
+      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${toTheme.bg} ${toTheme.border} border`}>
+        <span className="text-lg">{toInfo.icon}</span>
+      </div>
+
+      <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusStyles[status]}`}>
+        {status}
+      </span>
     </div>
   );
 };

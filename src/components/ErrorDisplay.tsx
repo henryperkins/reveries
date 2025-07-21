@@ -36,7 +36,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onDismiss }) 
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss error"
-        className="shrink-0 text-red-600 hover:text-red-800 transition-colors"
+        className="shrink-0 p-2 -m-2 text-red-600 hover:text-red-800 transition-colors rounded-lg hover:bg-red-50 min-w-[44px] min-h-[44px] flex items-center justify-center"
       >
         <XMarkIcon className="w-5 h-5" />
       </button>

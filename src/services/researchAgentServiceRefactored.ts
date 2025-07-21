@@ -48,6 +48,13 @@ import { DatabaseService } from './databaseService';
 // ────────────────────────────────────────────────────────────
 import { WriteLayerService } from './contextLayers/writeLayer';
 import { SelectLayerService } from './contextLayers/selectLayer';
+
+// ────────────────────────────────────────────────────────────
+//  Multi-paradigm services
+// ────────────────────────────────────────────────────────────
+import { MultiParadigmBlender } from './multiParadigmBlender';
+import { ParadigmLearningService } from './paradigmLearningService';
+import { InterHostCollaborationService } from './interHostCollaboration';
 import { CompressLayerService } from './contextLayers/compressLayer';
 import { IsolateLayerService } from './contextLayers/isolateLayer';
 import { SchedulingService } from './contextLayers/schedulingService';
@@ -74,8 +81,14 @@ export class ResearchAgentService {
   private readonly isolateLayer: IsolateLayerService;
   private readonly schedulingService: SchedulingService;
 
+  // Multi-paradigm services
+  private readonly multiParadigmBlender: MultiParadigmBlender;
+  private readonly paradigmLearning: ParadigmLearningService;
+  private readonly interHostCollaboration: InterHostCollaborationService;
+
   // State
   private lastParadigmProbabilities: ParadigmProbabilities | null = null;
+  private currentInteractionId: string | null = null;
 
   // ──────────────────────────────────────────────────────────
   //  Singleton boiler‑plate
@@ -96,6 +109,11 @@ export class ResearchAgentService {
     this.compressLayer = CompressLayerService.getInstance();
     this.isolateLayer = IsolateLayerService.getInstance();
     this.schedulingService = SchedulingService.getInstance();
+
+    // Multi-paradigm services
+    this.multiParadigmBlender = MultiParadigmBlender.getInstance(this);
+    this.paradigmLearning = ParadigmLearningService.getInstance();
+    this.interHostCollaboration = InterHostCollaborationService.getInstance(this);
 
     // Database service only exists server‑side
     try {
@@ -392,13 +410,62 @@ export class ResearchAgentService {
   > {
     console.log('📍 ResearchAgent.processQuery called with:', { query: query.substring(0, 50), model });
     try {
-      // 1) Detect paradigm
+      // 1) Detect paradigm with learning adjustments
       console.log('🔍 Detecting paradigm...');
-      const paradigmProbs = await this.paradigmClassifier.classify(query);
+      let paradigmProbs = await this.paradigmClassifier.classify(query);
+
+      // Apply learned adjustments from Phase 8
+      paradigmProbs = this.paradigmLearning.getLearnedAdjustments(query, paradigmProbs);
+
+      // Record interaction for learning
+      this.currentInteractionId = this.paradigmLearning.recordInteraction(
+        query,
+        this.paradigmClassifier.dominant(paradigmProbs)[0] ?? 'bernard',
+        paradigmProbs,
+        0.5 // Initial confidence, will be updated later
+      );
+
+      this.lastParadigmProbabilities = paradigmProbs;
+      console.log('✅ Paradigm probabilities (with learning):', paradigmProbs);
+
+      // Check if multi-paradigm blending is needed (Phase 7)
+      if (this.multiParadigmBlender.shouldBlend(paradigmProbs)) {
+        const blendingStrategy = this.multiParadigmBlender.createBlendingStrategy(paradigmProbs);
+        if (blendingStrategy) {
+          metadata?.onProgress?.('Multiple paradigms detected. Initiating blended approach...');
+
+          const blendedResult = await this.multiParadigmBlender.executeBlendedResearch(
+            query,
+            blendingStrategy,
+            model as ModelType,
+            effort,
+            metadata?.onProgress
+          );
+
+          // Update learning with blended result confidence
+          if (this.currentInteractionId) {
+            this.paradigmLearning.updateFeedback(
+              this.currentInteractionId,
+              4, // Default good satisfaction for blended results
+              true
+            );
+          }
+
+          return {
+            text: blendedResult.synthesis,
+            sources: blendedResult.sources,
+            paradigmProbabilities: paradigmProbs,
+            contextDensity: this.contextEngineering.adaptContextDensity(phase, blendedResult.hostParadigm),
+            contextLayers: this.contextEngineering.getLayerSequence(blendedResult.hostParadigm),
+            layerResults: {}
+          };
+        }
+      }
+
+      // Single paradigm execution (existing flow)
       const dominant = this.paradigmClassifier.dominant(paradigmProbs);
       const paradigm = dominant[0] ?? 'bernard';
-      this.lastParadigmProbabilities = paradigmProbs;
-      console.log('✅ Paradigm detected:', paradigm, paradigmProbs);
+      console.log('✅ Single paradigm selected:', paradigm, paradigmProbs);
 
       // 2) Context‑density for phase
       const phase = metadata?.phase ?? 'discovery';
@@ -493,7 +560,53 @@ export class ResearchAgentService {
         };
       }
 
-      // 7) Compose final
+      // 7) Check for inter-host collaboration needs (Phase 9)
+      const confidence = this.calculateConfidence(response, paradigm);
+      const collaborationRequests = await this.interHostCollaboration.checkCollaborationNeeded(
+        paradigm,
+        query,
+        confidence,
+        response.text
+      );
+
+      if (collaborationRequests.length > 0) {
+        metadata?.onProgress?.(`[${paradigm}] Seeking collaboration from other hosts...`);
+
+        // Execute high-priority collaborations
+        const highPriorityCollabs = collaborationRequests.filter(r => r.priority === 'high');
+        for (const collab of highPriorityCollabs) {
+          try {
+            const collabResponse = await this.interHostCollaboration.executeCollaboration(
+              collab.id,
+              model as ModelType,
+              effort,
+              metadata?.onProgress
+            );
+
+            // Enhance response with collaborative insights
+            response.text += `\n\n### Collaborative Insight from ${collab.toHost.toUpperCase()}\n${collabResponse.insights}`;
+
+            // Deduplicate sources before merging
+            const existingUrls = new Set(response.sources.map(s => s.url));
+            const newSources = collabResponse.sources.filter(s => !existingUrls.has(s.url));
+            response.sources = [...response.sources, ...newSources];
+          } catch (error) {
+            console.warn(`Collaboration ${collab.id} failed:`, error);
+          }
+        }
+      }
+
+      // Update learning feedback based on final confidence
+      if (this.currentInteractionId) {
+        const finalConfidence = this.calculateConfidence(response, paradigm);
+        this.paradigmLearning.updateFeedback(
+          this.currentInteractionId,
+          Math.round(finalConfidence * 5), // Convert to 1-5 scale
+          finalConfidence > 0.6
+        );
+      }
+
+      // 8) Compose final
       return {
         ...response,
         paradigmProbabilities: paradigmProbs,
@@ -562,6 +675,29 @@ export class ResearchAgentService {
 
   getAvailableModels(): ModelType[] {
     return this.modelProvider.getAvailableModels();
+  }
+
+  /**
+   * Calculate confidence score for a research response
+   */
+  private calculateConfidence(response: ResearchResponse, paradigm: HostParadigm): number {
+    let confidence = 0.5; // Base confidence
+
+    // Factor 1: Response length (longer is generally better)
+    if (response.text.length > 1000) confidence += 0.1;
+    if (response.text.length > 2000) confidence += 0.1;
+
+    // Factor 2: Source quality and quantity
+    if (response.sources.length >= 5) confidence += 0.1;
+    if (response.sources.length >= 10) confidence += 0.1;
+
+    // Factor 3: Paradigm-specific adjustments
+    if (paradigm === 'bernard' && response.text.includes('framework')) confidence += 0.05;
+    if (paradigm === 'dolores' && response.text.includes('action')) confidence += 0.05;
+    if (paradigm === 'teddy' && response.text.includes('stakeholder')) confidence += 0.05;
+    if (paradigm === 'maeve' && response.text.includes('strategy')) confidence += 0.05;
+
+    return Math.min(0.95, confidence);
   }
 
   async routeResearchQuery(
@@ -647,6 +783,29 @@ export class ResearchAgentService {
     this.memoryService.cacheResult(query, result, paradigm || undefined);
     return result;
   }
+
+  /**
+   * Perform host-based research for multi-paradigm blending
+   */
+  async performHostBasedResearch(
+    query: string,
+    paradigm: HostParadigm,
+    queryType: QueryType,
+    model: ModelType,
+    effort: EffortType,
+    onProgress?: (message: string) => void
+  ): Promise<EnhancedResearchResults> {
+    return this.paradigmService.performHostBasedResearch(
+      query,
+      paradigm,
+      queryType,
+      model,
+      effort,
+      onProgress
+    );
+  }
+
+  // Removed duplicate generateText method - keeping the more complete version above
 
   async semanticSearch(query: string, sessionId?: string): Promise<ResearchState[]> {
     if (!this.databaseService) {

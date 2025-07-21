@@ -20,7 +20,8 @@ export {
   ContextLayerProgress,
   ResearchAnalytics,
   ParadigmDashboard,
-  ParadigmIndicator
+  ParadigmIndicator,
+  InterHostCollaboration
 } from './ParadigmUI';
 export { ErrorBoundary } from './ErrorBoundary';
 export { RateLimitIndicator } from './RateLimitIndicator';

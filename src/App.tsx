@@ -8,7 +8,7 @@ import { ReverieHeader } from '@/components/ReverieHeader'
 import { ResearchView } from '@/components/ResearchView'
 import { SessionsView } from '@/components/SessionsView'
 import { AnalyticsView } from '@/components/AnalyticsView'
-import { InputBar, ErrorDisplay, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress, Controls, ParadigmIndicator } from '@/components'
+import { InputBar, ErrorDisplay, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress, Controls, ParadigmIndicator, InterHostCollaboration } from '@/components'
 import ResearchGraphView from '@/components/ResearchGraphView';
 import { ProgressMeter } from '@/components/atoms'
 import { usePersistentState } from '@/hooks/usePersistentState'
@@ -45,6 +45,14 @@ const App: React.FC = () => {
   const [contextLayers, setContextLayers] = useState<ContextLayer[]>([])
   const [currentLayer, setCurrentLayer] = useState<ContextLayer | null>(null)
   const [currentPhase, setCurrentPhase] = useState<ResearchPhase>('discovery')
+  const [blendedParadigms, setBlendedParadigms] = useState<HostParadigm[]>([])
+  const [activeCollaborations, setActiveCollaborations] = useState<Array<{
+    id: string;
+    fromHost: HostParadigm;
+    toHost: HostParadigm;
+    reason: string;
+    status: 'pending' | 'processing' | 'completed' | 'failed';
+  }>>([])
   const [activeTab, setActiveTab] = useState('research')
 
   // Progress state machine
@@ -54,9 +62,12 @@ const App: React.FC = () => {
   const graphManager = useMemo(() => new ResearchGraphManager(), [])
   // Track the last node ID for parent-child relationships
   const lastNodeIdRef = useRef<string | null>(null)
-  const researchAgent = useMemo(() => ResearchAgentService.getInstance(), [])
-  const functionCallingService = useMemo(() => FunctionCallingService.getInstance(), [])
-  const databaseService = useMemo(() => DatabaseService.getInstance(), [])
+
+  // Singleton services - already instances, no wrapper needed
+  const researchAgent = ResearchAgentService.getInstance();
+  const functionCallingService = FunctionCallingService.getInstance();
+  const databaseService = DatabaseService.getInstance();
+
   const [functionHistory, setFunctionHistory] = useState<FunctionCallHistory[]>([])
   const [showSemanticSearch, setShowSemanticSearch] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
@@ -647,6 +658,11 @@ const App: React.FC = () => {
         if (dominantParadigms.length > 0) {
           setParadigm(dominantParadigms[0][0] as HostParadigm)
         }
+
+        // Check if we have blended paradigms from the result
+        if ('adaptiveMetadata' in result && result.adaptiveMetadata?.blendedParadigms) {
+          setBlendedParadigms(result.adaptiveMetadata.blendedParadigms)
+        }
       }
 
       // Update context information
@@ -732,6 +748,8 @@ const App: React.FC = () => {
     setResearch([]);
     setParadigm(null);
     setParadigmProbabilities(null);
+    setBlendedParadigms([]);
+    setActiveCollaborations([]);
     graphManager.reset();
     functionCallingService.resetToolState();
     setFunctionHistory([]);
@@ -876,7 +894,24 @@ const App: React.FC = () => {
                   paradigm={paradigm}
                   probabilities={paradigmProbabilities}
                   confidence={paradigmProbabilities ? Math.max(...Object.values(paradigmProbabilities)) : 0}
+                  blendedParadigms={blendedParadigms}
                 />
+              </div>
+            )}
+
+            {/* Show active collaborations */}
+            {activeCollaborations.length > 0 && (
+              <div className="animate-slide-up mb-4 space-y-2">
+                <h3 className="text-sm font-medium text-gray-600 mb-2">Inter-Host Collaborations</h3>
+                {activeCollaborations.map(collab => (
+                  <InterHostCollaboration
+                    key={collab.id}
+                    fromHost={collab.fromHost}
+                    toHost={collab.toHost}
+                    reason={collab.reason}
+                    status={collab.status}
+                  />
+                ))}
               </div>
             )}
 
