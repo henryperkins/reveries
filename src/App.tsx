@@ -94,6 +94,9 @@ const App: React.FC = () => {
   // Track which phase cards have been created to prevent duplicates
   const createdPhaseCardsRef = useRef<Set<string>>(new Set());
 
+  // Track active operations to prevent duplicate card creation
+  const activeOperationsRef = useRef<Set<string>>(new Set());
+
   // Progress state machine helper
   const updateProgressState = useCallback((phase: typeof progressState, message?: string) => {
     const progressMap = {
@@ -142,9 +145,9 @@ const App: React.FC = () => {
       ));
     }
 
-    // Skip creating cards for research phase - these are redundant with FunctionCallDock
+    // Skip creating cards for phases that show tool operations - these are redundant with FunctionCallDock
     // Only create cards for meaningful phases with actual content
-    const skipPhases = ['researching', 'routing'];
+    const skipPhases = ['researching', 'routing', 'analyzing'];
     const shouldCreateCard = phase !== 'idle' &&
                            phase !== 'complete' &&
                            stepTypeMap[phase] &&
@@ -152,30 +155,37 @@ const App: React.FC = () => {
                            !createdPhaseCardsRef.current.has(phase);
 
     if (shouldCreateCard) {
-      createdPhaseCardsRef.current.add(phase);
+      try {
+        createdPhaseCardsRef.current.add(phase);
 
-      const newStep: ResearchStep = {
-        id: crypto.randomUUID(),
-        title: titleMap[phase],
-        icon: () => null,
-        content: message || `Starting ${phase} phase...`,
-        timestamp: new Date().toISOString(),
-        type: stepTypeMap[phase],
-        sources: [],
-        isSpinning: true,
-        toolsUsed: [],
-        recommendedTools: toolMap[phase] || []
-      };
-      setResearch(prev => [...(Array.isArray(prev) ? prev : []), newStep]);
+        const newStep: ResearchStep = {
+          id: crypto.randomUUID(),
+          title: titleMap[phase],
+          icon: () => null,
+          content: message || `Starting ${phase} phase...`,
+          timestamp: new Date().toISOString(),
+          type: stepTypeMap[phase],
+          sources: [],
+          isSpinning: true,
+          toolsUsed: [],
+          recommendedTools: toolMap[phase] || []
+        };
+        setResearch(prev => [...(Array.isArray(prev) ? prev : []), newStep]);
 
-      // Keep research graph in sync with parent-child relationships
-      graphManager.addNode(newStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
-      lastNodeIdRef.current = newStep.id;
+        // Keep research graph in sync with parent-child relationships
+        graphManager.addNode(newStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
+        lastNodeIdRef.current = newStep.id;
+      } catch (error) {
+        console.error(`Error creating ${phase} phase card:`, error);
+        // Remove from created phases on error
+        createdPhaseCardsRef.current.delete(phase);
+      }
     }
 
     // Reset phase tracking on completion
     if (phase === 'complete') {
       createdPhaseCardsRef.current.clear();
+      activeOperationsRef.current.clear();
     }
   }, [setResearch, graphManager]);
 
@@ -218,6 +228,7 @@ const App: React.FC = () => {
     setRealTimeContextDensities(null)
     clearError()
     lastNodeIdRef.current = null; // Reset node tracking for new query
+    activeOperationsRef.current.clear(); // Clear active operations for new query
 
     // Progress timeout protection helper - starts initial timeout
     const startProgressTimeout = (phase: string, timeoutMs: number) => {
@@ -464,34 +475,65 @@ const App: React.FC = () => {
             }
           } else if (message.includes('Searching') || message.includes('Found') ||
                      message.includes('results') || message.includes('web search')) {
-            // Handle web search progress
-            setResearch(prev => {
-              const existingSearchStep = prev.find(step =>
-                step.type === ResearchStepType.WEB_RESEARCH && step.isSpinning
-              );
+            // Handle web search progress - but don't create duplicate cards
+            const operationKey = `web-research-${progressState}`;
 
-              if (existingSearchStep) {
-                return prev.map(step =>
-                  step.id === existingSearchStep.id
-                    ? { ...step, content: step.content + '\n' + message }
-                    : step
+            // Check if we're already in the researching phase or have an active operation
+            if (progressState === 'researching' || activeOperationsRef.current.has(operationKey)) {
+              // Just update the existing researching card if there is one
+              setResearch(prev => {
+                const existingSearchStep = prev.find(step =>
+                  step.type === ResearchStepType.WEB_RESEARCH && step.isSpinning
                 );
-              } else {
-                const newStep: ResearchStep = {
-                  id: crypto.randomUUID(),
-                  title: 'Web Research',
-                  icon: () => null,
-                  content: message,
-                  timestamp: new Date().toISOString(),
-                  type: ResearchStepType.WEB_RESEARCH,
-                  sources: [],
-                  isSpinning: true
-                };
-                graphManager.addNode(newStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
-                lastNodeIdRef.current = newStep.id;
-                return [...prev, newStep];
-              }
-            });
+                if (existingSearchStep) {
+                  return prev.map(step =>
+                    step.id === existingSearchStep.id
+                      ? { ...step, content: step.content + '\n' + message }
+                      : step
+                  );
+                }
+                return prev; // Don't create a new card
+              });
+            } else {
+              // Only create a card if we're not already in researching phase
+              setResearch(prev => {
+                const existingSearchStep = prev.find(step =>
+                  step.type === ResearchStepType.WEB_RESEARCH && step.isSpinning
+                );
+
+                if (existingSearchStep) {
+                  return prev.map(step =>
+                    step.id === existingSearchStep.id
+                      ? { ...step, content: step.content + '\n' + message }
+                      : step
+                  );
+                } else {
+                  try {
+                    // Mark operation as active before creating card
+                    activeOperationsRef.current.add(operationKey);
+
+                    const newStep: ResearchStep = {
+                      id: crypto.randomUUID(),
+                      title: 'Web Research',
+                      icon: () => null,
+                      content: message,
+                      timestamp: new Date().toISOString(),
+                      type: ResearchStepType.WEB_RESEARCH,
+                      sources: [],
+                      isSpinning: true
+                    };
+                    graphManager.addNode(newStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
+                    lastNodeIdRef.current = newStep.id;
+                    return [...prev, newStep];
+                  } catch (error) {
+                    console.error('Error creating research step:', error);
+                    // Remove from active operations on error
+                    activeOperationsRef.current.delete(operationKey);
+                    return prev; // Return unchanged state
+                  }
+                }
+              });
+            }
           } else if (message.includes('quality') || message.includes('evaluating') || message.includes('self-healing') ||
                      message.includes('evaluation') || message.includes('Research evaluation') ||
                      message.includes('completed, evaluating') || message.includes('enhance research quality')) {
@@ -684,7 +726,7 @@ const App: React.FC = () => {
       setCurrentLayer(null)
       // Keep context densities to show final results
     }
-  }, [isLoading, currentModel, currentPhase, researchAgent, clearError, handleError, graphManager, setResearch, advancePhase, updateProgressState, progressTimeoutMgr, timeoutManager, addLiveCall, updateLiveCall, addToolUsed, paradigm, progressState])
+  }, [isLoading, clearError, currentModel, timeoutManager, progressTimeoutMgr, updateProgressState, progressState, setResearch, graphManager, advancePhase, researchAgent, currentPhase, addLiveCall, liveCalls.length, addToolUsed, updateLiveCall, handleError, paradigm])
 
   const handleClear = useCallback(() => {
     setResearch([]);
@@ -872,7 +914,7 @@ const App: React.FC = () => {
                 });
                 return null;
               })()}
-              {enhancedMode && (liveCalls.length > 0 || functionHistory.length > 0) && (
+              {(liveCalls.length > 0 || functionHistory.length > 0) && (
                 <div className="mt-4">
                   <FunctionCallDock
                     mode={liveCalls.length > 0 ? 'live' : 'history'}

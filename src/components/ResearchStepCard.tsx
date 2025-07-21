@@ -118,6 +118,13 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
         `}>
           <IconComponent />
         </div>
+        
+        {/* Spinning indicator in top-right corner */}
+        {step.isSpinning && (
+          <div className="absolute top-2 right-2">
+            <div className="w-4 h-4 border-2 border-westworld-gold border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <h3 className="text-lg font-semibold text-westworld-darkbrown mb-3 flex items-center justify-between">
             <span>{step.title}</span>

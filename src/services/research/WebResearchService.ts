@@ -88,7 +88,8 @@ export class WebResearchService {
     const { SearchProviderService } = await import('../search/SearchProviderService');
     const searchService = SearchProviderService.getInstance();
 
-    // Notify that web search is starting
+    // Notify that web search is starting with a summary message
+    onProgress?.(`Searching web with ${queries.length} ${queries.length === 1 ? 'query' : 'queries'}...`);
     onProgress?.('tool_used:web_search');
 
     // When using Gemini-2.5-Flash, rely on the model's native `google_search`
@@ -98,8 +99,8 @@ export class WebResearchService {
     }
 
     for (const query of queries) {
-      onProgress?.(`Searching for: "${query}"`);
-      // Also notify as tool usage for each search
+      // Don't emit individual query progress to reduce duplicate cards
+      // Just emit tool usage notification
       onProgress?.('tool_used:web_search');
 
       try {
@@ -110,7 +111,7 @@ export class WebResearchService {
           timeRange: 'month' // Focus on recent results
         }, onProgress);
 
-        onProgress?.(`Found ${searchResponse.results.length} results for "${query}"`);
+        // Don't emit individual result counts to reduce noise
 
         if (searchResponse.results.length === 0) {
           findingsOutputParts.push(`## ${query}\n\nNo search results found for this query.`);
