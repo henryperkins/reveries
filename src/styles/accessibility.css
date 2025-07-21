@@ -6,39 +6,39 @@
   *:focus {
     outline: none;
   }
-  
+
   /* Enhanced focus-visible styles */
   :focus-visible {
     outline: 2px solid var(--color-westworld-gold);
     outline-offset: 2px;
     border-radius: 2px;
   }
-  
+
   /* Dark backgrounds need light focus rings */
   .dark-bg :focus-visible,
   [data-theme="dark"] :focus-visible {
     outline-color: var(--color-westworld-cream);
   }
-  
+
   /* Focus styles for different element types */
   button:focus-visible,
   .btn:focus-visible {
     outline-offset: 3px;
     box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
   }
-  
+
   input:focus-visible,
   textarea:focus-visible,
   select:focus-visible {
     outline-offset: 0;
     box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
   }
-  
+
   a:focus-visible {
     outline-offset: 3px;
     text-decoration: underline;
   }
-  
+
   /* Focus within containers */
   .card:focus-within {
     box-shadow: 0 0 0 2px var(--color-westworld-gold);
@@ -48,7 +48,7 @@
 /* ===== SKIP LINKS ===== */
 .skip-link {
   @apply absolute left-0 top-0 z-max;
-  @apply bg-westworld-gold text-westworld-nearBlack;
+  @apply bg-westworld-gold text-westworld-nearblack;
   @apply px-4 py-2 rounded-br-lg font-medium;
   @apply transform -translate-y-full;
   @apply transition-transform duration-200;
@@ -72,7 +72,7 @@
     white-space: nowrap;
     border-width: 0;
   }
-  
+
   /* Show on focus (for skip links, etc) */
   .sr-only-focusable:focus {
     position: static;
@@ -84,7 +84,7 @@
     clip: auto;
     white-space: normal;
   }
-  
+
   /* Hide from screen readers */
   .aria-hidden {
     aria-hidden: true;
@@ -98,12 +98,12 @@
     /* Text on light backgrounds */
     --color-text: #000000;
     --color-text-muted: #333333;
-    
+
     /* Text on dark backgrounds */
     --color-text-inverse: #FFFFFF;
     --color-text-inverse-muted: #E5E5E5;
   }
-  
+
   /* High contrast mode overrides */
   @media (prefers-contrast: high) {
     body {
@@ -111,19 +111,19 @@
       --color-background: #FFFFFF;
       --color-border: #000000;
     }
-    
+
     .btn {
       @apply border-2;
     }
-    
+
     .input-field {
       @apply border-2 border-black;
     }
-    
+
     .card {
       @apply border-2 border-black;
     }
-    
+
     /* Increase focus indicator contrast */
     :focus-visible {
       outline-width: 3px;
@@ -140,7 +140,7 @@
     min-width: 44px;
     @apply flex items-center justify-center;
   }
-  
+
   /* Ensure all interactive elements have proper sizing */
   button,
   .btn,
@@ -149,7 +149,7 @@
   input[type="radio"] {
     position: relative;
   }
-  
+
   /* Expand clickable area for small targets */
   input[type="checkbox"]::before,
   input[type="radio"]::before {
@@ -160,16 +160,16 @@
     bottom: -10px;
     left: -10px;
   }
-  
+
   /* Visible interaction states */
   .interactive-states {
     @apply transition-all duration-200;
   }
-  
+
   .interactive-states:hover {
     @apply transform scale-105;
   }
-  
+
   .interactive-states:active {
     @apply transform scale-95;
   }
@@ -183,30 +183,30 @@
     @apply text-westworld-rust ml-1;
     aria-label: 'required';
   }
-  
+
   /* Error states with ARIA */
   .field-error {
     @apply text-westworld-rust text-sm mt-1;
     role: 'alert';
   }
-  
+
   /* Form group with proper labeling */
   .form-group-accessible {
     @apply space-y-2;
   }
-  
+
   .form-group-accessible label {
-    @apply block font-medium text-westworld-nearBlack;
+    @apply block font-medium text-westworld-nearblack;
     cursor: pointer;
   }
-  
+
   /* Fieldset styling */
   fieldset {
     @apply border border-westworld-tan rounded-lg p-4;
   }
-  
+
   legend {
-    @apply px-2 font-semibold text-westworld-nearBlack;
+    @apply px-2 font-semibold text-westworld-nearblack;
   }
 }
 
@@ -220,7 +220,7 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  
+
   /* Disable specific animations */
   .animate-fadeIn,
   .animate-slideUp,
@@ -229,7 +229,7 @@
   .animate-glow {
     animation: none !important;
   }
-  
+
   /* Disable transforms */
   .hover\:scale-105:hover,
   .hover\:translate-x-1:hover {
@@ -243,12 +243,12 @@
   .loading-accessible {
     @apply relative;
   }
-  
+
   .loading-accessible::after {
     content: 'Loading...';
     @apply sr-only;
   }
-  
+
   /* Progress announcements */
   .progress-announce {
     @apply sr-only;
@@ -263,11 +263,11 @@
   .keyboard-only\:underline:focus {
     text-decoration: underline;
   }
-  
+
   .keyboard-only\:ring:focus {
     @apply ring-2 ring-westworld-gold;
   }
-  
+
   /* Tab order helpers */
   .tab-highlight:focus {
     @apply bg-westworld-gold/10;
@@ -280,16 +280,16 @@
   nav {
     @apply relative;
   }
-  
+
   main {
     @apply relative;
     min-height: 50vh; /* Ensure main content is substantial */
   }
-  
+
   aside {
     @apply relative;
   }
-  
+
   footer {
     @apply relative mt-auto;
   }
@@ -301,25 +301,25 @@
   .status-success {
     @apply text-green-700 font-semibold;
   }
-  
+
   .status-success::before {
     content: '✓ ';
     @apply inline-block mr-1;
   }
-  
+
   .status-error {
     @apply text-westworld-rust font-semibold;
   }
-  
+
   .status-error::before {
     content: '✗ ';
     @apply inline-block mr-1;
   }
-  
+
   .status-warning {
     @apply text-amber-700 font-semibold;
   }
-  
+
   .status-warning::before {
     content: '⚠ ';
     @apply inline-block mr-1;
@@ -332,18 +332,18 @@
   html {
     font-size: clamp(14px, 2.5vw, 16px);
   }
-  
+
   /* Prevent text from becoming too small */
   body {
     min-font-size: 12px;
   }
-  
+
   /* Line height for readability */
   p,
   li {
     line-height: 1.6;
   }
-  
+
   /* Limit line length for readability */
   .readable-width {
     max-width: 65ch;
@@ -358,16 +358,16 @@
     text-decoration-thickness: 1px;
     text-underline-offset: 2px;
   }
-  
+
   a:not(.btn):hover {
     @apply text-westworld-darkCopper;
     text-decoration-thickness: 2px;
   }
-  
+
   a:not(.btn):visited {
     @apply text-westworld-darkBrown;
   }
-  
+
   /* External link indicator */
   a[target="_blank"]::after {
     content: ' ↗';
@@ -383,12 +383,12 @@
     aria-live: 'polite';
     aria-atomic: 'true';
   }
-  
+
   .announce-assertive {
     aria-live: 'assertive';
     aria-atomic: 'true';
   }
-  
+
   /* Status messages */
   [role="status"],
   [role="alert"] {

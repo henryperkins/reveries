@@ -82,7 +82,7 @@
 
     /* Body background */
     body {
-      @apply bg-westworld-cream text-westworld-nearBlack;
+      @apply bg-westworld-cream text-westworld-nearblack;
     }
 
     /* Adjust card backgrounds */
@@ -96,7 +96,7 @@
     .textarea,
     .select {
       @apply bg-westworld-tan/20 border-westworld-tan/50;
-      @apply text-westworld-nearBlack placeholder-westworld-copper/50;
+      @apply text-westworld-nearblack placeholder-westworld-copper/50;
       @apply focus:border-westworld-gold focus:ring-westworld-gold/20;
     }
 
@@ -108,12 +108,12 @@
     }
 
     .btn-secondary {
-      @apply bg-westworld-tan/30 border-westworld-copper/50 text-westworld-nearBlack;
+      @apply bg-westworld-tan/30 border-westworld-copper/50 text-westworld-nearblack;
       @apply hover:bg-westworld-tan/50 hover:border-westworld-copper;
     }
 
     .btn-ghost {
-      @apply text-westworld-nearBlack;
+      @apply text-westworld-nearblack;
       @apply hover:bg-westworld-tan/20;
     }
 
@@ -182,7 +182,7 @@
     }
 
     th {
-      @apply bg-westworld-tan/20 text-westworld-nearBlack;
+      @apply bg-westworld-tan/20 text-westworld-nearblack;
     }
 
     td {
@@ -209,7 +209,7 @@
   }
 
   .theme-toggle-thumb svg {
-    @apply w-3 h-3 text-westworld-nearBlack;
+    @apply w-3 h-3 text-westworld-nearblack;
   }
 
   [data-theme="dark"] .theme-toggle {

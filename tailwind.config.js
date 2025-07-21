@@ -13,6 +13,7 @@ export default {
                     tan: '#D2B48C',
                     brown: '#A0522D',
                     darkbrown: '#654321',
+                    nearblack: '#2A2522',
                     black: '#1A1A1A',
                     gold: '#D4AF37',
                     rust: '#8B4513',

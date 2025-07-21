@@ -236,7 +236,7 @@
 
   /* Selection Styles */
   ::selection {
-    @apply bg-westworld-gold/30 text-westworld-nearBlack;
+    @apply bg-westworld-gold/30 text-westworld-nearblack;
   }
 
   /* Custom Scrollbar */
