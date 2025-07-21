@@ -92,13 +92,13 @@ export class ModelProviderService {
    * Generate text with appropriate model based on selection
    */
   async generateText(
-    prompt: string, 
-    model: ModelType, 
+    prompt: string,
+    model: ModelType,
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<{ text: string; sources?: Citation[] }> {
     console.log('🎯 ModelProvider.generateText called:', { model, promptLength: prompt.length });
-    
+
     if (ErrorBoundary.shouldBlock()) {
       throw new APIError('Too many errors occurred. Please try again later.', 'RATE_LIMIT', false);
     }
@@ -106,7 +106,7 @@ export class ModelProviderService {
     try {
       const startTime = Date.now();
       onProgress?.(`tool_used:${model}_api_call`);
-      
+
       switch (model) {
         case GENAI_MODEL_FLASH:
           onProgress?.('tool_used:gemini_api');
@@ -147,6 +147,13 @@ export class ModelProviderService {
               const agentResult = await this.azureAIAgent.generateText(prompt, model, effort);
               onProgress?.(`tool_used:completed:azure_ai_agent:${startTime}`);
               console.log(`✅ O3 Azure AI Agent completed: ${agentResult.sources?.length || 0} sources returned`);
+
+              // Ensure we have a valid response
+              if (!agentResult.text || agentResult.text.trim() === '') {
+                console.warn('⚠️ Azure AI Agent returned empty response, falling back');
+                throw new Error('Empty response from Azure AI Agent');
+              }
+
               return {
                 text: agentResult.text,
                 sources: agentResult.sources || []
@@ -156,7 +163,7 @@ export class ModelProviderService {
               // Fall through to Azure OpenAI
             }
           }
-          
+
           // Fallback to Azure OpenAI with agentic tools for research capabilities
           console.log('📌 Falling back to Azure OpenAI O3 service');
           onProgress?.('tool_used:azure_openai');
@@ -166,21 +173,31 @@ export class ModelProviderService {
           }
           console.log('✅ Azure OpenAI is available, getting instance...');
           const azureService = AzureOpenAIService.getInstance();
-          
+
           // Get available research tools for agentic workflow
           const researchTools = azureService.getAvailableResearchTools();
-          
+          console.log(`📋 Available research tools: ${researchTools?.length || 0}`);
+
           if (researchTools && researchTools.length > 0) {
             // Use agentic workflow with tools for enhanced research capabilities
             console.log(`✅ Using Azure OpenAI O3 with ${researchTools.length} research tools for agentic workflow`);
+
+            // Track tool usage
+            const toolUsageHandler = (toolName: string) => {
+              console.log(`🔧 Tool used: ${toolName}`);
+              onProgress?.(`tool_used:${toolName}`);
+            };
+
             const azureResult = await azureService.generateResponseWithTools(
               prompt,
               researchTools,
               effort,
               undefined, // paradigm (optional)
               undefined, // paradigmProbabilities (optional)
-              5 // maxIterations
+              5, // maxIterations
+              toolUsageHandler // Add callback for tool usage tracking
             );
+
             onProgress?.(`tool_used:completed:azure_openai_with_tools:${startTime}`);
             if (!azureResult || !azureResult.text) {
               throw new Error('Azure OpenAI service returned invalid response');
@@ -191,7 +208,7 @@ export class ModelProviderService {
             };
           } else {
             // Fallback to basic response without tools
-            console.log('No research tools available, using basic Azure O3 response');
+            console.log('⚠️ No research tools available, using basic Azure O3 response');
             const azureResult = await azureService.generateResponse(prompt, effort);
             onProgress?.(`tool_used:completed:azure_openai:${startTime}`);
             if (!azureResult || !azureResult.text) {
@@ -335,7 +352,7 @@ export class ModelProviderService {
     try {
       // Get available research tools for agentic workflow
       const researchTools = this.azureOpenAI.getAvailableResearchTools();
-      
+
       if (researchTools && researchTools.length > 0) {
         // Use agentic workflow with tools for enhanced research capabilities
         console.log(`Using Azure O3 with ${researchTools.length} research tools for agentic workflow`);
@@ -347,9 +364,9 @@ export class ModelProviderService {
           undefined, // paradigmProbabilities (optional)
           5 // maxIterations
         );
-        return { 
-          text: response.text, 
-          sources: response.sources || [] 
+        return {
+          text: response.text,
+          sources: response.sources || []
         };
       } else {
         // Fallback to basic response without tools

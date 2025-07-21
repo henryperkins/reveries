@@ -33,6 +33,9 @@ export class WebResearchService {
     generateText: (prompt: string, model: ModelType, effort: EffortType) => Promise<{ text: string; sources?: Citation[] }>,
     onProgress?: (message: string) => void
   ): Promise<string[]> {
+    // Notify tool usage
+    onProgress?.('tool_used:query_generation');
+
     // Check for learned query suggestions first
     const learnedSuggestions = this.memoryService.getQuerySuggestions(userQuery);
 
@@ -53,6 +56,9 @@ export class WebResearchService {
 
     // Learn from this query
     this.memoryService.learnFromQuery(userQuery, 'exploratory', queries);
+
+    // Mark completion
+    onProgress?.('tool_used:completed:query_generation:' + Date.now());
 
     return queries;
   }
@@ -81,7 +87,11 @@ export class WebResearchService {
     // Import search provider service
     const { SearchProviderService } = await import('../search/SearchProviderService');
     const searchService = SearchProviderService.getInstance();
-    // When using Gemini-2.5-Flash, rely on the model’s native `google_search`
+
+    // Notify that web search is starting
+    onProgress?.('tool_used:web_search');
+
+    // When using Gemini-2.5-Flash, rely on the model's native `google_search`
     // grounding and disable Google Custom Search to avoid redundant calls.
     if (model === 'gemini-2.5-flash') {
       searchService.disableProvider('google');
@@ -89,6 +99,8 @@ export class WebResearchService {
 
     for (const query of queries) {
       onProgress?.(`Searching for: "${query}"`);
+      // Also notify as tool usage for each search
+      onProgress?.('tool_used:web_search');
 
       try {
         // Perform real web search
@@ -154,6 +166,8 @@ Please provide a well-structured summary that synthesizes the information from t
           }
 
           onProgress?.(`Summarized ${searchResponse.results.length} sources for "${query}"`);
+          // Mark completion of this search
+          onProgress?.('tool_used:completed:web_search:' + Date.now());
         } catch (summaryError) {
           console.error(`Error summarizing results for "${query}":`, summaryError);
           // Fallback: Use raw search results
@@ -169,6 +183,7 @@ Please provide a well-structured summary that synthesizes the information from t
       } catch (searchError) {
         console.error(`Error searching for "${query}":`, searchError);
         onProgress?.(`Search failed for "${query}", trying LLM fallback...`);
+        onProgress?.('tool_used:llm_fallback');
 
         // Fallback to LLM-only approach if search fails
         try {
@@ -195,6 +210,7 @@ Please provide a well-structured summary that synthesizes the information from t
           }
 
           onProgress?.(`Used LLM fallback for "${query}"`);
+          onProgress?.('tool_used:completed:llm_fallback:' + Date.now());
         } catch (fallbackError) {
           console.error(`Fallback failed for query "${query}":`, fallbackError);
           onProgress?.(`All search methods failed for "${query}"`);

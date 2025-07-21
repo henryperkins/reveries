@@ -236,12 +236,12 @@ export class AzureOpenAIService {
         // simple `text` field.
 
         // Find the message output (not reasoning output)
-        const messageOutput = Array.isArray(data.output) 
+        const messageOutput = Array.isArray(data.output)
           ? data.output.find((item: any) => item.type === 'message')
           : null;
 
         let assistantText: string | undefined;
-        
+
         // Parse the assistant message content
         if (messageOutput?.content && Array.isArray(messageOutput.content)) {
           const textPart = messageOutput.content.find((p: any) => p.type === 'output_text');
@@ -320,7 +320,7 @@ export class AzureOpenAIService {
     let backoffMs = 1000;          // initial back-off = 1 s
     const maxBackoffMs = 60_000;   // cap back-off at 60 s
     let attempt = 0;
-    
+
     onProgress?.('O3 model processing in background, polling for completion...');
 
     while (true) {
@@ -506,7 +506,8 @@ export class AzureOpenAIService {
     effort: EffortType = EffortType.MEDIUM,
     paradigm?: HostParadigm,
     paradigmProbabilities?: ParadigmProbabilities,
-    maxIterations: number = 5
+    maxIterations: number = 5,
+    onToolUse?: (toolName: string) => void // Add this parameter
   ): Promise<AzureOpenAIResponse> {
     return withRetry(async () => {
       let iterationCount = 0;
@@ -623,7 +624,7 @@ export class AzureOpenAIService {
         } else {
           data = await response.json();
         }
-        
+
         this.updateLimitsFromHeaders(response.headers);
 
         // Record actual token usage when available
@@ -682,6 +683,9 @@ export class AzureOpenAIService {
 
               if (executionResult.success) {
                 toolsUsed.push(toolName);
+
+                // Notify about tool usage
+                onToolUse?.(toolName);
 
                 // Add tool result for next iteration
                 const callId = toolCall.call_id || toolCall.id;
@@ -1023,7 +1027,7 @@ export class AzureOpenAIService {
   private recordToolFailure(toolName: string): void {
     const now = Date.now();
     const existing = this.toolFailures.get(toolName);
-    
+
     // If entry exists but is expired, start fresh count
     if (existing && (now - existing.lastFailure > this.CIRCUIT_BREAKER_RESET_TIME)) {
       this.toolFailures.set(toolName, { count: 1, lastFailure: now });
@@ -1205,7 +1209,7 @@ export class AzureOpenAIService {
 
               try {
                 const parsed = JSON.parse(data);
-                
+
                 // Handle Responses API streaming events
                 if (parsed.type === 'response.output_text.delta') {
                   const content = parsed.delta;
@@ -1465,12 +1469,12 @@ export class AzureOpenAIService {
 
             try {
               const parsed = JSON.parse(data);
-              
+
               // Store response ID for chaining
               if (parsed.id && !context.previousResponseId) {
                 context.previousResponseId = parsed.id;
               }
-              
+
               // Handle Responses API streaming events
               if (parsed.type === 'response.output_text.delta') {
                 currentMessage.content += parsed.delta;
@@ -1491,7 +1495,7 @@ export class AzureOpenAIService {
                   };
                   currentMessage.tool_calls.push(toolCall);
                 }
-                
+
                 if (parsed.delta) {
                   toolCall.arguments += parsed.delta;
                 }
@@ -1509,14 +1513,14 @@ export class AzureOpenAIService {
                   );
                   return;
                 }
-                
+
                 if (currentMessage.content) {
                   messages.push({
                     role: "assistant",
                     content: currentMessage.content
                   });
                 }
-                
+
                 callbacks.onComplete();
                 return;
               }
@@ -1661,50 +1665,50 @@ export class AzureOpenAIService {
     // For tool continuation, we need to send the tool results as input array
     const nextInput: any[] = context.toolResults || [];
     context.toolResults = []; // Clear for next iteration
-    
+
     // Update the conversation to send tool results
     const nextContext = {
       ...context
       // iterations will be incremented in the function call below
     };
-    
-    await this.streamConversationWithTools(
+
+    await this.streamConversationWithTools(treamConversationWithTools(
       messages,
-      tools,
-      effort,
+      tools,tools,
+      effort,  effort,
       nextContext,
-      callbacks,
-      maxIterations,
-      nextInput // Pass tool results as input
+      callbacks,,
+      maxIterations,rations,
+      nextInput // Pass tool results as inputut // Pass tool results as input
     );
   }
 
   /**
-   * Summarizes content using the Responses API
-   * This replaces the database-level summarization that used azure_openai.create_chat_completion
-   */
-  async summarizeContent(content: string, maxSentences: number = 3): Promise<string> {
-    const prompt = `Summarize the following research content in ${maxSentences} sentences. Focus on key findings, insights, and important information.
+   * Summarizes content using the Responses APIummarizes content using the Responses API
+   * This replaces the database-level summarization that used azure_openai.create_chat_completion* This replaces the database-level summarization that used azure_openai.create_chat_completion
+   */   */
+  async summarizeContent(content: string, maxSentences: number = 3): Promise<string> {nc summarizeContent(content: string, maxSentences: number = 3): Promise<string> {
+    const prompt = `Summarize the following research content in ${maxSentences} sentences. Focus on key findings, insights, and important information.earch content in ${maxSentences} sentences. Focus on key findings, insights, and important information.
 
-Content:
+Content:nt:
 ${content}
 
-Summary:`;
+Summary:`;Summary:`;
 
     try {
-      const response = await this.generateResponse(
-        prompt,
-        EffortType.LOW,
-        false, // No reasoning effort needed for simple summarization
+      const response = await this.generateResponse(      const response = await this.generateResponse(
+        prompt,ompt,
+        EffortType.LOW,        EffortType.LOW,
+        false, // No reasoning effort needed for simple summarizationalse, // No reasoning effort needed for simple summarization
         0.7,
-        500 // Max tokens for summary
+        500 // Max tokens for summaryMax tokens for summary
       );
       return response.text.trim();
-    } catch (error) {
-      console.error('Failed to summarize content:', error);
-      // Return first few sentences as fallback
-      const sentences = content.split(/[.!?]+/).filter(s => s.trim());
-      return sentences.slice(0, maxSentences).join('. ') + '.';
+    } catch (error) {(error) {
+      console.error('Failed to summarize content:', error);ize content:', error);
+      // Return first few sentences as fallback Return first few sentences as fallback
+      const sentences = content.split(/[.!?]+/).filter(s => s.trim());lit(/[.!?]+/).filter(s => s.trim());
+      return sentences.slice(0, maxSentences).join('. ') + '.';s.slice(0, maxSentences).join('. ') + '.';
     }
   }
 }

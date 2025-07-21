@@ -42,87 +42,78 @@ export class ComprehensiveResearchService {
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<EnhancedResearchResults> {
-    onProgress?.('Comprehensive research initiated...');
-    onProgress?.('Breaking down query into research sections...');
-    
-    const startTime = Date.now();
+    console.log('🔍 ComprehensiveResearchService.performComprehensiveResearch called');
+    console.log('📋 Query:', query);
+    console.log('🎯 Model:', model);
+    console.log('⚡ Effort:', effort);
 
-    // Step 1: Break down the query into sections
-    onProgress?.('tool_used:query_breakdown');
-    const sections = await this.breakdownQuery(query, model, effort);
+    onProgress?.('Starting comprehensive research...');
 
-    onProgress?.(`Identified ${sections.length} research sections. Initiating parallel research...`);
-    onProgress?.('search queries generated for comprehensive analysis...');
-
-    // Step 2: Research each section in parallel
-    onProgress?.('tool_used:parallel_research');
-    let sectionResults: ResearchSection[] = [];
     try {
-      sectionResults = await this.researchSectionsInParallel(
-        sections,
+      // Get generate function from ModelProviderService
+      const generateText = async (prompt: string, m: ModelType, e: EffortType) => {
+        console.log('📝 Generating text for comprehensive research');
+        const { ModelProviderService } = await import('../providers/ModelProviderService');
+        const provider = ModelProviderService.getInstance();
+        return provider.generateText(prompt, m, e, onProgress);
+      };
+
+      // Step 1: Generate search queries
+      onProgress?.('Generating search queries...');
+      const searchQueries = await this.webResearchService.generateSearchQueries(
+        query,
         model,
         effort,
+        generateText,
         onProgress
       );
-    } catch (error) {
-      console.warn('Research sections failed, continuing with fallback content:', error);
-      onProgress?.('Search providers unavailable, generating response from available information...');
-      // Create fallback sections when search fails
-      sectionResults = sections.map(section => ({
-        id: `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        title: section.topic,
-        content: `Unable to perform web search for "${section.topic}". This may be due to search API limits or configuration issues.`,
-        confidence: 0.3,
-        topic: section.topic,
-        description: section.description,
-        research: `Search functionality unavailable for this topic.`,
-        sources: []
-      }));
-    }
+      console.log(`📋 Generated ${searchQueries.length} search queries`);
 
-    // Step 3: Synthesize findings
-    onProgress?.('evaluating research quality and completeness...');
-    onProgress?.('Synthesizing findings from all research sections...');
-    onProgress?.('Finalizing comprehensive answer through synthesis...');
-    onProgress?.('tool_used:synthesis_engine');
-    const synthesis = await this.synthesizeFindings(
-      query,
-      sectionResults,
-      model,
-      effort
-    );
-
-    // Step 4: Aggregate all sources
-    const allSources = this.aggregateSources(sectionResults);
-    
-    // Calculate processing time and apply quality scoring
-    const processingTime = Date.now() - startTime;
-    const confidenceScore = this.calculateConfidenceScore(sectionResults, processingTime);
-    
-    onProgress?.(`Research completed in ${Math.round(processingTime / 1000)}s with ${sectionResults.length} sections and ${allSources.length} sources`);
-
-    return {
-      synthesis: synthesis.text,
-      sources: allSources,
-      sections: sectionResults,
-      queryType: 'comprehensive',
-      confidenceScore,
-      adaptiveMetadata: {
-        processingTime,
-        paradigm: undefined,
-        complexityScore: sectionResults.length,
-        cacheHit: false,
-        // Store quality metrics in layerOutputs since qualityMetrics isn't in the type
-        layerOutputs: {
-          qualityMetrics: {
-            sourcesFound: allSources.length,
-            sectionsCompleted: sectionResults.length,
-            averageConfidence: sectionResults.reduce((acc, s) => acc + (s.confidence || 0), 0) / Math.max(sectionResults.length, 1),
-            processingTimeMs: processingTime
-          }
-        }
+      if (searchQueries.length === 0) {
+        console.warn('⚠️ No search queries generated');
+        return {
+          synthesis: 'Unable to generate search queries for this topic.',
+          sources: [],
+          queryType: 'factual' as QueryType,
+          confidenceScore: 0.1
+        };
       }
-    };
+
+      // Step 2: Perform web research
+      onProgress?.(`Searching web with ${searchQueries.length} queries...`);
+      const webResults = await this.webResearchService.performWebResearch(
+        searchQueries,
+        model,
+        effort,
+        generateText
+      );
+      console.log(`✅ Web research completed with ${webResults.allSources.length} sources`);
+
+      // Step 3: Generate final synthesis
+      onProgress?.('Synthesizing findings...');
+      const finalAnswer = await this.webResearchService.generateFinalAnswer(
+        query,
+        webResults.aggregatedFindings,
+        model,
+        effort,
+        generateText
+      );
+      console.log('✅ Final synthesis generated');
+
+      // Determine query type
+      const queryType = this.strategyService.classifyQueryType(query);
+
+      return {
+        synthesis: finalAnswer.text,
+        sources: [...webResults.allSources, ...(finalAnswer.sources || [])],
+        queryType,
+        confidenceScore: this.calculateConfidence(webResults.allSources.length, queryType)
+      };
+    } catch (error) {
+      console.error('❌ Comprehensive research failed:', error);
+      onProgress?.('Research encountered an error');
+      throw error;
+    }
   }
 
   /**
@@ -190,11 +181,11 @@ export class ComprehensiveResearchService {
     onProgress?: (message: string) => void
   ): Promise<ResearchSection[]> {
     const generateText = this.modelProvider.generateText.bind(this.modelProvider);
-    
+
     // Get batch size from environment or default based on model type
     const batchSize = this.getBatchSize(model);
     let results: ResearchSection[] = [];
-    
+
     onProgress?.(`Processing ${sections.length} sections in batches of ${batchSize}...`);
 
     // Process sections in batches
@@ -202,9 +193,9 @@ export class ComprehensiveResearchService {
       const batch = sections.slice(i, i + batchSize);
       const batchNumber = Math.floor(i / batchSize) + 1;
       const totalBatches = Math.ceil(sections.length / batchSize);
-      
+
       onProgress?.(`Processing batch ${batchNumber}/${totalBatches}...`);
-      
+
       // Create promises for current batch
       const batchPromises = batch.map(async (section, batchIndex) => {
         const globalIndex = i + batchIndex;
@@ -277,33 +268,33 @@ export class ComprehensiveResearchService {
       try {
         const isO3Model = model.includes('o3') || model.includes('azure-o3');
         const batchTimeout = isO3Model ? 15 * 60 * 1000 : 5 * 60 * 1000; // 15min for O3, 5min for others
-        
+
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error(`Batch ${batchNumber} timed out after ${batchTimeout/1000}s`)), batchTimeout);
         });
-        
+
         const batchResults = await Promise.race([
           Promise.allSettled(batchPromises),
           timeoutPromise
         ]) as PromiseSettledResult<any>[];
-        
+
         // Process results and handle failures gracefully
         const successfulResults = batchResults
           .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
           .map(result => result.value);
-        
+
         const failedResults = batchResults
           .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
           .length;
-        
+
         results.push(...successfulResults);
-        
+
         if (failedResults > 0) {
           onProgress?.(`Batch ${batchNumber} completed with ${failedResults} failed sections. Continuing...`);
         } else {
           onProgress?.(`Batch ${batchNumber} completed successfully.`);
         }
-        
+
         // Intelligent delay between batches based on API performance and model type
         if (i + batchSize < sections.length) {
           const isO3Model = model.includes('o3') || model.includes('azure-o3');
@@ -335,25 +326,25 @@ export class ComprehensiveResearchService {
 
     return results;
   }
-  
+
   /**
    * Get batch size from environment or default
    */
   private getBatchSize(model: ModelType): number {
-    const envBatchSize = import.meta?.env?.VITE_RESEARCH_BATCH_SIZE || 
+    const envBatchSize = import.meta?.env?.VITE_RESEARCH_BATCH_SIZE ||
                         (typeof process !== 'undefined' && process.env.RESEARCH_BATCH_SIZE);
     const parsed = Number(envBatchSize);
-    
+
     // Smart batching: balance API limits with parallel processing
     // For O3 models, use smaller batches due to longer processing times
     // For other models, we can be more aggressive
     const isO3Model = model.includes('o3') || model.includes('azure-o3');
     const defaultBatchSize = isO3Model ? 1 : 3; // O3: sequential, others: parallel
-    
+
     if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 5) {
       return parsed; // Respect environment setting with reasonable bounds
     }
-    
+
     return defaultBatchSize; // Improved default for better performance
   }
 
@@ -393,22 +384,22 @@ export class ComprehensiveResearchService {
    */
   private calculateConfidenceScore(sectionResults: ResearchSection[], processingTime: number): number {
     if (sectionResults.length === 0) return 0.1;
-    
+
     // Base confidence from section completion
     const sectionConfidences = sectionResults.map(s => s.confidence || 0);
     const avgSectionConfidence = sectionConfidences.reduce((acc, conf) => (acc || 0) + (conf || 0), 0) / Math.max(sectionConfidences.length, 1);
-    
+
     // Quality factors
     const sourceCount = sectionResults.reduce((acc, s) => acc + (s.sources?.length || 0), 0);
     const sourceQuality = Math.min(sourceCount / (sectionResults.length * 3), 1.0); // Ideal: 3 sources per section
-    
+
     // Time factor - penalize very fast (likely incomplete) or very slow (likely errored) research
     const idealTimeMs = sectionResults.length * 30000; // 30s per section ideal
     const timeFactor = Math.max(0.7, Math.min(1.0, idealTimeMs / Math.max(processingTime, idealTimeMs * 0.3)));
-    
+
     // Combine factors
     const confidence = (avgSectionConfidence * 0.5) + (sourceQuality * 0.3) + (timeFactor * 0.2);
-    
+
     return Math.max(0.1, Math.min(1.0, confidence));
   }
 
@@ -504,6 +495,15 @@ export class ComprehensiveResearchService {
       complexity = 'high';
       estimatedSections = 5;
       estimatedDuration = '3-5 minutes';
+    }
+
+    return {
+      estimatedSections,
+      estimatedDuration,
+      complexity
+    };
+  }
+}
     }
 
     return {

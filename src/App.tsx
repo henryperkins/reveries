@@ -284,7 +284,7 @@ const App: React.FC = () => {
 
       // Process with enhanced research agent using processQuery
       console.log('🚀 Processing query with model:', currentModel, { isO3: currentModel === 'o3' });
-      
+
       // Check available services
       try {
         const { AzureOpenAIService } = await import('./services/azureOpenAIService');
@@ -299,7 +299,7 @@ const App: React.FC = () => {
       } catch (e) {
         console.error('Failed to check service availability:', e);
       }
-      
+
       let result;
       try {
         result = await researchAgent.processQuery(
@@ -314,18 +314,23 @@ const App: React.FC = () => {
           if (message.startsWith('tool_used:')) {
             // Completion message pattern: tool_used:completed:<toolName>:<startTime>
             if (message.startsWith('tool_used:completed:')) {
-              const [, , completedToolName] = message.split(':');
+              const [, , completedToolName, startTime] = message.split(':');
+              console.log(`✅ Tool completed: ${completedToolName}`);
 
               // Update shared context
               const liveId = liveCallIdMap.current[completedToolName];
               if (liveId) {
                 updateLiveCall(liveId, { status: 'completed', endTime: Date.now() });
               }
+
+              // Clear timeout for this tool
+              timeoutManager.clear(`tool-fallback-${completedToolName}`);
               return;
             }
 
             // New tool used message pattern: tool_used:<toolName>
             const [, toolName] = message.split(':');
+            console.log(`🔧 Tool started: ${toolName}`);
 
             // Add to shared context with description
             const ctxId = addLiveCall({
@@ -342,7 +347,8 @@ const App: React.FC = () => {
 
             // Create research step for search tools
             if (toolName.includes('search') || toolName === 'web_search' ||
-                toolName === 'bing_search' || toolName === 'google_search') {
+                toolName === 'bing_search' || toolName === 'google_search' ||
+                toolName === 'academic_search' || toolName === 'comprehensive_research') {
               setResearch(prev => {
                 const existingSearchStep = prev.find(step =>
                   step.type === ResearchStepType.WEB_RESEARCH && step.isSpinning
@@ -351,30 +357,47 @@ const App: React.FC = () => {
                 if (!existingSearchStep) {
                   const newStep: ResearchStep = {
                     id: crypto.randomUUID(),
-                    title: 'Web Search',
+                    title: toolName === 'comprehensive_research' ? 'Comprehensive Research' : 'Web Search',
                     icon: () => null,
                     content: `Performing ${toolName.replace(/_/g, ' ')}...`,
                     timestamp: new Date().toISOString(),
                     type: ResearchStepType.WEB_RESEARCH,
                     sources: [],
-                    isSpinning: true
+                    isSpinning: true,
+                    toolsUsed: [toolName]
                   };
                   graphManager.addNode(newStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
                   lastNodeIdRef.current = newStep.id;
                   return [...prev, newStep];
+                } else {
+                  // Update existing step with new tool
+                  return prev.map(step =>
+                    step.id === existingSearchStep.id
+                      ? {
+                          ...step,
+                          content: step.content + `\nUsing ${toolName.replace(/_/g, ' ')}...`,
+                          toolsUsed: [...(step.toolsUsed || []), toolName]
+                        }
+                      : step
+                  );
                 }
-                return prev;
               });
             }
 
             // Fallback completion timeout for operations without explicit completion signal
+            // Increase timeout for research tools
+            const toolTimeout = toolName.includes('research') || toolName.includes('search')
+              ? TIMEOUTS.TOOL_FALLBACK * 2
+              : TIMEOUTS.TOOL_FALLBACK;
+
             timeoutManager.set(`tool-fallback-${toolName}`, () => {
+              console.log(`⏱️ Tool timeout reached for ${toolName}, marking as completed`);
               // Context update
               const id = liveCallIdMap.current[toolName];
               if (id) {
                 updateLiveCall(id, { status: 'completed', endTime: Date.now() });
               }
-            }, TIMEOUTS.TOOL_FALLBACK);
+            }, toolTimeout);
 
             // Also propagate to current spinning step's toolsUsed
             setResearch((prev) =>

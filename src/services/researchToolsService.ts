@@ -28,506 +28,209 @@ export class ResearchToolsService {
   }
 
   private initializeTools(): void {
-    // Advanced web search with filters
+    console.log('🔧 Initializing research tools...');
+
+    // Comprehensive Research Tool
     this.registerTool({
-      name: 'advanced_web_search',
-      description: 'Perform advanced web search with domain, date, and type filters',
-      category: 'search',
+      name: 'comprehensive_research',
+      description: 'Perform comprehensive multi-source research on a topic',
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'Search query' },
-          domains: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Limit to specific domains (e.g., .edu, .gov)'
-          },
-          dateRange: {
-            type: 'object',
-            properties: {
-              start: { type: 'string', format: 'date' },
-              end: { type: 'string', format: 'date' }
-            }
-          },
-          fileType: {
-            type: 'string',
-            enum: ['pdf', 'doc', 'ppt', 'xls', 'any'],
-            description: 'Filter by file type'
-          }
+          query: { type: 'string', description: 'Research query' },
+          depth: { type: 'string', enum: ['basic', 'standard', 'deep'], description: 'Research depth' }
         },
         required: ['query']
       },
-      execute: async (_args) => {
-        const { SearchProviderService } = await import('./search/SearchProviderService');
-        const searchService = SearchProviderService.getInstance();
-        
+      execute: async (args: any) => {
+        console.log('🔍 Executing comprehensive_research with args:', args);
         try {
-          // Apply rate limiting for external search API
-          const estimatedTokens = estimateTokens(_args.query || '') + 100; // Add overhead for API call
-          await this.rateLimiter.waitForCapacity(estimatedTokens);
-          
-          const searchOptions: any = {
-            maxResults: 20,
-            safe: true
-          };
-
-          if (_args.domains && _args.domains.length > 0) {
-            searchOptions.domains = _args.domains;
-          }
-
-          if (_args.fileType && _args.fileType !== 'any') {
-            searchOptions.fileType = _args.fileType;
-          }
-
-          if (_args.dateRange) {
-            const { start, end } = _args.dateRange;
-            if (start && end) {
-              const daysDiff = Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60 * 24));
-              if (daysDiff <= 7) searchOptions.timeRange = 'week';
-              else if (daysDiff <= 30) searchOptions.timeRange = 'month';
-              else if (daysDiff <= 365) searchOptions.timeRange = 'year';
-            }
-          }
-
-          const response = await searchService.search(_args.query, searchOptions);
-          
+          const { ComprehensiveResearchService } = await import('./research/ComprehensiveResearchService');
+          const service = ComprehensiveResearchService.getInstance();
+          const result = await service.performComprehensiveResearch(
+            args.query,
+            'gemini-2.0-flash-exp', // Use a valid model
+            args.depth === 'deep' ? 'HIGH' : args.depth === 'basic' ? 'LOW' : 'MEDIUM'
+          );
+          console.log('✅ comprehensive_research completed successfully');
           return {
-            results: response.results.map(r => ({
-              title: r.title,
-              url: r.url,
-              snippet: r.snippet,
-              relevanceScore: r.relevanceScore
-            })),
-            totalFound: response.totalResults || response.results.length,
-            filters: _args,
-            provider: response.provider
+            synthesis: result.synthesis,
+            sources: result.sources,
+            queryType: result.queryType,
+            confidence: result.confidenceScore
           };
         } catch (error) {
-          console.error('Advanced search failed:', error);
-          return {
-            results: [],
-            totalFound: 0,
-            filters: _args,
-            error: error instanceof Error ? error.message : 'Search failed'
-          };
+          console.error('❌ comprehensive_research failed:', error);
+          throw error;
         }
       }
     });
 
-    // Academic paper search
+    // Exploratory Research Tool
     this.registerTool({
-      name: 'search_academic_papers',
-      description: 'Search academic papers from arXiv, PubMed, and other databases',
-      category: 'search',
+      name: 'exploratory_research',
+      description: 'Explore multiple perspectives and discover related topics',
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string' },
-          database: {
-            type: 'string',
-            enum: ['arxiv', 'pubmed', 'scholar', 'all']
-          },
-          yearRange: {
-            type: 'object',
-            properties: {
-              start: { type: 'integer' },
-              end: { type: 'integer' }
-            }
-          },
-          limit: { type: 'integer', default: 10 }
-        },
-        required: ['query']
-      },
-      execute: async (_args) => {
-        try {
-          // Try arxiv search if specified or as fallback
-          if (_args.database === 'arxiv' || _args.database === 'all') {
-            const arxivResults = await this.searchArxiv(_args.query, _args.limit || 10);
-            if (arxivResults.length > 0) {
-              return {
-                papers: arxivResults,
-                database: 'arxiv',
-                source: 'arXiv.org'
-              };
-            }
-          }
-
-          // Try general academic search through search provider
-          const { SearchProviderService } = await import('./search/SearchProviderService');
-          const searchService = SearchProviderService.getInstance();
-          
-          // Apply rate limiting for search
-          const academicQuery = `${_args.query} filetype:pdf site:arxiv.org OR site:pubmed.ncbi.nlm.nih.gov OR site:scholar.google.com`;
-          const estimatedTokens = estimateTokens(academicQuery) + 100;
-          await this.rateLimiter.waitForCapacity(estimatedTokens);
-          
-          const response = await searchService.search(academicQuery, {
-            maxResults: _args.limit || 10,
-            domains: ['arxiv.org', 'pubmed.ncbi.nlm.nih.gov', 'ncbi.nlm.nih.gov'],
-            fileType: 'pdf'
-          });
-
-          const papers = response.results.map(result => ({
-            title: result.title,
-            url: result.url,
-            abstract: result.snippet,
-            authors: this.extractAuthorsFromSnippet(result.snippet),
-            publishedDate: result.publishedDate,
-            source: this.identifyAcademicSource(result.url),
-            relevanceScore: result.relevanceScore
-          }));
-
-          return {
-            papers,
-            database: _args.database || 'search',
-            totalFound: response.totalResults
-          };
-        } catch (error) {
-          console.error('Academic search failed:', error);
-          return {
-            papers: [],
-            database: _args.database || 'all',
-            error: error instanceof Error ? error.message : 'Academic search failed'
-          };
-        }
-      }
-    });
-
-    // Local file search
-    this.registerTool({
-      name: 'search_local_files',
-      description: 'Search through uploaded or cached documents',
-      category: 'search',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: { type: 'string' },
-          fileTypes: {
-            type: 'array',
-            items: { type: 'string' }
-          }
-        },
-        required: ['query']
-      },
-      execute: async (_args) => {
-        // Would search through indexed local content
-        return {
-          files: [],
-          matches: []
-        };
-      }
-    });
-
-    // Statistical analysis
-    this.registerTool({
-      name: 'analyze_statistics',
-      description: 'Perform statistical analysis on research data',
-      category: 'analysis',
-      parameters: {
-        type: 'object',
-        properties: {
-          data: { type: 'array', items: { type: 'number' } },
-          analysisType: {
-            type: 'string',
-            enum: ['descriptive', 'correlation', 'regression', 'timeseries']
-          }
-        },
-        required: ['data', 'analysisType']
-      },
-      execute: async (_args) => {
-        try {
-          const data = _args.data;
-          const analysisType = _args.analysisType;
-
-          switch (analysisType) {
-            case 'descriptive':
-              return this.performDescriptiveAnalysis(data);
-            case 'correlation':
-              return this.performCorrelationAnalysis(data);
-            case 'regression':
-              return this.performRegressionAnalysis(data);
-            case 'timeseries':
-              return this.performTimeSeriesAnalysis(data);
-            default:
-              return this.performDescriptiveAnalysis(data);
-          }
-        } catch (error) {
-          console.error('Statistical analysis failed:', error);
-          return {
-            analysis: _args.analysisType,
-            results: {},
-            error: error instanceof Error ? error.message : 'Analysis failed'
-          };
-        }
-      }
-    });
-
-    // Citation formatter
-    this.registerTool({
-      name: 'format_citations',
-      description: 'Format citations in various academic styles',
-      category: 'citation',
-      parameters: {
-        type: 'object',
-        properties: {
-          sources: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                title: { type: 'string' },
-                authors: { type: 'array', items: { type: 'string' } },
-                year: { type: 'integer' },
-                url: { type: 'string' }
-              }
-            }
-          },
-          style: {
-            type: 'string',
-            enum: ['APA', 'MLA', 'Chicago', 'Harvard']
-          }
-        },
-        required: ['sources', 'style']
-      },
-      execute: async (_args) => {
-        return this.formatCitations(_args.sources, _args.style);
-      }
-    });
-
-    // Fact checker
-    this.registerTool({
-      name: 'verify_facts',
-      description: 'Cross-reference facts with reliable sources',
-      category: 'verification',
-      parameters: {
-        type: 'object',
-        properties: {
-          claim: { type: 'string' },
-          context: { type: 'string' }
-        },
-        required: ['claim']
-      },
-      execute: async (_args) => {
-        // Would check against fact-checking databases
-        return {
-          claim: _args.claim,
-          verdict: 'unverified',
-          sources: []
-        };
-      }
-    });
-
-    // Visualization generator
-    this.registerTool({
-      name: 'generate_visualization',
-      description: 'Create charts and graphs from research data',
-      category: 'visualization',
-      parameters: {
-        type: 'object',
-        properties: {
-          data: { type: 'object' },
-          chartType: {
-            type: 'string',
-            enum: ['line', 'bar', 'pie', 'scatter', 'network', 'timeline']
-          },
-          options: { type: 'object' }
-        },
-        required: ['data', 'chartType']
-      },
-      execute: async (_args) => {
-        // Would generate chart configuration
-        return {
-          chartConfig: {},
-          chartType: _args.chartType
-        };
-      }
-    });
-
-    // Entity extractor
-    this.registerTool({
-      name: 'extract_entities',
-      description: 'Extract named entities from text',
-      category: 'analysis',
-      parameters: {
-        type: 'object',
-        properties: {
-          text: { type: 'string' },
-          entityTypes: {
-            type: 'array',
-            items: {
-              type: 'string',
-              enum: ['person', 'organization', 'location', 'date', 'concept']
-            }
-          }
-        },
-        required: ['text']
-      },
-      execute: async (_args) => {
-        // Would use NER models
-        return {
-          entities: []
-        };
-      }
-    });
-
-    // Summarization tool
-    this.registerTool({
-      name: 'summarize_document',
-      description: 'Generate concise summaries of long documents',
-      category: 'analysis',
-      parameters: {
-        type: 'object',
-        properties: {
-          text: { type: 'string' },
-          maxLength: { type: 'integer', default: 500 },
-          style: {
-            type: 'string',
-            enum: ['bullet', 'paragraph', 'abstract']
-          }
-        },
-        required: ['text']
-      },
-      execute: async (_args) => {
-        // Would generate summaries
-        return {
-          summary: '',
-          style: _args.style || 'paragraph'
-        };
-      }
-    });
-
-    // Knowledge graph builder
-    this.registerTool({
-      name: 'build_knowledge_graph',
-      description: 'Extract relationships and build a knowledge graph',
-      category: 'analysis',
-      parameters: {
-        type: 'object',
-        properties: {
-          documents: { type: 'array', items: { type: 'string' } },
-          relationTypes: {
-            type: 'array',
-            items: { type: 'string' }
-          }
-        },
-        required: ['documents']
-      },
-      execute: async (_args) => {
-        // Would extract relationships
-        return {
-          nodes: [],
-          edges: [],
-          stats: {}
-        };
-      }
-    });
-
-    // Query analysis tool
-    this.registerTool({
-      name: 'analyzeQuery',
-      description: 'Analyze a query to determine its type and complexity',
-      category: 'analysis',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: { type: 'string', description: 'The query to analyze' }
-        },
-        required: ['query']
-      },
-      execute: async (_args) => {
-        const queryLower = _args.query.toLowerCase();
-
-        let type: QueryType = 'exploratory';
-        if (queryLower.includes('what is') || queryLower.includes('define')) {
-          type = 'factual';
-        } else if (queryLower.includes('compare') || queryLower.includes('difference')) {
-          type = 'comparative';
-        } else if (queryLower.includes('analyze') || queryLower.includes('explain')) {
-          type = 'analytical';
-        }
-
-        const complexity = Math.min(_args.query.split(' ').length / 20, 1);
-
-        return { type, complexity };
-      }
-    });
-
-    // Search query generator
-    this.registerTool({
-      name: 'generateSearchQueries',
-      description: 'Generate optimal search queries for a given topic',
-      category: 'search',
-      parameters: {
-        type: 'object',
-        properties: {
-          topic: { type: 'string', description: 'The topic to search for' },
-          count: { type: 'number', description: 'Number of queries to generate' }
+          topic: { type: 'string', description: 'Topic to explore' },
+          perspectives: { type: 'array', items: { type: 'string' }, description: 'Perspectives to consider' }
         },
         required: ['topic']
       },
-      execute: async (_args) => {
-        const queries: string[] = [_args.topic];
+      execute: async (args: any) => {
+        console.log('🔍 Executing exploratory_research with args:', args);
+        try {
+          const { WebResearchService } = await import('./research/WebResearchService');
+          const service = WebResearchService.getInstance();
 
-        // Generate variations
-        if (_args.count > 1) queries.push(`${_args.topic} definition explanation`);
-        if (_args.count > 2) queries.push(`${_args.topic} examples applications`);
-        if (_args.count > 3) queries.push(`${_args.topic} research studies`);
+          // Generate search queries for different perspectives
+          const queries = args.perspectives?.length > 0
+            ? args.perspectives.map((p: string) => `${args.topic} ${p}`)
+            : [`${args.topic} overview`, `${args.topic} analysis`, `${args.topic} perspectives`];
 
-        return queries.slice(0, _args.count);
+          console.log('📋 Generated exploratory queries:', queries);
+
+          // Perform web research
+          const results = await service.performWebResearch(
+            queries,
+            'gemini-2.0-flash-exp',
+            'MEDIUM',
+            async (prompt, model, effort) => {
+              // Use ModelProviderService for generation
+              const { ModelProviderService } = await import('./providers/ModelProviderService');
+              const provider = ModelProviderService.getInstance();
+              return provider.generateText(prompt, model, effort);
+            }
+          );
+
+          console.log('✅ exploratory_research completed successfully');
+          return {
+            findings: results.aggregatedFindings,
+            sources: results.allSources,
+            perspectives: args.perspectives || ['general']
+          };
+        } catch (error) {
+          console.error('❌ exploratory_research failed:', error);
+          throw error;
+        }
       }
     });
 
-    // Tool to list all available tools
+    // Query Breakdown Tool
     this.registerTool({
-      name: 'list_tools',
-      description: 'List all available research tools',
-      category: 'knowledge',
-      parameters: {},
-      execute: async (_args) => {
-        return {
-          currentTools: Array.from(this.tools.values()).map(t => ({
-            name: t.name,
-            description: t.description,
-            category: t.category
-          }))
-        };
-      }
-    });
-
-    // Tool to suggest a research workflow
-    this.registerTool({
-      name: 'suggest_workflow',
-      description: 'Suggest a research workflow based on the given parameters',
-      category: 'analysis',
+      name: 'query_breakdown',
+      description: 'Break down complex queries into sub-questions',
       parameters: {
         type: 'object',
         properties: {
-          researchGoal: { type: 'string' },
-          dataAvailability: { type: 'string', enum: ['high', 'medium', 'low'] },
-          analysisType: { type: 'string', enum: ['descriptive', 'inferential', 'predictive'] }
+          query: { type: 'string', description: 'Complex query to break down' },
+          max_parts: { type: 'number', description: 'Maximum number of sub-questions' }
         },
-        required: ['researchGoal']
+        required: ['query']
       },
-      execute: async (_args) => {
-        const workflowSteps = await this.suggestWorkflow(
-          'Research workflow planning',
-          'analytical'
-        );
-        return { workflowSteps };
+      execute: async (args: any) => {
+        console.log('🔍 Executing query_breakdown with args:', args);
+        try {
+          const { ResearchStrategyService } = await import('./research/ResearchStrategyService');
+          const service = ResearchStrategyService.getInstance();
+
+          // Use the service to analyze query complexity
+          const queryType = service.classifyQueryType(args.query);
+          const maxParts = args.max_parts || 5;
+
+          // Generate sub-questions based on query type
+          const subQuestions: string[] = [];
+
+          if (queryType === 'comparison') {
+            const items = args.query.match(/compare\s+(\w+)\s+(?:and|vs\.?|versus)\s+(\w+)/i);
+            if (items) {
+              subQuestions.push(`What are the key features of ${items[1]}?`);
+              subQuestions.push(`What are the key features of ${items[2]}?`);
+              subQuestions.push(`What are the main differences between ${items[1]} and ${items[2]}?`);
+              subQuestions.push(`What are the similarities between ${items[1]} and ${items[2]}?`);
+            }
+          } else if (queryType === 'howto') {
+            subQuestions.push(`What are the prerequisites for ${args.query}?`);
+            subQuestions.push(`What are the main steps involved?`);
+            subQuestions.push(`What tools or resources are needed?`);
+            subQuestions.push(`What are common challenges and solutions?`);
+          } else {
+            // Generic breakdown
+            subQuestions.push(`What is the definition or overview of the topic?`);
+            subQuestions.push(`What are the key components or aspects?`);
+            subQuestions.push(`What are real-world applications or examples?`);
+            subQuestions.push(`What are current trends or developments?`);
+          }
+
+          console.log('✅ query_breakdown completed successfully');
+          return {
+            original_query: args.query,
+            query_type: queryType,
+            sub_questions: subQuestions.slice(0, maxParts)
+          };
+        } catch (error) {
+          console.error('❌ query_breakdown failed:', error);
+          throw error;
+        }
       }
     });
 
-    // Citation guide retrieval tool
+    // Query Generation Tool (for generating search queries)
     this.registerTool({
-      name: 'get_citation_guide',
-      description: 'Retrieve the citation guide for various styles',
-      category: 'citation',
-      parameters: {},
-      execute: async (_args) => {
-        const guide = await this.getCitationGuide();
-        return { guide };
+      name: 'query_generation',
+      description: 'Generate optimized search queries for a research topic',
+      parameters: {
+        type: 'object',
+        properties: {
+          topic: { type: 'string', description: 'Research topic' },
+          count: { type: 'number', description: 'Number of queries to generate' },
+          style: { type: 'string', enum: ['academic', 'general', 'technical'], description: 'Query style' }
+        },
+        required: ['topic']
+      },
+      execute: async (args: any) => {
+        console.log('🔍 Executing query_generation with args:', args);
+        try {
+          const { WebResearchService } = await import('./research/WebResearchService');
+          const { ModelProviderService } = await import('./providers/ModelProviderService');
+
+          const service = WebResearchService.getInstance();
+          const provider = ModelProviderService.getInstance();
+
+          const generateText = provider.generateText.bind(provider);
+
+          // Generate search queries
+          const queries = await service.generateSearchQueries(
+            args.topic,
+            'gemini-2.0-flash-exp',
+            'MEDIUM',
+            generateText
+          );
+
+          // Filter by style if specified
+          let styledQueries = queries;
+          if (args.style === 'academic') {
+            styledQueries = queries.map(q => `scholarly "${q}" peer-reviewed`);
+          } else if (args.style === 'technical') {
+            styledQueries = queries.map(q => `${q} technical documentation implementation`);
+          }
+
+          const count = args.count || 5;
+          console.log('✅ query_generation completed successfully');
+          return {
+            topic: args.topic,
+            queries: styledQueries.slice(0, count),
+            style: args.style || 'general'
+          };
+        } catch (error) {
+          console.error('❌ query_generation failed:', error);
+          throw error;
+        }
       }
     });
+
+    console.log(`✅ Initialized ${this.tools.size} research tools`);
   }
 
   private registerTool(tool: ResearchTool): void {
@@ -552,17 +255,37 @@ export class ResearchToolsService {
   }
 
   public async executeTool(call: FunctionCall): Promise<any> {
+    console.log('🔧 ResearchToolsService.executeTool called:', call.name);
     const tool = this.tools.get(call.name);
     if (!tool) {
-      throw new Error(`Unknown tool: ${call.name}`);
+      console.warn(`Tool not found: ${call.name}`);
+      throw new Error(`Tool not found: ${call.name}`);
     }
-    
-    // Apply a base rate limit for all tool executions
-    // Individual tools may apply additional rate limiting as needed
-    const baseTokenEstimate = 50; // Base cost for any tool execution
-    await this.rateLimiter.waitForCapacity(baseTokenEstimate);
-    
-    return tool.execute(call.arguments);
+
+    // Check rate limits
+    await this.rateLimiter.waitForCapacity(1);
+
+    try {
+      console.log(`🔧 Executing tool ${call.name} with args:`, call.arguments);
+      const result = await tool.execute(call.arguments);
+      console.log(`✅ Tool ${call.name} completed successfully`);
+
+      // Ensure the result is properly formatted for the LLM
+      if (typeof result === 'object' && result !== null) {
+        return result;
+      } else {
+        // Wrap primitive results in an object
+        return { result: result || 'Tool executed successfully' };
+      }
+    } catch (error) {
+      console.error(`❌ Tool ${call.name} failed:`, error);
+      // Return error in a format the LLM can understand
+      return {
+        error: true,
+        message: error instanceof Error ? error.message : 'Tool execution failed',
+        tool: call.name
+      };
+    }
   }
 
   public getToolsByCategory(category: string): ResearchTool[] {
@@ -747,7 +470,7 @@ export class ResearchToolsService {
         'Compile verified information'
       ]
     };
-    
+
     return workflows[queryType as keyof typeof workflows] || workflows.analytical;
   }
 
@@ -777,17 +500,17 @@ Choose the appropriate style based on your academic or professional requirements
     const n = data.length;
     const sum = data.reduce((acc, val) => acc + val, 0);
     const mean = sum / n;
-    
+
     const variance = data.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (n - 1);
     const stdDev = Math.sqrt(variance);
-    
-    const median = n % 2 === 0 
-      ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2 
+
+    const median = n % 2 === 0
+      ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2
       : sorted[Math.floor(n / 2)];
-    
+
     const q1 = sorted[Math.floor(n * 0.25)];
     const q3 = sorted[Math.floor(n * 0.75)];
-    
+
     return {
       analysis: 'descriptive',
       results: {
@@ -827,14 +550,14 @@ Choose the appropriate style based on your academic or professional requirements
     const n = pairs.length;
     const xValues = pairs.map(p => p[0]);
     const yValues = pairs.map(p => p[1]);
-    
+
     const xMean = xValues.reduce((sum, x) => sum + x, 0) / n;
     const yMean = yValues.reduce((sum, y) => sum + y, 0) / n;
-    
+
     let numerator = 0;
     let xSumSq = 0;
     let ySumSq = 0;
-    
+
     for (let i = 0; i < n; i++) {
       const xDiff = xValues[i] - xMean;
       const yDiff = yValues[i] - yMean;
@@ -842,10 +565,10 @@ Choose the appropriate style based on your academic or professional requirements
       xSumSq += xDiff * xDiff;
       ySumSq += yDiff * yDiff;
     }
-    
+
     const correlation = numerator / Math.sqrt(xSumSq * ySumSq);
     const rSquared = correlation * correlation;
-    
+
     return {
       analysis: 'correlation',
       results: {
@@ -877,34 +600,34 @@ Choose the appropriate style based on your academic or professional requirements
     const n = pairs.length;
     const xValues = pairs.map(p => p[0]);
     const yValues = pairs.map(p => p[1]);
-    
+
     const xMean = xValues.reduce((sum, x) => sum + x, 0) / n;
     const yMean = yValues.reduce((sum, y) => sum + y, 0) / n;
-    
+
     let numerator = 0;
     let denominator = 0;
-    
+
     for (let i = 0; i < n; i++) {
       const xDiff = xValues[i] - xMean;
       numerator += xDiff * (yValues[i] - yMean);
       denominator += xDiff * xDiff;
     }
-    
+
     const slope = numerator / denominator;
     const intercept = yMean - slope * xMean;
-    
+
     // Calculate R-squared
     let ssRes = 0;
     let ssTot = 0;
-    
+
     for (let i = 0; i < n; i++) {
       const predicted = slope * xValues[i] + intercept;
       ssRes += Math.pow(yValues[i] - predicted, 2);
       ssTot += Math.pow(yValues[i] - yMean, 2);
     }
-    
+
     const rSquared = 1 - (ssRes / ssTot);
-    
+
     return {
       analysis: 'regression',
       results: {
@@ -931,35 +654,35 @@ Choose the appropriate style based on your academic or professional requirements
     const xValues = Array.from({ length: data.length }, (_, i) => i);
     const yValues = data;
     const n = data.length;
-    
+
     const xMean = xValues.reduce((sum, x) => sum + x, 0) / n;
     const yMean = yValues.reduce((sum, y) => sum + y, 0) / n;
-    
+
     let numerator = 0;
     let denominator = 0;
-    
+
     for (let i = 0; i < n; i++) {
       const xDiff = xValues[i] - xMean;
       numerator += xDiff * (yValues[i] - yMean);
       denominator += xDiff * xDiff;
     }
-    
+
     const trend = numerator / denominator;
-    
+
     // Calculate volatility (standard deviation)
     const mean = yMean;
     const variance = data.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (n - 1);
     const volatility = Math.sqrt(variance);
-    
+
     // Detect direction changes
     let increases = 0;
     let decreases = 0;
-    
+
     for (let i = 1; i < data.length; i++) {
       if (data[i] > data[i - 1]) increases++;
       else if (data[i] < data[i - 1]) decreases++;
     }
-    
+
     return {
       analysis: 'timeseries',
       results: {
@@ -988,15 +711,15 @@ Choose the appropriate style based on your academic or professional requirements
     try {
       // Apply rate limiting for external API call
       await this.rateLimiter.waitForCapacity(100); // Estimate for arXiv API call
-      
+
       // Simple arXiv search using their API
       const searchUrl = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=${limit}`;
-      
+
       const response = await fetch(searchUrl);
       if (!response.ok) {
         throw new Error(`arXiv API error: ${response.status}`);
       }
-      
+
       const xmlText = await response.text();
       return this.parseArxivXML(xmlText);
     } catch (error) {
@@ -1009,14 +732,14 @@ Choose the appropriate style based on your academic or professional requirements
     // Simple XML parsing for arXiv results
     const papers = [];
     const entries = xmlText.split('<entry>').slice(1); // Skip first empty split
-    
+
     for (const entry of entries) {
       const titleMatch = entry.match(/<title>(.*?)<\/title>/s);
       const summaryMatch = entry.match(/<summary>(.*?)<\/summary>/s);
       const linkMatch = entry.match(/<id>(.*?)<\/id>/);
       const authorMatches = entry.match(/<name>(.*?)<\/name>/g);
       const publishedMatch = entry.match(/<published>(.*?)<\/published>/);
-      
+
       if (titleMatch && linkMatch) {
         papers.push({
           title: titleMatch[1].trim().replace(/\s+/g, ' '),
@@ -1028,7 +751,7 @@ Choose the appropriate style based on your academic or professional requirements
         });
       }
     }
-    
+
     return papers;
   }
 
@@ -1038,14 +761,328 @@ Choose the appropriate style based on your academic or professional requirements
       /by\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)*)/gi,
       /([A-Z][a-z]+,\s*[A-Z]\.(?:\s*[A-Z]\.)*)/gi
     ];
-    
+
     for (const pattern of authorPatterns) {
       const match = snippet.match(pattern);
       if (match) {
         return match[0].replace(/^by\s+/i, '').split(/,\s*/).map(author => author.trim());
       }
     }
-    
+
+    return [];
+  }
+
+  private identifyAcademicSource(url: string): string {
+    if (url.includes('arxiv.org')) return 'arXiv';
+    if (url.includes('pubmed.ncbi.nlm.nih.gov')) return 'PubMed';
+    if (url.includes('scholar.google.com')) return 'Google Scholar';
+    if (url.includes('ieee.org')) return 'IEEE';
+    if (url.includes('acm.org')) return 'ACM';
+    return 'Academic';
+  }
+}
+        'Compile verified information'
+      ]
+    };
+
+    return workflows[queryType as keyof typeof workflows] || workflows.analytical;
+  }
+
+  private async getCitationGuide(): Promise<string> {
+    return `
+# Citation Guide
+
+## APA Style
+Format: Author, A. A. (Year). Title of work. URL
+
+## MLA Style
+Format: Author. "Title of Work." Website Name, Date, URL.
+
+## Chicago Style
+Format: Author. "Title of Work." Website Name. Date. URL.
+
+## Harvard Style
+Format: Author Year, 'Title of Work', Website Name, viewed Date, <URL>.
+
+Choose the appropriate style based on your academic or professional requirements.
+    `.trim();
+  }
+
+  // Statistical analysis helper methods
+  private performDescriptiveAnalysis(data: number[]): any {
+    const sorted = [...data].sort((a, b) => a - b);
+    const n = data.length;
+    const sum = data.reduce((acc, val) => acc + val, 0);
+    const mean = sum / n;
+
+    const variance = data.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (n - 1);
+    const stdDev = Math.sqrt(variance);
+
+    const median = n % 2 === 0
+      ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2
+      : sorted[Math.floor(n / 2)];
+
+    const q1 = sorted[Math.floor(n * 0.25)];
+    const q3 = sorted[Math.floor(n * 0.75)];
+
+    return {
+      analysis: 'descriptive',
+      results: {
+        count: n,
+        mean: parseFloat(mean.toFixed(4)),
+        median: parseFloat(median.toFixed(4)),
+        standardDeviation: parseFloat(stdDev.toFixed(4)),
+        variance: parseFloat(variance.toFixed(4)),
+        minimum: sorted[0],
+        maximum: sorted[n - 1],
+        range: sorted[n - 1] - sorted[0],
+        quartiles: {
+          q1: parseFloat(q1.toFixed(4)),
+          q3: parseFloat(q3.toFixed(4)),
+          iqr: parseFloat((q3 - q1).toFixed(4))
+        },
+        summary: `Dataset of ${n} values with mean ${mean.toFixed(2)} and std dev ${stdDev.toFixed(2)}`
+      }
+    };
+  }
+
+  private performCorrelationAnalysis(data: number[]): any {
+    // For simple correlation, assume data represents paired values [x1, y1, x2, y2, ...]
+    if (data.length < 4 || data.length % 2 !== 0) {
+      return {
+        analysis: 'correlation',
+        results: {},
+        error: 'Correlation analysis requires paired data (even number of values)'
+      };
+    }
+
+    const pairs = [];
+    for (let i = 0; i < data.length; i += 2) {
+      pairs.push([data[i], data[i + 1]]);
+    }
+
+    const n = pairs.length;
+    const xValues = pairs.map(p => p[0]);
+    const yValues = pairs.map(p => p[1]);
+
+    const xMean = xValues.reduce((sum, x) => sum + x, 0) / n;
+    const yMean = yValues.reduce((sum, y) => sum + y, 0) / n;
+
+    let numerator = 0;
+    let xSumSq = 0;
+    let ySumSq = 0;
+
+    for (let i = 0; i < n; i++) {
+      const xDiff = xValues[i] - xMean;
+      const yDiff = yValues[i] - yMean;
+      numerator += xDiff * yDiff;
+      xSumSq += xDiff * xDiff;
+      ySumSq += yDiff * yDiff;
+    }
+
+    const correlation = numerator / Math.sqrt(xSumSq * ySumSq);
+    const rSquared = correlation * correlation;
+
+    return {
+      analysis: 'correlation',
+      results: {
+        correlationCoefficient: parseFloat(correlation.toFixed(4)),
+        rSquared: parseFloat(rSquared.toFixed(4)),
+        strength: this.interpretCorrelation(Math.abs(correlation)),
+        direction: correlation > 0 ? 'positive' : correlation < 0 ? 'negative' : 'no correlation',
+        pairsAnalyzed: n,
+        summary: `${this.interpretCorrelation(Math.abs(correlation))} ${correlation > 0 ? 'positive' : 'negative'} correlation (r = ${correlation.toFixed(3)})`
+      }
+    };
+  }
+
+  private performRegressionAnalysis(data: number[]): any {
+    // Simple linear regression, assume paired data
+    if (data.length < 4 || data.length % 2 !== 0) {
+      return {
+        analysis: 'regression',
+        results: {},
+        error: 'Regression analysis requires paired data (even number of values)'
+      };
+    }
+
+    const pairs = [];
+    for (let i = 0; i < data.length; i += 2) {
+      pairs.push([data[i], data[i + 1]]);
+    }
+
+    const n = pairs.length;
+    const xValues = pairs.map(p => p[0]);
+    const yValues = pairs.map(p => p[1]);
+
+    const xMean = xValues.reduce((sum, x) => sum + x, 0) / n;
+    const yMean = yValues.reduce((sum, y) => sum + y, 0) / n;
+
+    let numerator = 0;
+    let denominator = 0;
+
+    for (let i = 0; i < n; i++) {
+      const xDiff = xValues[i] - xMean;
+      numerator += xDiff * (yValues[i] - yMean);
+      denominator += xDiff * xDiff;
+    }
+
+    const slope = numerator / denominator;
+    const intercept = yMean - slope * xMean;
+
+    // Calculate R-squared
+    let ssRes = 0;
+    let ssTot = 0;
+
+    for (let i = 0; i < n; i++) {
+      const predicted = slope * xValues[i] + intercept;
+      ssRes += Math.pow(yValues[i] - predicted, 2);
+      ssTot += Math.pow(yValues[i] - yMean, 2);
+    }
+
+    const rSquared = 1 - (ssRes / ssTot);
+
+    return {
+      analysis: 'regression',
+      results: {
+        slope: parseFloat(slope.toFixed(4)),
+        intercept: parseFloat(intercept.toFixed(4)),
+        rSquared: parseFloat(rSquared.toFixed(4)),
+        equation: `y = ${slope.toFixed(4)}x + ${intercept.toFixed(4)}`,
+        goodnessOfFit: rSquared > 0.7 ? 'good' : rSquared > 0.5 ? 'moderate' : 'poor',
+        summary: `Linear regression: y = ${slope.toFixed(2)}x + ${intercept.toFixed(2)} (R² = ${rSquared.toFixed(3)})`
+      }
+    };
+  }
+
+  private performTimeSeriesAnalysis(data: number[]): any {
+    if (data.length < 3) {
+      return {
+        analysis: 'timeseries',
+        results: {},
+        error: 'Time series analysis requires at least 3 data points'
+      };
+    }
+
+    // Calculate trend using linear regression
+    const xValues = Array.from({ length: data.length }, (_, i) => i);
+    const yValues = data;
+    const n = data.length;
+
+    const xMean = xValues.reduce((sum, x) => sum + x, 0) / n;
+    const yMean = yValues.reduce((sum, y) => sum + y, 0) / n;
+
+    let numerator = 0;
+    let denominator = 0;
+
+    for (let i = 0; i < n; i++) {
+      const xDiff = xValues[i] - xMean;
+      numerator += xDiff * (yValues[i] - yMean);
+      denominator += xDiff * xDiff;
+    }
+
+    const trend = numerator / denominator;
+
+    // Calculate volatility (standard deviation)
+    const mean = yMean;
+    const variance = data.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (n - 1);
+    const volatility = Math.sqrt(variance);
+
+    // Detect direction changes
+    let increases = 0;
+    let decreases = 0;
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i] > data[i - 1]) increases++;
+      else if (data[i] < data[i - 1]) decreases++;
+    }
+
+    return {
+      analysis: 'timeseries',
+      results: {
+        trend: parseFloat(trend.toFixed(4)),
+        trendDirection: trend > 0.01 ? 'increasing' : trend < -0.01 ? 'decreasing' : 'stable',
+        volatility: parseFloat(volatility.toFixed(4)),
+        dataPoints: n,
+        increases,
+        decreases,
+        stability: volatility < mean * 0.1 ? 'stable' : volatility < mean * 0.3 ? 'moderate' : 'volatile',
+        summary: `${trend > 0 ? 'Increasing' : trend < 0 ? 'Decreasing' : 'Stable'} trend with ${volatility < mean * 0.2 ? 'low' : 'high'} volatility`
+      }
+    };
+  }
+
+  private interpretCorrelation(abs: number): string {
+    if (abs >= 0.8) return 'very strong';
+    if (abs >= 0.6) return 'strong';
+    if (abs >= 0.4) return 'moderate';
+    if (abs >= 0.2) return 'weak';
+    return 'very weak';
+  }
+
+  // Academic search helper methods
+  private async searchArxiv(query: string, limit: number): Promise<any[]> {
+    try {
+      // Apply rate limiting for external API call
+      await this.rateLimiter.waitForCapacity(100); // Estimate for arXiv API call
+
+      // Simple arXiv search using their API
+      const searchUrl = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=${limit}`;
+
+      const response = await fetch(searchUrl);
+      if (!response.ok) {
+        throw new Error(`arXiv API error: ${response.status}`);
+      }
+
+      const xmlText = await response.text();
+      return this.parseArxivXML(xmlText);
+    } catch (error) {
+      console.error('arXiv search failed:', error);
+      return [];
+    }
+  }
+
+  private parseArxivXML(xmlText: string): any[] {
+    // Simple XML parsing for arXiv results
+    const papers = [];
+    const entries = xmlText.split('<entry>').slice(1); // Skip first empty split
+
+    for (const entry of entries) {
+      const titleMatch = entry.match(/<title>(.*?)<\/title>/s);
+      const summaryMatch = entry.match(/<summary>(.*?)<\/summary>/s);
+      const linkMatch = entry.match(/<id>(.*?)<\/id>/);
+      const authorMatches = entry.match(/<name>(.*?)<\/name>/g);
+      const publishedMatch = entry.match(/<published>(.*?)<\/published>/);
+
+      if (titleMatch && linkMatch) {
+        papers.push({
+          title: titleMatch[1].trim().replace(/\s+/g, ' '),
+          url: linkMatch[1].trim(),
+          abstract: summaryMatch ? summaryMatch[1].trim().replace(/\s+/g, ' ') : '',
+          authors: authorMatches ? authorMatches.map(m => m.replace(/<\/?name>/g, '')) : [],
+          publishedDate: publishedMatch ? publishedMatch[1].trim() : '',
+          source: 'arXiv'
+        });
+      }
+    }
+
+    return papers;
+  }
+
+  private extractAuthorsFromSnippet(snippet: string): string[] {
+    // Simple author extraction from text snippets
+    const authorPatterns = [
+      /by\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)*)/gi,
+      /([A-Z][a-z]+,\s*[A-Z]\.(?:\s*[A-Z]\.)*)/gi
+    ];
+
+    for (const pattern of authorPatterns) {
+      const match = snippet.match(pattern);
+      if (match) {
+        return match[0].replace(/^by\s+/i, '').split(/,\s*/).map(author => author.trim());
+      }
+    }
+
     return [];
   }
 

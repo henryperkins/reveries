@@ -9,12 +9,12 @@ export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
 	// Define a run() method
 	async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
 		// Define one or more steps that optionally return state.
-		let state = step.do('my first step', async () => {
+		const state = await step.do('my first step', async () => {
 			return [1, 2, 3];
 		});
 
-		step.do('my second step', async () => {
-			for (let data in state) {
+		await step.do('my second step', async () => {
+			for (const data of state) {
 				// Do something with your state
 			}
 		});

@@ -16,7 +16,7 @@ export default {
                     nearblack: '#2A2522',
                     black: '#1A1512',
                     gold: '#D4AF37',
-                    darkgold: '#B8941F',
+                    darkGold: '#B8941F',
                     rust: '#A85732',
                     copper: '#C87543',
                     darkcopper: '#A65E36',

@@ -17,7 +17,7 @@
 			"binding": "MY_WORKFLOW",
 			"class_name": "MyWorkflow"
 		}
-	]
+	],
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

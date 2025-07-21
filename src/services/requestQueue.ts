@@ -29,22 +29,22 @@ export class RequestQueue {
    * Submit a promise-returning task to be executed under concurrency control.
    */
   static execute<T>(task: () => Promise<T>): Promise<T> {
-    console.log('RequestQueue.execute called');
+    console.log(`📊 RequestQueue.execute called (active: ${RequestQueue.activeCount}/${RequestQueue.concurrencyLimit}, queued: ${RequestQueue.queue.length})`);
     return new Promise<T>((resolve, reject) => {
       const runTask = () => {
-        console.log('RequestQueue running task');
+        console.log(`📊 RequestQueue running task (active: ${RequestQueue.activeCount + 1}/${RequestQueue.concurrencyLimit})`);
         RequestQueue.activeCount++;
         task()
           .then(result => {
-            console.log('RequestQueue task succeeded');
+            console.log('✅ RequestQueue task succeeded');
             // Reset back-off counters on any successful call
             RequestQueue.consecutiveRateLimitErrors = 0;
             resolve(result);
           })
           .catch(err => {
-            console.log('RequestQueue task failed:', err);
+            console.log('❌ RequestQueue task failed:', err);
             // Apply exponential back-off for rate-limit errors
-            if (err?.code === 'RATE_LIMIT' || err?.status === 429) {
+            if (err?.code === 'RATE_LIMIT' || err?.status === 429 || err?.statusCode === 429) {
               RequestQueue.consecutiveRateLimitErrors++;
               const delay = Math.min(
                 RequestQueue.BASE_DELAY_MS *
@@ -52,13 +52,14 @@ export class RequestQueue {
                 RequestQueue.MAX_DELAY_MS
               );
               RequestQueue.pauseUntil = Date.now() + delay;
-              console.log(`RequestQueue back-off ${delay / 1000}s due to rate limit`);
+              console.log(`⏳ RequestQueue back-off ${delay / 1000}s due to rate limit`);
               setTimeout(() => RequestQueue.dequeue(), delay + 50);
             }
             reject(err);
           })
           .finally(() => {
             RequestQueue.activeCount--;
+            console.log(`📊 RequestQueue task completed (active: ${RequestQueue.activeCount}/${RequestQueue.concurrencyLimit})`);
             RequestQueue.dequeue();
           });
       };
@@ -69,14 +70,17 @@ export class RequestQueue {
         if (RequestQueue.activeCount < RequestQueue.concurrencyLimit) {
           runTask();
         } else {
+          console.log(`⏳ RequestQueue queuing task (queue size: ${RequestQueue.queue.length + 1})`);
           RequestQueue.queue.push(runTask);
         }
       };
 
       if (now < RequestQueue.pauseUntil) {
         // Currently in back-off window – defer execution
+        const waitTime = RequestQueue.pauseUntil - now;
+        console.log(`⏳ RequestQueue in back-off, waiting ${waitTime / 1000}s`);
         RequestQueue.queue.push(runTask);
-        setTimeout(() => RequestQueue.dequeue(), RequestQueue.pauseUntil - now);
+        setTimeout(() => RequestQueue.dequeue(), waitTime);
       } else {
         executeOrQueue();
       }
@@ -106,6 +110,7 @@ export class RequestQueue {
       import.meta?.env?.VITE_AZURE_OPENAI_CONCURRENCY ??
       (typeof process !== 'undefined' && process.env.AZURE_OPENAI_CONCURRENCY);
     const parsed = Number(envValue);
-    return Number.isFinite(parsed) && parsed >= 1 ? parsed : 2;
+    // Increase default from 2 to 3 to allow for tool calls
+    return Number.isFinite(parsed) && parsed >= 1 ? parsed : 3;
   }
 }
