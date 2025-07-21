@@ -103,7 +103,7 @@
     /* Button adjustments */
     .btn-primary {
       @apply bg-westworld-gold text-westworld-cream;
-      @apply hover:bg-westworld-darkGold;
+      @apply hover:bg-westworld-rust;
       @apply shadow-md hover:shadow-lg;
     }
 
@@ -127,7 +127,7 @@
 
     /* Links */
     a {
-      @apply text-westworld-gold hover:text-westworld-darkGold;
+      @apply text-westworld-gold hover:text-westworld-copper;
     }
 
     /* Skeleton loading */
@@ -155,7 +155,7 @@
 
     /* Tooltips */
     .tooltip-content {
-      @apply bg-westworld-nearBlack text-westworld-cream;
+      @apply bg-westworld-nearblack text-westworld-cream;
       @apply border border-westworld-tan/30;
       @apply shadow-lg;
     }

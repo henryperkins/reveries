@@ -1,59 +1,78 @@
+# Reveries Codebase Instructions
 
+## Project Overview
+Reveries appears to be a research-oriented web application with a Westworld-themed design system. The project uses a mobile-first responsive approach with careful attention to touch interfaces and safe areas for modern devices.
 
-# Copilot Instructions for Reveries Codebase
+## Architecture Patterns
 
-## Architecture Overview
-Reveries is a React/TypeScript AI research orchestration system. Core data flow: `App.tsx` → `ResearchAgentService` → `ResearchGraphManager` → UI components.
+### CSS Architecture
+- **Tailwind CSS Layers**: Uses `@layer` directives (base, components, utilities) for proper cascade management
+- **Design Tokens**: Custom CSS properties for z-index (`--z-fixed`, `--z-sticky`) and colors (`.text-westworld-*`)
+- **Mobile-First**: All responsive styles start from mobile and scale up using `min-width` media queries
+- **Safe Areas**: Consistently uses `env(safe-area-inset-*)` for modern device compatibility
 
-**Key Service Pattern:** Always use the wrapper service `researchAgentServiceWrapper.ts` which delegates to the refactored implementation.
+### Component Structure
+Key UI components referenced in styles:
+- `input-bar`: Fixed bottom input interface with dynamic positioning
+- `research-container` / `research-step`: Main content areas for research workflow
+- `paradigm-dashboard`: Dashboard component that repositions on mobile
+- `progress-meter-container` / `progress-bar-container`: Progress indicators integrated with input
 
-**Graph-Centric Design:** All research is tracked as nodes/edges in `ResearchGraphManager`. Never manipulate graph state directly - use manager methods.
-
-## Critical Workflows
-```bash
-# Development
-npm install && npm run dev
-# Add API keys to .env.local (Gemini always available, Grok/Azure require keys)
-
-# Build & Deploy
-npm run build     # outputs to dist/
-npm run preview   # test production build
+### Responsive Breakpoints
+```css
+- Extra small: < 475px (stacks elements, hides non-essential)
+- Small: 475px - 639px
+- Medium: 640px - 768px (major layout shifts)
+- Touch devices: Uses `(hover: none) and (pointer: coarse)`
 ```
 
-## Agent Orchestration Patterns
-**Context Layer System:** Research flows through write→select→compress→isolate layers based on paradigm (dolores/teddy/bernard/maeve).
+## Development Patterns
 
-**Progress State Machine:** `App.tsx` tracks: analyzing→routing→researching→evaluating→synthesizing with adaptive timeouts for O3 models.
+### Mobile Considerations
+- **Tap Targets**: Minimum 44px height for iOS compatibility on touch interfaces
+- **Keyboard Handling**: Suggestions dropdown repositions when keyboard visible (detected via viewport height)
+- **Fixed Elements**: Input bar accounts for safe areas and keyboard presence
+- **Landscape Mode**: Special handling for landscape orientation with reduced heights
 
-**LangGraph Implementation:** Router patterns classify queries, orchestrator-worker breaks complex research into parallel sub-topics.
+### Accessibility
+- `prefers-reduced-motion`: Handled in animations.css (not shown)
+- `prefers-contrast`: Increases borders and adjusts color contrast
+- Semantic HTML expected with proper ARIA attributes
 
-## Data Flow Conventions
-**Research Steps as Graph Nodes:**
-```tsx
-// Always track parent-child relationships
-graphManager.addNode(step, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
-lastNodeIdRef.current = step.id;
+### CSS Utilities
+Project-specific responsive utilities:
+- `.space-y-responsive`, `.gap-responsive`: Fluid spacing using `clamp()`
+- `.p-responsive`, `.px-responsive`, `.py-responsive`: Fluid padding
+- `.safe-padding-*`: Safe area padding helpers
+- `.hide-xs`, `.hide-landscape-mobile`: Responsive visibility
+
+## File Organization
+```
+/src/
+  /styles/
+    responsive.css    # Responsive design system
+    animations.css    # Motion and transitions (referenced)
+  /components/      # React components (assumed)
+  App.tsx          # Main application component
 ```
 
-**Source Provenance:** Every agent call returns `{ text, sources }`. UI always displays sources:
-```tsx
-{sources.map(src => <li><a href={src.url}>{src.name}</a></li>)}
-```
-
-**Progress Tracking:** Use `onProgress?.('tool_used:toolName')` to trigger FunctionCallDock updates and timeouts.
+## Key Conventions
+1. **Westworld Theme**: Use color names like `westworld-brown`, `westworld-nearblack`
+2. **BEM-like Naming**: Components use descriptive names (e.g., `research-container`, `progress-meter-container`)
+3. **Fluid Typography**: Use `clamp()` for responsive font sizes
+4. **Fixed Positioning**: Bottom-fixed elements must account for safe areas
+5. **Z-Index Management**: Use CSS variables (`--z-fixed`, `--z-sticky`) not magic numbers
 
 ## Integration Points
-**Model Selection:** Dynamic based on API key availability (`constants.ts`). Gemini fallback, O3 gets 4x timeout multipliers.
+- Research workflow with multi-step process (`research-step` components)
+- Progress tracking system (progress meters/bars)
+- Paradigm dashboard (repositions on mobile)
+- Suggestions/autocomplete system (dropdown positioning)
 
-**Timeout Management:** `TIMEOUTS` constant defines phase-specific values. Progress timeouts prevent hanging with fallback advancement.
-
-**Export/Visualization:** `generateMermaidDiagram(manager)` for graph export, `exportUtils.ts` for markdown/JSON/CSV formats.
-
-## Project-Specific Patterns
-- Graph mutations only via `ResearchGraphManager` methods
-- Paradigm probabilities drive context density and layer sequencing
-- All secrets in `.env.local` (gitignored)
-- Function calls tracked in shared context for dock visualization
-- Error edges styled differently in graph visualization
-
-**Key Files:** `App.tsx` (orchestrator), `researchGraph.ts` (state), `types.ts` (contracts), `constants.ts` (config)
+## Testing Considerations
+When testing responsive features:
+- Test at 474px, 475px (breakpoint boundary)
+- Test with keyboard open on mobile (viewport < 500px height)
+- Test landscape orientation on mobile devices
+- Verify tap targets are ≥ 44px on touch devices
+- Check safe area handling on devices with notches/home indicators

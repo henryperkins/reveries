@@ -8,16 +8,18 @@ export default {
         extend: {
             colors: {
                 westworld: {
-                    cream: '#FAFAFA',
-                    beige: '#F5E6D3',
-                    tan: '#D2B48C',
-                    brown: '#A0522D',
-                    darkbrown: '#654321',
+                    cream: '#FAF6F2',
+                    beige: '#F5EDE4',
+                    tan: '#E8D5C4',
+                    brown: '#8B6F47',
+                    darkbrown: '#6B5637',
                     nearblack: '#2A2522',
-                    black: '#1A1A1A',
+                    black: '#1A1512',
                     gold: '#D4AF37',
-                    rust: '#8B4513',
-                    copper: '#B87333',
+                    darkgold: '#B8941F',
+                    rust: '#A85732',
+                    copper: '#C87543',
+                    darkcopper: '#A65E36',
                     white: '#FFFFFF',
                 }
             },

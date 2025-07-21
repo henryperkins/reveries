@@ -11,6 +11,7 @@
 @import './layout.css';
 @import './responsive.css';
 @import './accessibility.css';
+@import './print.css';
 
 /* Any app-specific overrides or custom styles go here */
 @layer utilities {
@@ -53,7 +54,7 @@
   
   /* Code block styles */
   .code-block {
-    @apply bg-westworld-nearBlack text-westworld-cream;
+    @apply bg-westworld-nearblack text-westworld-cream;
     @apply rounded-md p-4 overflow-x-auto;
     @apply font-mono text-sm;
   }

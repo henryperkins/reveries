@@ -10,13 +10,13 @@
 
   .btn-primary {
     @apply bg-westworld-gold text-westworld-nearblack;
-    @apply hover:bg-westworld-darkGold hover:shadow-lg;
+    @apply hover:bg-westworld-rust hover:shadow-lg;
     @apply focus:ring-westworld-gold;
   }
 
   .btn-secondary {
     @apply bg-westworld-copper text-westworld-cream;
-    @apply hover:bg-westworld-darkCopper hover:shadow-lg;
+    @apply hover:bg-westworld-rust hover:shadow-lg;
     @apply focus:ring-westworld-copper;
   }
 
@@ -49,6 +49,7 @@
     @apply bg-westworld-cream rounded-lg shadow-md;
     @apply border border-westworld-tan;
     @apply transition-all duration-200;
+    contain: layout style paint;
   }
 
   .card-hover {
@@ -109,11 +110,11 @@
   }
 
   .badge-primary {
-    @apply bg-westworld-gold/20 text-westworld-darkGold;
+    @apply bg-westworld-gold/20 text-westworld-brown;
   }
 
   .badge-secondary {
-    @apply bg-westworld-copper/20 text-westworld-darkCopper;
+    @apply bg-westworld-copper/20 text-westworld-brown;
   }
 
   .badge-success {
@@ -130,7 +131,7 @@
 
   /* ===== MODALS ===== */
   .modal-overlay {
-    @apply fixed inset-0 bg-westworld-nearBlack/50 backdrop-blur-sm;
+    @apply fixed inset-0 bg-westworld-nearblack/50 backdrop-blur-sm;
     @apply flex items-center justify-center p-4;
     z-index: var(--z-modal-backdrop);
   }
@@ -201,6 +202,7 @@
   /* ===== PROGRESS ===== */
   .progress-bar {
     @apply w-full h-2 bg-westworld-tan rounded-full overflow-hidden;
+    contain: layout paint;
   }
 
   .progress-bar-fill {
@@ -221,14 +223,16 @@
     );
     background-size: 1rem 1rem;
     animation: progress-bar-stripes 1s linear infinite;
+    will-change: background-position;
   }
 
   /* ===== TOOLTIPS ===== */
   .tooltip {
-    @apply absolute bg-westworld-nearBlack text-westworld-cream;
+    @apply absolute bg-westworld-nearblack text-westworld-cream;
     @apply px-2 py-1 text-xs rounded;
     @apply shadow-lg;
     z-index: var(--z-tooltip);
+    contain: layout style;
   }
 
   .tooltip-arrow {
@@ -237,13 +241,14 @@
   }
 
   .tooltip-top .tooltip-arrow {
-    @apply border-t-westworld-nearBlack;
+    @apply border-t-westworld-nearblack;
     @apply -bottom-2 left-1/2 -translate-x-1/2;
   }
 
   /* ===== SKELETON LOADERS ===== */
   .skeleton {
     @apply bg-westworld-tan animate-pulse rounded;
+    contain: layout style paint;
   }
 
   .skeleton-text {

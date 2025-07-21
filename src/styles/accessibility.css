@@ -360,12 +360,12 @@
   }
 
   a:not(.btn):hover {
-    @apply text-westworld-darkCopper;
+    @apply text-westworld-copper;
     text-decoration-thickness: 2px;
   }
 
   a:not(.btn):visited {
-    @apply text-westworld-darkBrown;
+    @apply text-westworld-darkbrown;
   }
 
   /* External link indicator */

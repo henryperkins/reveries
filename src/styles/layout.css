@@ -21,7 +21,7 @@
   }
   
   .app-footer {
-    @apply bg-westworld-nearBlack text-westworld-cream;
+    @apply bg-westworld-nearblack text-westworld-cream;
     @apply py-8 mt-auto;
   }
   
@@ -100,7 +100,7 @@
   
   /* ===== OVERLAYS ===== */
   .overlay-dark {
-    @apply fixed inset-0 bg-westworld-nearBlack/50;
+    @apply fixed inset-0 bg-westworld-nearblack/50;
     z-index: var(--z-modal-backdrop);
   }
   

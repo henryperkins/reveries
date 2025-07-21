@@ -41,7 +41,7 @@
     line-height: var(--leading-tight);
     letter-spacing: var(--tracking-tight);
     font-weight: var(--font-bold);
-    color: var(--color-westworld-nearBlack);
+    color: var(--color-westworld-nearblack);
     @apply mb-6;
   }
 
@@ -50,7 +50,7 @@
     line-height: var(--leading-tight);
     letter-spacing: var(--tracking-tight);
     font-weight: var(--font-semibold);
-    color: var(--color-westworld-nearBlack);
+    color: var(--color-westworld-nearblack);
     @apply mb-5;
   }
 
@@ -58,7 +58,7 @@
     font-size: var(--text-3xl);
     line-height: var(--leading-snug);
     font-weight: var(--font-semibold);
-    color: var(--color-westworld-nearBlack);
+    color: var(--color-westworld-nearblack);
     @apply mb-4;
   }
 
@@ -66,7 +66,7 @@
     font-size: var(--text-2xl);
     line-height: var(--leading-snug);
     font-weight: var(--font-medium);
-    color: var(--color-westworld-nearBlack);
+    color: var(--color-westworld-nearblack);
     @apply mb-3;
   }
 
@@ -74,7 +74,7 @@
     font-size: var(--text-xl);
     line-height: var(--leading-normal);
     font-weight: var(--font-medium);
-    color: var(--color-westworld-nearBlack);
+    color: var(--color-westworld-nearblack);
     @apply mb-2;
   }
 
@@ -82,7 +82,7 @@
     font-size: var(--text-lg);
     line-height: var(--leading-normal);
     font-weight: var(--font-medium);
-    color: var(--color-westworld-nearBlack);
+    color: var(--color-westworld-nearblack);
     @apply mb-2;
   }
 
@@ -90,19 +90,19 @@
   .text-body-lg {
     font-size: var(--text-lg);
     line-height: var(--leading-relaxed);
-    color: var(--color-westworld-darkBrown);
+    color: var(--color-westworld-darkbrown);
   }
 
   .text-body {
     font-size: var(--text-base);
     line-height: var(--leading-normal);
-    color: var(--color-westworld-darkBrown);
+    color: var(--color-westworld-darkbrown);
   }
 
   .text-body-sm {
     font-size: var(--text-sm);
     line-height: var(--leading-normal);
-    color: var(--color-westworld-darkBrown);
+    color: var(--color-westworld-darkbrown);
   }
 
   /* Utility Text Styles */
@@ -134,7 +134,7 @@
     line-height: var(--leading-normal);
     font-weight: var(--font-medium);
     letter-spacing: var(--tracking-wide);
-    color: var(--color-westworld-darkBrown);
+    color: var(--color-westworld-darkbrown);
   }
 
   /* Link Styles */
@@ -146,7 +146,7 @@
   }
 
   .text-link:hover {
-    color: var(--color-westworld-darkGold);
+    color: var(--color-westworld-darkgold);
     text-decoration-thickness: 2px;
   }
 
@@ -162,7 +162,7 @@
   }
 
   .list-styled li {
-    color: var(--color-westworld-darkBrown);
+    color: var(--color-westworld-darkbrown);
     line-height: var(--leading-relaxed);
   }
 
@@ -188,7 +188,7 @@
   }
 
   .text-emphasis {
-    color: var(--color-westworld-nearBlack);
+    color: var(--color-westworld-nearblack);
     font-weight: var(--font-semibold);
   }
 
@@ -234,16 +234,16 @@
   /* High Contrast Mode Support */
   @media (prefers-contrast: high) {
     .h1, .h2, .h3, .h4, .h5, .h6 {
-      color: var(--color-westworld-nearBlack);
+      color: var(--color-westworld-nearblack);
       font-weight: var(--font-bold);
     }
 
     .text-body, .text-body-lg, .text-body-sm {
-      color: var(--color-westworld-nearBlack);
+      color: var(--color-westworld-nearblack);
     }
 
     .text-muted {
-      color: var(--color-westworld-darkBrown);
+      color: var(--color-westworld-darkbrown);
     }
   }
 

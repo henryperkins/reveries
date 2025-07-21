@@ -4,17 +4,18 @@
   :root {
     /* ===== COLOR TOKENS ===== */
     /* Westworld Theme Colors */
-    --color-westworld-cream: #FAFAFA;
-    --color-westworld-beige: #F5E6D3;
-    --color-westworld-tan: #D2B48C;
-    --color-westworld-brown: #A0522D;
-    --color-westworld-dark-brown: #654321;
-    --color-westworld-near-black: #1A1A1A;
+    --color-westworld-cream: #FAF6F2;
+    --color-westworld-beige: #F5EDE4;
+    --color-westworld-tan: #E8D5C4;
+    --color-westworld-brown: #8B6F47;
+    --color-westworld-darkbrown: #6B5637;
+    --color-westworld-nearblack: #2A2522;
+    --color-westworld-black: #1A1512;
     --color-westworld-gold: #D4AF37;
-    --color-westworld-dark-gold: #B8941F;
-    --color-westworld-rust: #8B4513;
-    --color-westworld-copper: #B87333;
-    --color-westworld-dark-copper: #A05A2C;
+    --color-westworld-darkgold: #B8941F;
+    --color-westworld-rust: #A85732;
+    --color-westworld-copper: #C87543;
+    --color-westworld-darkcopper: #A65E36;
     --color-westworld-white: #FFFFFF;
     
     /* Semantic Colors */
@@ -24,7 +25,7 @@
     --color-secondary-dark: var(--color-westworld-dark-copper);
     --color-background: var(--color-westworld-beige);
     --color-surface: var(--color-westworld-cream);
-    --color-text: var(--color-westworld-near-black);
+    --color-text: var(--color-westworld-nearblack);
     --color-text-muted: var(--color-westworld-brown);
     --color-border: var(--color-westworld-tan);
     
@@ -149,17 +150,17 @@
   /* Dark theme overrides */
   [data-theme="dark"] {
     /* Color overrides for dark mode */
-    --color-background: var(--color-westworld-near-black);
-    --color-surface: #2A2A2A;
+    --color-background: var(--color-westworld-black);
+    --color-surface: var(--color-westworld-nearblack);
     --color-text: var(--color-westworld-cream);
     --color-text-muted: var(--color-westworld-tan);
-    --color-border: #3A3A3A;
+    --color-border: #3A3532;
     
     /* Adjusted semantic colors for dark mode */
     --color-primary: var(--color-westworld-gold);
     --color-primary-dark: var(--color-westworld-copper);
     --color-secondary: var(--color-westworld-rust);
-    --color-secondary-dark: var(--color-westworld-dark-brown);
+    --color-secondary-dark: var(--color-westworld-darkbrown);
     
     /* Adjusted shadows for dark mode */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);

@@ -6,9 +6,6 @@
 /* Import design tokens */
 @import './design-tokens.css';
 
-/* Import fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
-
 /* Base HTML elements */
 @layer base {
   * {
@@ -63,7 +60,7 @@
   }
 
   a {
-    @apply text-westworld-rust hover:text-westworld-darkCopper;
+    @apply text-westworld-rust hover:text-westworld-copper;
     transition: color var(--transition-fast);
   }
 
@@ -88,7 +85,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-westworld-brown hover:bg-westworld-darkBrown;
+    @apply bg-westworld-brown hover:bg-westworld-darkbrown;
     border-radius: var(--radius-full);
   }
 }
@@ -133,6 +130,6 @@
   }
 
   .gradient-westworld-dark {
-    @apply bg-gradient-to-br from-westworld-brown via-westworld-darkBrown to-westworld-nearBlack;
+    @apply bg-gradient-to-br from-westworld-brown via-westworld-darkbrown to-westworld-nearblack;
   }
 }

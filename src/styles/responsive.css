@@ -55,9 +55,24 @@
       right: 0;
       padding: 0.75rem;
       z-index: var(--z-fixed);
+      background: var(--color-westworld-cream);
+      border-top: 1px solid var(--color-westworld-tan);
+      transition: transform 0.3s ease-out;
 
       /* Account for safe areas on modern phones */
       padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+
+    /* Hide input bar when keyboard is visible */
+    .input-bar:focus-within {
+      transform: translateY(0);
+    }
+
+    /* Adjust input bar for visual viewport changes */
+    @supports (height: 100dvh) {
+      .input-bar {
+        bottom: calc(100vh - 100dvh);
+      }
     }
 
     /* Combine progress indicators into input bar */
@@ -83,6 +98,8 @@
       /* Dynamic padding based on actual input bar height */
       padding-bottom: calc(80px + env(safe-area-inset-bottom));
       min-height: calc(100vh - 80px);
+      /* Use dynamic viewport height if supported */
+      min-height: calc(100dvh - 80px);
     }
 
     /* Reduce padding on mobile */
@@ -204,16 +221,28 @@
     bottom: calc(100% + 0.5rem);
     left: 0.75rem;
     right: 0.75rem;
-    max-height: 40vh; /* Limit height on mobile */
+    max-height: 40vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--color-westworld-cream);
+    border: 1px solid var(--color-westworld-tan);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
   }
 
-  /* When keyboard is visible (approximate) */
+  /* When keyboard is visible (use visualViewport API) */
+  @supports (height: 100dvh) {
+    .suggestions-dropdown {
+      max-height: min(40vh, calc(100dvh - 12rem));
+    }
+  }
+
+  /* Fallback for small viewport heights */
   @media (max-height: 500px) {
     .suggestions-dropdown {
-      position: fixed;
-      top: 3rem;
-      bottom: auto;
-      max-height: calc(100vh - 6rem);
+      position: absolute;
+      bottom: calc(100% + 0.5rem);
+      max-height: 30vh;
     }
   }
 }
