@@ -1,4 +1,5 @@
 import { RequestQueue } from './requestQueue';
+import { RateLimiter } from './rateLimiter';
 
 export class APIError extends Error {
   constructor(
@@ -120,10 +121,7 @@ export async function withRetry<T>(
         const rateLimitDelay = retryAfter ? retryAfter * 1000 : delay * 2;
         // Inform the RateLimiter so future callers respect server hint
         if (retryAfter) {
-          try {
-            const { RateLimiter } = await import('./rateLimiter');
-            RateLimiter.getInstance().penalize(retryAfter);
-          } catch {}
+          RateLimiter.getInstance().penalize(retryAfter);
         }
 
         if (onRetry) {

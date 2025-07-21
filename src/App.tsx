@@ -14,7 +14,7 @@ import { ProgressMeter } from '@/components/atoms'
 import { usePersistentState } from '@/hooks/usePersistentState'
 import { useFunctionCalls } from '@/components/FunctionCallDock'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
-import { ThemeToggle } from '@/theme/ThemeToggle'
+import { ThemeToggle } from './components/ThemeToggle'
 import {
   ResearchStep,
   ResearchStepType,

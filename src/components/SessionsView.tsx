@@ -8,18 +8,20 @@ interface SessionsViewProps {
 }
 
 export const SessionsView: React.FC<SessionsViewProps> = ({ sessions, onLoadSession }) => {
+  // Normalise – if sessions isn’t an array, fall back to empty array
+  const safeSessions: ResearchSession[] = Array.isArray(sessions) ? sessions : [];
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <h3 className="text-xl font-semibold text-gray-900 mb-6">Research Sessions</h3>
-      
-      {sessions.length === 0 ? (
+
+      {safeSessions.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-500 mb-2">No sessions yet</p>
           <p className="text-sm text-gray-400">Start a new research query to create your first session</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {sessions.map((session) => (
+          {safeSessions.map((session) => (
             <div
               key={session.id}
               className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"

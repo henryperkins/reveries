@@ -230,23 +230,29 @@ export const theme = {
 };
 
 // Helper function to get theme-aware styles
-export const getThemeValue = (path: string, isDark = false) => {
+interface ColorValue {
+  light: string;
+  dark: string;
+}
+
+export const getThemeValue = (path: string, isDark = false): string | undefined => {
   const keys = path.split('.');
-  let value = theme;
+  let value: unknown = theme;
 
   for (const key of keys) {
-    if (value[key]) {
-      value = value[key];
+    if (typeof value === 'object' && value !== null && key in value) {
+      value = (value as Record<string, unknown>)[key];
     } else {
       return undefined;
     }
   }
 
-  if (typeof value === 'object' && value !== null) {
-    return isDark ? value.dark || value.light : value.light || value.dark;
+  if (typeof value === 'object' && value !== null && 'light' in value && 'dark' in value) {
+    const colorValue = value as ColorValue;
+    return isDark ? colorValue.dark || colorValue.light : colorValue.light || colorValue.dark;
   }
 
-  return value;
+  return typeof value === 'string' ? value : undefined;
 };
 
 // CSS variables for runtime theming

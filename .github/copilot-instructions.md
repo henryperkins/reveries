@@ -2,62 +2,58 @@
 
 # Copilot Instructions for Reveries Codebase
 
-## Project Overview
-Reveries is a React + TypeScript application for orchestrating and visualizing AI-driven research workflows. It leverages Vite, TailwindCSS, and integrates Gemini, Grok/XAI, and Azure OpenAI APIs. The core architecture is built around agent orchestration and research graph tracking.
+## Architecture Overview
+Reveries is a React/TypeScript AI research orchestration system. Core data flow: `App.tsx` → `ResearchAgentService` → `ResearchGraphManager` → UI components.
 
-## Architecture & Key Files
-- **src/components/**: UI and workflow logic. `App.tsx` is the main orchestrator; `ResearchGraphView.tsx` handles graph visualization and export.
-- **src/services/researchAgentService.ts**: Central agent router, implements LangGraph patterns and model selection logic. Handles Gemini, Grok, Azure OpenAI integration and fallback.
-- **src/researchGraph.ts**: Manages graph state, node/edge creation, error handling, export, and statistics. Use `ResearchGraphManager` for all graph mutations.
-- **src/types.ts**: Shared types for research steps, models, sources, and paradigms.
+**Key Service Pattern:** Always use the wrapper service `researchAgentServiceWrapper.ts` which delegates to the refactored implementation.
 
-## Data Flow & Patterns
-- Research steps are nodes in a directed graph. Each node tracks sources, metadata, and errors. Edges represent sequential, dependency, or error relationships (error edges are styled distinctly).
-- Model selection is dynamic: Gemini is always available; Grok and Azure OpenAI are enabled only if API keys are present (see `constants.ts`).
-- All agent calls return `{ text, sources }` for provenance. Sources are always displayed in the UI and tracked in graph statistics.
-- Error handling: Use `markNodeError` to mark nodes as errored and add error edges.
-- Export graph visualizations using `generateMermaidDiagram(manager)`.
+**Graph-Centric Design:** All research is tracked as nodes/edges in `ResearchGraphManager`. Never manipulate graph state directly - use manager methods.
 
-## Agent Orchestration & Prompting
-- LangGraph patterns used:
-  - **Router Pattern**: Classifies queries as factual, analytical, comparative, or exploratory, and routes to specialized handlers.
-  - **Evaluator-Optimizer Pattern**: Analytical queries trigger iterative evaluation and refinement loops for quality improvement.
-  - **Orchestrator-Worker Pattern**: Complex queries are broken into sub-topics and researched in parallel, then synthesized.
-- Prompts for Gemini, Grok, and Azure OpenAI follow best practices: system messages set context, user prompts are passed as `prompt`, and sources/citations are extracted when available.
-- For Gemini, use Google Search grounding for web research. For Grok, use `search_parameters` for live search and citations. For Azure OpenAI, set `reasoning_effort` for o3 models.
+## Critical Workflows
+```bash
+# Development
+npm install && npm run dev
+# Add API keys to .env.local (Gemini always available, Grok/Azure require keys)
 
-## Developer Workflows
-- **Install & Run:**
-  - `npm install`
-  - Add API keys to `.env.local` (see `README.md`)
-  - `npm run dev` to start locally
-- **Build:**
-  - `npm run build` (outputs to `dist/`)
-- **Lint:**
-  - `npm run lint` or `npm run lint:fix`
-- **Preview:**
-  - `npm run preview`
+# Build & Deploy
+npm run build     # outputs to dist/
+npm run preview   # test production build
+```
 
-## Project-Specific Conventions
-- Always use `ResearchGraphManager` for graph mutations. Do not manipulate graph state directly.
-- Always pass and display sources for each research step. Example from `App.tsx`:
-  ```tsx
-  <ul>
-    {sources.map(src => <li><a href={src.url}>{src.name}</a></li>)}
-  </ul>
-  ```
-- UI state (selection, zoom, pan) is managed via React hooks.
-- All environment-specific secrets must go in `.env.local` (gitignored).
+## Agent Orchestration Patterns
+**Context Layer System:** Research flows through write→select→compress→isolate layers based on paradigm (dolores/teddy/bernard/maeve).
+
+**Progress State Machine:** `App.tsx` tracks: analyzing→routing→researching→evaluating→synthesizing with adaptive timeouts for O3 models.
+
+**LangGraph Implementation:** Router patterns classify queries, orchestrator-worker breaks complex research into parallel sub-topics.
+
+## Data Flow Conventions
+**Research Steps as Graph Nodes:**
+```tsx
+// Always track parent-child relationships
+graphManager.addNode(step, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
+lastNodeIdRef.current = step.id;
+```
+
+**Source Provenance:** Every agent call returns `{ text, sources }`. UI always displays sources:
+```tsx
+{sources.map(src => <li><a href={src.url}>{src.name}</a></li>)}
+```
+
+**Progress Tracking:** Use `onProgress?.('tool_used:toolName')` to trigger FunctionCallDock updates and timeouts.
 
 ## Integration Points
-- **Gemini, Grok/XAI, Azure OpenAI**: API keys required, see `README.md` and `.env.local`. Gemini is the default and supports Google Search grounding.
-- **Graph Layout**: See `src/utils/graphLayout.ts` for layout engine details.
-- **Export**: Use `src/utils/exportUtils.ts` for formatting durations and exporting data.
+**Model Selection:** Dynamic based on API key availability (`constants.ts`). Gemini fallback, O3 gets 4x timeout multipliers.
 
-## Examples
-- Add a research step: `ResearchGraphManager.addNode(step, parentId, metadata)`
-- Mark an error: `ResearchGraphManager.markNodeError(nodeId, errorMessage)`
-- Export a graph: `generateMermaidDiagram(manager)`
+**Timeout Management:** `TIMEOUTS` constant defines phase-specific values. Progress timeouts prevent hanging with fallback advancement.
 
----
-For questions or unclear patterns, review `README.md`, `src/researchGraph.ts`, `src/App.tsx`, and main UI components. Ask for feedback if any workflow or pattern is ambiguous or incomplete.
+**Export/Visualization:** `generateMermaidDiagram(manager)` for graph export, `exportUtils.ts` for markdown/JSON/CSV formats.
+
+## Project-Specific Patterns
+- Graph mutations only via `ResearchGraphManager` methods
+- Paradigm probabilities drive context density and layer sequencing
+- All secrets in `.env.local` (gitignored)
+- Function calls tracked in shared context for dock visualization
+- Error edges styled differently in graph visualization
+
+**Key Files:** `App.tsx` (orchestrator), `researchGraph.ts` (state), `types.ts` (contracts), `constants.ts` (config)

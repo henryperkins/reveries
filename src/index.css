@@ -1,3 +1,9 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+@import "./styles/dark-mode.css";
+/* Dark-theme overrides − keeps comment but now comes after the import */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -368,17 +374,46 @@
 /* Unified spacing utilities */
 /* These classes standardize padding & gap across components, replacing ad-hoc inline styles */
 @layer utilities {
-  /* Padding */
-  .pad-xs { @apply p-1; }
-  .pad-sm { @apply p-2; }
-  .pad-md { @apply p-4; }
-  .pad-lg { @apply p-6; }
-  .pad-xl { @apply p-8; }
 
-  /* Gap (flex/grid) */
-  .gap-xs { @apply gap-1; }
-  .gap-sm { @apply gap-2; }
-  .gap-md { @apply gap-4; }
-  .gap-lg { @apply gap-6; }
-  .gap-xl { @apply gap-8; }
+    /* Padding */
+    .pad-xs {
+        @apply p-1;
+    }
+
+    .pad-sm {
+        @apply p-2;
+    }
+
+    .pad-md {
+        @apply p-4;
+    }
+
+    .pad-lg {
+        @apply p-6;
+    }
+
+    .pad-xl {
+        @apply p-8;
+    }
+
+    /* Gap (flex/grid) */
+    .gap-xs {
+        @apply gap-1;
+    }
+
+    .gap-sm {
+        @apply gap-2;
+    }
+
+    .gap-md {
+        @apply gap-4;
+    }
+
+    .gap-lg {
+        @apply gap-6;
+    }
+
+    .gap-xl {
+        @apply gap-8;
+    }
 }
