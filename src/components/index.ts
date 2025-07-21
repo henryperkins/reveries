@@ -10,6 +10,11 @@ export { ContextDensityBar } from './ContextDensityBar';
 export { FunctionCallDock } from './FunctionCallDock';
 export { SemanticSearch } from './SemanticSearch';
 export { SessionHistoryBrowser } from './SessionHistoryBrowser';
+export { TopNavigation } from './TopNavigation';
+export { ReverieHeader } from './ReverieHeader';
+export { ResearchView } from './ResearchView';
+export { SessionsView } from './SessionsView';
+export { AnalyticsView } from './AnalyticsView';
 export {
   ParadigmProbabilityBar,
   ContextLayerProgress,

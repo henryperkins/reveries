@@ -1,4 +1,5 @@
 import { HostParadigm } from '@/types';
+import { RateLimiter, estimateTokens } from '../rateLimiter';
 
 interface IsolationTask {
   id: string;
@@ -44,6 +45,7 @@ interface ArtifactStub {
 export class IsolateLayerService {
   private static instance: IsolateLayerService;
   private tasks: Map<string, IsolationTask> = new Map();
+  private rateLimiter = RateLimiter.getInstance();
 
   private constructor() {}
 
@@ -175,7 +177,7 @@ export class IsolateLayerService {
       },
       bernard: {
         memoryLimit: '3GB',
-        timeout: 60000, // Deep analytical processing
+        timeout: 240000, // Deep analytical processing - increased to match synthesis phase
         networkAccess: false, // Focused internal analysis
         isolationLevel: 'maximum'
       },
@@ -209,6 +211,10 @@ export class IsolateLayerService {
     if (!e2bApiKey) {
       throw new Error('E2B API key not available');
     }
+
+    // Apply rate limiting for E2B API call
+    const estimatedTokens = estimateTokens(code) + 200; // Add overhead for sandbox execution
+    await this.rateLimiter.waitForCapacity(estimatedTokens);
 
     // Mock E2B integration - replace with real E2B SDK call
     const response = await fetch('https://api.e2b.dev/v1/sandboxes/execute', {

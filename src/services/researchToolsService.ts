@@ -1,6 +1,7 @@
 import { QueryType } from '@/types';
 import { FunctionCall, FunctionDefinition } from './functionCallingService';
 import { Citation } from '@/types';
+import { RateLimiter, estimateTokens } from './rateLimiter';
 
 export interface ResearchTool {
   name: string;
@@ -13,6 +14,7 @@ export interface ResearchTool {
 export class ResearchToolsService {
   private static instance: ResearchToolsService;
   private tools: Map<string, ResearchTool> = new Map();
+  private rateLimiter = RateLimiter.getInstance();
 
   private constructor() {
     this.initializeTools();
@@ -60,6 +62,10 @@ export class ResearchToolsService {
         const searchService = SearchProviderService.getInstance();
         
         try {
+          // Apply rate limiting for external search API
+          const estimatedTokens = estimateTokens(_args.query || '') + 100; // Add overhead for API call
+          await this.rateLimiter.waitForCapacity(estimatedTokens);
+          
           const searchOptions: any = {
             maxResults: 20,
             safe: true
@@ -150,7 +156,11 @@ export class ResearchToolsService {
           const { SearchProviderService } = await import('./search/SearchProviderService');
           const searchService = SearchProviderService.getInstance();
           
+          // Apply rate limiting for search
           const academicQuery = `${_args.query} filetype:pdf site:arxiv.org OR site:pubmed.ncbi.nlm.nih.gov OR site:scholar.google.com`;
+          const estimatedTokens = estimateTokens(academicQuery) + 100;
+          await this.rateLimiter.waitForCapacity(estimatedTokens);
+          
           const response = await searchService.search(academicQuery, {
             maxResults: _args.limit || 10,
             domains: ['arxiv.org', 'pubmed.ncbi.nlm.nih.gov', 'ncbi.nlm.nih.gov'],
@@ -546,6 +556,12 @@ export class ResearchToolsService {
     if (!tool) {
       throw new Error(`Unknown tool: ${call.name}`);
     }
+    
+    // Apply a base rate limit for all tool executions
+    // Individual tools may apply additional rate limiting as needed
+    const baseTokenEstimate = 50; // Base cost for any tool execution
+    await this.rateLimiter.waitForCapacity(baseTokenEstimate);
+    
     return tool.execute(call.arguments);
   }
 
@@ -970,6 +986,9 @@ Choose the appropriate style based on your academic or professional requirements
   // Academic search helper methods
   private async searchArxiv(query: string, limit: number): Promise<any[]> {
     try {
+      // Apply rate limiting for external API call
+      await this.rateLimiter.waitForCapacity(100); // Estimate for arXiv API call
+      
       // Simple arXiv search using their API
       const searchUrl = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=${limit}`;
       

@@ -30,7 +30,8 @@ export class WebResearchService {
     userQuery: string,
     model: ModelType,
     effort: EffortType,
-    generateText: (prompt: string, model: ModelType, effort: EffortType) => Promise<{ text: string; sources?: Citation[] }>
+    generateText: (prompt: string, model: ModelType, effort: EffortType) => Promise<{ text: string; sources?: Citation[] }>,
+    onProgress?: (message: string) => void
   ): Promise<string[]> {
     // Check for learned query suggestions first
     const learnedSuggestions = this.memoryService.getQuerySuggestions(userQuery);
@@ -43,6 +44,12 @@ export class WebResearchService {
 
     const result = await generateText(prompt, model, effort);
     const queries = result.text.split(',').map(q => q.trim()).filter(q => q.length > 0);
+
+    // Report progress
+    onProgress?.(`Generated ${queries.length} search queries for: ${userQuery}`);
+    queries.forEach((query, index) => {
+      onProgress?.(`Query ${index + 1}: ${query}`);
+    });
 
     // Learn from this query
     this.memoryService.learnFromQuery(userQuery, 'exploratory', queries);

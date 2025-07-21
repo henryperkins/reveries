@@ -104,7 +104,8 @@ export class ResearchStrategyService {
         `${query} site:wikipedia.org OR site:.gov OR site:.edu`,
         model,
         effort,
-        generateText
+        generateText,
+        onProgress
       );
 
       // Perform web research

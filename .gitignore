@@ -42,3 +42,4 @@ _diag/
 _work/
 .env
 .env
+.aider*

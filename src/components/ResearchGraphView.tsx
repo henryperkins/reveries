@@ -82,16 +82,19 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
   const graphVersion = graphManager?.getVersion() || 0;
   const layoutData = useMemo<LayoutData>(() => {
     if (!graphManager) {
+      console.log('No graphManager provided to ResearchGraphView');
       return { nodes: [], edges: [], version: 0 };
     }
 
     try {
       const graphData = graphManager.exportForVisualization();
+      console.log('Graph data for visualization:', graphData);
       const { nodes, edges } = layoutEngine.current.layoutGraph(
         graphData.nodes,
         graphData.edges
       );
 
+      console.log('Layout data generated:', { nodes: nodes.length, edges: edges.length });
       return {
         nodes,
         edges,
@@ -107,7 +110,11 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
   useEffect(() => {
     if (!graphManager || !isOpen) return;
 
+    console.log('Setting up graph subscription. GraphManager:', graphManager);
+    console.log('GraphManager has subscribe method:', typeof graphManager.subscribe === 'function');
+
     const handleGraphEvent = () => {
+      console.log('Graph event received!');
       // Update stats immediately
       setStats(graphManager.getStatistics());
       // Mark for redraw
@@ -115,7 +122,12 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
     };
 
     // Subscribe to graph events
-    unsubscribeRef.current = graphManager.subscribe(handleGraphEvent);
+    if (typeof graphManager.subscribe === 'function') {
+      unsubscribeRef.current = graphManager.subscribe(handleGraphEvent);
+      console.log('Subscribed to graph events');
+    } else {
+      console.error('GraphManager does not have subscribe method!');
+    }
 
     return () => {
       if (unsubscribeRef.current) {

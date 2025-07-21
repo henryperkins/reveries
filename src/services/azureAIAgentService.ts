@@ -4,7 +4,7 @@
  */
 
 import { EffortType, Citation, ModelType } from '@/types';
-import { RateLimiter } from './rateLimiter';
+import { RateLimiter, estimateTokens } from './rateLimiter';
 import { APIError, withRetry } from './errorHandler';
 import { ResearchUtilities } from './utils/ResearchUtilities';
 import { EnhancedResearchResults, EvaluationMetadata } from './research/types';
@@ -133,6 +133,9 @@ When responding:
     };
 
     const response = await withRetry(async () => {
+      // Apply rate limiting for Azure AI Agent API call
+      await this.rateLimiter.waitForCapacity(100); // Base cost for agent creation
+      
       const result = await fetch(`${this.config.projectEndpoint}/agents`, {
         method: 'POST',
         headers: {
@@ -169,7 +172,9 @@ When responding:
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<AgentResponse> {
-    await this.rateLimiter.waitForCapacity(0);
+    // Apply base rate limiting for the entire search operation
+    const estimatedQueryTokens = estimateTokens(query) + 500; // Add overhead for search
+    await this.rateLimiter.waitForCapacity(estimatedQueryTokens);
 
     onProgress?.('Initializing Azure AI Agent with Bing Search grounding...');
     const agentId = await this.initializeAgent(model);

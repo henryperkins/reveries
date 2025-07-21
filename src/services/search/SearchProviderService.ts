@@ -5,6 +5,7 @@
 
 import { Citation } from '@/types';
 import { getEnv } from '@/utils/getEnv';
+import { RateLimiter, estimateTokens } from '../rateLimiter';
 
 export interface SearchResult {
   title: string;
@@ -47,6 +48,7 @@ class BingSearchProvider implements SearchProvider {
   private apiKey: string;
   private endpoint: string;
   private rateLimit = { remaining: 1000, resetTime: Date.now() + 86400000 };
+  private rateLimiter = RateLimiter.getInstance();
 
   constructor(apiKey?: string, endpoint = 'https://api.bing.microsoft.com/v7.0/search') {
     this.apiKey = apiKey || getEnv('VITE_BING_SEARCH_API_KEY', 'BING_SEARCH_API_KEY') || '';
@@ -81,6 +83,10 @@ class BingSearchProvider implements SearchProvider {
     }
 
     try {
+      // Apply rate limiting for Bing API call
+      const estimatedTokens = estimateTokens(query) + 100; // Add overhead for API call
+      await this.rateLimiter.waitForCapacity(estimatedTokens);
+      
       const startTime = Date.now();
       const response = await fetch(`${this.endpoint}?${searchParams}`, {
         headers: {
@@ -186,6 +192,7 @@ class GoogleSearchProvider implements SearchProvider {
   private endpoint = 'https://www.googleapis.com/customsearch/v1';
   private rateLimit = { remaining: 100, resetTime: Date.now() + 86400000 };
   private dailyUsage = { count: 0, date: new Date().toDateString() };
+  private rateLimiter = RateLimiter.getInstance();
 
   constructor(apiKey?: string, searchEngineId?: string) {
     this.apiKey = apiKey || getEnv('VITE_GOOGLE_SEARCH_API_KEY', 'GOOGLE_SEARCH_API_KEY') || '';
@@ -246,6 +253,10 @@ class GoogleSearchProvider implements SearchProvider {
     }
 
     try {
+      // Apply rate limiting for Google API call
+      const estimatedTokens = estimateTokens(query) + 100; // Add overhead for API call
+      await this.rateLimiter.waitForCapacity(estimatedTokens);
+      
       const startTime = Date.now();
       const response = await fetch(`${this.endpoint}?${searchParams}`, {
         headers,
@@ -375,6 +386,7 @@ class DuckDuckGoProvider implements SearchProvider {
   name = 'duckduckgo';
   private endpoint = 'https://api.duckduckgo.com/';
   private rateLimit = { remaining: 1000, resetTime: Date.now() + 86400000 };
+  private rateLimiter = RateLimiter.getInstance();
 
   async isAvailable(): Promise<boolean> {
     return typeof fetch !== 'undefined';
@@ -392,6 +404,10 @@ class DuckDuckGoProvider implements SearchProvider {
     });
 
     try {
+      // Apply rate limiting for DuckDuckGo API call
+      const estimatedTokens = estimateTokens(query) + 50; // Lower overhead for DuckDuckGo
+      await this.rateLimiter.waitForCapacity(estimatedTokens);
+      
       const startTime = Date.now();
       const response = await fetch(`${this.endpoint}?${searchParams}`);
 

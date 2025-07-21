@@ -125,11 +125,10 @@ export const InputBar: React.FC<InputBarProps> = ({
   };
 
   return (
-    <div className="relative w-full">
-      <form onSubmit={handleSubmit} className="w-full">
-        <div className="relative flex items-end gap-2 p-4 bg-westworld-cream rounded-xl
-                      border-2 border-westworld-tan/30 focus-within:border-westworld-gold
-                      transition-colors duration-200">
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-4 z-30">
+      <div className="max-w-4xl mx-auto">
+        <form onSubmit={handleSubmit} className="w-full">
+          <div className="relative flex items-end gap-2">
           {/* Suggestion indicator */}
           {(suggestions.length > 0 || suggestionsLoading) && (
             <div className="absolute top-2 right-12 text-westworld-darkbrown/60">
@@ -149,32 +148,29 @@ export const InputBar: React.FC<InputBarProps> = ({
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
             placeholder={placeholder}
             disabled={disabled || isLoading}
-            className="flex-1 bg-transparent resize-none outline-none text-westworld-black
-                     placeholder:text-westworld-darkbrown/60 min-h-[24px] max-h-[200px]"
+            className="flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg resize-none outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 placeholder:text-gray-500 min-h-[24px] max-h-[200px]"
             rows={1}
             aria-label="Research question input"
             aria-expanded={showSuggestions}
             aria-haspopup="listbox"
           />
-          <button
-            type="submit"
-            disabled={!value.trim() || disabled || isLoading}
-            className="p-2 rounded-lg bg-westworld-gold text-westworld-black
-                     hover:bg-westworld-copper hover:text-westworld-white
-                     disabled:opacity-50 disabled:cursor-not-allowed
-                     transition-all duration-200 transform active:scale-95"
-            aria-label="Submit research question"
-          >
-            <PaperAirplaneIcon className="w-5 h-5" />
-          </button>
-        </div>
-      </form>
+            <button
+              type="submit"
+              disabled={!value.trim() || disabled || isLoading}
+              className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              aria-label="Submit research question"
+            >
+              <PaperAirplaneIcon className="w-5 h-5" />
+              <span className="hidden sm:inline">Submit</span>
+            </button>
+          </div>
+        </form>
 
-      {/* Suggestions dropdown */}
+      {/* Suggestions dropdown - positioned above input */}
       {showSuggestions && suggestions.length > 0 && (
         <div
-          className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg
-                   border border-gray-200 max-h-80 overflow-y-auto z-50"
+          className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-lg
+                   border border-gray-200 max-h-80 overflow-y-auto suggestions-dropdown"
           role="listbox"
         >
           <div className="p-2">
@@ -233,9 +229,10 @@ export const InputBar: React.FC<InputBarProps> = ({
         </div>
       )}
 
-      <p className="mt-2 text-xs text-westworld-darkbrown/60">
-        Press Enter to submit, Shift+Enter for new line, Tab to apply suggestions
-      </p>
+        <p className="mt-2 text-xs text-gray-500 text-center">
+          Press Enter to submit, Shift+Enter for new line, Tab to apply suggestions
+        </p>
+      </div>
     </div>
   );
 };

@@ -217,7 +217,8 @@ export class ComprehensiveResearchService {
             `${section.topic}: ${section.description}`,
             model,
             effort,
-            generateText
+            generateText,
+            onProgress
           );
 
           // Perform web research
@@ -436,7 +437,8 @@ export class ComprehensiveResearchService {
   async createWorkerTask(
     section: { topic: string; description: string },
     model: ModelType,
-    effort: EffortType
+    effort: EffortType,
+    onProgress?: (message: string) => void
   ): Promise<ResearchSection> {
     const generateText = this.modelProvider.generateText.bind(this.modelProvider);
 
@@ -445,7 +447,8 @@ export class ComprehensiveResearchService {
       `${section.topic}: ${section.description}`,
       model,
       effort,
-      generateText
+      generateText,
+      onProgress
     );
 
     // Perform research

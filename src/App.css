@@ -1,28 +1,49 @@
 /* App.css */
+
+/* Z-index scale definition */
+:root {
+    --z-base: 1;
+    --z-dropdown: 10;
+    --z-sticky: 20;
+    --z-fixed: 30;
+    --z-modal-backdrop: 40;
+    --z-modal: 50;
+    --z-notification: 60;
+    --z-tooltip: 70;
+}
+
 .app {
     min-height: 100vh;
-    background: linear-gradient(135deg, var(--color-westworld-cream) 0%, var(--color-westworld-beige) 100%);
     position: relative;
     overflow-x: hidden;
 }
 
-/* Main container spacing */
+/* Main container spacing - increased to prevent content being hidden */
 main {
-    @apply scrollbar-westworld;
     min-height: calc(100vh - 80px);
-    padding-bottom: 120px;
+    padding-bottom: 120px; /* Space for fixed input bar */
 }
 
 /* Research container improvements */
 .research-container {
-    @apply bg-white/80 backdrop-blur-sm rounded-lg p-8 shadow-lg;
-    @apply border border-westworld-tan/20 transition-all duration-300;
-    @apply hover:shadow-xl;
+    @apply space-y-6;
+}
+
+/* Progress meter container - new positioning class */
+.progress-meter-container {
+    position: fixed;
+    bottom: 80px; /* Above input bar with proper spacing */
+    left: 0;
+    right: 0;
+    z-index: var(--z-sticky);
+    padding: 0 1rem;
 }
 
 /* Progress bar container styling */
 .progress-bar-container {
-    @apply fixed bottom-40 left-0 right-0 h-1 bg-westworld-tan/20 z-30;
+    @apply fixed left-0 right-0 h-1 bg-amber-200;
+    bottom: 80px;
+    z-index: var(--z-sticky);
 }
 
 .progress-bar-fill {
@@ -34,10 +55,16 @@ main {
 
 /* Input bar positioning */
 .input-bar {
-    @apply fixed bottom-0 left-0 right-0 z-30;
+    @apply fixed bottom-0 left-0 right-0;
     @apply bg-westworld-cream/95 backdrop-blur-sm;
     @apply border-t border-westworld-tan/30 p-4;
     @apply shadow-[0_-5px_20px_rgba(0,0,0,0.1)];
+    z-index: var(--z-fixed);
+}
+
+/* Suggestions dropdown */
+.suggestions-dropdown {
+    z-index: calc(var(--z-fixed) + 5); /* Between fixed and modal */
 }
 
 /* Fix component visibility and z-index stacking */
@@ -46,7 +73,15 @@ main {
 .btn-primary,
 .btn-secondary {
     position: relative;
-    z-index: 1;
+    z-index: var(--z-base);
+}
+
+/* Paradigm Dashboard positioning */
+.paradigm-dashboard {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: var(--z-sticky);
 }
 
 /* Modal and overlay improvements */
@@ -54,7 +89,7 @@ main {
     position: fixed;
     inset: 0;
     background-color: rgba(0, 0, 0, 0.6);
-    z-index: 50;
+    z-index: var(--z-modal);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -115,7 +150,7 @@ button:active:not(:disabled) {
 /* Responsive adjustments */
 @media (max-width: 768px) {
     main {
-        padding-bottom: 160px; /* Extra space for mobile progress bar */
+        padding-bottom: 140px; /* Adjusted for mobile */
     }
 
     .research-container {
@@ -128,8 +163,9 @@ button:active:not(:disabled) {
     }
     
     /* Mobile progress bar positioning */
-    .progress-bar-container {
-        @apply bottom-44; /* More space on mobile */
+    .progress-bar-container,
+    .progress-meter-container {
+        bottom: 80px; /* Closer to input bar on mobile */
     }
 }
 

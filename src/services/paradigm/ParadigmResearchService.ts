@@ -250,7 +250,7 @@ export class ParadigmResearchService {
           async (task, ctx) => {
             // Execute a focused sub-research task
             const generateText = this.modelProvider.generateText.bind(this.modelProvider);
-            const subQueries = await this.webResearchService.generateSearchQueries(task, ctx.model, ctx.effort, generateText);
+            const subQueries = await this.webResearchService.generateSearchQueries(task, ctx.model, ctx.effort, generateText, onProgress);
             const subResearch = await this.webResearchService.performWebResearch(subQueries, ctx.model, ctx.effort, generateText);
             return subResearch;
           }

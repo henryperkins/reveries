@@ -8,7 +8,7 @@ import { ReverieHeader } from '@/components/ReverieHeader'
 import { ResearchView } from '@/components/ResearchView'
 import { SessionsView } from '@/components/SessionsView'
 import { AnalyticsView } from '@/components/AnalyticsView'
-import { InputBar, ErrorDisplay, ParadigmIndicator, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress, Controls } from '@/components'
+import { InputBar, ErrorDisplay, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress, Controls, ParadigmIndicator } from '@/components'
 import ResearchGraphView from '@/components/ResearchGraphView';
 import { ProgressMeter } from '@/components/atoms'
 import { usePersistentState } from '@/hooks/usePersistentState'
@@ -279,6 +279,7 @@ const App: React.FC = () => {
       // Add to graph and track as root node
       graphManager.addNode(initialStep);
       lastNodeIdRef.current = initialStep.id;
+      console.log('Added initial node to graph. Total nodes:', graphManager.getNodes().length);
 
       // Process with enhanced research agent using processQuery
       const result = await researchAgent.processQuery(
@@ -318,6 +319,33 @@ const App: React.FC = () => {
             // Track tool usage for tools view
             addToolUsed(toolName);
 
+            // Create research step for search tools
+            if (toolName.includes('search') || toolName === 'web_search' || 
+                toolName === 'bing_search' || toolName === 'google_search') {
+              setResearch(prev => {
+                const existingSearchStep = prev.find(step => 
+                  step.type === ResearchStepType.WEB_RESEARCH && step.isSpinning
+                );
+                
+                if (!existingSearchStep) {
+                  const newStep: ResearchStep = {
+                    id: crypto.randomUUID(),
+                    title: 'Web Search',
+                    icon: () => null,
+                    content: `Performing ${toolName.replace(/_/g, ' ')}...`,
+                    timestamp: new Date().toISOString(),
+                    type: ResearchStepType.WEB_RESEARCH,
+                    sources: [],
+                    isSpinning: true
+                  };
+                  graphManager.addNode(newStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
+                  lastNodeIdRef.current = newStep.id;
+                  return [...prev, newStep];
+                }
+                return prev;
+              });
+            }
+
             // Fallback completion timeout for operations without explicit completion signal
             timeoutManager.set(`tool-fallback-${toolName}`, () => {
               // Context update
@@ -353,9 +381,71 @@ const App: React.FC = () => {
           } else if (message.includes('Routing to') && message.includes('paradigm')) {
             updateProgressState('routing', message);
             startProgressTimeout('routing', TIMEOUTS.PROGRESS_ROUTING * multiplier);
-          } else if (message.includes('search queries') || message.includes('Comprehensive research')) {
+          } else if (message.includes('search queries') || message.includes('Comprehensive research') || 
+                     message.includes('Generated') || message.includes('queries for')) {
             updateProgressState('researching', message);
             startProgressTimeout('researching', TIMEOUTS.PROGRESS_RESEARCH * multiplier);
+            
+            // Create or update GENERATING_QUERIES step for search queries
+            if (message.includes('Generated') || message.includes('queries')) {
+              setResearch(prev => {
+                const existingQueryStep = prev.find(step => 
+                  step.type === ResearchStepType.GENERATING_QUERIES && step.isSpinning
+                );
+                
+                if (existingQueryStep) {
+                  return prev.map(step => 
+                    step.id === existingQueryStep.id 
+                      ? { ...step, content: step.content + '\n' + message }
+                      : step
+                  );
+                } else {
+                  const newStep: ResearchStep = {
+                    id: crypto.randomUUID(),
+                    title: 'Generating Search Queries',
+                    icon: () => null,
+                    content: message,
+                    timestamp: new Date().toISOString(),
+                    type: ResearchStepType.GENERATING_QUERIES,
+                    sources: [],
+                    isSpinning: true
+                  };
+                  graphManager.addNode(newStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
+                  lastNodeIdRef.current = newStep.id;
+                  return [...prev, newStep];
+                }
+              });
+            }
+          } else if (message.includes('Searching') || message.includes('Found') || 
+                     message.includes('results') || message.includes('web search')) {
+            // Handle web search progress
+            setResearch(prev => {
+              const existingSearchStep = prev.find(step => 
+                step.type === ResearchStepType.WEB_RESEARCH && step.isSpinning
+              );
+              
+              if (existingSearchStep) {
+                return prev.map(step => 
+                  step.id === existingSearchStep.id 
+                    ? { ...step, content: step.content + '\n' + message }
+                    : step
+                );
+              } else {
+                const newStep: ResearchStep = {
+                  id: crypto.randomUUID(),
+                  title: 'Web Research',
+                  icon: () => null,
+                  content: message,
+                  timestamp: new Date().toISOString(),
+                  type: ResearchStepType.WEB_RESEARCH,
+                  sources: [],
+                  isSpinning: true
+                };
+                graphManager.addNode(newStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
+                lastNodeIdRef.current = newStep.id;
+                return [...prev, newStep];
+              }
+            });
           } else if (message.includes('quality') || message.includes('evaluating') || message.includes('self-healing') ||
                      message.includes('evaluation') || message.includes('Research evaluation') ||
                      message.includes('completed, evaluating') || message.includes('enhance research quality')) {
@@ -556,8 +646,10 @@ const App: React.FC = () => {
   }, [setResearch, functionCallingService, graphManager]);
 
   const handleToggleGraph = useCallback(() => {
+    console.log('Toggling graph. Current nodes:', graphManager.getNodes().length);
+    console.log('Graph nodes:', graphManager.getNodes());
     setShowGraph(prev => !prev)
-  }, [])
+  }, [graphManager])
 
   const handleEnhancedModeChange = useCallback((enabled: boolean) => {
     setEnhancedMode(enabled)
@@ -586,7 +678,7 @@ const App: React.FC = () => {
 
   const handleLoadSession = useCallback((session: ResearchSession) => {
     // Load session data into current state
-    setResearch(session.steps)
+    setResearch(Array.isArray(session.steps) ? session.steps : [])
     setParadigm(session.paradigm || null)
     setParadigmProbabilities(session.paradigmProbabilities || null)
     setCurrentPhase(session.phase || 'discovery')
@@ -707,10 +799,10 @@ const App: React.FC = () => {
 
             <div className="research-container flex flex-col">
               <ResearchView 
-                steps={research}
+                steps={Array.isArray(research) ? research : []}
                 activeModel={currentModel}
                 confidence={paradigmProbabilities ? Math.max(...Object.values(paradigmProbabilities)) : 0}
-                sourceCount={research.flatMap(s => s.sources || []).length}
+                sourceCount={Array.isArray(research) ? research.flatMap(s => s.sources || []).length : 0}
                 paradigm={paradigm}
                 isLoading={isLoading}
                 progressState={progressState}

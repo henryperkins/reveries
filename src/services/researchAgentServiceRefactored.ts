@@ -238,7 +238,8 @@ export class ResearchAgentService {
                       task,
                       ctx.model,
                       ctx.effort,
-                      generateText
+                      generateText,
+                      onProgress
                     );
                     const subResearch = await this.webResearchService.performWebResearch(
                       subQueries,
@@ -337,10 +338,11 @@ export class ResearchAgentService {
   async generateSearchQueries(
     userQuery: string,
     model: ModelType,
-    effort: EffortType
+    effort: EffortType,
+    onProgress?: (message: string) => void
   ): Promise<string[]> {
     const gen = this.modelProvider.generateText.bind(this.modelProvider);
-    return this.webResearchService.generateSearchQueries(userQuery, model, effort, gen);
+    return this.webResearchService.generateSearchQueries(userQuery, model, effort, gen, onProgress);
   }
 
   async performWebResearch(

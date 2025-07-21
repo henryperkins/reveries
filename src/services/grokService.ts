@@ -1,5 +1,6 @@
 import { EffortType, Citation } from '@/types';
 import { getEnv } from '@/utils/getEnv';
+import { RateLimiter, estimateTokens } from './rateLimiter';
 
 export interface GrokResponse {
   text: string;
@@ -17,6 +18,7 @@ export class GrokService {
   private apiKey: string;
   private baseUrl: string = 'https://api.x.ai/v1';
   private static instance: GrokService;
+  private rateLimiter = RateLimiter.getInstance();
 
   private constructor() {
     // Resolve API key via unified helper
@@ -97,6 +99,10 @@ export class GrokService {
         requestBody.search_parameters = searchParams;
       }
 
+      // Apply rate limiting for Grok API call
+      const estimatedTokens = estimateTokens(prompt) + 1000; // Add overhead for completion
+      await this.rateLimiter.waitForCapacity(estimatedTokens);
+
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -154,6 +160,10 @@ export class GrokService {
       if (false) { // grok-4 doesn't support reasoning_effort
         requestBody.reasoning_effort = this.getReasoningEffort(effort);
       }
+
+      // Apply rate limiting for initial tool call
+      const estimatedTokens = estimateTokens(prompt) + 1000;
+      await this.rateLimiter.waitForCapacity(estimatedTokens);
 
       let response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
@@ -221,6 +231,9 @@ export class GrokService {
         if (false) { // grok-4 doesn't support reasoning_effort
           requestBody.reasoning_effort = this.getReasoningEffort(effort);
         }
+
+        // Apply rate limiting for follow-up response
+        await this.rateLimiter.waitForCapacity(500); // Smaller estimate for follow-up
 
         response = await fetch(`${this.baseUrl}/chat/completions`, {
           method: 'POST',
@@ -306,6 +319,10 @@ export class GrokService {
       if (false) { // grok-4 doesn't support reasoning_effort
         requestBody.reasoning_effort = this.getReasoningEffort(effort);
       }
+
+      // Apply rate limiting for search request
+      const estimatedTokens = estimateTokens(prompt) + 1000;
+      await this.rateLimiter.waitForCapacity(estimatedTokens);
 
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',

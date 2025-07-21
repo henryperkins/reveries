@@ -5,6 +5,7 @@
 
 import { HostParadigm, ParadigmProbabilities } from '@/types';
 import { getEnv } from '@/utils/getEnv';
+import { RateLimiter, estimateTokens } from '../rateLimiter';
 
 export interface EmbeddingVector {
   values: number[];
@@ -36,6 +37,7 @@ class OpenAIEmbeddingProvider implements EmbeddingProvider {
   name = 'openai';
   private apiKey: string;
   private baseUrl: string;
+  private rateLimiter = RateLimiter.getInstance();
 
   constructor(apiKey?: string, baseUrl = 'https://api.openai.com/v1') {
     this.apiKey = apiKey || getEnv('VITE_OPENAI_API_KEY', 'OPENAI_API_KEY') || '';
@@ -56,6 +58,10 @@ class OpenAIEmbeddingProvider implements EmbeddingProvider {
       throw new Error('OpenAI embedding provider not available');
     }
 
+    // Estimate tokens for rate limiting
+    const estimatedTokens = texts.reduce((sum, text) => sum + estimateTokens(text), 0);
+    await this.rateLimiter.waitForCapacity(estimatedTokens);
+
     try {
       const response = await fetch(`${this.baseUrl}/embeddings`, {
         method: 'POST',
@@ -75,6 +81,12 @@ class OpenAIEmbeddingProvider implements EmbeddingProvider {
       }
 
       const data = await response.json();
+      
+      // Record actual token usage if available
+      if (data.usage?.total_tokens) {
+        this.rateLimiter.recordTokensUsed(data.usage.total_tokens);
+      }
+      
       return data.data.map((item: OpenAIEmbeddingItem) => ({
         values: item.embedding,
         dimensions: item.embedding.length,
@@ -94,6 +106,7 @@ class AzureOpenAIEmbeddingProvider implements EmbeddingProvider {
   private endpoint: string;
   private deploymentName: string;
   private apiVersion: string;
+  private rateLimiter = RateLimiter.getInstance();
 
   constructor(apiKey?: string, endpoint?: string, deploymentName?: string) {
     this.apiKey = apiKey || getEnv('VITE_AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_API_KEY') || '';
@@ -120,6 +133,10 @@ class AzureOpenAIEmbeddingProvider implements EmbeddingProvider {
       throw new Error('Azure OpenAI embedding provider not available');
     }
 
+    // Estimate tokens for rate limiting
+    const estimatedTokens = texts.reduce((sum, text) => sum + estimateTokens(text), 0);
+    await this.rateLimiter.waitForCapacity(estimatedTokens);
+
     try {
       const url = `${this.endpoint}/openai/deployments/${this.deploymentName}/embeddings?api-version=${this.apiVersion}`;
       const response = await fetch(url, {
@@ -135,10 +152,36 @@ class AzureOpenAIEmbeddingProvider implements EmbeddingProvider {
       });
 
       if (!response.ok) {
+        // Handle rate limit errors
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('retry-after');
+          if (retryAfter) {
+            this.rateLimiter.penalize(parseInt(retryAfter, 10));
+          }
+        }
         throw new Error(`Azure OpenAI API error: ${response.statusText}`);
       }
 
       const data = await response.json();
+      
+      // Record actual token usage if available
+      if (data.usage?.total_tokens) {
+        this.rateLimiter.recordTokensUsed(data.usage.total_tokens);
+      }
+      
+      // Update rate limits from headers if available
+      const limitTokens = parseInt(response.headers.get('x-ratelimit-limit-tokens') ?? '', 10);
+      const limitRequests = parseInt(response.headers.get('x-ratelimit-limit-requests') ?? '', 10);
+      const burstTokens = parseInt(response.headers.get('x-ratelimit-burst-tokens') ?? '', 10);
+      
+      if (Number.isFinite(limitTokens) || Number.isFinite(limitRequests) || Number.isFinite(burstTokens)) {
+        this.rateLimiter.updateLimits({
+          maxTokensPerMinute: Number.isFinite(limitTokens) ? limitTokens : undefined,
+          maxRequestsPerMinute: Number.isFinite(limitRequests) ? limitRequests : undefined,
+          burstCapacity: Number.isFinite(burstTokens) ? burstTokens : undefined,
+        });
+      }
+      
       return data.data.map((item: OpenAIEmbeddingItem) => ({
         values: item.embedding,
         dimensions: item.embedding.length,
