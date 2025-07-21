@@ -1,0 +1,264 @@
+/* Component styles - organized by type */
+
+@layer components {
+  /* ===== BUTTONS ===== */
+  .btn {
+    @apply px-4 py-2 font-medium rounded-md transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary {
+    @apply bg-westworld-gold text-westworld-nearBlack;
+    @apply hover:bg-westworld-darkGold hover:shadow-lg;
+    @apply focus:ring-westworld-gold;
+  }
+  
+  .btn-secondary {
+    @apply bg-westworld-copper text-westworld-cream;
+    @apply hover:bg-westworld-darkCopper hover:shadow-lg;
+    @apply focus:ring-westworld-copper;
+  }
+  
+  .btn-ghost {
+    @apply bg-transparent text-westworld-brown border border-westworld-tan;
+    @apply hover:bg-westworld-tan hover:text-westworld-nearBlack;
+    @apply focus:ring-westworld-tan;
+  }
+  
+  .btn-danger {
+    @apply bg-westworld-rust text-westworld-cream;
+    @apply hover:bg-red-700 hover:shadow-lg;
+    @apply focus:ring-westworld-rust;
+  }
+  
+  .btn-sm {
+    @apply px-3 py-1.5 text-sm;
+  }
+  
+  .btn-lg {
+    @apply px-6 py-3 text-lg;
+  }
+  
+  .btn-icon {
+    @apply p-2 rounded-lg;
+  }
+  
+  /* ===== CARDS ===== */
+  .card {
+    @apply bg-westworld-cream rounded-lg shadow-md;
+    @apply border border-westworld-tan;
+    @apply transition-all duration-200;
+  }
+  
+  .card-hover {
+    @apply hover:shadow-xl hover:-translate-y-1;
+  }
+  
+  .card-header {
+    @apply px-6 py-4 border-b border-westworld-tan;
+  }
+  
+  .card-body {
+    @apply p-6;
+  }
+  
+  .card-footer {
+    @apply px-6 py-4 border-t border-westworld-tan bg-westworld-beige;
+  }
+  
+  /* ===== FORMS ===== */
+  .form-group {
+    @apply space-y-2;
+  }
+  
+  .form-label {
+    @apply block text-sm font-medium text-westworld-brown;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-2 bg-westworld-cream border border-westworld-tan rounded-md;
+    @apply text-westworld-nearBlack placeholder-westworld-brown/50;
+    @apply focus:outline-none focus:ring-2 focus:ring-westworld-gold focus:border-transparent;
+    @apply transition-all duration-200;
+  }
+  
+  .input-field:hover {
+    @apply border-westworld-brown;
+  }
+  
+  .input-error {
+    @apply border-westworld-rust focus:ring-westworld-rust;
+  }
+  
+  .form-error {
+    @apply text-sm text-westworld-rust mt-1;
+  }
+  
+  .textarea-field {
+    @apply input-field resize-y min-h-[100px];
+  }
+  
+  .select-field {
+    @apply input-field cursor-pointer;
+  }
+  
+  /* ===== BADGES ===== */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-primary {
+    @apply bg-westworld-gold/20 text-westworld-darkGold;
+  }
+  
+  .badge-secondary {
+    @apply bg-westworld-copper/20 text-westworld-darkCopper;
+  }
+  
+  .badge-success {
+    @apply bg-green-100 text-green-800;
+  }
+  
+  .badge-warning {
+    @apply bg-amber-100 text-amber-800;
+  }
+  
+  .badge-danger {
+    @apply bg-westworld-rust/20 text-westworld-rust;
+  }
+  
+  /* ===== MODALS ===== */
+  .modal-overlay {
+    @apply fixed inset-0 bg-westworld-nearBlack/50 backdrop-blur-sm;
+    @apply flex items-center justify-center p-4;
+    z-index: var(--z-modal-backdrop);
+  }
+  
+  .modal-content {
+    @apply bg-westworld-cream rounded-lg shadow-2xl;
+    @apply w-full max-w-lg max-h-[90vh] overflow-hidden;
+    @apply flex flex-col;
+    z-index: var(--z-modal);
+  }
+  
+  .modal-header {
+    @apply px-6 py-4 border-b border-westworld-tan;
+    @apply flex items-center justify-between;
+  }
+  
+  .modal-body {
+    @apply px-6 py-4 overflow-y-auto;
+  }
+  
+  .modal-footer {
+    @apply px-6 py-4 border-t border-westworld-tan;
+    @apply flex items-center justify-end space-x-3;
+  }
+  
+  /* ===== ALERTS ===== */
+  .alert {
+    @apply p-4 rounded-lg border;
+    @apply flex items-start space-x-3;
+  }
+  
+  .alert-info {
+    @apply bg-blue-50 border-blue-200 text-blue-800;
+  }
+  
+  .alert-success {
+    @apply bg-green-50 border-green-200 text-green-800;
+  }
+  
+  .alert-warning {
+    @apply bg-amber-50 border-amber-200 text-amber-800;
+  }
+  
+  .alert-danger {
+    @apply bg-red-50 border-red-200 text-red-800;
+  }
+  
+  /* ===== NAVIGATION ===== */
+  .nav-link {
+    @apply px-3 py-2 text-sm font-medium rounded-md;
+    @apply text-westworld-brown hover:text-westworld-nearBlack;
+    @apply hover:bg-westworld-tan/50;
+    @apply transition-all duration-200;
+  }
+  
+  .nav-link-active {
+    @apply bg-westworld-tan text-westworld-nearBlack;
+  }
+  
+  .breadcrumb {
+    @apply flex items-center space-x-2 text-sm;
+  }
+  
+  .breadcrumb-separator {
+    @apply text-westworld-tan;
+  }
+  
+  /* ===== PROGRESS ===== */
+  .progress-bar {
+    @apply w-full h-2 bg-westworld-tan rounded-full overflow-hidden;
+  }
+  
+  .progress-bar-fill {
+    @apply h-full bg-gradient-to-r from-westworld-gold to-westworld-copper;
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .progress-bar-striped {
+    background-image: linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.15) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.15) 50%,
+      rgba(255, 255, 255, 0.15) 75%,
+      transparent 75%,
+      transparent
+    );
+    background-size: 1rem 1rem;
+    animation: progress-bar-stripes 1s linear infinite;
+  }
+  
+  /* ===== TOOLTIPS ===== */
+  .tooltip {
+    @apply absolute bg-westworld-nearBlack text-westworld-cream;
+    @apply px-2 py-1 text-xs rounded;
+    @apply shadow-lg;
+    z-index: var(--z-tooltip);
+  }
+  
+  .tooltip-arrow {
+    @apply absolute w-0 h-0;
+    @apply border-4 border-transparent;
+  }
+  
+  .tooltip-top .tooltip-arrow {
+    @apply border-t-westworld-nearBlack;
+    @apply -bottom-2 left-1/2 -translate-x-1/2;
+  }
+  
+  /* ===== SKELETON LOADERS ===== */
+  .skeleton {
+    @apply bg-westworld-tan animate-pulse rounded;
+  }
+  
+  .skeleton-text {
+    @apply h-4 skeleton mb-2;
+  }
+  
+  .skeleton-title {
+    @apply h-6 skeleton mb-3 w-3/4;
+  }
+  
+  .skeleton-avatar {
+    @apply w-10 h-10 skeleton rounded-full;
+  }
+  
+  .skeleton-card {
+    @apply skeleton h-32;
+  }
+}

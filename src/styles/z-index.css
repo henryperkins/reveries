@@ -1,0 +1,262 @@
+/* Z-Index Management System */
+
+/* 
+ * Z-Index Scale Documentation
+ * ===========================
+ * 
+ * This system provides a consistent z-index hierarchy to prevent
+ * stacking conflicts and ensure predictable layering.
+ * 
+ * Scale:
+ * 0-9: Base content (cards, buttons, form elements)
+ * 10-19: Dropdowns and floating elements
+ * 20-29: Sticky elements (headers, sidebars)
+ * 30-39: Fixed UI elements (input bars, progress bars)
+ * 40-49: Modal backdrops and overlays
+ * 50-59: Modals and dialogs
+ * 60-69: Popovers
+ * 70-79: Tooltips
+ * 80-89: Notifications and toasts
+ * 90-99: System-critical elements (loading screens, error boundaries)
+ */
+
+@layer base {
+  :root {
+    /* Base level - normal document flow */
+    --z-auto: auto;
+    --z-0: 0;
+    --z-base: 1;
+    
+    /* Floating elements */
+    --z-dropdown: 10;
+    --z-dropdown-item: 11;
+    --z-autocomplete: 12;
+    
+    /* Sticky elements */
+    --z-sticky: 20;
+    --z-sticky-header: 21;
+    --z-sticky-sidebar: 22;
+    
+    /* Fixed UI elements */
+    --z-fixed: 30;
+    --z-fixed-input: 31;
+    --z-fixed-progress: 32;
+    --z-fixed-controls: 33;
+    
+    /* Overlays and backdrops */
+    --z-overlay: 40;
+    --z-modal-backdrop: 41;
+    --z-drawer-backdrop: 42;
+    
+    /* Modal content */
+    --z-modal: 50;
+    --z-modal-content: 51;
+    --z-drawer: 52;
+    --z-dialog: 53;
+    
+    /* Popovers */
+    --z-popover: 60;
+    --z-popover-arrow: 61;
+    
+    /* Tooltips */
+    --z-tooltip: 70;
+    --z-tooltip-arrow: 71;
+    
+    /* Notifications */
+    --z-notification: 80;
+    --z-toast: 81;
+    --z-alert: 82;
+    
+    /* System level */
+    --z-loading: 90;
+    --z-critical: 99;
+    --z-max: 9999;
+  }
+}
+
+/* ===== COMPONENT Z-INDEX ASSIGNMENTS ===== */
+@layer components {
+  /* Base elements */
+  .card,
+  .btn,
+  .input-field {
+    position: relative;
+    z-index: var(--z-base);
+  }
+  
+  /* Dropdown menus */
+  .dropdown-menu,
+  .suggestions-dropdown {
+    z-index: var(--z-dropdown);
+  }
+  
+  .dropdown-item {
+    z-index: var(--z-dropdown-item);
+  }
+  
+  /* Navigation */
+  .app-header,
+  .top-navigation {
+    z-index: var(--z-sticky-header);
+  }
+  
+  .sidebar {
+    z-index: var(--z-sticky-sidebar);
+  }
+  
+  /* Fixed UI elements */
+  .input-bar {
+    z-index: var(--z-fixed-input);
+  }
+  
+  .progress-bar-container {
+    z-index: var(--z-fixed-progress);
+  }
+  
+  .progress-meter-container {
+    z-index: var(--z-fixed-progress);
+  }
+  
+  .paradigm-dashboard {
+    z-index: var(--z-fixed-controls);
+  }
+  
+  /* Mobile bottom UI container */
+  .mobile-bottom-ui {
+    z-index: var(--z-fixed);
+  }
+  
+  /* Modals and overlays */
+  .modal-overlay {
+    z-index: var(--z-modal-backdrop);
+  }
+  
+  .modal-content {
+    z-index: var(--z-modal-content);
+  }
+  
+  .mobile-menu-overlay {
+    z-index: var(--z-drawer-backdrop);
+  }
+  
+  .mobile-menu-content {
+    z-index: var(--z-drawer);
+  }
+  
+  /* Context layer progress */
+  .context-layer-progress {
+    z-index: var(--z-modal);
+  }
+  
+  /* Tooltips */
+  .tooltip {
+    z-index: var(--z-tooltip);
+  }
+  
+  .tooltip-arrow {
+    z-index: var(--z-tooltip-arrow);
+  }
+  
+  /* Notifications */
+  .notification {
+    z-index: var(--z-notification);
+  }
+  
+  .toast {
+    z-index: var(--z-toast);
+  }
+  
+  /* Loading states */
+  .loading-overlay {
+    z-index: var(--z-loading);
+  }
+  
+  /* Graph view specific */
+  .graph-node {
+    z-index: var(--z-base);
+  }
+  
+  .graph-node:hover {
+    z-index: calc(var(--z-base) + 1);
+  }
+  
+  .graph-tooltip {
+    z-index: var(--z-tooltip);
+  }
+}
+
+/* ===== Z-INDEX UTILITIES ===== */
+@layer utilities {
+  /* Quick z-index utilities */
+  .z-auto { z-index: auto; }
+  .z-0 { z-index: 0; }
+  .z-base { z-index: var(--z-base); }
+  .z-dropdown { z-index: var(--z-dropdown); }
+  .z-sticky { z-index: var(--z-sticky); }
+  .z-fixed { z-index: var(--z-fixed); }
+  .z-modal { z-index: var(--z-modal); }
+  .z-tooltip { z-index: var(--z-tooltip); }
+  .z-notification { z-index: var(--z-notification); }
+  .z-max { z-index: var(--z-max); }
+  
+  /* Relative positioning utilities */
+  .z-above {
+    position: relative;
+    z-index: 1;
+  }
+  
+  .z-below {
+    position: relative;
+    z-index: -1;
+  }
+  
+  /* Stacking context utilities */
+  .isolate {
+    isolation: isolate;
+  }
+  
+  .isolate-auto {
+    isolation: auto;
+  }
+}
+
+/* ===== RESPONSIVE Z-INDEX ADJUSTMENTS ===== */
+@media (max-width: 768px) {
+  /* Adjust z-index for mobile-specific layouts */
+  .mobile-priority {
+    z-index: calc(var(--z-fixed) + 5);
+  }
+  
+  /* Ensure suggestions appear above mobile UI */
+  .suggestions-dropdown {
+    z-index: calc(var(--z-fixed) + 10);
+  }
+}
+
+/* ===== DEBUG MODE ===== */
+/* Enable with class="debug-z-index" on body */
+.debug-z-index * {
+  position: relative;
+}
+
+.debug-z-index *::before {
+  content: attr(class) " z:" var(--z-index, "auto");
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: 10px;
+  background: rgba(255, 0, 0, 0.9);
+  color: white;
+  padding: 2px 4px;
+  pointer-events: none;
+  z-index: var(--z-max);
+}
+
+/* ===== BEST PRACTICES ===== */
+/* 
+ * 1. Always use CSS variables for z-index values
+ * 2. Avoid arbitrary z-index values (999, 9999, etc.)
+ * 3. Create new stacking contexts with isolation when needed
+ * 4. Test z-index changes across all responsive breakpoints
+ * 5. Document any exceptions to the standard scale
+ */

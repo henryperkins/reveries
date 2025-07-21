@@ -1,0 +1,288 @@
+/* Responsive Design System */
+
+/* ===== BREAKPOINT UTILITIES ===== */
+@layer utilities {
+  /* Mobile-first breakpoint system */
+  
+  /* Extra small devices (phones < 475px) */
+  @media (max-width: 474px) {
+    .container-app {
+      @apply px-3;
+    }
+    
+    /* Reduce fixed element heights */
+    .input-bar {
+      @apply p-3;
+    }
+    
+    /* Stack elements vertically */
+    .flex-xs-col {
+      @apply flex-col;
+    }
+    
+    /* Hide non-essential elements */
+    .hide-xs {
+      @apply hidden;
+    }
+  }
+  
+  /* Small devices (phones >= 475px) */
+  @media (min-width: 475px) and (max-width: 639px) {
+    .container-app {
+      @apply px-4;
+    }
+  }
+  
+  /* Touch-friendly tap targets */
+  @media (hover: none) and (pointer: coarse) {
+    .btn,
+    .input-field,
+    .nav-link {
+      min-height: 44px; /* iOS recommended tap target */
+      @apply py-3;
+    }
+  }
+}
+
+/* ===== RESPONSIVE LAYOUT FIXES ===== */
+@layer components {
+  /* Mobile-optimized input bar */
+  @media (max-width: 768px) {
+    .input-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 0.75rem;
+      z-index: var(--z-fixed);
+      
+      /* Account for safe areas on modern phones */
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+    
+    /* Combine progress indicators into input bar */
+    .progress-meter-container {
+      position: relative;
+      bottom: auto;
+      margin-bottom: 0.5rem;
+    }
+    
+    .progress-bar-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      bottom: auto;
+    }
+  }
+  
+  /* Responsive main content */
+  @media (max-width: 768px) {
+    main {
+      /* Dynamic padding based on actual input bar height */
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+      min-height: calc(100vh - 80px);
+    }
+    
+    /* Reduce padding on mobile */
+    .research-container {
+      @apply p-3;
+    }
+    
+    .research-step {
+      @apply p-4 mb-4;
+    }
+  }
+  
+  /* Responsive navigation */
+  @media (max-width: 768px) {
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: var(--z-sticky);
+    }
+    
+    /* Move paradigm dashboard to navigation */
+    .paradigm-dashboard {
+      position: relative;
+      top: auto;
+      right: auto;
+      margin-top: 0.5rem;
+    }
+  }
+}
+
+/* ===== RESPONSIVE TYPOGRAPHY ===== */
+@layer base {
+  /* Fluid typography using clamp() */
+  @media (max-width: 768px) {
+    h1 {
+      font-size: clamp(1.5rem, 5vw, 2.25rem);
+    }
+    
+    h2 {
+      font-size: clamp(1.25rem, 4vw, 1.875rem);
+    }
+    
+    h3 {
+      font-size: clamp(1.125rem, 3.5vw, 1.5rem);
+    }
+    
+    p, .text-base {
+      font-size: clamp(0.875rem, 2.5vw, 1rem);
+    }
+    
+    .text-sm {
+      font-size: clamp(0.75rem, 2vw, 0.875rem);
+    }
+  }
+}
+
+/* ===== RESPONSIVE COMPONENTS ===== */
+@layer components {
+  /* Responsive cards */
+  @media (max-width: 640px) {
+    .card {
+      @apply p-4;
+    }
+    
+    .card-header {
+      @apply px-4 py-3;
+    }
+    
+    .card-body {
+      @apply p-4;
+    }
+    
+    .card-footer {
+      @apply px-4 py-3;
+    }
+  }
+  
+  /* Responsive modals */
+  @media (max-width: 768px) {
+    .modal-overlay {
+      @apply p-0;
+    }
+    
+    .modal-content {
+      @apply max-w-full max-h-full rounded-none;
+      height: 100vh;
+      width: 100vw;
+    }
+  }
+  
+  /* Responsive buttons */
+  @media (max-width: 475px) {
+    .btn {
+      @apply w-full text-sm;
+    }
+    
+    .btn-group {
+      @apply flex-col space-y-2;
+    }
+  }
+  
+  /* Responsive grid */
+  @media (max-width: 640px) {
+    .grid-dashboard,
+    .grid-sidebar {
+      @apply grid-cols-1;
+    }
+    
+    .grid-auto {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+/* ===== SUGGESTIONS DROPDOWN FIX ===== */
+@media (max-width: 768px) {
+  .suggestions-dropdown {
+    position: fixed;
+    bottom: calc(100% + 0.5rem);
+    left: 0.75rem;
+    right: 0.75rem;
+    max-height: 40vh; /* Limit height on mobile */
+  }
+  
+  /* When keyboard is visible (approximate) */
+  @media (max-height: 500px) {
+    .suggestions-dropdown {
+      position: fixed;
+      top: 3rem;
+      bottom: auto;
+      max-height: calc(100vh - 6rem);
+    }
+  }
+}
+
+/* ===== LANDSCAPE ORIENTATION FIXES ===== */
+@media (orientation: landscape) and (max-height: 500px) {
+  .input-bar {
+    @apply p-2;
+  }
+  
+  main {
+    padding-bottom: 60px;
+  }
+  
+  .hide-landscape-mobile {
+    @apply hidden;
+  }
+}
+
+/* ===== ACCESSIBILITY IMPROVEMENTS ===== */
+@media (prefers-reduced-motion: reduce) {
+  /* Already handled in animations.css */
+}
+
+/* High contrast mode improvements */
+@media (prefers-contrast: high) {
+  .card,
+  .btn,
+  .input-field {
+    @apply border-2;
+  }
+  
+  .text-westworld-brown {
+    @apply text-westworld-nearBlack;
+  }
+}
+
+/* ===== UTILITY CLASSES FOR RESPONSIVE DESIGN ===== */
+@layer utilities {
+  /* Responsive spacing */
+  .space-y-responsive > * + * {
+    margin-top: clamp(0.5rem, 2vw, 1.5rem);
+  }
+  
+  .gap-responsive {
+    gap: clamp(0.5rem, 2vw, 1.5rem);
+  }
+  
+  /* Responsive padding */
+  .p-responsive {
+    padding: clamp(0.75rem, 3vw, 1.5rem);
+  }
+  
+  .px-responsive {
+    padding-left: clamp(0.75rem, 3vw, 1.5rem);
+    padding-right: clamp(0.75rem, 3vw, 1.5rem);
+  }
+  
+  .py-responsive {
+    padding-top: clamp(0.75rem, 3vw, 1.5rem);
+    padding-bottom: clamp(0.75rem, 3vw, 1.5rem);
+  }
+  
+  /* Container with safe area support */
+  .safe-padding-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-padding-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}

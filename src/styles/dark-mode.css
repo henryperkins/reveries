@@ -1,0 +1,171 @@
+/* Dark Mode Styles */
+@layer base {
+  /* Dark mode color scheme */
+  [data-theme="dark"] {
+    /* Override design tokens for dark mode */
+    --color-westworld-cream: #1A1A1A;
+    --color-westworld-beige: #2A2A2A;
+    --color-westworld-tan: #3A3A3A;
+    --color-westworld-brown: #B87333;
+    --color-westworld-darkBrown: #D4AF37;
+    --color-westworld-nearBlack: #FAFAFA;
+    --color-westworld-black: #FFFFFF;
+    --color-westworld-gold: #F4CF57;
+    --color-westworld-darkGold: #E4BF47;
+    --color-westworld-rust: #D4733D;
+    --color-westworld-copper: #E89353;
+    --color-westworld-darkCopper: #D88343;
+    --color-westworld-white: #0A0A0A;
+
+    /* Adjusted shadows for dark mode */
+    --shadow-sm: 0 1px 2px 0 rgba(255, 255, 255, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(255, 255, 255, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(255, 255, 255, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(255, 255, 255, 0.1);
+  }
+
+  /* Automatic dark mode based on system preference */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      /* Copy dark mode tokens here for auto-detection */
+      --color-westworld-cream: #1A1A1A;
+      --color-westworld-beige: #2A2A2A;
+      --color-westworld-tan: #3A3A3A;
+      --color-westworld-brown: #B87333;
+      --color-westworld-darkBrown: #D4AF37;
+      --color-westworld-nearBlack: #FAFAFA;
+      --color-westworld-black: #FFFFFF;
+      --color-westworld-gold: #F4CF57;
+      --color-westworld-darkGold: #E4BF47;
+      --color-westworld-rust: #D4733D;
+      --color-westworld-copper: #E89353;
+      --color-westworld-darkCopper: #D88343;
+      --color-westworld-white: #0A0A0A;
+
+      --shadow-sm: 0 1px 2px 0 rgba(255, 255, 255, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(255, 255, 255, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(255, 255, 255, 0.1);
+      --shadow-xl: 0 20px 25px -5px rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+@layer components {
+  /* Dark mode specific component adjustments */
+  [data-theme="dark"] {
+    /* Adjust card backgrounds */
+    .card {
+      @apply bg-westworld-beige border-westworld-tan/50;
+    }
+
+    /* Input adjustments */
+    .input,
+    .textarea,
+    .select {
+      @apply bg-westworld-tan/50 border-westworld-tan;
+      @apply placeholder-westworld-copper/70;
+    }
+
+    /* Button adjustments */
+    .btn-secondary {
+      @apply bg-westworld-tan/50 border-westworld-copper;
+      @apply hover:bg-westworld-tan/70;
+    }
+
+    .btn-ghost {
+      @apply hover:bg-westworld-tan/30;
+    }
+
+    /* Code blocks */
+    .code-block {
+      @apply bg-westworld-white border-westworld-tan;
+    }
+
+    /* Skeleton loading */
+    .skeleton {
+      background: linear-gradient(
+        90deg,
+        var(--color-westworld-tan) 0%,
+        var(--color-westworld-beige) 20%,
+        var(--color-westworld-tan) 40%,
+        var(--color-westworld-tan) 100%
+      );
+    }
+
+    /* Scrollbar */
+    .custom-scrollbar::-webkit-scrollbar-track {
+      @apply bg-westworld-beige;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      @apply bg-westworld-gold/30;
+      @apply hover:bg-westworld-gold/50;
+    }
+
+    /* Tooltips */
+    .tooltip-content {
+      @apply bg-westworld-cream text-westworld-nearBlack;
+      @apply border border-westworld-tan;
+    }
+
+    /* Focus states */
+    :focus-visible {
+      outline-color: var(--color-westworld-gold);
+    }
+
+    /* Selection */
+    ::selection {
+      @apply bg-westworld-gold/40 text-westworld-cream;
+    }
+  }
+
+  /* Theme toggle button */
+  .theme-toggle {
+    @apply relative w-12 h-6 rounded-full;
+    @apply bg-westworld-tan transition-colors duration-300;
+    @apply cursor-pointer focus-ring;
+  }
+
+  .theme-toggle-thumb {
+    @apply absolute top-0.5 left-0.5 w-5 h-5 rounded-full;
+    @apply bg-westworld-cream transition-transform duration-300;
+    @apply flex items-center justify-center;
+  }
+
+  [data-theme="dark"] .theme-toggle {
+    @apply bg-westworld-gold/50;
+  }
+
+  [data-theme="dark"] .theme-toggle-thumb {
+    @apply translate-x-6 bg-westworld-nearBlack;
+  }
+
+  /* Smooth theme transition */
+  .theme-transition * {
+    @apply transition-colors duration-300;
+  }
+
+  /* Prevent transition on page load */
+  .no-transition * {
+    @apply !transition-none;
+  }
+}
+
+@layer utilities {
+  /* Dark mode utilities */
+  .dark-mode-invert {
+    filter: invert(1) hue-rotate(180deg);
+  }
+
+  [data-theme="dark"] .dark-mode-invert {
+    filter: none;
+  }
+
+  .dark-mode-opacity {
+    @apply opacity-90;
+  }
+
+  [data-theme="dark"] .dark-mode-opacity {
+    @apply opacity-100;
+  }
+}

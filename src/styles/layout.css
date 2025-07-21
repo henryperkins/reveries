@@ -1,0 +1,266 @@
+/* Layout-specific styles and responsive utilities */
+
+@layer components {
+  /* ===== APP LAYOUT ===== */
+  .app-container {
+    @apply min-h-screen bg-gradient-to-br from-westworld-cream via-westworld-beige to-westworld-tan;
+    @apply relative overflow-hidden;
+  }
+  
+  .app-header {
+    @apply fixed top-0 left-0 right-0;
+    @apply bg-westworld-cream/95 backdrop-blur-sm;
+    @apply border-b border-westworld-tan;
+    @apply shadow-sm;
+    z-index: var(--z-sticky);
+  }
+  
+  .app-main {
+    @apply pt-16; /* Account for fixed header */
+    @apply min-h-screen;
+  }
+  
+  .app-footer {
+    @apply bg-westworld-nearBlack text-westworld-cream;
+    @apply py-8 mt-auto;
+  }
+  
+  /* ===== CONTAINERS ===== */
+  .container-app {
+    @apply container mx-auto px-4 sm:px-6 lg:px-8;
+    @apply max-w-7xl;
+  }
+  
+  .container-narrow {
+    @apply container mx-auto px-4 sm:px-6 lg:px-8;
+    @apply max-w-4xl;
+  }
+  
+  .container-wide {
+    @apply container mx-auto px-4 sm:px-6 lg:px-8;
+    @apply max-w-screen-2xl;
+  }
+  
+  /* ===== SECTIONS ===== */
+  .section {
+    @apply py-12 sm:py-16 lg:py-20;
+  }
+  
+  .section-sm {
+    @apply py-8 sm:py-10 lg:py-12;
+  }
+  
+  .section-lg {
+    @apply py-16 sm:py-20 lg:py-24;
+  }
+  
+  /* ===== GRID LAYOUTS ===== */
+  .grid-auto {
+    @apply grid gap-6;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+  
+  .grid-dashboard {
+    @apply grid gap-6;
+    @apply grid-cols-1 md:grid-cols-2 lg:grid-cols-3;
+  }
+  
+  .grid-sidebar {
+    @apply grid gap-6;
+    @apply grid-cols-1 lg:grid-cols-[300px_1fr];
+  }
+  
+  /* ===== FLEX UTILITIES ===== */
+  .flex-center {
+    @apply flex items-center justify-center;
+  }
+  
+  .flex-between {
+    @apply flex items-center justify-between;
+  }
+  
+  .flex-start {
+    @apply flex items-center justify-start;
+  }
+  
+  .flex-end {
+    @apply flex items-center justify-end;
+  }
+  
+  /* ===== STICKY ELEMENTS ===== */
+  .sticky-top {
+    @apply sticky top-20; /* Below fixed header */
+    z-index: var(--z-sticky);
+  }
+  
+  .sticky-bottom {
+    @apply sticky bottom-0;
+    z-index: var(--z-sticky);
+  }
+  
+  /* ===== OVERLAYS ===== */
+  .overlay-dark {
+    @apply fixed inset-0 bg-westworld-nearBlack/50;
+    z-index: var(--z-modal-backdrop);
+  }
+  
+  .overlay-light {
+    @apply fixed inset-0 bg-westworld-cream/80;
+    z-index: var(--z-modal-backdrop);
+  }
+  
+  /* ===== SIDEBARS ===== */
+  .sidebar {
+    @apply w-64 bg-westworld-cream border-r border-westworld-tan;
+    @apply h-full overflow-y-auto;
+  }
+  
+  .sidebar-mobile {
+    @apply fixed inset-y-0 left-0 w-64;
+    @apply transform -translate-x-full;
+    @apply transition-transform duration-300 ease-in-out;
+    z-index: var(--z-fixed);
+  }
+  
+  .sidebar-mobile.open {
+    @apply translate-x-0;
+  }
+  
+  /* ===== RESPONSIVE UTILITIES ===== */
+  .hide-mobile {
+    @apply hidden sm:block;
+  }
+  
+  .show-mobile {
+    @apply block sm:hidden;
+  }
+  
+  .hide-tablet {
+    @apply hidden md:block;
+  }
+  
+  .show-tablet {
+    @apply block md:hidden;
+  }
+  
+  .hide-desktop {
+    @apply hidden lg:block;
+  }
+  
+  .show-desktop {
+    @apply block lg:hidden;
+  }
+  
+  /* ===== SPACING UTILITIES ===== */
+  .stack {
+    @apply flex flex-col;
+  }
+  
+  .stack > * + * {
+    margin-top: var(--stack-gap, 1rem);
+  }
+  
+  .stack-sm > * + * {
+    --stack-gap: 0.5rem;
+  }
+  
+  .stack-lg > * + * {
+    --stack-gap: 2rem;
+  }
+  
+  .cluster {
+    @apply flex flex-wrap items-center;
+    gap: var(--cluster-gap, 1rem);
+  }
+  
+  .cluster-sm {
+    --cluster-gap: 0.5rem;
+  }
+  
+  .cluster-lg {
+    --cluster-gap: 2rem;
+  }
+  
+  /* ===== RESPONSIVE PADDING ===== */
+  .responsive-padding {
+    @apply px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10;
+  }
+  
+  .responsive-padding-x {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+  
+  .responsive-padding-y {
+    @apply py-6 sm:py-8 lg:py-10;
+  }
+}
+
+/* ===== MEDIA QUERY UTILITIES ===== */
+@layer utilities {
+  /* Portrait orientation */
+  @media (orientation: portrait) {
+    .portrait\:hidden {
+      display: none;
+    }
+    
+    .portrait\:block {
+      display: block;
+    }
+  }
+  
+  /* Landscape orientation */
+  @media (orientation: landscape) {
+    .landscape\:hidden {
+      display: none;
+    }
+    
+    .landscape\:block {
+      display: block;
+    }
+  }
+  
+  /* High contrast mode */
+  @media (prefers-contrast: high) {
+    .high-contrast\:border-2 {
+      border-width: 2px;
+    }
+    
+    .high-contrast\:font-bold {
+      font-weight: 700;
+    }
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  body {
+    @apply bg-white text-black;
+  }
+  
+  .app-header,
+  .app-footer,
+  .sidebar {
+    display: none !important;
+  }
+  
+  .app-main {
+    padding-top: 0 !important;
+  }
+  
+  a {
+    text-decoration: underline;
+  }
+  
+  .btn,
+  button {
+    border: 1px solid currentColor;
+  }
+}

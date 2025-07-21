@@ -1,0 +1,81 @@
+/* Main entry point for all styles */
+
+/* Import all style modules in the correct order */
+@import './base.css';
+@import './design-tokens.css';
+@import './z-index.css';
+@import './typography.css';
+@import './components.css';
+@import './animations.css';
+@import './interactions.css';
+@import './layout.css';
+@import './responsive.css';
+@import './accessibility.css';
+
+/* Any app-specific overrides or custom styles go here */
+@layer utilities {
+  /* Custom app-specific utilities that don't fit in other files */
+  
+  /* Research-specific styles */
+  .research-node {
+    @apply relative p-4 bg-westworld-cream rounded-lg shadow-md;
+    @apply border-2 border-westworld-tan;
+    @apply transition-all duration-200;
+    @apply hover:shadow-lg hover:border-westworld-gold;
+  }
+  
+  .research-edge {
+    stroke: theme('colors.westworld.copper');
+    stroke-width: 2;
+    fill: none;
+  }
+  
+  /* Session-specific styles */
+  .session-card {
+    @apply card card-hover p-4;
+    @apply cursor-pointer;
+  }
+  
+  .session-active {
+    @apply border-westworld-gold bg-westworld-gold/10;
+  }
+  
+  /* Message styles */
+  .message-user {
+    @apply bg-westworld-tan/20 rounded-lg p-4;
+    @apply border-l-4 border-westworld-copper;
+  }
+  
+  .message-assistant {
+    @apply bg-westworld-cream rounded-lg p-4;
+    @apply border-l-4 border-westworld-gold;
+  }
+  
+  /* Code block styles */
+  .code-block {
+    @apply bg-westworld-nearBlack text-westworld-cream;
+    @apply rounded-md p-4 overflow-x-auto;
+    @apply font-mono text-sm;
+  }
+  
+  /* Status indicators */
+  .status-indicator {
+    @apply inline-block w-2 h-2 rounded-full;
+  }
+  
+  .status-online {
+    @apply bg-green-500 animate-pulse;
+  }
+  
+  .status-offline {
+    @apply bg-gray-500;
+  }
+  
+  .status-busy {
+    @apply bg-amber-500 animate-pulse-soft;
+  }
+  
+  .status-error {
+    @apply bg-westworld-rust animate-pulse;
+  }
+}

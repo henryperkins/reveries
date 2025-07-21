@@ -1,0 +1,278 @@
+/* Micro-interactions and Visual Polish */
+@layer components {
+  /* Loading States */
+  .skeleton {
+    @apply relative overflow-hidden bg-westworld-tan/20;
+    background: linear-gradient(
+      90deg,
+      var(--color-westworld-tan) 0%,
+      var(--color-westworld-cream) 20%,
+      var(--color-westworld-tan) 40%,
+      var(--color-westworld-tan) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .skeleton-text {
+    @apply skeleton h-4 rounded;
+  }
+
+  .skeleton-title {
+    @apply skeleton h-6 rounded;
+  }
+
+  .skeleton-avatar {
+    @apply skeleton w-10 h-10 rounded-full;
+  }
+
+  .skeleton-button {
+    @apply skeleton h-10 w-24 rounded-md;
+  }
+
+  /* Spinner Animations */
+  .spinner {
+    @apply inline-block w-5 h-5 border-2 border-westworld-gold border-t-transparent rounded-full;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .spinner-lg {
+    @apply w-8 h-8 border-3;
+  }
+
+  .spinner-sm {
+    @apply w-4 h-4;
+  }
+
+  /* Progress Indicators */
+  .progress-bar {
+    @apply relative h-2 bg-westworld-tan/30 rounded-full overflow-hidden;
+  }
+
+  .progress-bar-fill {
+    @apply absolute inset-y-0 left-0 bg-westworld-gold rounded-full;
+    transition: width 0.3s ease;
+  }
+
+  .progress-bar-indeterminate .progress-bar-fill {
+    @apply w-1/3;
+    animation: indeterminate 1.5s ease-in-out infinite;
+  }
+
+  @keyframes indeterminate {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+  }
+
+  /* Ripple Effect */
+  .ripple {
+    @apply relative overflow-hidden;
+  }
+
+  .ripple::before {
+    content: '';
+    @apply absolute inset-0 opacity-0;
+    background: radial-gradient(circle, var(--color-westworld-gold) 10%, transparent 10.01%);
+    background-repeat: no-repeat;
+    background-position: 50%;
+    transform: scale(10, 10);
+    transition: transform 0.5s, opacity 1s;
+  }
+
+  .ripple:active::before {
+    transform: scale(0, 0);
+    opacity: 0.3;
+    transition: 0s;
+  }
+
+  /* Hover Effects */
+  .hover-lift {
+    @apply transition-transform duration-200;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  .hover-grow {
+    @apply transition-transform duration-200;
+  }
+
+  .hover-grow:hover {
+    transform: scale(1.05);
+  }
+
+  .hover-glow {
+    @apply transition-shadow duration-200;
+  }
+
+  .hover-glow:hover {
+    @apply shadow-westworld-glow;
+  }
+
+  /* Focus Effects */
+  .focus-ring {
+    @apply transition-all duration-200;
+  }
+
+  .focus-ring:focus-visible {
+    @apply ring-2 ring-westworld-gold ring-offset-2 ring-offset-westworld-cream;
+  }
+
+  /* Smooth Reveal */
+  .reveal {
+    @apply opacity-0 translate-y-4;
+    animation: reveal 0.5s ease-out forwards;
+  }
+
+  .reveal-delay-1 {
+    animation-delay: 0.1s;
+  }
+
+  .reveal-delay-2 {
+    animation-delay: 0.2s;
+  }
+
+  .reveal-delay-3 {
+    animation-delay: 0.3s;
+  }
+
+  @keyframes reveal {
+    to {
+      @apply opacity-100 translate-y-0;
+    }
+  }
+
+  /* Pulse Dot */
+  .pulse-dot {
+    @apply relative inline-block w-2 h-2;
+  }
+
+  .pulse-dot::before {
+    content: '';
+    @apply absolute inset-0 bg-westworld-gold rounded-full;
+    animation: pulse-dot 1.5s ease-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0% {
+      @apply opacity-100;
+      transform: scale(1);
+    }
+    100% {
+      @apply opacity-0;
+      transform: scale(2.5);
+    }
+  }
+
+  /* Tooltip Animations */
+  .tooltip {
+    @apply relative;
+  }
+
+  .tooltip-content {
+    @apply absolute z-50 px-3 py-2 text-sm text-westworld-cream bg-westworld-nearBlack rounded-md;
+    @apply opacity-0 invisible transition-all duration-200;
+    @apply -translate-y-1;
+    white-space: nowrap;
+  }
+
+  .tooltip:hover .tooltip-content {
+    @apply opacity-100 visible translate-y-0;
+  }
+
+  .tooltip-top .tooltip-content {
+    @apply bottom-full left-1/2 -translate-x-1/2 mb-2;
+  }
+
+  .tooltip-bottom .tooltip-content {
+    @apply top-full left-1/2 -translate-x-1/2 mt-2;
+  }
+
+  .tooltip-left .tooltip-content {
+    @apply right-full top-1/2 -translate-y-1/2 mr-2;
+  }
+
+  .tooltip-right .tooltip-content {
+    @apply left-full top-1/2 -translate-y-1/2 ml-2;
+  }
+
+  /* Badge Animations */
+  .badge-ping {
+    @apply relative;
+  }
+
+  .badge-ping::before {
+    content: '';
+    @apply absolute -inset-1 bg-westworld-gold rounded-full opacity-75;
+    animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  /* Toggle Switch */
+  .toggle {
+    @apply relative inline-flex h-6 w-11 items-center rounded-full;
+    @apply bg-westworld-tan transition-colors duration-200;
+    @apply cursor-pointer;
+  }
+
+  .toggle-checked {
+    @apply bg-westworld-gold;
+  }
+
+  .toggle-thumb {
+    @apply inline-block h-4 w-4 transform rounded-full bg-white;
+    @apply transition-transform duration-200;
+    @apply translate-x-1;
+  }
+
+  .toggle-checked .toggle-thumb {
+    @apply translate-x-6;
+  }
+
+  /* Smooth Scroll */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+  }
+
+  /* Selection Styles */
+  ::selection {
+    @apply bg-westworld-gold/30 text-westworld-nearBlack;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-westworld-gold) var(--color-westworld-tan);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-westworld-tan/20 rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-westworld-gold/50 rounded-full;
+    @apply hover:bg-westworld-gold/70;
+  }
+
+  /* Reduced Motion Support */
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton,
+    .spinner,
+    .progress-bar-fill,
+    .ripple::before,
+    .hover-lift,
+    .hover-grow,
+    .reveal,
+    .pulse-dot::before,
+    .tooltip-content,
+    .badge-ping::before,
+    .toggle-thumb {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+}

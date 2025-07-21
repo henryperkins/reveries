@@ -1,0 +1,172 @@
+/* Design Tokens - Generated from designSystem.ts */
+
+@layer base {
+  :root {
+    /* ===== COLOR TOKENS ===== */
+    /* Westworld Theme Colors */
+    --color-westworld-cream: #FAFAFA;
+    --color-westworld-beige: #F5E6D3;
+    --color-westworld-tan: #D2B48C;
+    --color-westworld-brown: #A0522D;
+    --color-westworld-dark-brown: #654321;
+    --color-westworld-near-black: #1A1A1A;
+    --color-westworld-gold: #D4AF37;
+    --color-westworld-dark-gold: #B8941F;
+    --color-westworld-rust: #8B4513;
+    --color-westworld-copper: #B87333;
+    --color-westworld-dark-copper: #A05A2C;
+    --color-westworld-white: #FFFFFF;
+    
+    /* Semantic Colors */
+    --color-primary: var(--color-westworld-gold);
+    --color-primary-dark: var(--color-westworld-dark-gold);
+    --color-secondary: var(--color-westworld-copper);
+    --color-secondary-dark: var(--color-westworld-dark-copper);
+    --color-background: var(--color-westworld-beige);
+    --color-surface: var(--color-westworld-cream);
+    --color-text: var(--color-westworld-near-black);
+    --color-text-muted: var(--color-westworld-brown);
+    --color-border: var(--color-westworld-tan);
+    
+    /* State Colors */
+    --color-success: #10B981;
+    --color-success-light: #D1FAE5;
+    --color-warning: #F59E0B;
+    --color-warning-light: #FEF3C7;
+    --color-error: #EF4444;
+    --color-error-light: #FEE2E2;
+    --color-info: #3B82F6;
+    --color-info-light: #DBEAFE;
+    
+    /* ===== TYPOGRAPHY TOKENS ===== */
+    /* Font Families */
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-serif: 'Georgia', 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+    
+    /* Font Sizes */
+    --text-xs: 0.75rem;    /* 12px */
+    --text-sm: 0.875rem;   /* 14px */
+    --text-base: 1rem;     /* 16px */
+    --text-lg: 1.125rem;   /* 18px */
+    --text-xl: 1.25rem;    /* 20px */
+    --text-2xl: 1.5rem;    /* 24px */
+    --text-3xl: 1.875rem;  /* 30px */
+    --text-4xl: 2.25rem;   /* 36px */
+    --text-5xl: 3rem;      /* 48px */
+    
+    /* Font Weights */
+    --font-thin: 100;
+    --font-light: 300;
+    --font-normal: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+    --font-extrabold: 800;
+    
+    /* Line Heights */
+    --leading-none: 1;
+    --leading-tight: 1.25;
+    --leading-snug: 1.375;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.625;
+    --leading-loose: 2;
+    
+    /* ===== SPACING TOKENS ===== */
+    --space-0: 0;
+    --space-1: 0.25rem;   /* 4px */
+    --space-2: 0.5rem;    /* 8px */
+    --space-3: 0.75rem;   /* 12px */
+    --space-4: 1rem;      /* 16px */
+    --space-5: 1.25rem;   /* 20px */
+    --space-6: 1.5rem;    /* 24px */
+    --space-8: 2rem;      /* 32px */
+    --space-10: 2.5rem;   /* 40px */
+    --space-12: 3rem;     /* 48px */
+    --space-16: 4rem;     /* 64px */
+    --space-20: 5rem;     /* 80px */
+    --space-24: 6rem;     /* 96px */
+    
+    /* ===== BORDER RADIUS TOKENS ===== */
+    --radius-none: 0;
+    --radius-sm: 0.125rem;  /* 2px */
+    --radius-base: 0.25rem; /* 4px */
+    --radius-md: 0.375rem;  /* 6px */
+    --radius-lg: 0.5rem;    /* 8px */
+    --radius-xl: 0.75rem;   /* 12px */
+    --radius-2xl: 1rem;     /* 16px */
+    --radius-3xl: 1.5rem;   /* 24px */
+    --radius-full: 9999px;
+    
+    /* ===== SHADOW TOKENS ===== */
+    --shadow-none: none;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-base: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+    --shadow-glow: 0 0 10px rgba(212, 175, 55, 0.5);
+    --shadow-glow-lg: 0 0 20px rgba(212, 175, 55, 0.8), 0 0 30px rgba(212, 175, 55, 0.6);
+    
+    /* ===== Z-INDEX TOKENS ===== */
+    --z-auto: auto;
+    --z-0: 0;
+    --z-base: 1;
+    --z-dropdown: 10;
+    --z-sticky: 20;
+    --z-fixed: 30;
+    --z-modal-backdrop: 40;
+    --z-modal: 50;
+    --z-popover: 60;
+    --z-tooltip: 70;
+    --z-notification: 80;
+    --z-top: 90;
+    
+    /* ===== TRANSITION TOKENS ===== */
+    --duration-fast: 150ms;
+    --duration-base: 200ms;
+    --duration-slow: 300ms;
+    --duration-slower: 500ms;
+    
+    --timing-linear: linear;
+    --timing-ease: ease;
+    --timing-ease-in: ease-in;
+    --timing-ease-out: ease-out;
+    --timing-ease-in-out: ease-in-out;
+    --timing-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    
+    /* ===== BREAKPOINT TOKENS ===== */
+    --breakpoint-xs: 475px;
+    --breakpoint-sm: 640px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 1024px;
+    --breakpoint-xl: 1280px;
+    --breakpoint-2xl: 1536px;
+  }
+  
+  /* Dark theme overrides */
+  [data-theme="dark"] {
+    /* Color overrides for dark mode */
+    --color-background: var(--color-westworld-near-black);
+    --color-surface: #2A2A2A;
+    --color-text: var(--color-westworld-cream);
+    --color-text-muted: var(--color-westworld-tan);
+    --color-border: #3A3A3A;
+    
+    /* Adjusted semantic colors for dark mode */
+    --color-primary: var(--color-westworld-gold);
+    --color-primary-dark: var(--color-westworld-copper);
+    --color-secondary: var(--color-westworld-rust);
+    --color-secondary-dark: var(--color-westworld-dark-brown);
+    
+    /* Adjusted shadows for dark mode */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-base: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.7);
+  }
+}
