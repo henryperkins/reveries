@@ -390,12 +390,15 @@ export class ResearchAgentService {
       layerResults?: Record<string, ContextLayerResult>;
     }
   > {
+    console.log('📍 ResearchAgent.processQuery called with:', { query: query.substring(0, 50), model });
     try {
       // 1) Detect paradigm
+      console.log('🔍 Detecting paradigm...');
       const paradigmProbs = await this.paradigmClassifier.classify(query);
       const dominant = this.paradigmClassifier.dominant(paradigmProbs);
       const paradigm = dominant[0] ?? 'bernard';
       this.lastParadigmProbabilities = paradigmProbs;
+      console.log('✅ Paradigm detected:', paradigm, paradigmProbs);
 
       // 2) Context‑density for phase
       const phase = metadata?.phase ?? 'discovery';
@@ -406,8 +409,10 @@ export class ResearchAgentService {
       const layerSequence = this.contextEngineering.getLayerSequence(paradigm);
 
       // 4) Execute layers
+      console.log('🔄 Executing layers:', layerSequence);
       const layerResults: Record<string, ContextLayerResult> = {};
       for (const layer of layerSequence) {
+        console.log(`📊 Processing layer: ${layer}`);
         metadata?.onProgress?.(`layer_progress:${layer}`);
         metadata?.onProgress?.(`Executing ${layer} layer for ${paradigm} paradigm…`);
         const res = await this.executeContextLayer(layer, {
@@ -417,7 +422,7 @@ export class ResearchAgentService {
           layerResults,
           sources: undefined,
           content: undefined,
-          model,
+          model: model as ModelType,  // Ensure model is passed correctly
           effort,
           onProgress: metadata?.onProgress
         });

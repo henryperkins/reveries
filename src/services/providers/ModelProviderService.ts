@@ -97,6 +97,8 @@ export class ModelProviderService {
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<{ text: string; sources?: Citation[] }> {
+    console.log('🎯 ModelProvider.generateText called:', { model, promptLength: prompt.length });
+    
     if (ErrorBoundary.shouldBlock()) {
       throw new APIError('Too many errors occurred. Please try again later.', 'RATE_LIMIT', false);
     }
@@ -136,30 +138,33 @@ export class ModelProviderService {
           };
 
         case AZURE_O3_MODEL:
+          console.log('🎯 O3 MODEL SELECTED - Processing query with Azure O3');
           // Prioritize Azure AI Agent Service with Bing Search if available
           if (this.azureAIAgent) {
             onProgress?.('tool_used:azure_ai_agent');
-            console.log('Using Azure AI Agent Service with Bing Search grounding and enhancement pipeline');
+            console.log('✅ Using Azure AI Agent Service with O3 model (Bing Search grounding enabled)');
             try {
               const agentResult = await this.azureAIAgent.generateText(prompt, model, effort);
               onProgress?.(`tool_used:completed:azure_ai_agent:${startTime}`);
-              console.log(`Azure AI Agent returned ${agentResult.sources?.length || 0} sources with quality enhancement`);
+              console.log(`✅ O3 Azure AI Agent completed: ${agentResult.sources?.length || 0} sources returned`);
               return {
                 text: agentResult.text,
                 sources: agentResult.sources || []
               };
             } catch (error) {
-              console.warn('Azure AI Agent Service failed, falling back to Azure OpenAI:', error);
+              console.warn('⚠️ O3 Azure AI Agent Service failed, falling back to Azure OpenAI:', error);
               // Fall through to Azure OpenAI
             }
           }
           
           // Fallback to Azure OpenAI with agentic tools for research capabilities
+          console.log('📌 Falling back to Azure OpenAI O3 service');
           onProgress?.('tool_used:azure_openai');
           if (!AzureOpenAIService.isAvailable()) {
-            console.warn('Azure OpenAI not available, falling back to Gemini');
+            console.warn('❌ Azure OpenAI not available for O3, falling back to Gemini');
             return this.generateText(prompt, GENAI_MODEL_FLASH, effort, onProgress);
           }
+          console.log('✅ Azure OpenAI is available, getting instance...');
           const azureService = AzureOpenAIService.getInstance();
           
           // Get available research tools for agentic workflow
@@ -167,7 +172,7 @@ export class ModelProviderService {
           
           if (researchTools && researchTools.length > 0) {
             // Use agentic workflow with tools for enhanced research capabilities
-            console.log(`Using Azure O3 with ${researchTools.length} research tools for agentic workflow`);
+            console.log(`✅ Using Azure OpenAI O3 with ${researchTools.length} research tools for agentic workflow`);
             const azureResult = await azureService.generateResponseWithTools(
               prompt,
               researchTools,

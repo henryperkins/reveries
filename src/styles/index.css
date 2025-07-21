@@ -1,8 +1,12 @@
 /* Main entry point for all styles */
 
-/* Import all style modules in the correct order */
-@import './base.css';
+/* Import design tokens first (before Tailwind) */
 @import './design-tokens.css';
+
+/* Import Tailwind base */
+@import './base.css';
+
+/* Import all other style modules in the correct order */
 @import './z-index.css';
 @import './typography.css';
 @import './components.css';

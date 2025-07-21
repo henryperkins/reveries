@@ -38,9 +38,15 @@ export class ParadigmClassifier {
    * Classify prompt using ML embeddings or fallback to keyword matching
    */
   async classify(prompt: string): Promise<ParadigmProbabilities> {
+    console.log('🎯 ParadigmClassifier.classify called, useML:', this.useMLClassification);
     if (this.useMLClassification) {
       try {
-        return await this.classifyWithML(prompt);
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Paradigm classification timeout')), 5000)
+        );
+        const classificationPromise = this.classifyWithML(prompt);
+        return await Promise.race([classificationPromise, timeoutPromise]);
       } catch (error) {
         console.warn('ML classification failed, falling back to keywords:', error);
         this.useMLClassification = false;
@@ -55,8 +61,10 @@ export class ParadigmClassifier {
    * ML-based classification using semantic embeddings
    */
   private async classifyWithML(prompt: string): Promise<ParadigmProbabilities> {
+    console.log('📊 Starting ML classification...');
     try {
       const probabilities = await this.embeddingService.generateParadigmProbabilities(prompt);
+      console.log('✅ ML classification complete:', probabilities);
       
       // Apply confidence thresholding - if all probabilities are similar, apply some randomization
       const maxProb = Math.max(...Object.values(probabilities));

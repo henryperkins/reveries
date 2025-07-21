@@ -283,13 +283,32 @@ const App: React.FC = () => {
       console.log('Added initial node to graph. Total nodes:', graphManager.getNodes().length);
 
       // Process with enhanced research agent using processQuery
-      const result = await researchAgent.processQuery(
-        input,
-        currentModel,
-        {
-          phase: currentPhase,
-          onProgress: (message: string) => {
-          console.log('🔄 Research Progress:', message);
+      console.log('🚀 Processing query with model:', currentModel, { isO3: currentModel === 'o3' });
+      
+      // Check available services
+      try {
+        const { AzureOpenAIService } = await import('./services/azureOpenAIService');
+        const { AzureAIAgentService } = await import('./services/azureAIAgentService');
+        const azureOpenAIAvailable = AzureOpenAIService.isAvailable();
+        const azureAIAgentAvailable = AzureAIAgentService.isAvailable();
+        console.log('📋 Service availability:', {
+          azureOpenAI: azureOpenAIAvailable,
+          azureAIAgent: azureAIAgentAvailable,
+          currentModel
+        });
+      } catch (e) {
+        console.error('Failed to check service availability:', e);
+      }
+      
+      let result;
+      try {
+        result = await researchAgent.processQuery(
+          input,
+          currentModel,
+          {
+            phase: currentPhase,
+            onProgress: (message: string) => {
+            console.log('🔄 Research Progress:', message);
 
           // Handle tool usage tracking
           if (message.startsWith('tool_used:')) {
@@ -316,6 +335,7 @@ const App: React.FC = () => {
               context: `Processing ${input.substring(0, 100)}${input.length > 100 ? '...' : ''}`
             });
             liveCallIdMap.current[toolName] = ctxId;
+            console.log('📊 Added live call:', { toolName, ctxId, totalLiveCalls: liveCalls.length + 1 });
 
             // Track tool usage for tools view
             addToolUsed(toolName);
@@ -521,6 +541,11 @@ const App: React.FC = () => {
           }
         }
       )
+      } catch (error) {
+        console.error('❌ Error during O3 query processing:', error);
+        handleError(error);
+        return;
+      }
 
       updateProgressState('complete')
 
@@ -813,6 +838,15 @@ const App: React.FC = () => {
               />
 
               {/* Function Call Dock - shows both live and history */}
+              {(() => {
+                console.log('FunctionCallDock render check:', {
+                  enhancedMode,
+                  liveCalls: liveCalls.length,
+                  functionHistory: functionHistory.length,
+                  shouldRender: enhancedMode && (liveCalls.length > 0 || functionHistory.length > 0)
+                });
+                return null;
+              })()}
               {enhancedMode && (liveCalls.length > 0 || functionHistory.length > 0) && (
                 <div className="mt-4">
                   <FunctionCallDock

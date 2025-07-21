@@ -3,9 +3,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import design tokens */
-@import './design-tokens.css';
-
 /* Base HTML elements */
 @layer base {
   * {
