@@ -357,7 +357,7 @@ class GoogleSearchProvider implements SearchProvider {
 
       // Handle specific Google API errors according to REST API documentation
       if (!response.ok || (data as Record<string, unknown>).error) {
-        const error = (data as Record<string, unknown>).error || { code: response.status, message: response.statusText } as { code: number; message: string };
+        const error = ((data as Record<string, unknown>).error as { code: number; message: string }) || { code: response.status, message: response.statusText };
 
         // Handle quota exceeded errors specifically
         if (error.code === 403 && error.message?.includes('Quota exceeded')) {
@@ -499,7 +499,7 @@ class ExaSearchProvider implements SearchProvider {
         this.exaSDK = null;
         console.log('[ExaSearchProvider] Exa SDK not found, using direct HTTP calls');
       }
-    } catch (error) {
+    } catch (_error) {
       // SDK not available, fall back to HTTP calls
       console.log('[ExaSearchProvider] Exa SDK initialization failed, using direct HTTP calls');
       this.exaSDK = null;
@@ -982,8 +982,8 @@ class DuckDuckGoProvider implements SearchProvider {
 
   async search(query: string, _options: SearchOptions = {}): Promise<SearchResponse> {
     // Note: DuckDuckGo's API is very limited for web search
-    // This is mainly for instant answers and basic info
-    // options parameter is unused for DuckDuckGo API
+    // _options parameter is reserved for future use
+    void _options; // Suppress unused parameter warning
     const searchParams = new URLSearchParams({
       q: query,
       format: 'json',

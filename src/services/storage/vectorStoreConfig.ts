@@ -42,6 +42,13 @@ export interface VectorQueryResponse {
   }>;
 }
 
+interface VectorDatabaseRow {
+  id: string;
+  score: number;
+  metadata?: Record<string, unknown>;
+  embedding?: string;
+}
+
 // Type definitions for external libraries
 interface PineconeIndex {
   upsert(vectors: VectorUpsertRequest[]): Promise<void>;
@@ -215,12 +222,15 @@ export class PgVectorAdapter implements VectorStoreAdapter {
     const result = await this.pool.query(query, params);
 
     return {
-      matches: result.rows.map((row) => ({
-        id: row.id as string,
-        score: row.score as number,
-        metadata: request.includeMetadata ? row.metadata as Record<string, unknown> : undefined,
-        values: request.includeValues ? JSON.parse(row.embedding as string) as number[] : undefined
-      }))
+      matches: result.rows.map((row) => {
+        const typedRow = row as VectorDatabaseRow;
+        return {
+          id: typedRow.id,
+          score: typedRow.score,
+          metadata: request.includeMetadata ? typedRow.metadata : undefined,
+          values: request.includeValues && typedRow.embedding ? JSON.parse(typedRow.embedding) as number[] : undefined
+        };
+      })
     };
   }
 

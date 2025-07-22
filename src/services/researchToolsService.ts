@@ -1,13 +1,19 @@
 import { EffortType, ModelType } from '@/types';
-import { FunctionCall, FunctionDefinition } from './functionCallingService';
+import { FunctionCall, FunctionDefinition, FunctionParameter } from './functionCallingService';
 import { RateLimiter } from './rateLimiter';
+
+interface ToolParams {
+  type: 'object';
+  properties: Record<string, FunctionParameter>;
+  required: string[];
+}
 
 export interface ResearchTool {
   name: string;
   description: string;
   category: 'search' | 'analysis' | 'citation' | 'verification' | 'visualization' | 'knowledge';
-  parameters: any;
-  execute: (_args: any) => Promise<any>;
+  parameters: ToolParams;
+  execute: (_args: Record<string, unknown>) => Promise<unknown>;
 }
 
 export class ResearchToolsService {
@@ -37,18 +43,18 @@ export class ResearchToolsService {
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'Research query' },
-          depth: { type: 'string', enum: ['basic', 'standard', 'deep'], description: 'Research depth' }
+          query: { type: 'string', description: 'Research query' } as FunctionParameter,
+          depth: { type: 'string', enum: ['basic', 'standard', 'deep'], description: 'Research depth' } as FunctionParameter
         },
         required: ['query']
       },
-      execute: async (args: any) => {
+      execute: async (args: Record<string, unknown>) => {
         console.log('🔍 Executing comprehensive_research with args:', args);
         try {
           const { ComprehensiveResearchService } = await import('./research/ComprehensiveResearchService');
           const service = ComprehensiveResearchService.getInstance();
           const result = await service.performComprehensiveResearch(
-            args.query,
+            args.query as string,
             'grok-4' as ModelType,
             EffortType.MEDIUM
           );
@@ -69,17 +75,17 @@ export class ResearchToolsService {
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'Search query' },
-          num_results: { type: 'integer', description: 'Number of results to return', default: 10 }
+          query: { type: 'string', description: 'Search query' } as FunctionParameter,
+          num_results: { type: 'number', description: 'Number of results to return' } as FunctionParameter
         },
         required: ['query']
-      },
-      execute: async (args: any) => {
+      } as ToolParams,
+      execute: async (args: Record<string, unknown>) => {
         console.log('🔍 Executing search_web with args:', args);
         try {
           const { SearchProviderService } = await import('./search/SearchProviderService');
           const searchService = SearchProviderService.getInstance();
-          const results = await searchService.search(args.query, { maxResults: args.num_results || 10 });
+          const results = await searchService.search(args.query as string, { maxResults: (args.num_results as number) || 10 });
           return {
             results: results.results || [],
             query: args.query,
@@ -100,20 +106,20 @@ export class ResearchToolsService {
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'Academic search query' },
-          limit: { type: 'integer', description: 'Number of papers to return', default: 5 }
+          query: { type: 'string', description: 'Academic search query' } as FunctionParameter,
+          limit: { type: 'number', description: 'Number of papers to return' } as FunctionParameter
         },
         required: ['query']
-      },
-      execute: async (args: any) => {
+      } as ToolParams,
+      execute: async (args: Record<string, unknown>) => {
         console.log('📚 Executing search_academic_papers with args:', args);
         try {
           const { SearchProviderService } = await import('./search/SearchProviderService');
           const searchService = SearchProviderService.getInstance();
 
           // Add academic search modifiers
-          const academicQuery = `${args.query} site:arxiv.org OR site:scholar.google.com OR site:pubmed.ncbi.nlm.nih.gov OR filetype:pdf`;
-          const results = await searchService.search(academicQuery, { maxResults: args.limit || 5 });
+          const academicQuery = `${args.query as string} site:arxiv.org OR site:scholar.google.com OR site:pubmed.ncbi.nlm.nih.gov OR filetype:pdf`;
+          const results = await searchService.search(academicQuery, { maxResults: (args.limit as number) || 5 });
 
           return {
             papers: results.results || [],
@@ -135,17 +141,17 @@ export class ResearchToolsService {
       parameters: {
         type: 'object',
         properties: {
-          text: { type: 'string', description: 'Text to analyze' },
+          text: { type: 'string', description: 'Text to analyze' } as FunctionParameter,
           analysis_type: {
             type: 'string',
             enum: ['summary', 'keywords', 'sentiment', 'themes'],
             description: 'Type of analysis to perform'
-          }
+          } as FunctionParameter
         },
         required: ['text', 'analysis_type']
-      },
-      execute: async (args: any) => {
-        console.log('📊 Executing analyze_text with args:', { analysis_type: args.analysis_type, text_length: args.text?.length });
+      } as ToolParams,
+      execute: async (args: Record<string, unknown>) => {
+        console.log('📊 Executing analyze_text with args:', { analysis_type: args.analysis_type, text_length: (args.text as string)?.length });
         try {
           const { ModelProviderService } = await import('./providers/ModelProviderService');
           const modelProvider = ModelProviderService.getInstance();
@@ -153,19 +159,19 @@ export class ResearchToolsService {
           let prompt = '';
           switch (args.analysis_type) {
             case 'summary':
-              prompt = `Provide a concise summary of the following text:\n\n${args.text}`;
+              prompt = `Provide a concise summary of the following text:\n\n${args.text as string}`;
               break;
             case 'keywords':
-              prompt = `Extract the most important keywords and key phrases from the following text:\n\n${args.text}`;
+              prompt = `Extract the most important keywords and key phrases from the following text:\n\n${args.text as string}`;
               break;
             case 'sentiment':
-              prompt = `Analyze the sentiment of the following text (positive, negative, neutral):\n\n${args.text}`;
+              prompt = `Analyze the sentiment of the following text (positive, negative, neutral):\n\n${args.text as string}`;
               break;
             case 'themes':
-              prompt = `Identify the main themes and topics in the following text:\n\n${args.text}`;
+              prompt = `Identify the main themes and topics in the following text:\n\n${args.text as string}`;
               break;
             default:
-              prompt = `Analyze the following text and provide insights:\n\n${args.text}`;
+              prompt = `Analyze the following text and provide insights:\n\n${args.text as string}`;
           }
 
           const result = await modelProvider.generateText(prompt, 'grok-4' as ModelType, EffortType.MEDIUM);
@@ -189,13 +195,13 @@ export class ResearchToolsService {
       parameters: {
         type: 'object',
         properties: {
-          content: { type: 'string', description: 'Document content to summarize' },
-          length: { type: 'string', enum: ['short', 'medium', 'long'], description: 'Summary length' }
+          content: { type: 'string', description: 'Document content to summarize' } as FunctionParameter,
+          length: { type: 'string', enum: ['short', 'medium', 'long'], description: 'Summary length' } as FunctionParameter
         },
         required: ['content']
-      },
-      execute: async (args: any) => {
-        console.log('📄 Executing summarize_document with args:', { length: args.length, content_length: args.content?.length });
+      } as ToolParams,
+      execute: async (args: Record<string, unknown>) => {
+        console.log('📄 Executing summarize_document with args:', { length: args.length, content_length: (args.content as string)?.length });
         try {
           const { ModelProviderService } = await import('./providers/ModelProviderService');
           const modelProvider = ModelProviderService.getInstance();
@@ -206,14 +212,14 @@ export class ResearchToolsService {
             long: 'in 3-4 paragraphs with detailed analysis'
           }[args.length as keyof { short: string; medium: string; long: string; }] || 'in 1-2 paragraphs';
 
-          const prompt = `Summarize the following document ${lengthInstruction}:\n\n${args.content}`;
+          const prompt = `Summarize the following document ${lengthInstruction}:\n\n${args.content as string}`;
           const result = await modelProvider.generateText(prompt, 'grok-4' as ModelType, EffortType.MEDIUM);
 
           return {
             summary: result.text,
-            original_length: args.content.length,
+            original_length: (args.content as string).length,
             summary_length: result.text.length,
-            compression_ratio: (result.text.length / args.content.length).toFixed(2)
+            compression_ratio: (result.text.length / (args.content as string).length).toFixed(2)
           };
         } catch (error) {
           console.error('❌ Document summarization failed:', error);
@@ -250,7 +256,7 @@ export class ResearchToolsService {
     }));
   }
 
-  public getAzureOpenAIToolDefinitions(): any[] {
+  public getAzureOpenAIToolDefinitions(): Record<string, unknown>[] {
     return Array.from(this.tools.values()).map(tool => ({
       type: 'function',
       function: {
@@ -261,7 +267,7 @@ export class ResearchToolsService {
     }));
   }
 
-  public async executeTool(call: FunctionCall): Promise<any> {
+  public async executeTool(call: FunctionCall): Promise<unknown> {
     const tool = this.getTool(call.name);
     if (!tool) {
       throw new Error(`Tool not found: ${call.name}`);
@@ -270,7 +276,7 @@ export class ResearchToolsService {
     await this.rateLimiter.waitForCapacity(100); // Default token estimate for tool execution
 
     try {
-      const result = await tool.execute(call.arguments);
+      const result = await tool.execute(call.arguments as Record<string, unknown>);
       console.log(`✅ Tool ${call.name} executed successfully`);
       return result;
     } catch (error) {
@@ -279,7 +285,7 @@ export class ResearchToolsService {
     }
   }
 
-  public getToolRecommendations(query: string, _effort: EffortType = EffortType.MEDIUM): string[] {
+  public getToolRecommendations(query: string): string[] {
     const queryLower = query.toLowerCase();
     const recommendations: string[] = [];
 
@@ -322,6 +328,6 @@ export class ResearchToolsService {
     }
 
     // Remove duplicates and limit
-    return [...new Set(recommendations)].slice(0, 3);
+    return [...new Set<string>(recommendations)].slice(0, 3);
   }
 }

@@ -8,7 +8,7 @@ import { ExaResearchTask, ExaResearchTaskList } from '../search/SearchProviderSe
 
 export interface ResearchTaskOptions {
   model?: 'exa-research' | 'exa-research-pro';
-  outputSchema?: object;
+  outputSchema?: Record<string, unknown>;
   inferSchema?: boolean;
   timeoutMs?: number;
   onProgress?: (task: ExaResearchTask) => void;

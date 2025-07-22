@@ -575,8 +575,8 @@ Focus on providing factual, well-sourced information that directly addresses the
     let findings = `# Research Results for: ${task.instructions}\n\n`;
 
     // Handle structured data
-    if (typeof task.data === 'object') {
-      const data = task.data as StructuredResearchOutput;
+    if (typeof task.data === 'object' && task.data !== null) {
+      const data = task.data as unknown as StructuredResearchOutput;
       
       if (data.keyFindings) {
         findings += `## Key Findings\n\n`;
