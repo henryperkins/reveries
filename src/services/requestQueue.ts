@@ -55,7 +55,7 @@ export class RequestQueue {
               console.log(`⏳ RequestQueue back-off ${delay / 1000}s due to rate limit`);
               setTimeout(() => RequestQueue.dequeue(), delay + 50);
             }
-            reject(err);
+            reject(err instanceof Error ? err : new Error(String(err)));
           })
           .finally(() => {
             RequestQueue.activeCount--;

@@ -58,7 +58,7 @@ export class GrokService {
    */
   async generateResponse(
     prompt: string,
-    effort: EffortType = EffortType.MEDIUM,
+    _effort: EffortType = EffortType.MEDIUM,
     useSearch = false,
     searchSources?: string[]
   ): Promise<GrokResponse> {
@@ -74,9 +74,8 @@ export class GrokService {
       };
 
       // Only add reasoning_effort for supported models
-      if (false) { // grok-4 doesn't support reasoning_effort
-        requestBody.reasoning_effort = this.getReasoningEffort(effort);
-      }
+      // grok-4 doesn't support reasoning_effort
+      // [if (supported) { requestBody.reasoning_effort = this.getReasoningEffort(effort); }]
 
       // Live-search parameters follow the latest xAI spec.  Only include the
       // block if search is explicitly requested – otherwise the request will
@@ -137,7 +136,7 @@ export class GrokService {
     prompt: string,
     tools: ToolDefinition[],
     toolImplementations: Record<string, (...args: any[]) => any>,
-    effort: EffortType = EffortType.MEDIUM
+    _effort: EffortType = EffortType.MEDIUM
   ): Promise<GrokResponse> {
     try {
       const messages = [{ role: "user", content: prompt }];
@@ -157,9 +156,8 @@ export class GrokService {
       };
 
       // Only add reasoning_effort for supported models
-      if (false) { // grok-4 doesn't support reasoning_effort
-        requestBody.reasoning_effort = this.getReasoningEffort(effort);
-      }
+      // grok-4 doesn't support reasoning_effort
+      // [if (supported) { requestBody.reasoning_effort = this.getReasoningEffort(effort); }]
 
       // Apply rate limiting for initial tool call
       const estimatedTokens = estimateTokens(prompt) + 1000;
@@ -228,9 +226,8 @@ export class GrokService {
         };
 
         // Only add reasoning_effort for supported models
-        if (false) { // grok-4 doesn't support reasoning_effort
-          requestBody.reasoning_effort = this.getReasoningEffort(effort);
-        }
+        // grok-4 doesn't support reasoning_effort
+        // [if (supported) { requestBody.reasoning_effort = this.getReasoningEffort(effort); }]
 
         // Apply rate limiting for follow-up response
         await this.rateLimiter.waitForCapacity(500); // Smaller estimate for follow-up
@@ -269,7 +266,7 @@ export class GrokService {
    */
   async generateResponseWithLiveSearch(
     prompt: string,
-    effort: EffortType = EffortType.MEDIUM,
+    _effort: EffortType = EffortType.MEDIUM,
     dateRange?: { from?: Date; to?: Date },
     allowedWebsites?: string[],
     excludedWebsites?: string[],
@@ -315,10 +312,9 @@ export class GrokService {
         search_parameters: searchParams
       };
 
-      // Only add reasoning_effort for supported models
-      if (false) { // grok-4 doesn't support reasoning_effort
-        requestBody.reasoning_effort = this.getReasoningEffort(effort);
-      }
+        // Only add reasoning_effort for supported models
+        // grok-4 doesn't support reasoning_effort
+        // [if (supported) { requestBody.reasoning_effort = this.getReasoningEffort(effort); }]
 
       // Apply rate limiting for search request
       const estimatedTokens = estimateTokens(prompt) + 1000;
@@ -352,8 +348,8 @@ export class GrokService {
   }
 
 
-  private getReasoningEffort(effort: EffortType): string {
-    switch (effort) {
+  private getReasoningEffort(_effort: EffortType): string {
+    switch (_effort) {
       case EffortType.LOW: return 'low';
       case EffortType.MEDIUM: return 'medium';
       case EffortType.HIGH: return 'high';
@@ -362,13 +358,13 @@ export class GrokService {
   }
 
 
-  private processCitations(citations: any): Citation[] {
-    if (!citations || !Array.isArray(citations)) {
+  private processCitations(_citations: any): Citation[] {
+    if (!_citations || !Array.isArray(_citations)) {
       return [];
     }
 
     const fullCitations: Citation[] = [];
-    citations.forEach((citation: any) => {
+    _citations.forEach((citation: any) => {
       if (typeof citation === 'string') {
         // Handle legacy string citations
         fullCitations.push({ url: citation });

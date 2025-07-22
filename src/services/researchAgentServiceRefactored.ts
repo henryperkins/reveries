@@ -955,7 +955,7 @@ export class ResearchAgentService {
   // error TS6133.  Adding `@ts-ignore` on the next line suppresses that
   // diagnostic while still type-checking the function body.
   //
-  // @ts-ignore — kept for potential future use
+  // @ts-expect-error — kept for potential future use
   private async executeWithTimeoutExtension(
     researchPromise: Promise<EnhancedResearchResults>,
     query: string,

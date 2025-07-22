@@ -302,7 +302,7 @@ export const ResearchAnalytics: React.FC<{
         <div className="rounded-lg bg-white p-4 shadow">
           <div className="text-sm text-gray-500">Processing Time</div>
           <div className="text-2xl font-bold text-gray-700">
-            {(metadata.processingTime / 1000).toFixed(1)} s
+            {(metadata.processingTime / 1000).toFixed(1)} s
           </div>
         </div>
       )}

@@ -186,7 +186,7 @@ export class ParadigmResearchService {
     const { query, paradigm, density, sources, content, model, effort, onProgress } = context;
 
     switch (layer) {
-      case 'write':
+      case 'write': {
         onProgress?.(`[${paradigm}] Writing reveries to memory banks...`);
 
         // Store query patterns and initial thoughts
@@ -205,8 +205,9 @@ export class ParadigmResearchService {
         const memories = this.writeLayer.getParadigmMemories(paradigm);
         researchContext.findings.memories = Array.from(memories.values()).slice(0, 5); // Keep top 5 relevant
         return undefined; // Write layer just stores, doesn't return data
+      }
 
-      case 'select':
+      case 'select': {
         onProgress?.(`[${paradigm}] Selecting relevant memories and tools...`);
 
         // Get paradigm-specific tool recommendations
@@ -226,6 +227,7 @@ export class ParadigmResearchService {
         }
 
         return { recommendedTools };
+      }
 
       case 'compress':
         onProgress?.(`[${paradigm}] Compressing narrative threads...`);
@@ -239,7 +241,7 @@ export class ParadigmResearchService {
         }
         break;
 
-      case 'isolate':
+      case 'isolate': {
         onProgress?.(`[${paradigm}] Isolating consciousness for focused analysis...`);
 
         // Create isolated sub-task
@@ -259,6 +261,7 @@ export class ParadigmResearchService {
         // Track the async task
         this.contextManager.addPendingTask(researchContext, taskId);
         return { taskId };
+      }
     }
   }
 
