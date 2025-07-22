@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { HistoryView } from './HistoryView';
 import { LiveView } from './LiveView';
 import { ToolsView } from './ToolsView';
-import { useFunctionCalls } from './FunctionCallContext';
+import { useFunctionCalls } from './hooks';
 
 export type DockMode = 'history' | 'live' | 'tools';
 
@@ -79,7 +79,3 @@ const FunctionCallDockContent: React.FC<FunctionCallDockProps> = ({
 export const FunctionCallDock: React.FC<FunctionCallDockProps> = (props) => {
   return <FunctionCallDockContent {...props} />;
 };
-
-// Re-export context and types
-export { FunctionCallProvider, useFunctionCalls } from './FunctionCallContext';
-export type { FunctionCallHistory } from '@/types';

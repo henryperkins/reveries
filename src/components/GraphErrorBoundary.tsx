@@ -3,7 +3,7 @@
  * Provides graceful error handling and recovery for graph-related failures
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import { ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 interface Props {
@@ -42,7 +42,7 @@ export class GraphErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log the error
     console.error('Graph Error Boundary caught an error:', error, errorInfo);
-    
+
     this.setState({
       error,
       errorInfo
@@ -83,26 +83,26 @@ export class GraphErrorBoundary extends Component<Props, State> {
 
       // Default error UI
       return (
-        <div 
+        <div
           className="flex flex-col items-center justify-center p-8 border-2 border-red-200 rounded-lg bg-red-50"
           role="alert"
           aria-labelledby={`error-title-${this.state.errorId}`}
           aria-describedby={`error-description-${this.state.errorId}`}
         >
           <ExclamationTriangleIcon className="w-12 h-12 text-red-500 mb-4" />
-          
-          <h2 
+
+          <h2
             id={`error-title-${this.state.errorId}`}
             className="text-xl font-semibold text-red-800 mb-2"
           >
             Graph Rendering Error
           </h2>
-          
-          <p 
+
+          <p
             id={`error-description-${this.state.errorId}`}
             className="text-red-700 text-center mb-4 max-w-md"
           >
-            Something went wrong while rendering the research graph. This could be due to 
+            Something went wrong while rendering the research graph. This could be due to
             corrupted data or a temporary issue.
           </p>
 
@@ -115,7 +115,7 @@ export class GraphErrorBoundary extends Component<Props, State> {
               <ArrowPathIcon className="w-4 h-4" />
               Retry
             </button>
-            
+
             <button
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
@@ -158,73 +158,6 @@ export class GraphErrorBoundary extends Component<Props, State> {
 
     return this.props.children;
   }
-}
-
-// HOC for wrapping components with error boundary
-export function withGraphErrorBoundary<P extends object>(
-  WrappedComponent: React.ComponentType<P>,
-  errorBoundaryProps?: Omit<Props, 'children'>
-) {
-  const WithErrorBoundaryComponent = (props: P) => (
-    <GraphErrorBoundary {...errorBoundaryProps}>
-      <WrappedComponent {...props} />
-    </GraphErrorBoundary>
-  );
-
-  WithErrorBoundaryComponent.displayName = 
-    `withGraphErrorBoundary(${WrappedComponent.displayName || WrappedComponent.name})`;
-
-  return WithErrorBoundaryComponent;
-}
-
-// Specialized error boundary for graph layout errors
-export function GraphLayoutErrorBoundary({ children }: { children: ReactNode }) {
-  return (
-    <GraphErrorBoundary
-      fallback={
-        <div className="flex items-center justify-center p-8 border border-gray-300 rounded-lg bg-gray-50">
-          <div className="text-center">
-            <ExclamationTriangleIcon className="w-8 h-8 text-gray-500 mx-auto mb-2" />
-            <p className="text-gray-700 font-medium">Layout calculation failed</p>
-            <p className="text-gray-500 text-sm mt-1">
-              Unable to position graph elements. Please refresh the graph.
-            </p>
-          </div>
-        </div>
-      }
-      onError={(error) => {
-        console.error('Graph layout error:', error);
-        // Could trigger a graph refresh or fallback layout
-      }}
-    >
-      {children}
-    </GraphErrorBoundary>
-  );
-}
-
-// Specialized error boundary for canvas rendering errors
-export function GraphCanvasErrorBoundary({ children }: { children: ReactNode }) {
-  return (
-    <GraphErrorBoundary
-      fallback={
-        <div className="flex items-center justify-center w-full h-full border border-gray-300 rounded-lg bg-gray-50">
-          <div className="text-center">
-            <ExclamationTriangleIcon className="w-8 h-8 text-gray-500 mx-auto mb-2" />
-            <p className="text-gray-700 font-medium">Canvas rendering failed</p>
-            <p className="text-gray-500 text-sm mt-1">
-              Your browser may not support the required graphics features.
-            </p>
-          </div>
-        </div>
-      }
-      onError={(error) => {
-        console.error('Graph canvas error:', error);
-        // Could fall back to SVG or DOM-based rendering
-      }}
-    >
-      {children}
-    </GraphErrorBoundary>
-  );
 }
 
 export default GraphErrorBoundary;

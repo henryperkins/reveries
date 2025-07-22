@@ -18,6 +18,7 @@ export default tseslint.config(
             'vite-env.d.ts',
             'actions-runner',
             '.github/actions',
+            'workflows-starter/**/*',
             'src/tests/manualIntegrationTest.ts',
             'src/tests/systemExhaustiveTest.ts',
             'src/tests/azureIntegrationTest.ts'
@@ -166,6 +167,7 @@ export default tseslint.config(
             '@typescript-eslint/no-unsafe-call': 'off',
             '@typescript-eslint/no-unsafe-return': 'off',
             '@typescript-eslint/no-unsafe-argument': 'off',
+            '@typescript-eslint/unbound-method': 'off',
             'no-console': 'off',
             '@typescript-eslint/naming-convention': 'off',
         },

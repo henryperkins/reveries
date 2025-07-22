@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 interface TooltipProps {
   content: React.ReactNode;
@@ -21,25 +21,12 @@ export const Tooltip: React.FC<TooltipProps> = ({
   const triggerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  const showTooltip = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      setIsVisible(true);
-      updatePosition();
-    }, delay);
-  };
-
-  const hideTooltip = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setIsVisible(false);
-  };
-
-  const updatePosition = () => {
+  const updatePosition = useCallback(() => {
     if (!triggerRef.current || !tooltipRef.current) return;
 
     const triggerRect = triggerRef.current.getBoundingClientRect();
     const tooltipRect = tooltipRef.current.getBoundingClientRect();
-    
+
     let x = 0;
     let y = 0;
 
@@ -67,7 +54,19 @@ export const Tooltip: React.FC<TooltipProps> = ({
     y = Math.max(8, Math.min(y, window.innerHeight - tooltipRect.height - 8));
 
     setCoords({ x, y });
-  };
+  }, [position]);
+
+  const showTooltip = useCallback(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      setIsVisible(true);
+    }, delay);
+  }, [delay]);
+
+  const hideTooltip = useCallback(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setIsVisible(false);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -79,7 +78,20 @@ export const Tooltip: React.FC<TooltipProps> = ({
     if (isVisible) {
       updatePosition();
     }
-  }, [isVisible]);
+  }, [isVisible, updatePosition]);
+
+  useEffect(() => {
+    if (isVisible) {
+      updatePosition();
+      window.addEventListener('resize', updatePosition);
+      window.addEventListener('scroll', updatePosition, true);
+
+      return () => {
+        window.removeEventListener('resize', updatePosition);
+        window.removeEventListener('scroll', updatePosition, true);
+      };
+    }
+  }, [isVisible, updatePosition]);
 
   return (
     <>

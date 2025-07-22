@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useGraphSnapshot } from '@/contexts/GraphContext';
+import { useGraphSnapshot } from '@/contexts/GraphContextUtils';
 import { formatDuration } from '@/utils/exportUtils';
 
 interface GraphAccessibilityLayerProps {
@@ -30,7 +30,7 @@ export function GraphAccessibilityLayer({
   // Focus management
   useEffect(() => {
     if (isVisible && listRef.current) {
-      const firstFocusable = listRef.current.querySelector('[tabindex="0"]')!;
+      const firstFocusable = listRef.current.querySelector<HTMLElement>('[tabindex="0"]');
       if (firstFocusable) {
         firstFocusable.focus();
       }
@@ -39,31 +39,31 @@ export function GraphAccessibilityLayer({
 
   // Keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    const currentItems = viewMode === 'nodes' ? nodes : 
-                        viewMode === 'edges' ? edges : 
+    const currentItems = viewMode === 'nodes' ? nodes :
+                        viewMode === 'edges' ? edges :
                         ['statistics'];
-    
+
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
         setFocusedIndex(prev => Math.min(currentItems.length - 1, prev + 1));
         break;
-        
+
       case 'ArrowUp':
         e.preventDefault();
         setFocusedIndex(prev => Math.max(0, prev - 1));
         break;
-        
+
       case 'Home':
         e.preventDefault();
         setFocusedIndex(0);
         break;
-        
+
       case 'End':
         e.preventDefault();
         setFocusedIndex(currentItems.length - 1);
         break;
-        
+
       case 'Enter':
       case ' ':
         e.preventDefault();
@@ -71,7 +71,7 @@ export function GraphAccessibilityLayer({
           onNodeSelect(nodes[focusedIndex].id);
         }
         break;
-        
+
       case 'Tab':
         if (e.shiftKey) {
           // Previous view mode
@@ -110,7 +110,7 @@ export function GraphAccessibilityLayer({
         <p className="text-sm text-gray-600 mb-2">
           Use arrow keys to navigate, Enter/Space to select, Tab to switch views
         </p>
-        
+
         {/* View Mode Selector */}
         <div role="tablist" className="flex border-b border-gray-200 mb-4">
           {[
@@ -123,8 +123,8 @@ export function GraphAccessibilityLayer({
               role="tab"
               aria-selected={viewMode === mode}
               className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
-                viewMode === mode 
-                  ? 'border-blue-500 text-blue-600' 
+                viewMode === mode
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
               onClick={() => setViewMode(mode)}
@@ -142,7 +142,7 @@ export function GraphAccessibilityLayer({
           {nodes.length === 0 ? (
             <p className="text-gray-500">No nodes to display</p>
           ) : (
-            nodes.map((node, index) => (
+            nodes.map((node: any, index: number) => (
               <div
                 key={node.id}
                 role="listitem"
@@ -162,7 +162,7 @@ export function GraphAccessibilityLayer({
                 <div className="font-medium text-gray-900">
                   {node.title}
                 </div>
-                <div 
+                <div
                   id={`node-${node.id}-description`}
                   className="text-sm text-gray-600 mt-1"
                 >
@@ -170,7 +170,7 @@ export function GraphAccessibilityLayer({
                   {/* Duration info if available */}
                   {(() => {
                     // Try to get duration from the node or its metadata
-                    const duration = (node as any).duration;
+                    const duration = node.duration;
                     return duration ? ` • Duration: ${formatDuration(duration)}` : '';
                   })()}
                 </div>
@@ -186,10 +186,10 @@ export function GraphAccessibilityLayer({
           {edges.length === 0 ? (
             <p className="text-gray-500">No connections to display</p>
           ) : (
-            edges.map((edge, index) => {
-              const sourceNode = nodes.find(n => n.id === edge.source);
-              const targetNode = nodes.find(n => n.id === edge.target);
-              
+            edges.map((edge: any, index: number) => {
+              const sourceNode = nodes.find((n: any) => n.id === edge.source);
+              const targetNode = nodes.find((n: any) => n.id === edge.target);
+
               return (
                 <div
                   key={`${edge.source}-${edge.target}`}
@@ -257,8 +257,8 @@ export function GraphAccessibilityLayer({
 
       {/* Live region for announcements */}
       <div aria-live="polite" aria-atomic="true" className="sr-only">
-        {selectedNodeId && nodes.find(n => n.id === selectedNodeId)?.title && 
-          `Selected: ${nodes.find(n => n.id === selectedNodeId)?.title}`
+        {selectedNodeId && nodes.find((n: any) => n.id === selectedNodeId)?.title &&
+          `Selected: ${nodes.find((n: any) => n.id === selectedNodeId)?.title}`
         }
       </div>
     </div>

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AzureOpenAIService, ParadigmAwareToolContext, ToolExecutionResult } from '../services/azureOpenAIService';
+import { describe, it, expect, vi, beforeEach, afterEach, type MockedFunction } from 'vitest';
+import { AzureOpenAIService, ParadigmAwareToolContext } from '../services/azureOpenAIService';
 import { HostParadigm, EffortType, ParadigmProbabilities } from '../types';
 
 // Mock the fetch API
@@ -12,7 +12,7 @@ vi.mock('../services/researchToolsService', () => ({
       getTool: vi.fn((name) => {
         if (name === 'advanced_web_search') {
           return {
-            execute: vi.fn(async (args) => ({
+            execute: vi.fn(async (_args) => ({
               results: [
                 { title: 'Test Result', url: 'https://example.com', snippet: 'Test snippet' }
               ],
@@ -71,16 +71,10 @@ describe('Azure OpenAI Streaming with Tools', () => {
         'data: {"type":"response.done"}'
       ];
 
-      const mockToolResponse = {
-        choices: [{
-          message: {
-            content: "Based on my search, quantum computing is..."
-          }
-        }]
-      };
+      // Remove unused mockGetEntityInfo function
 
       let callCount = 0;
-      (global.fetch as vi.MockedFunction<typeof global.fetch>).mockImplementation(async () => {
+      (global.fetch as MockedFunction<typeof global.fetch>).mockImplementation(async () => {
         if (callCount === 0) {
           callCount++;
           // First call - streaming with tool
@@ -90,17 +84,17 @@ describe('Azure OpenAI Streaming with Tools', () => {
             body: {
               getReader: () => ({
                 read: vi.fn()
-                  .mockResolvedValueOnce({ 
-                    done: false, 
-                    value: new TextEncoder().encode(mockChunks[0] + '\n') 
+                  .mockResolvedValueOnce({
+                    done: false,
+                    value: new TextEncoder().encode(mockChunks[0] + '\n')
                   })
-                  .mockResolvedValueOnce({ 
-                    done: false, 
-                    value: new TextEncoder().encode(mockChunks[1] + '\n') 
+                  .mockResolvedValueOnce({
+                    done: false,
+                    value: new TextEncoder().encode(mockChunks[1] + '\n')
                   })
-                  .mockResolvedValueOnce({ 
-                    done: false, 
-                    value: new TextEncoder().encode(mockChunks[2] + '\n') 
+                  .mockResolvedValueOnce({
+                    done: false,
+                    value: new TextEncoder().encode(mockChunks[2] + '\n')
                   })
                   .mockResolvedValueOnce({ done: true }),
                 releaseLock: vi.fn()
@@ -115,13 +109,13 @@ describe('Azure OpenAI Streaming with Tools', () => {
             body: {
               getReader: () => ({
                 read: vi.fn()
-                  .mockResolvedValueOnce({ 
-                    done: false, 
-                    value: new TextEncoder().encode('data: {"type":"response.output_text.delta","delta":"Based on the search results, "}\n') 
+                  .mockResolvedValueOnce({
+                    done: false,
+                    value: new TextEncoder().encode('data: {"type":"response.output_text.delta","delta":"Based on the search results, "}\n')
                   })
-                  .mockResolvedValueOnce({ 
-                    done: false, 
-                    value: new TextEncoder().encode('data: {"type":"response.done"}\n') 
+                  .mockResolvedValueOnce({
+                    done: false,
+                    value: new TextEncoder().encode('data: {"type":"response.done"}\n')
                   })
                   .mockResolvedValueOnce({ done: true }),
                 releaseLock: vi.fn()
@@ -132,8 +126,8 @@ describe('Azure OpenAI Streaming with Tools', () => {
       });
 
       const chunks: string[] = [];
-      const toolCalls: Array<{ name: string; args: unknown; result: unknown }> = [];
-      const metadata: Array<{ type: string; timestamp: number }> = [];
+      const toolCalls: { name: string; args: unknown; result: unknown }[] = [];
+      const metadata: ({ paradigm?: HostParadigm; phase?: string } | undefined)[] = [];
 
       await azureService.streamResponseWithTools(
         "Tell me about quantum computing",
@@ -142,12 +136,12 @@ describe('Azure OpenAI Streaming with Tools', () => {
         'bernard',
         { dolores: 0.1, teddy: 0.2, bernard: 0.6, maeve: 0.1 },
         {
-          onChunk: (chunk, meta) => {
+          onChunk: (chunk: string, meta?: { paradigm?: HostParadigm; phase?: string }) => {
             chunks.push(chunk);
             if (meta) metadata.push(meta);
           },
-          onToolCall: (toolCall, result) => {
-            toolCalls.push({ toolCall, result });
+          onToolCall: (toolCall: any, result?: any) => {
+            toolCalls.push({ name: toolCall.name || 'unknown', args: toolCall.arguments, result });
           },
           onComplete: () => {},
           maxIterations: 2
@@ -157,16 +151,14 @@ describe('Azure OpenAI Streaming with Tools', () => {
       expect(chunks).toContain("Let me search for that information.");
       expect(chunks).toContain("Based on the search results, ");
       expect(toolCalls.length).toBeGreaterThan(0);
-      expect(toolCalls[0].toolCall.function.name).toBe('advanced_web_search');
-      expect(metadata.some(m => m.paradigm === 'bernard')).toBe(true);
+      expect(toolCalls[0].name).toBe('advanced_web_search');
+      expect(metadata.some(m => m?.paradigm === 'bernard')).toBe(true);
     });
 
     it('should handle tool execution errors gracefully', async () => {
       // Mock a failing tool
       const { ResearchToolsService } = await import('../services/researchToolsService');
-      const mockGetTool = ResearchToolsService.getInstance().getTool as vi.MockedFunction<
-        typeof ResearchToolsService.getInstance().getTool
-      >;
+      const mockGetTool = ResearchToolsService.getInstance().getTool as any;
       mockGetTool.mockImplementation((name: string) => {
         if (name === 'failing_tool') {
           return {
@@ -182,7 +174,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
       ];
 
       let callCount = 0;
-      (global.fetch as vi.MockedFunction<typeof global.fetch>).mockImplementation(async () => {
+      (global.fetch as MockedFunction<typeof global.fetch>).mockImplementation(async () => {
         if (callCount === 0) {
           callCount++;
           return {
@@ -191,13 +183,13 @@ describe('Azure OpenAI Streaming with Tools', () => {
             body: {
               getReader: () => ({
                 read: vi.fn()
-                  .mockResolvedValueOnce({ 
-                    done: false, 
-                    value: new TextEncoder().encode(mockChunks[0] + '\n') 
+                  .mockResolvedValueOnce({
+                    done: false,
+                    value: new TextEncoder().encode(mockChunks[0] + '\n')
                   })
-                  .mockResolvedValueOnce({ 
-                    done: false, 
-                    value: new TextEncoder().encode(mockChunks[1] + '\n') 
+                  .mockResolvedValueOnce({
+                    done: false,
+                    value: new TextEncoder().encode(mockChunks[1] + '\n')
                   })
                   .mockResolvedValueOnce({ done: true }),
                 releaseLock: vi.fn()
@@ -212,13 +204,13 @@ describe('Azure OpenAI Streaming with Tools', () => {
             body: {
               getReader: () => ({
                 read: vi.fn()
-                  .mockResolvedValueOnce({ 
-                    done: false, 
-                    value: new TextEncoder().encode('data: {"type":"response.output_text.delta","delta":"I encountered an error with the tool."}\n') 
+                  .mockResolvedValueOnce({
+                    done: false,
+                    value: new TextEncoder().encode('data: {"type":"response.output_text.delta","delta":"I encountered an error with the tool."}\n')
                   })
-                  .mockResolvedValueOnce({ 
-                    done: false, 
-                    value: new TextEncoder().encode('data: {"type":"response.done"}\n') 
+                  .mockResolvedValueOnce({
+                    done: false,
+                    value: new TextEncoder().encode('data: {"type":"response.done"}\n')
                   })
                   .mockResolvedValueOnce({ done: true }),
                 releaseLock: vi.fn()
@@ -228,7 +220,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
         }
       });
 
-      const toolCalls: Array<{ name: string; args: unknown; result: unknown }> = [];
+      const toolCalls: { name: string; args: unknown; result: unknown }[] = [];
       const errors: string[] = [];
 
       await azureService.streamResponseWithTools(
@@ -239,8 +231,8 @@ describe('Azure OpenAI Streaming with Tools', () => {
         undefined,
         {
           onChunk: () => {},
-          onToolCall: (toolCall, result) => {
-            toolCalls.push({ toolCall, result });
+          onToolCall: (toolCall: any, result?: any) => {
+            toolCalls.push({ name: toolCall.name || 'unknown', args: toolCall.arguments, result });
             if (result?.error) errors.push(result.error);
           },
           onComplete: () => {},
@@ -255,12 +247,12 @@ describe('Azure OpenAI Streaming with Tools', () => {
     it('should respect paradigm-specific tool filtering', async () => {
       const allTools = azureService.getAvailableResearchTools();
       const bernardTools = azureService.getParadigmResearchTools('bernard');
-      
+
       // Bernard should prioritize academic and analytical tools
       const bernardToolNames = bernardTools.map(t => t.function.name);
       expect(bernardToolNames).toContain('search_academic_papers');
       expect(bernardToolNames).toContain('analyze_statistics');
-      
+
       // The paradigm-specific list might be reordered
       expect(bernardTools.length).toBe(allTools.length);
     });
@@ -277,7 +269,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
 
       // Mock a slow tool that times out
       const { ResearchToolsService } = await import('../services/researchToolsService');
-      const mockGetTool = ResearchToolsService.getInstance().getTool as vi.MockedFunction<typeof ResearchToolsService.getInstance().getTool>;
+      const mockGetTool = ResearchToolsService.getInstance().getTool as any;
       mockGetTool.mockImplementation((name: string) => {
         if (name === 'slow_tool') {
           return {
@@ -295,19 +287,19 @@ describe('Azure OpenAI Streaming with Tools', () => {
         'data: {"type":"response.done"}'
       ];
 
-      (global.fetch as vi.MockedFunction<typeof global.fetch>).mockResolvedValueOnce({
+      (global.fetch as MockedFunction<typeof global.fetch>).mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
         body: {
           getReader: () => ({
             read: vi.fn()
-              .mockResolvedValueOnce({ 
-                done: false, 
-                value: new TextEncoder().encode(mockChunks[0] + '\n') 
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode(mockChunks[0] + '\n')
               })
-              .mockResolvedValueOnce({ 
-                done: false, 
-                value: new TextEncoder().encode(mockChunks[1] + '\n') 
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode(mockChunks[1] + '\n')
               })
               .mockResolvedValueOnce({ done: true }),
             releaseLock: vi.fn()
@@ -319,13 +311,13 @@ describe('Azure OpenAI Streaming with Tools', () => {
         body: {
           getReader: () => ({
             read: vi.fn()
-              .mockResolvedValueOnce({ 
-                done: false, 
-                value: new TextEncoder().encode('data: {"type":"response.output_text.delta","delta":"Tool timed out"}\n') 
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode('data: {"type":"response.output_text.delta","delta":"Tool timed out"}\n')
               })
-              .mockResolvedValueOnce({ 
-                done: false, 
-                value: new TextEncoder().encode('data: {"type":"response.done"}\n') 
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode('data: {"type":"response.done"}\n')
               })
               .mockResolvedValueOnce({ done: true }),
             releaseLock: vi.fn()
@@ -333,7 +325,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
         }
       });
 
-      const toolResults: Array<{ error?: string; result?: unknown }> = [];
+      const toolResults: { error?: string; result?: unknown }[] = [];
       const startTime = Date.now();
 
       await azureService.streamResponseWithTools(
@@ -352,7 +344,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
       );
 
       const executionTime = Date.now() - startTime;
-      
+
       // Should timeout before 60 seconds
       expect(executionTime).toBeLessThan(35000); // Base 30s * 0.8 = 24s + some buffer
       expect(toolResults.some(r => r?.error?.includes('timeout'))).toBe(true);
@@ -361,10 +353,10 @@ describe('Azure OpenAI Streaming with Tools', () => {
     it('should implement circuit breaker for repeatedly failing tools', async () => {
       // Create a new instance to ensure clean state
       const service = AzureOpenAIService.getInstance();
-      
+
       // Mock a consistently failing tool
       const { ResearchToolsService } = await import('../services/researchToolsService');
-      const mockGetTool = ResearchToolsService.getInstance().getTool as vi.MockedFunction<typeof ResearchToolsService.getInstance().getTool>;
+      const mockGetTool = ResearchToolsService.getInstance().getTool as any;
       mockGetTool.mockImplementation((name: string) => {
         if (name === 'broken_tool') {
           return {
@@ -401,7 +393,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
 
     it('should propagate paradigm context through tool execution', async () => {
       const { WriteLayerService } = await import('../services/contextLayers/writeLayer');
-      const mockWriteMemory = WriteLayerService.getInstance().writeMemory as vi.MockedFunction<typeof WriteLayerService.getInstance().writeMemory>;
+      const mockWriteMemory = WriteLayerService.getInstance().writeMemory as any;
 
       const paradigm: HostParadigm = 'maeve';
       const probabilities: ParadigmProbabilities = {
@@ -416,19 +408,19 @@ describe('Azure OpenAI Streaming with Tools', () => {
         'data: {"type":"response.done"}'
       ];
 
-      (global.fetch as vi.MockedFunction<typeof global.fetch>).mockResolvedValueOnce({
+      (global.fetch as MockedFunction<typeof global.fetch>).mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
         body: {
           getReader: () => ({
             read: vi.fn()
-              .mockResolvedValueOnce({ 
-                done: false, 
-                value: new TextEncoder().encode(mockChunks[0] + '\n') 
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode(mockChunks[0] + '\n')
               })
-              .mockResolvedValueOnce({ 
-                done: false, 
-                value: new TextEncoder().encode(mockChunks[1] + '\n') 
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode(mockChunks[1] + '\n')
               })
               .mockResolvedValueOnce({ done: true }),
             releaseLock: vi.fn()
@@ -440,9 +432,9 @@ describe('Azure OpenAI Streaming with Tools', () => {
         body: {
           getReader: () => ({
             read: vi.fn()
-              .mockResolvedValueOnce({ 
-                done: false, 
-                value: new TextEncoder().encode('data: {"type":"response.done"}\n') 
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode('data: {"type":"response.done"}\n')
               })
               .mockResolvedValueOnce({ done: true }),
             releaseLock: vi.fn()
@@ -479,27 +471,27 @@ describe('Azure OpenAI Streaming with Tools', () => {
         'data: {"type":"response.done"}'
       ];
 
-      (global.fetch as vi.MockedFunction<typeof global.fetch>).mockResolvedValueOnce({
+      (global.fetch as MockedFunction<typeof global.fetch>).mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
         body: {
           getReader: () => ({
             read: vi.fn()
-              .mockResolvedValueOnce({ 
-                done: false, 
-                value: new TextEncoder().encode(mockChunks[0] + '\n') 
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode(mockChunks[0] + '\n')
               })
-              .mockResolvedValueOnce({ 
-                done: false, 
-                value: new TextEncoder().encode(mockChunks[1] + '\n') 
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode(mockChunks[1] + '\n')
               })
-              .mockResolvedValueOnce({ 
-                done: false, 
-                value: new TextEncoder().encode(mockChunks[2] + '\n') 
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode(mockChunks[2] + '\n')
               })
-              .mockResolvedValueOnce({ 
-                done: false, 
-                value: new TextEncoder().encode(mockChunks[3] + '\n') 
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode(mockChunks[3] + '\n')
               })
               .mockResolvedValueOnce({ done: true }),
             releaseLock: vi.fn()
@@ -511,9 +503,9 @@ describe('Azure OpenAI Streaming with Tools', () => {
         body: {
           getReader: () => ({
             read: vi.fn()
-              .mockResolvedValueOnce({ 
-                done: false, 
-                value: new TextEncoder().encode('data: {"type":"response.done"}\n') 
+              .mockResolvedValueOnce({
+                done: false,
+                value: new TextEncoder().encode('data: {"type":"response.done"}\n')
               })
               .mockResolvedValueOnce({ done: true }),
             releaseLock: vi.fn()

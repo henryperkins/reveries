@@ -7,7 +7,7 @@ import { AzureAIAgentService } from '../services/azureAIAgentService';
 import { ModelProviderService } from '../services/providers/ModelProviderService';
 import { ResearchAgentService } from '../services/researchAgentServiceRefactored';
 import { ResearchUtilities } from '../services/utils/ResearchUtilities';
-import { EffortType, AZURE_O3_MODEL } from '../types';
+import { EffortType, AZURE_O3_MODEL, ModelType } from '../types';
 import { APIError, withRetry } from '../services/errorHandler';
 
 // Mock environment variables for testing
@@ -20,6 +20,7 @@ const mockConfig = {
 
 describe('Azure AI Agent Service Integration', () => {
   let researchAgent: ResearchAgentService;
+  const modelProvider = ModelProviderService.getInstance();
 
   beforeEach(() => {
     // Mock environment variables
@@ -51,13 +52,15 @@ describe('Azure AI Agent Service Integration', () => {
             url: 'https://nature.com/articles/quantum-2025',
             title: 'Latest Quantum Computing Breakthroughs',
             accessed: new Date().toISOString(),
-            relevanceScore: 0.9
+            relevanceScore: 0.9,
+            snippet: 'Research on quantum computing breakthroughs'
           },
           {
             url: 'https://arxiv.org/abs/quantum-paper',
             title: 'Quantum Algorithm Advances',
             accessed: new Date().toISOString(),
-            relevanceScore: 0.8
+            relevanceScore: 0.8,
+            snippet: 'Advanced quantum algorithms research'
           }
         ]
       };
@@ -72,7 +75,7 @@ describe('Azure AI Agent Service Integration', () => {
           completeness: 0.85,
           accuracy: 0.9,
           clarity: 0.8,
-          quality: 'high' as const
+          quality: 'excellent' as const
         }
       };
 
@@ -103,8 +106,8 @@ describe('Azure AI Agent Service Integration', () => {
       const highQualityResult = {
         synthesis: 'Comprehensive and well-researched response with detailed analysis and multiple perspectives...',
         sources: [
-          { url: 'https://edu.example.com', title: 'Academic Source', relevanceScore: 0.9 },
-          { url: 'https://gov.example.com', title: 'Government Report', relevanceScore: 0.85 }
+          { url: 'https://edu.example.com', title: 'Academic Source', relevanceScore: 0.9, snippet: 'Academic research content' },
+          { url: 'https://gov.example.com', title: 'Government Report', relevanceScore: 0.85, snippet: 'Government report details' }
         ],
         queryType: 'comprehensive' as const,
         confidenceScore: 0.85,
@@ -112,7 +115,7 @@ describe('Azure AI Agent Service Integration', () => {
           completeness: 0.9,
           accuracy: 0.85,
           clarity: 0.8,
-          quality: 'high' as const
+          quality: 'excellent' as const
         }
       };
 
@@ -156,11 +159,11 @@ describe('Azure AI Agent Service Integration', () => {
 
   describe('Effort-based Enhancement', () => {
     test('should adjust instructions based on effort level', () => {
-      const service = new AzureAIAgentService();
+      const service = AzureAIAgentService.getInstance();
       
       // Test effort-based instruction generation
-      const highEffortInstructions = (service as { getEffortBasedInstructions(effort: EffortType): string }).getEffortBasedInstructions(EffortType.HIGH);
-      const lowEffortInstructions = (service as { getEffortBasedInstructions(effort: EffortType): string }).getEffortBasedInstructions(EffortType.LOW);
+      const highEffortInstructions = (service as unknown as { getEffortBasedInstructions(effort: EffortType): string }).getEffortBasedInstructions(EffortType.HIGH);
+      const lowEffortInstructions = (service as unknown as { getEffortBasedInstructions(effort: EffortType): string }).getEffortBasedInstructions(EffortType.LOW);
 
       expect(highEffortInstructions).toContain('thorough');
       expect(highEffortInstructions).toContain('comprehensive');
@@ -169,7 +172,7 @@ describe('Azure AI Agent Service Integration', () => {
     });
 
     test('should enhance queries with evaluation requirements', () => {
-      const service = new AzureAIAgentService();
+      const service = AzureAIAgentService.getInstance();
       const originalQuery = 'What is quantum computing?';
       
       const enhancedQuery = (service as any).enhanceQueryForEvaluation(originalQuery, EffortType.MEDIUM);
@@ -185,7 +188,7 @@ describe('Azure AI Agent Service Integration', () => {
     test('should integrate properly with ModelProviderService fallback chain', async () => {
       // Test that ModelProviderService handles fallback correctly
       const modelProvider = ModelProviderService.getInstance();
-      const fallbackChain = (modelProvider as { buildFallbackChain(model: ModelType, excludedModels: Set<ModelType>): ModelType[] }).buildFallbackChain(AZURE_O3_MODEL, new Set());
+      const fallbackChain = (modelProvider as unknown as { buildFallbackChain(model: ModelType, excludedModels: Set<ModelType>): ModelType[] }).buildFallbackChain(AZURE_O3_MODEL, new Set());
       
       // Should include other models as fallbacks
       expect(fallbackChain.length).toBeGreaterThan(0);
@@ -195,7 +198,7 @@ describe('Azure AI Agent Service Integration', () => {
 
   describe('Evaluation Metadata Generation', () => {
     test('should generate proper evaluation metadata', () => {
-      const service = new AzureAIAgentService();
+      const service = AzureAIAgentService.getInstance();
       const content = 'This is a comprehensive research response with detailed analysis and multiple perspectives on the topic.';
       const sources = [
         { url: 'https://edu.example.com', title: 'Academic Source', relevanceScore: 0.9 },
@@ -230,7 +233,7 @@ describe('Azure AI Agent Service Integration', () => {
 
   describe('Rate Limiting Integration', () => {
     test('should respect existing rate limiting', async () => {
-      const service = new AzureAIAgentService();
+      const service = AzureAIAgentService.getInstance();
       
       // Test that rate limiter is integrated
       expect((service as any).rateLimiter).toBeDefined();
@@ -280,7 +283,7 @@ export const testAzureAIAgentIntegration = {
   /**
    * Test the complete research flow with Azure AI Agent Service
    */
-  async testCompleteFlow(query: string, expectedSourceCount: number = 3) {
+  async testCompleteFlow(query: string, expectedSourceCount = 3) {
     const researchAgent = ResearchAgentService.getInstance();
     
     const result = await researchAgent.processQuery(query, AZURE_O3_MODEL);
@@ -302,7 +305,7 @@ export const testAzureAIAgentIntegration = {
   /**
    * Test source quality enhancement
    */
-  testSourceQualityEnhancement(sources: Array<{ title?: string; url?: string; snippet?: string; [key: string]: unknown }>) {
+  testSourceQualityEnhancement(sources: { title?: string; url?: string; snippet?: string; [key: string]: unknown }[]) {
     const enhanced = sources.map(source => {
       const qualityIndicators = {
         high: ['.gov', '.edu', 'wikipedia.org', 'nature.com'],

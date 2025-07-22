@@ -44,71 +44,76 @@ export function usePersistentState<T>(
 
   // Store the default value in a ref to avoid dependency issues
   const defaultValueRef = useRef(defaultValue);
+  const defaultValueKey = JSON.stringify(defaultValue);
 
   // Update the ref when defaultValue changes, but use deep comparison
   useEffect(() => {
     defaultValueRef.current = defaultValue;
-  }, [JSON.stringify(defaultValue)]); // Use JSON.stringify for deep comparison
+  }, [defaultValue, defaultValueKey]); // Use key instead of defaultValue
 
   // Initialize state from storage
   useEffect(() => {
-    const loadState = async () => {
-      try {
-        // First try localStorage
-        const localData = localStorage.getItem(storageKey);
-        let localParsed: any = null;
-        if (localData) {
-          try {
-            localParsed = JSON.parse(localData);
-            const value = localParsed.value !== undefined ? localParsed.value : localParsed;
-            setState(value !== null && value !== undefined ? value : defaultValueRef.current);
-          } catch (error) {
-            console.warn('Failed to parse localStorage data:', error);
-            setState(defaultValueRef.current);
+    const shouldLoadFromStorage = !isInitialized && state === defaultValueRef.current;
+
+    if (shouldLoadFromStorage) {
+      const loadState = async () => {
+        try {
+          // First try localStorage
+          const localData = localStorage.getItem(storageKey);
+          let localParsed: any = null;
+          if (localData) {
+            try {
+              localParsed = JSON.parse(localData);
+              const value = localParsed.value !== undefined ? localParsed.value : localParsed;
+              setState(value !== null && value !== undefined ? value : defaultValueRef.current);
+            } catch (error) {
+              console.warn('Failed to parse localStorage data:', error);
+              setState(defaultValueRef.current);
+            }
           }
-        }
 
-        // Then try database if enabled
-        if (enableDatabase) {
-          try {
-            const dbService = DatabaseService.getInstance();
-            const userId = sessionStorage.getItem("reveries_user_session_id");
-            if (userId) {
-              const isConnected = await dbService.isConnected();
-              setIsDatabaseConnected(isConnected);
+          // Then try database if enabled
+          if (enableDatabase) {
+            try {
+              const dbService = DatabaseService.getInstance();
+              const userId = sessionStorage.getItem("reveries_user_session_id");
+              if (userId) {
+                const isConnected = await dbService.isConnected();
+                setIsDatabaseConnected(isConnected);
 
-              if (isConnected) {
-                const prefs = await dbService.getUserPreferences(userId);
-                const dbData = prefs?.[key];
-                if (dbData && dbData.timestamp > (localParsed?.timestamp || 0)) {
-                  const value = dbData.value !== null && dbData.value !== undefined ? dbData.value : defaultValueRef.current;
-                  setState(value);
-                  // Update localStorage with newer database data
-                  localStorage.setItem(
-                    storageKey,
-                    JSON.stringify({
-                      value: value,
-                      timestamp: dbData.timestamp,
-                    })
-                  );
+                if (isConnected) {
+                  const prefs = await dbService.getUserPreferences(userId);
+                  const dbData = prefs?.[key];
+                  if (dbData && dbData.timestamp > (localParsed?.timestamp || 0)) {
+                    const value = dbData.value !== null && dbData.value !== undefined ? dbData.value : defaultValueRef.current;
+                    setState(value);
+                    // Update localStorage with newer database data
+                    localStorage.setItem(
+                      storageKey,
+                      JSON.stringify({
+                        value: value,
+                        timestamp: dbData.timestamp,
+                      })
+                    );
+                  }
                 }
               }
+            } catch (dbError) {
+              console.warn("Database load failed, using localStorage:", dbError);
+              onSyncError?.(dbError as Error);
             }
-          } catch (dbError) {
-            console.warn("Database load failed, using localStorage:", dbError);
-            onSyncError?.(dbError as Error);
           }
+        } catch (error) {
+          console.error("Failed to load persisted state:", error);
+          setState(defaultValueRef.current);
+        } finally {
+          setIsInitialized(true);
         }
-      } catch (error) {
-        console.error("Failed to load persisted state:", error);
-        setState(defaultValueRef.current);
-      } finally {
-        setIsInitialized(true);
-      }
-    };
+      };
 
-    loadState();
-  }, [key, storageKey, enableDatabase, onSyncError]); // Removed defaultValue from dependencies
+      loadState();
+    }
+  }, [storageKey, isInitialized, state, enableDatabase, onSyncError, key]);
 
   // Save state to storage
   const saveState = useCallback(
@@ -136,7 +141,7 @@ export function usePersistentState<T>(
         onSyncError?.(error as Error);
       }
     },
-    [storageKey, key, enableDatabase, isDatabaseConnected, isInitialized, onSyncError]
+    [storageKey, enableDatabase, isDatabaseConnected, isInitialized, onSyncError]
   );
 
   // Debounced save effect
@@ -305,7 +310,7 @@ export function useResearchSessions() {
   const enhanced = usePersistentStateEnhanced<ResearchSession[]>(
     'research_sessions',
     [],
-    { 
+    {
       version: 1,
       enableDatabase: import.meta.env.VITE_ENABLE_DATABASE_PERSISTENCE === "true"
     }
@@ -333,7 +338,7 @@ export function useResearchSessions() {
 
   const syncWithDatabase = useCallback(async () => {
     if (!enhanced.isDatabaseConnected) return;
-    
+
     try {
       const userId = sessionStorage.getItem("reveries_user_session_id");
       if (userId) {
@@ -607,7 +612,7 @@ export function useEnhancedPersistedState<T>(
   version = 1
 ): [T, React.Dispatch<React.SetStateAction<T>>, () => void] {
   console.warn('useEnhancedPersistedState is deprecated. Please use usePersistentState instead.');
-  return usePersistentState(key, defaultValue, { 
+  return usePersistentState(key, defaultValue, {
     version,
     enableDatabase: import.meta.env.VITE_ENABLE_DATABASE_PERSISTENCE === "true"
   });

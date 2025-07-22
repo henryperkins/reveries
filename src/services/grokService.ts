@@ -348,14 +348,6 @@ export class GrokService {
   }
 
 
-  private getReasoningEffort(_effort: EffortType): string {
-    switch (_effort) {
-      case EffortType.LOW: return 'low';
-      case EffortType.MEDIUM: return 'medium';
-      case EffortType.HIGH: return 'high';
-      default: return 'medium';
-    }
-  }
 
 
   private processCitations(_citations: any): Citation[] {

@@ -3,7 +3,6 @@
  * Tests layout engine, graph manager, and UI components
  */
 
-import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { GraphLayoutEngine, getNodeStyle } from '../utils/graphLayout';
@@ -41,9 +40,9 @@ describe('GraphLayoutEngine', () => {
   describe('Basic Layout Calculation', () => {
     test('should layout nodes with correct positions', () => {
       const nodes = [
-        { id: '1', title: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 },
-        { id: '2', title: 'Node 2', type: ResearchStepType.WEB_RESEARCH, level: 1 },
-        { id: '3', title: 'Node 3', type: ResearchStepType.FINAL_ANSWER, level: 2 }
+        { id: '1', label: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 },
+        { id: '2', label: 'Node 2', type: ResearchStepType.WEB_RESEARCH, level: 1 },
+        { id: '3', label: 'Node 3', type: ResearchStepType.FINAL_ANSWER, level: 2 }
       ];
 
       const edges = [

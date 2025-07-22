@@ -409,7 +409,7 @@ export class ResearchAgentService {
     }
   > {
     console.log('📍 ResearchAgent.processQuery called with:', { query: query.substring(0, 50), model });
-    
+
     // Special logging for O3 model
     if (model === 'o3' || (model as string).toLowerCase().includes('o3')) {
       console.log('🎯 O3 MODEL DETECTED IN RESEARCH FLOW:', {
@@ -428,7 +428,7 @@ export class ResearchAgentService {
 
       // Apply learned adjustments from Phase 8
       paradigmProbs = this.paradigmLearning.getLearnedAdjustments(query, paradigmProbs);
-      
+
       // Report probabilities like in the diagram
       const probReport = Object.entries(paradigmProbs)
         .map(([p, prob]) => `${p.charAt(0).toUpperCase() + p.slice(1)} ${Math.round(prob * 100)}%`)
@@ -700,10 +700,10 @@ export class ResearchAgentService {
       gen
     );
     res.evaluationMetadata = evalRes;
-    
+
     // Send synthesis completion message after evaluation
     onProgress?.('Finalizing comprehensive answer through synthesis...');
-    
+
     return res;
   }
 
@@ -751,11 +751,11 @@ export class ResearchAgentService {
   ): Promise<EnhancedResearchResults> {
     const startTime = Date.now();
     onProgress?.('tool_used:memory_cache');
-    
+
     // Get the paradigm early for cache statistics
     const paradigm = await this.paradigmService.determineHostParadigm(query);
     const cacheHitRate = this.memoryService.getCacheHitRate(paradigm || undefined);
-    
+
     const cachedResult = this.memoryService.getCachedResult(query, paradigm || undefined);
     if (cachedResult) {
       onProgress?.(`💾 Paradigm Cache Hit! (${paradigm || 'general'} hit rate: ${cacheHitRate}%)`);
@@ -806,11 +806,11 @@ export class ResearchAgentService {
     onProgress?.('Evaluating research quality and self‑healing if needed');
     onProgress?.('Research evaluation phase initiated');
     result.confidenceScore = ResearchUtilities.calculateConfidenceScore(result);
-    
+
     // Report confidence like in the diagram
     const confidencePercent = Math.round((result.confidenceScore || 0) * 100);
     onProgress?.(`🔍 Evaluation: Confidence: ${confidencePercent}%`);
-    
+
     if (ResearchUtilities.needsSelfHealing(result)) {
       onProgress?.(`🔧 Self-Healing: Confidence ${confidencePercent}% < 35% threshold`);
       onProgress?.(`🔄 Strategy: ${paradigm ? paradigm.charAt(0).toUpperCase() + paradigm.slice(1) : 'General'} Deep Analysis`);
@@ -828,10 +828,10 @@ export class ResearchAgentService {
         generateTextFunction
       );
     }
-    
+
     // Send synthesis completion message to trigger UI transition
     onProgress?.('Finalizing comprehensive answer through synthesis...');
-    
+
     const processingTime = Date.now() - startTime;
     result.adaptiveMetadata = {
       ...result.adaptiveMetadata,
@@ -839,12 +839,12 @@ export class ResearchAgentService {
       paradigmProbabilities: this.lastParadigmProbabilities || undefined,
       cacheHit: false
     };
-    
+
     // Report final results like in the diagram
     const finalConfidence = Math.round((result.confidenceScore || 0.75) * 100);
     const sourceCount = result.sources?.length || 0;
     onProgress?.(`✅ Enhanced Research Results: Paradigm: ${paradigm ? paradigm.charAt(0).toUpperCase() + paradigm.slice(1) : 'General'} | Confidence: ${finalConfidence}% | Sources: ${sourceCount}`);
-    
+
     this.memoryService.cacheResult(query, result, paradigm || undefined);
     return result;
   }
@@ -952,7 +952,7 @@ export class ResearchAgentService {
   // it encapsulates a well-tested timeout-extension strategy that may be
   // re-used shortly.  Because the TypeScript compiler is configured with
   // `noUnusedLocals: true`, an unused private member would normally trigger
-  // error TS6133.  Adding `@ts-ignore` on the next line suppresses that
+  // error TS6133.  Adding `@ts-expect-error` on the next line suppresses that
   // diagnostic while still type-checking the function body.
   //
   // @ts-expect-error — kept for potential future use

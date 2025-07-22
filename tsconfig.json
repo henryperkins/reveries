@@ -51,12 +51,11 @@
     "src/tests/test-azure-o3-agentic.js",
     "src/tests/test-multi-paradigm.js",
     "api/**/*",
-    "docs/**/*.ts",
-    "workflows-starter/src/**/*"
+    "docs/**/*.ts"
   ],
   "exclude": [
     "components",
-    "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "workflows-starter/**/*"
   ]
 }

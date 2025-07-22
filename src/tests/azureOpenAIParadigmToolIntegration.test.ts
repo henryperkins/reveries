@@ -117,6 +117,7 @@ describe('Azure OpenAI Paradigm-Aware Tool Integration', () => {
       // Bernard should prioritize academic sources and statistics
       expect(bernardTools).toBeDefined();
       expect(Array.isArray(bernardTools)).toBe(true);
+      expect(allTools.length).toBeGreaterThan(0); // Verify available tools
     });
   });
 
@@ -227,8 +228,9 @@ describe('Azure OpenAI Paradigm-Aware Tool Integration', () => {
       );
 
       expect(response.iterationCount).toBe(2);
-      expect(response.toolCalls).toHaveLength(1);
-      expect(response.toolCalls[0].name).toBe('advanced_web_search');
+      expect(response.toolCalls).toBeDefined();
+      expect(response.toolCalls!).toHaveLength(1);
+      expect(response.toolCalls![0].name).toBe('advanced_web_search');
       expect(response.text).toContain('comprehensive analysis');
       expect(response.paradigmContext?.toolsUsed).toContain('advanced_web_search');
     });
@@ -459,6 +461,9 @@ describe('Azure OpenAI Paradigm-Aware Tool Integration', () => {
         'bernard',
         multiParadigmProbs
       );
+
+      // Verify response is valid
+      expect(response).toBeDefined();
 
       // Verify multi-paradigm context
       const fetchCall = mockFetch.mock.calls[0];

@@ -4,7 +4,7 @@
  */
 
 import { AzureOpenAIService } from '@/services/azureOpenAIService';
-import { ParadigmProbabilities } from '@/types';
+import { ParadigmProbabilities, EffortType, HostParadigm } from '@/types';
 
 async function testLiveIntegration() {
   console.log('🚀 Testing Live Azure OpenAI Integration...\n');
@@ -63,13 +63,13 @@ async function testLiveIntegration() {
     console.log('\n3. Testing streaming response...');
     
     const chunks: string[] = [];
-    const metadata: { type: string; timestamp: number }[] = [];
+    const metadata: ({ paradigm?: HostParadigm } | undefined)[] = [];
     
     await new Promise<void>((resolve, reject) => {
       azureService.streamResponse(
         'Explain quantum entanglement in simple terms',
         EffortType.LOW,
-        (chunk: string, meta?: { type: string; timestamp: number }) => {
+        (chunk: string, meta?: { paradigm?: HostParadigm }) => {
           chunks.push(chunk);
           if (meta) metadata.push(meta);
           process.stdout.write(chunk); // Show streaming in real-time

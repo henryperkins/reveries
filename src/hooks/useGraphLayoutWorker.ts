@@ -3,13 +3,13 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { 
-  WorkerGraphNode, 
-  WorkerGraphEdge, 
-  LayoutRequest, 
-  LayoutResponse, 
-  LayoutNode, 
-  LayoutEdge 
+import {
+  WorkerGraphNode,
+  WorkerGraphEdge,
+  LayoutRequest,
+  LayoutResponse,
+  LayoutNode,
+  LayoutEdge
 } from '@/utils/graphLayoutWorker';
 
 interface UseGraphLayoutWorkerResult {
@@ -48,7 +48,7 @@ export function useGraphLayoutWorker(): UseGraphLayoutWorkerResult {
           const pending = pendingRequestsRef.current.get(requestId);
           if (pending) {
             pendingRequestsRef.current.delete(requestId);
-            
+
             if (workerError) {
               pending.reject(new Error(workerError));
             } else {
@@ -64,7 +64,7 @@ export function useGraphLayoutWorker(): UseGraphLayoutWorkerResult {
       workerRef.current.onerror = (error) => {
         console.error('Graph layout worker error:', error);
         setError('Worker initialization failed');
-        
+
         // Reject all pending requests
         pendingRequestsRef.current.forEach(({ reject }) => {
           reject(new Error('Worker failed'));
@@ -78,21 +78,21 @@ export function useGraphLayoutWorker(): UseGraphLayoutWorkerResult {
     }
 
     return () => {
-      if (workerRef.current) {
-        workerRef.current.terminate();
-        workerRef.current = null;
-      }
-      
-      // Reject all pending requests
-      pendingRequestsRef.current.forEach(({ reject }) => {
-        reject(new Error('Worker terminated'));
+      // Copy ref to local variable for cleanup
+      const currentRequests = pendingRequestsRef.current;
+      const currentWorker = workerRef.current;
+
+      currentRequests.forEach(({ reject }) => {
+        reject(new Error('Component unmounted'));
       });
-      pendingRequestsRef.current.clear();
+      currentRequests.clear();
+
+      currentWorker?.terminate();
     };
   }, []);
 
   const calculateLayout = useCallback(async (
-    nodes: WorkerGraphNode[], 
+    nodes: WorkerGraphNode[],
     edges: WorkerGraphEdge[]
   ): Promise<{ nodes: LayoutNode[]; edges: LayoutEdge[] }> => {
     if (!workerRef.current) {
@@ -101,7 +101,7 @@ export function useGraphLayoutWorker(): UseGraphLayoutWorkerResult {
 
     return new Promise((resolve, reject) => {
       const requestId = `layout-${Date.now()}-${Math.random()}`;
-      
+
       // Store the promise handlers
       pendingRequestsRef.current.set(requestId, { resolve, reject });
       setIsCalculating(true);
@@ -143,16 +143,16 @@ export function useFallbackGraphLayout(): UseGraphLayoutWorkerResult {
 
   // Import the main thread layout engine as fallback
   const calculateLayout = useCallback(async (
-    nodes: WorkerGraphNode[], 
+    nodes: WorkerGraphNode[],
     edges: WorkerGraphEdge[]
   ): Promise<{ nodes: LayoutNode[]; edges: LayoutEdge[] }> => {
     setIsCalculating(true);
-    
+
     try {
       // Dynamic import to avoid bundling issues
       const { GraphLayoutEngine } = await import('@/utils/graphLayout');
       const engine = new GraphLayoutEngine();
-      
+
       // Convert worker types to main thread types
       const mainThreadNodes = nodes.map(node => ({
         id: node.id,
@@ -174,7 +174,7 @@ export function useFallbackGraphLayout(): UseGraphLayoutWorkerResult {
       }));
 
       const result = engine.layoutGraph(mainThreadNodes, mainThreadEdges);
-      
+
       return {
         nodes: result.nodes as LayoutNode[],
         edges: result.edges as LayoutEdge[]
