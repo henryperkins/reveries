@@ -1,6 +1,6 @@
 /**
  * Unified Design System for Reveries
- * This file contains all design tokens and theme configuration
+ * Single source of truth for all design tokens and theme configuration
  */
 
 export const designSystem = {
@@ -8,53 +8,54 @@ export const designSystem = {
   colors: {
     // Westworld Theme Colors
     westworld: {
-      cream: '#FAFAFA',
-      beige: '#F5E6D3',
-      tan: '#D2B48C',
-      brown: '#A0522D',
-      darkBrown: '#654321',
-      nearBlack: '#1A1A1A',
+      cream: '#FAF6F2',
+      beige: '#F5EDE4', 
+      tan: '#E8D5C4',
+      brown: '#8B6F47',
+      'dark-brown': '#6B5637',
+      'near-black': '#2A2522',
+      black: '#1A1512',
       gold: '#D4AF37',
-      darkGold: '#B8941F',
-      rust: '#8B4513',
-      copper: '#B87333',
-      darkCopper: '#A05A2C',
+      'dark-gold': '#B8941F',
+      rust: '#A85732',
+      copper: '#C87543',
+      'dark-copper': '#A65E36',
       white: '#FFFFFF',
     },
     
     // Semantic Colors
     semantic: {
       primary: '#D4AF37', // gold
-      primaryDark: '#B8941F',
-      secondary: '#B87333', // copper
-      secondaryDark: '#A05A2C',
-      background: '#F5E6D3', // beige
-      surface: '#FAFAFA', // cream
-      text: '#1A1A1A', // nearBlack
-      textMuted: '#A0522D', // brown
-      border: '#D2B48C', // tan
+      'primary-dark': '#B8941F',
+      secondary: '#C87543', // copper
+      'secondary-dark': '#A65E36',
+      background: '#F5EDE4', // beige
+      surface: '#FAF6F2', // cream
+      text: '#2A2522', // near-black
+      'text-muted': '#8B6F47', // brown
+      border: '#E8D5C4', // tan
       
       // State colors
       success: '#10B981',
-      successLight: '#D1FAE5',
+      'success-light': '#D1FAE5',
       warning: '#F59E0B',
-      warningLight: '#FEF3C7',
+      'warning-light': '#FEF3C7',
       error: '#EF4444',
-      errorLight: '#FEE2E2',
+      'error-light': '#FEE2E2',
       info: '#3B82F6',
-      infoLight: '#DBEAFE',
+      'info-light': '#DBEAFE',
     },
   },
   
   // Typography Scale
   typography: {
-    fontFamily: {
+    'font-family': {
       sans: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       serif: "'Georgia', 'Times New Roman', serif",
       mono: "'JetBrains Mono', 'Consolas', 'Monaco', monospace",
     },
     
-    fontSize: {
+    'font-size': {
       xs: '0.75rem',    // 12px
       sm: '0.875rem',   // 14px
       base: '1rem',     // 16px
@@ -66,7 +67,7 @@ export const designSystem = {
       '5xl': '3rem',    // 48px
     },
     
-    fontWeight: {
+    'font-weight': {
       thin: 100,
       light: 300,
       normal: 400,
@@ -76,7 +77,7 @@ export const designSystem = {
       extrabold: 800,
     },
     
-    lineHeight: {
+    'line-height': {
       none: 1,
       tight: 1.25,
       snug: 1.375,
@@ -104,7 +105,7 @@ export const designSystem = {
   },
   
   // Border Radius
-  borderRadius: {
+  'border-radius': {
     none: '0',
     sm: '0.125rem',  // 2px
     base: '0.25rem', // 4px
@@ -274,6 +275,33 @@ export const designSystem = {
   },
 };
 
+// Helper function to convert camelCase to kebab-case
+const toKebabCase = (str: string): string => {
+  return str.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
+};
+
+// Generate CSS variables from design tokens
+export const generateCSSVariables = (obj: any, prefix = '--'): Record<string, string> => {
+  const variables: Record<string, string> = {};
+  
+  const traverse = (current: any, path: string[] = []) => {
+    for (const [key, value] of Object.entries(current)) {
+      const kebabKey = toKebabCase(key);
+      const currentPath = [...path, kebabKey];
+      
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        traverse(value, currentPath);
+      } else {
+        const variableName = `${prefix}${currentPath.join('-')}`;
+        variables[variableName] = String(value);
+      }
+    }
+  };
+  
+  traverse(obj);
+  return variables;
+};
+
 // Helper function to get CSS variables
 export const getCSSVariable = (path: string) => {
   const keys = path.split('.');
@@ -287,5 +315,9 @@ export const getCSSVariable = (path: string) => {
   return value;
 };
 
+// Generate all CSS variables
+export const cssVariables = generateCSSVariables(designSystem);
+
 // Export individual sections for convenience
-export const { colors, typography, spacing, borderRadius, shadows, zIndex, transitions, breakpoints, components } = designSystem;
+export const { colors, typography, spacing, shadows, zIndex, transitions, breakpoints, components } = designSystem;
+export const borderRadius = designSystem['border-radius'];
