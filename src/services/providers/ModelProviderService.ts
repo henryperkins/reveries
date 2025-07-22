@@ -1,4 +1,4 @@
- 
+
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { APIError, ErrorBoundary } from '@/services/errorHandler';
 import { AzureOpenAIService } from '@/services/azureOpenAIService';
@@ -12,9 +12,9 @@ import {
   ModelType,
   GENAI_MODEL_FLASH,
   GROK_MODEL_4,
-  AZURE_O3_MODEL
+  AZURE_O3_MODEL,
+  type Citation
 } from '@/types';
-import type { Citation } from '@/types';
 import type { ProviderResponse } from '@/services/research/types';
 
 const getGeminiApiKey = (): string => {
@@ -109,7 +109,7 @@ export class ModelProviderService {
 
       switch (model) {
         case GENAI_MODEL_FLASH:
-          onProgress?.('tool_used:gemini_api');
+          { onProgress?.('tool_used:gemini_api');
           const geminiResult = await geminiService.generateContent(prompt, {
             model: GENAI_MODEL_FLASH,
             useSearch: true
@@ -125,9 +125,10 @@ export class ModelProviderService {
               title: s.name,
               accessed: new Date().toISOString()
             }))
-          };
+          }; }
 
         case GROK_MODEL_4:
+        {
           onProgress?.('tool_used:grok_api');
           const grokService = GrokService.getInstance();
           const grokResult = await grokService.generateResponseWithLiveSearch(prompt, effort);
@@ -136,8 +137,10 @@ export class ModelProviderService {
             text: grokResult.text,
             sources: grokResult.sources || []
           };
+          // break; // Unreachable, but included for ESLint compliance
+        }
 
-        case AZURE_O3_MODEL:
+        case AZURE_O3_MODEL: {
           console.log('🎯 O3 MODEL SELECTED - Processing query with Azure O3');
           console.log('📊 O3 Journey Start:', {
             model,
@@ -146,7 +149,7 @@ export class ModelProviderService {
             promptPreview: prompt.substring(0, 200) + '...',
             timestamp: new Date().toISOString()
           });
-          
+
           // Prioritize Azure AI Agent Service with Bing Search if available
           if (this.azureAIAgent) {
             onProgress?.('tool_used:azure_ai_agent');
@@ -156,13 +159,13 @@ export class ModelProviderService {
               features: ['Bing Search grounding', 'Real-time web data'],
               connectionAvailable: true
             });
-            
+
             try {
               const agentStartTime = Date.now();
               console.log('🚀 O3 Agent Request initiated at:', new Date(agentStartTime).toISOString());
-              
+
               const agentResult = await this.azureAIAgent.generateText(prompt, model, effort);
-              
+
               const agentDuration = Date.now() - agentStartTime;
               onProgress?.(`tool_used:completed:azure_ai_agent:${startTime}`);
               console.log('✅ O3 Azure AI Agent completed:', {
@@ -210,7 +213,7 @@ export class ModelProviderService {
             reason: this.azureAIAgent ? 'Agent service failed' : 'Agent service not available',
             nextRoute: 'Azure OpenAI with research tools'
           });
-          
+
           onProgress?.('tool_used:azure_openai');
           if (!AzureOpenAIService.isAvailable()) {
             console.warn('❌ O3 Azure OpenAI not available, falling back to Gemini:', {
@@ -266,7 +269,7 @@ export class ModelProviderService {
 
             const azureDuration = Date.now() - azureStartTime;
             onProgress?.(`tool_used:completed:azure_openai_with_tools:${startTime}`);
-            
+
             console.log('✅ O3 Azure OpenAI with Tools completed:', {
               duration: `${azureDuration}ms`,
               toolsInvoked: toolUsageLog.length,
@@ -308,10 +311,10 @@ export class ModelProviderService {
             console.log('🚀 O3 Basic Request initiated at:', new Date(basicStartTime).toISOString());
 
             const azureResult = await azureService.generateResponse(prompt, effort);
-            
+
             const basicDuration = Date.now() - basicStartTime;
             onProgress?.(`tool_used:completed:azure_openai:${startTime}`);
-            
+
             console.log('✅ O3 Basic Azure OpenAI completed:', {
               duration: `${basicDuration}ms`,
               responseLength: azureResult.text?.length || 0,
@@ -339,7 +342,7 @@ export class ModelProviderService {
               sources: azureResult.sources || []
             };
           }
-
+        }
         default:
           throw new APIError(`Unsupported model: ${model}`, 'INVALID_MODEL', false);
       }
@@ -441,11 +444,12 @@ export class ModelProviderService {
     switch (model) {
       case GENAI_MODEL_FLASH:
         return this.generateTextWithGemini(prompt, model, effort, true);
-      case GROK_MODEL_4:
+      case GROK_MODEL_4: {
         const grokService = GrokService.getInstance();
         const grokResult = await grokService.generateResponseWithLiveSearch(prompt, effort);
         return { text: grokResult.text, sources: grokResult.sources || [] };
-      case AZURE_O3_MODEL:
+      }
+      case AZURE_O3_MODEL: {
         // Try Azure AI Agent Service with enhancement first
         if (this.azureAIAgent) {
           try {
@@ -456,6 +460,7 @@ export class ModelProviderService {
           }
         }
         return this.generateTextWithAzureOpenAI(prompt, effort, false);
+      }
       default:
         throw new APIError(`Unsupported model: ${model}`, 'INVALID_MODEL', false);
     }
@@ -565,7 +570,9 @@ export class ModelProviderService {
                 try {
                   const result = await this.researchToolsService.executeTool(fc);
                   return { result, error: null };
-                } catch { /* Not a research tool, try regular functions */ }
+                } catch {
+                  // Intentionally empty: Not a research tool, try regular functions
+                }
               }
               return this.functionCallingService.executeFunction(fc);
             })
@@ -697,7 +704,9 @@ export class ModelProviderService {
     try {
       getGrokApiKey();
       models.push(GROK_MODEL_4);
-    } catch {}
+    } catch {
+      // Intentionally empty: If Grok is not available, do not add to models
+    }
 
     // Check Azure OpenAI availability (including AI Agent Service)
     if (this.azureAIAgent || this.azureOpenAI) {

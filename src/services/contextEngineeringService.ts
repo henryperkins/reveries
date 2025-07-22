@@ -1,5 +1,4 @@
-import { HostParadigm, PyramidLayer, ResearchPhase, ContextDensity } from '@/types';
-import type { ContextLayer } from '@/types';
+import { HostParadigm, PyramidLayer, ResearchPhase, ContextDensity, type ContextLayer } from '@/types';
 import { DEFAULT_CONTEXT_WINDOW_METRICS } from '@/constants';
 
 export class ContextEngineeringService {
@@ -55,7 +54,7 @@ export class ContextEngineeringService {
       'data_collection': 'exploration',
       'action': 'validation'
     };
-    
+
     const normalizedPhase = phaseMap[phase] || phase;
     const metrics = DEFAULT_CONTEXT_WINDOW_METRICS.find(m => m.phase === normalizedPhase);
 
@@ -155,7 +154,7 @@ export class ContextEngineeringService {
   } {
     return {
       narrative: densities.dolores,    // action-oriented → narrative
-      analytical: densities.bernard,   // analytical → analytical  
+      analytical: densities.bernard,   // analytical → analytical
       memory: densities.teddy,         // protective/comprehensive → memory
       adaptive: densities.maeve        // strategic → adaptive
     };

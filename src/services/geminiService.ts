@@ -1,5 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { Tool, SchemaType, Schema } from "@google/generative-ai";
+import { GoogleGenerativeAI, type Tool, type SchemaType, type Schema } from "@google/generative-ai";
 import { GoogleGenAI, Type } from "@google/genai";
 import { GENAI_MODEL_FLASH } from '@/types';
 
@@ -135,7 +134,7 @@ export class GeminiService {
                   'array': 'ARRAY'
                 };
                 const mappedType = typeMap[value.type.toLowerCase()] || value.type;
-                
+
                 if (value.enum) {
                   return [key, {
                     type: mappedType,
@@ -345,16 +344,16 @@ export class GeminiService {
                   propType = Type.ARRAY;
                   break;
               }
-              
+
               const prop: Record<string, unknown> = {
                 type: propType,
                 description: value.description
               };
-              
+
               if (value.enum) {
                 prop.enum = value.enum;
               }
-              
+
               return [key, prop];
             })
           ),
@@ -364,13 +363,13 @@ export class GeminiService {
 
       // Build tools array with function declarations and optionally Google Search
       const tools: { functionDeclarations?: typeof functionDeclarations; googleSearch?: Record<string, never> }[] = [];
-      
+
       if (functionDeclarations.length > 0) {
         tools.push({
           functionDeclarations
         });
       }
-      
+
       if (options.useSearch) {
         tools.push({
           googleSearch: {}
@@ -401,7 +400,7 @@ export class GeminiService {
           name: fc.name!,
           args: fc.args || {}
         }));
-      
+
       // Extract sources if Google Search was used
       const sources: { name: string; url?: string }[] = [];
       if (options.useSearch && response.candidates?.[0]?.groundingMetadata?.groundingChunks) {

@@ -54,6 +54,8 @@ export interface ResearchStep {
   metadata?: ResearchMetadata;
   toolsUsed?: string[];
   recommendedTools?: string[];
+  parentId?: string; // Optional, for step hierarchies
+  label?: string;    // Optional, for UI display
 }
 
 export enum EffortType {
