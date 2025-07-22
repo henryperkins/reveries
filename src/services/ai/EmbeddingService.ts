@@ -81,12 +81,12 @@ class OpenAIEmbeddingProvider implements EmbeddingProvider {
       }
 
       const data = await response.json();
-      
+
       // Record actual token usage if available
       if (data.usage?.total_tokens) {
         this.rateLimiter.recordTokensUsed(data.usage.total_tokens);
       }
-      
+
       return data.data.map((item: OpenAIEmbeddingItem) => ({
         values: item.embedding,
         dimensions: item.embedding.length,
@@ -115,12 +115,27 @@ class AzureOpenAIEmbeddingProvider implements EmbeddingProvider {
     this.endpoint = rawEndpoint
       .replace(/\/+$/, '')             // trim trailing slash(es)
       .replace(/\/openai$/, '');       // remove redundant /openai
-    this.deploymentName = deploymentName || getEnv('VITE_AZURE_OPENAI_EMBEDDING_DEPLOYMENT', 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT') || 'text-embedding-ada-002';
-    this.apiVersion = getEnv('VITE_AZURE_OPENAI_EMBEDDING_API_VERSION', 'AZURE_OPENAI_EMBEDDING_API_VERSION') || '2024-10-21';
+    // Check both EMBEDDING_MODEL and EMBEDDING_DEPLOYMENT for compatibility
+    this.deploymentName = deploymentName ||
+      getEnv('VITE_AZURE_OPENAI_EMBEDDING_MODEL', 'AZURE_OPENAI_EMBEDDING_MODEL') ||
+      getEnv('VITE_AZURE_OPENAI_EMBEDDING_DEPLOYMENT', 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT') ||
+      'text-embedding-3-large';
+    // Use the same API version as the main Azure OpenAI service
+    this.apiVersion = getEnv('VITE_AZURE_OPENAI_API_VERSION', 'AZURE_OPENAI_API_VERSION') ||
+      getEnv('VITE_AZURE_OPENAI_EMBEDDING_API_VERSION', 'AZURE_OPENAI_EMBEDDING_API_VERSION') ||
+      '2024-10-21';
   }
 
   async isAvailable(): Promise<boolean> {
-    return !!this.apiKey && !!this.endpoint && typeof fetch !== 'undefined';
+    const available = !!this.apiKey && !!this.endpoint && typeof fetch !== 'undefined';
+    if (available) {
+      console.log('✅ Azure OpenAI Embedding Provider available:', {
+        deployment: this.deploymentName,
+        endpoint: this.endpoint.replace(/\/\/.+@/, '//[REDACTED]@'),
+        apiVersion: this.apiVersion
+      });
+    }
+    return available;
   }
 
   async generateEmbedding(text: string): Promise<EmbeddingVector> {
@@ -163,17 +178,17 @@ class AzureOpenAIEmbeddingProvider implements EmbeddingProvider {
       }
 
       const data = await response.json();
-      
+
       // Record actual token usage if available
       if (data.usage?.total_tokens) {
         this.rateLimiter.recordTokensUsed(data.usage.total_tokens);
       }
-      
+
       // Update rate limits from headers if available
       const limitTokens = parseInt(response.headers.get('x-ratelimit-limit-tokens') ?? '', 10);
       const limitRequests = parseInt(response.headers.get('x-ratelimit-limit-requests') ?? '', 10);
       const burstTokens = parseInt(response.headers.get('x-ratelimit-burst-tokens') ?? '', 10);
-      
+
       if (Number.isFinite(limitTokens) || Number.isFinite(limitRequests) || Number.isFinite(burstTokens)) {
         this.rateLimiter.updateLimits({
           maxTokensPerMinute: Number.isFinite(limitTokens) ? limitTokens : undefined,
@@ -181,14 +196,19 @@ class AzureOpenAIEmbeddingProvider implements EmbeddingProvider {
           burstCapacity: Number.isFinite(burstTokens) ? burstTokens : undefined,
         });
       }
-      
+
       return data.data.map((item: OpenAIEmbeddingItem) => ({
         values: item.embedding,
         dimensions: item.embedding.length,
         model: this.deploymentName
       }));
     } catch (error) {
-      console.error('Azure OpenAI embedding generation failed:', error);
+      console.error('Azure OpenAI embedding generation failed:', {
+        error: error instanceof Error ? error.message : String(error),
+        deployment: this.deploymentName,
+        endpoint: this.endpoint.replace(this.apiKey, '[REDACTED]'),
+        suggestion: 'Check if embedding model is deployed in your Azure OpenAI resource'
+      });
       throw error;
     }
   }
@@ -288,10 +308,11 @@ export class EmbeddingService {
   private providers: EmbeddingProvider[] = [];
   private cache: Map<string, EmbeddingVector> = new Map();
   private paradigmEmbeddings: Map<HostParadigm, EmbeddingVector> = new Map();
+  private initializationPromise: Promise<void>;
 
   private constructor() {
     this.initializeProviders();
-    this.initializeParadigmEmbeddings();
+    this.initializationPromise = this.initializeParadigmEmbeddings();
   }
 
   public static getInstance(): EmbeddingService {
@@ -311,6 +332,7 @@ export class EmbeddingService {
   }
 
   private async initializeParadigmEmbeddings(): Promise<void> {
+    console.log('🎯 Initializing paradigm embeddings...');
     // Define paradigm training texts
     const paradigmTexts: Record<HostParadigm, string> = {
       dolores: `Action-oriented implementation focused on decisive change and awakening.
@@ -338,11 +360,29 @@ export class EmbeddingService {
         this.paradigmEmbeddings.set(paradigm as HostParadigm, embeddings[index]);
       });
 
-      console.log('Paradigm embeddings initialized successfully');
+      const activeProvider = await this.getActiveProvider();
+      console.log('✅ Paradigm embeddings initialized successfully:', {
+        provider: activeProvider?.name || 'unknown',
+        paradigms: Array.from(this.paradigmEmbeddings.keys()),
+        embeddingDimensions: embeddings[0]?.dimensions || 0
+      });
     } catch (error) {
-      console.error('Failed to initialize paradigm embeddings:', error);
+      console.error('⚠️ Failed to initialize paradigm embeddings:', {
+        error: error instanceof Error ? error.message : String(error),
+        availableProviders: this.providers.map(p => p.name),
+        suggestion: 'Check Azure OpenAI embedding model deployment'
+      });
       // Continue with fallback - will use keyword-based classification
     }
+  }
+
+  private async getActiveProvider(): Promise<EmbeddingProvider | null> {
+    for (const provider of this.providers) {
+      if (await provider.isAvailable()) {
+        return provider;
+      }
+    }
+    return null;
   }
 
   private async getAvailableProvider(): Promise<EmbeddingProvider> {
@@ -355,6 +395,9 @@ export class EmbeddingService {
   }
 
   public async generateEmbedding(text: string, useCache = true): Promise<EmbeddingVector> {
+    // Ensure service is initialized before generating embeddings
+    await this.initializationPromise;
+
     const cacheKey = `${text.substring(0, 100)}_${text.length}`;
 
     if (useCache && this.cache.has(cacheKey)) {
@@ -363,6 +406,7 @@ export class EmbeddingService {
 
     try {
       const provider = await this.getAvailableProvider();
+      console.log(`🔍 Using embedding provider: ${provider.name} for text: "${text.substring(0, 50)}..."`);
       const embedding = await provider.generateEmbedding(text);
 
       if (useCache) {
@@ -493,5 +537,13 @@ export class EmbeddingService {
     }
 
     return results;
+  }
+
+  /**
+   * Wait for the embedding service to be fully initialized
+   * This ensures paradigm embeddings are ready before use
+   */
+  public async waitForInitialization(): Promise<void> {
+    await this.initializationPromise;
   }
 }

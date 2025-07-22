@@ -4,25 +4,27 @@ export default {
         "./index.html",
         "./src/**/*.{js,ts,jsx,tsx}",
     ],
-    darkMode: ['class', '[data-theme="dark"]'],
+    darkMode: 'class', // Enable class-based dark mode
     theme: {
         extend: {
             colors: {
-                westworld: {
-                    cream: 'var(--color-westworld-cream)',
-                    beige: 'var(--color-westworld-beige)',
-                    tan: 'var(--color-westworld-tan)',
-                    brown: 'var(--color-westworld-brown)',
-                    darkBrown: 'var(--color-westworld-darkBrown)',
-                    nearBlack: 'var(--color-westworld-nearBlack)',
-                    black: 'var(--color-westworld-black)',
-                    gold: 'var(--color-westworld-gold)',
-                    darkGold: 'var(--color-westworld-darkGold)',
-                    rust: 'var(--color-westworld-rust)',
-                    copper: 'var(--color-westworld-copper)',
-                    darkCopper: 'var(--color-westworld-darkCopper)',
-                    white: 'var(--color-westworld-white)',
-                }
+                'westworld-cream': 'var(--color-westworld-cream)',
+                'westworld-beige': 'var(--color-westworld-beige)',
+                'westworld-tan': 'var(--color-westworld-tan)',
+                'westworld-brown': 'var(--color-westworld-brown)',
+                'westworld-darkBrown': 'var(--color-westworld-darkBrown)',
+                'westworld-nearBlack': 'var(--color-westworld-nearBlack)',
+                'westworld-black': 'var(--color-westworld-black)',
+                'westworld-gold': 'var(--color-westworld-gold)',
+                'westworld-darkGold': 'var(--color-westworld-darkGold)',
+                'westworld-rust': 'var(--color-westworld-rust)',
+                'westworld-copper': 'var(--color-westworld-copper)',
+                'westworld-darkCopper': 'var(--color-westworld-darkCopper)',
+                'westworld-white': 'var(--color-westworld-white)',
+            },
+            zIndex: {
+                'fixed': 'var(--z-fixed, 30)',
+                'sticky': 'var(--z-sticky, 20)',
             },
             animation: {
                 shimmer: 'shimmer 2s ease-in-out infinite',

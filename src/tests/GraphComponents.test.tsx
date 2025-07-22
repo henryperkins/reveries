@@ -3,13 +3,14 @@
  * Tests layout engine, graph manager, and UI components
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { GraphLayoutEngine, getNodeStyle } from '../utils/graphLayout';
 import { ResearchGraphManager } from '../researchGraph';
-import { ResearchStepType } from '../types';
+import { ResearchStepType, ResearchStep } from '../types';
 import { GraphContextProvider } from '../contexts/GraphContext';
 import { GraphErrorBoundary } from '../components/GraphErrorBoundary';
+import { Search, Brain, CheckCircle } from 'lucide-react';
 
 // Mock the database service
 jest.mock('../services/databaseService', () => ({
@@ -68,7 +69,7 @@ describe('GraphLayoutEngine', () => {
       // Create a level with many nodes
       const nodes = Array.from({ length: 15 }, (_, i) => ({
         id: `node-${i}`,
-        title: `Node ${i}`,
+        label: `Node ${i}`,
         type: ResearchStepType.WEB_RESEARCH,
         level: 0
       }));
@@ -88,8 +89,8 @@ describe('GraphLayoutEngine', () => {
 
     test('should create bezier curves for multi-level edges', () => {
       const nodes = [
-        { id: '1', title: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 },
-        { id: '2', title: 'Node 2', type: ResearchStepType.FINAL_ANSWER, level: 3 }
+        { id: '1', label: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 },
+        { id: '2', label: 'Node 2', type: ResearchStepType.FINAL_ANSWER, level: 3 }
       ];
 
       const edges = [
@@ -107,8 +108,8 @@ describe('GraphLayoutEngine', () => {
   describe('Edge Path Generation', () => {
     test('should create linear paths for adjacent levels', () => {
       const nodes = [
-        { id: '1', title: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 },
-        { id: '2', title: 'Node 2', type: ResearchStepType.WEB_RESEARCH, level: 1 }
+        { id: '1', label: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 },
+        { id: '2', label: 'Node 2', type: ResearchStepType.WEB_RESEARCH, level: 1 }
       ];
 
       const edges = [
@@ -124,7 +125,7 @@ describe('GraphLayoutEngine', () => {
 
     test('should handle missing nodes gracefully', () => {
       const nodes = [
-        { id: '1', title: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 }
+        { id: '1', label: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 }
       ];
 
       const edges = [
@@ -142,7 +143,7 @@ describe('GraphLayoutEngine', () => {
   describe('Cache Functionality', () => {
     test('should cache layout results', () => {
       const nodes = [
-        { id: '1', title: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 }
+        { id: '1', label: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 }
       ];
 
       // First call
@@ -156,11 +157,11 @@ describe('GraphLayoutEngine', () => {
 
     test('should invalidate cache when nodes change', () => {
       const nodes1 = [
-        { id: '1', title: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 }
+        { id: '1', label: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 }
       ];
 
       const nodes2 = [
-        { id: '1', title: 'Node 1 Modified', type: ResearchStepType.USER_QUERY, level: 0 }
+        { id: '1', label: 'Node 1 Modified', type: ResearchStepType.USER_QUERY, level: 0 }
       ];
 
       const result1 = layoutEngine.layoutGraph(nodes1, []);
@@ -197,49 +198,59 @@ describe('ResearchGraphManager', () => {
     graphManager = new ResearchGraphManager();
   });
 
-  describe('Node Management', () => {
-    test('should add nodes correctly', async () => {
-      const nodeData = {
-        type: ResearchStepType.USER_QUERY,
-        title: 'Test Query',
-        parentId: undefined
-      };
+  // Helper function to create a valid ResearchStep
+  const createResearchStep = (overrides: Partial<ResearchStep> = {}): ResearchStep => ({
+    id: Math.random().toString(36).substr(2, 9),
+    type: ResearchStepType.USER_QUERY,
+    title: 'Test Step',
+    content: 'Test content',
+    icon: Search,
+    ...overrides
+  });
 
-      const nodeId = await graphManager.addNode(nodeData);
-      expect(nodeId).toBeDefined();
-      expect(typeof nodeId).toBe('string');
+  describe('Node Management', () => {
+    test('should add nodes correctly', () => {
+      const step = createResearchStep({
+        type: ResearchStepType.USER_QUERY,
+        title: 'Test Query'
+      });
+
+      const node = graphManager.addNode(step, null);
+      expect(node).toBeDefined();
+      expect(node.id).toBeDefined();
 
       const nodes = graphManager.getNodes();
       expect(nodes).toHaveLength(1);
-      expect(nodes[0].title).toBe('Test Query');
+      expect(nodes[0]?.data?.title).toBe('Test Query');
     });
 
-    test('should handle node hierarchy', async () => {
-      const parentId = await graphManager.addNode({
+    test('should handle node hierarchy', () => {
+      const parentStep = createResearchStep({
         type: ResearchStepType.USER_QUERY,
-        title: 'Parent',
-        parentId: undefined
+        title: 'Parent'
       });
+      const parentNode = graphManager.addNode(parentStep, null);
 
-      const childId = await graphManager.addNode({
+      const childStep = createResearchStep({
         type: ResearchStepType.WEB_RESEARCH,
         title: 'Child',
-        parentId
+        icon: Brain
       });
+      const childNode = graphManager.addNode(childStep, parentNode.id);
 
       const nodes = graphManager.getNodes();
       expect(nodes).toHaveLength(2);
 
-      const parentNode = nodes.find(n => n.id === parentId);
-      expect(parentNode?.children).toContain(childId);
+      const parent = nodes.find(n => n.id === parentNode.id);
+      expect(parent?.children).toContain(childNode.id);
     });
 
     test('should update node duration', () => {
       const nodeId = 'test-node-id';
-      graphManager.updateNodeDuration(nodeId, 1500);
+      graphManager.updateNodeDuration(nodeId);
 
       // Should not throw - method should handle non-existent nodes gracefully
-      expect(() => graphManager.updateNodeDuration('non-existent', 1000)).not.toThrow();
+      expect(() => graphManager.updateNodeDuration('non-existent')).not.toThrow();
     });
 
     test('should mark nodes as complete', () => {
@@ -252,19 +263,20 @@ describe('ResearchGraphManager', () => {
   });
 
   describe('Statistics Calculation', () => {
-    test('should calculate statistics correctly', async () => {
+    test('should calculate statistics correctly', () => {
       // Add some test nodes
-      await graphManager.addNode({
+      const step1 = createResearchStep({
         type: ResearchStepType.USER_QUERY,
-        title: 'Query 1',
-        parentId: undefined
+        title: 'Query 1'
       });
+      graphManager.addNode(step1, null);
 
-      await graphManager.addNode({
+      const step2 = createResearchStep({
         type: ResearchStepType.WEB_RESEARCH,
         title: 'Research 1',
-        parentId: undefined
+        icon: Search
       });
+      graphManager.addNode(step2, null);
 
       const stats = graphManager.getStatistics();
 
@@ -286,32 +298,32 @@ describe('ResearchGraphManager', () => {
   });
 
   describe('Event System', () => {
-    test('should emit events when nodes are added', async () => {
+    test('should emit events when nodes are added', () => {
       const eventListener = jest.fn();
       const unsubscribe = graphManager.subscribe(eventListener);
 
-      await graphManager.addNode({
+      const step = createResearchStep({
         type: ResearchStepType.USER_QUERY,
-        title: 'Test',
-        parentId: undefined
+        title: 'Test'
       });
+      graphManager.addNode(step, null);
 
       expect(eventListener).toHaveBeenCalled();
       unsubscribe();
     });
 
-    test('should handle multiple subscribers', async () => {
+    test('should handle multiple subscribers', () => {
       const listener1 = jest.fn();
       const listener2 = jest.fn();
 
       const unsubscribe1 = graphManager.subscribe(listener1);
       const unsubscribe2 = graphManager.subscribe(listener2);
 
-      await graphManager.addNode({
+      const step = createResearchStep({
         type: ResearchStepType.USER_QUERY,
-        title: 'Test',
-        parentId: undefined
+        title: 'Test'
       });
+      graphManager.addNode(step, null);
 
       expect(listener1).toHaveBeenCalled();
       expect(listener2).toHaveBeenCalled();
@@ -322,12 +334,12 @@ describe('ResearchGraphManager', () => {
   });
 
   describe('Export Functionality', () => {
-    test('should export graph for visualization', async () => {
-      await graphManager.addNode({
+    test('should export graph for visualization', () => {
+      const step = createResearchStep({
         type: ResearchStepType.USER_QUERY,
-        title: 'Test Query',
-        parentId: undefined
+        title: 'Test Query'
       });
+      graphManager.addNode(step, null);
 
       const exportData = graphManager.exportForVisualization();
 
@@ -459,37 +471,49 @@ describe('GraphContextProvider', () => {
 
 // Integration tests
 describe('Graph Integration', () => {
-  test('should handle complete graph workflow', async () => {
+  // Helper function to create a valid ResearchStep
+  const createResearchStep = (overrides: Partial<ResearchStep> = {}): ResearchStep => ({
+    id: Math.random().toString(36).substr(2, 9),
+    type: ResearchStepType.USER_QUERY,
+    title: 'Test Step',
+    content: 'Test content',
+    icon: Search,
+    ...overrides
+  });
+
+  test('should handle complete graph workflow', () => {
     const graphManager = new ResearchGraphManager();
 
     // Add nodes
-    const queryId = await graphManager.addNode({
+    const queryStep = createResearchStep({
       type: ResearchStepType.USER_QUERY,
-      title: 'What is AI?',
-      parentId: undefined
+      title: 'What is AI?'
     });
+    const queryNode = graphManager.addNode(queryStep, null);
 
-    const researchId = await graphManager.addNode({
+    const researchStep = createResearchStep({
       type: ResearchStepType.WEB_RESEARCH,
       title: 'Researching AI',
-      parentId: queryId
+      icon: Search
     });
+    const researchNode = graphManager.addNode(researchStep, queryNode.id);
 
-    const answerId = await graphManager.addNode({
+    const answerStep = createResearchStep({
       type: ResearchStepType.FINAL_ANSWER,
       title: 'AI Definition',
-      parentId: researchId
+      icon: CheckCircle
     });
+    const answerNode = graphManager.addNode(answerStep, researchNode.id);
 
     // Update durations
-    graphManager.updateNodeDuration(queryId, 100);
-    graphManager.updateNodeDuration(researchId, 5000);
-    graphManager.updateNodeDuration(answerId, 2000);
+    graphManager.updateNodeDuration(queryNode.id);
+    graphManager.updateNodeDuration(researchNode.id);
+    graphManager.updateNodeDuration(answerNode.id);
 
     // Complete nodes
-    graphManager.completeNode(queryId);
-    graphManager.completeNode(researchId);
-    graphManager.completeNode(answerId);
+    graphManager.completeNode(queryNode.id);
+    graphManager.completeNode(researchNode.id);
+    graphManager.completeNode(answerNode.id);
 
     // Test export
     const exportData = graphManager.exportForVisualization();
@@ -511,7 +535,17 @@ describe('Graph Integration', () => {
 
 // Performance tests
 describe('Graph Performance', () => {
-  test('should handle large number of nodes efficiently', async () => {
+  // Helper function to create a valid ResearchStep
+  const createResearchStep = (overrides: Partial<ResearchStep> = {}): ResearchStep => ({
+    id: Math.random().toString(36).substr(2, 9),
+    type: ResearchStepType.USER_QUERY,
+    title: 'Test Step',
+    content: 'Test content',
+    icon: Search,
+    ...overrides
+  });
+
+  test('should handle large number of nodes efficiently', () => {
     const graphManager = new ResearchGraphManager();
     const layoutEngine = new GraphLayoutEngine();
 
@@ -520,12 +554,13 @@ describe('Graph Performance', () => {
     // Add 100 nodes
     const nodeIds: string[] = [];
     for (let i = 0; i < 100; i++) {
-      const nodeId = await graphManager.addNode({
+      const step = createResearchStep({
         type: ResearchStepType.WEB_RESEARCH,
         title: `Node ${i}`,
-        parentId: nodeIds[Math.floor(Math.random() * nodeIds.length)] || null
+        icon: Search
       });
-      nodeIds.push(nodeId);
+      const node = graphManager.addNode(step, nodeIds[Math.floor(Math.random() * nodeIds.length)] || null);
+      nodeIds.push(node.id);
     }
 
     const exportData = graphManager.exportForVisualization();
@@ -542,7 +577,7 @@ describe('Graph Performance', () => {
   test('should cache layout calculations', () => {
     const layoutEngine = new GraphLayoutEngine();
     const nodes = [
-      { id: '1', title: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 }
+      { id: '1', label: 'Node 1', type: ResearchStepType.USER_QUERY, level: 0 }
     ];
 
     const start1 = performance.now();

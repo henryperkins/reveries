@@ -115,13 +115,13 @@
   
   @keyframes glow {
     0%, 100% {
-      box-shadow: 0 0 5px theme('colors.westworld.gold'),
-                  0 0 10px theme('colors.westworld.gold');
+      box-shadow: 0 0 5px theme('colors.westworld-gold'),
+                  0 0 10px theme('colors.westworld-gold');
     }
     50% {
-      box-shadow: 0 0 10px theme('colors.westworld.gold'),
-                  0 0 20px theme('colors.westworld.gold'),
-                  0 0 30px theme('colors.westworld.gold');
+      box-shadow: 0 0 10px theme('colors.westworld-gold'),
+                  0 0 20px theme('colors.westworld-gold'),
+                  0 0 30px theme('colors.westworld-gold');
     }
   }
   
@@ -202,24 +202,12 @@
     animation: spin 0.5s linear infinite;
   }
   
-  .animate-shimmer {
-    background: linear-gradient(
-      90deg,
-      theme('colors.westworld.tan') 0%,
-      theme('colors.westworld.beige') 50%,
-      theme('colors.westworld.tan') 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
-  }
+  /* Shimmer animation is defined in tailwind.config.js
+     This custom class is removed to avoid conflicts */
   
-  .animate-pulse-soft {
-    animation: pulse-soft 2s ease-in-out infinite;
-  }
+  /* Pulse-soft animation is defined in tailwind.config.js */
   
-  .animate-glow {
-    animation: glow 2s ease-in-out infinite;
-  }
+  /* Glow animation is defined in tailwind.config.js */
   
   .animate-bounce-soft {
     animation: bounce-soft 1s ease-in-out infinite;

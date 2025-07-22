@@ -14,7 +14,8 @@ import { ProgressMeter } from '@/components/atoms'
 import { usePersistentState, ResearchSession } from '@/hooks/usePersistentState'
 import { useFunctionCalls } from '@/components/FunctionCallDock'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
-import { ThemeToggle } from './components/ThemeToggle'
+import { ThemeProvider } from './contexts/ThemeContext';
+import { ThemeToggle } from './components/molecules/ThemeToggle';
 import {
   ResearchStep,
   ResearchStepType,
@@ -881,233 +882,239 @@ const App: React.FC = () => {
   }, [progress, realTimeContextDensities, isLoading])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 dark:from-westworld-black dark:to-westworld-nearBlack transition-colors duration-300">
-      <TopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-
-      <main className="max-w-7xl mx-auto px-4 py-8 pb-24">
-        <div className="flex justify-between items-center mb-6">
-          <ReverieHeader />
+    <ThemeProvider>
+      <div className="min-h-screen bg-westworld-cream text-westworld-nearBlack transition-colors duration-300">
+        {/* Theme toggle button - positioned according to responsive design patterns */}
+        <div className="fixed top-4 right-4 z-50 safe-padding-top safe-padding-right">
           <ThemeToggle />
         </div>
 
-        {activeTab === 'research' && (
-          <>
-            <Controls
-              selectedEffort={effort}
-              onEffortChange={setEffort}
-              selectedModel={currentModel}
-              onModelChange={setCurrentModel}
-              onNewSearch={handleClear}
-              onExport={research.length > 0 ? handleExport : undefined}
-              onToggleGraph={graphManager.getNodes().length > 0 ? handleToggleGraph : undefined}
-              isLoading={isLoading}
-              enhancedMode={enhancedMode}
-              onEnhancedModeChange={handleEnhancedModeChange}
-            />
+        <TopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-            {error && (
-              <ErrorDisplay error={error.message} onDismiss={clearError} />
-            )}
+        <main className="max-w-7xl mx-auto px-4 py-8 pb-24">
+          <div className="flex justify-between items-center mb-6">
+            <ReverieHeader />
+          </div>
 
-            <ResearchGraphView graphManager={graphManager} isOpen={showGraph} onClose={handleToggleGraph} />
-            {/* Show paradigm UI when detected */}
-            {paradigm && paradigmProbabilities && !isLoading && (
-              <div className="animate-fade-in mb-6">
-                <ParadigmIndicator
-                  paradigm={paradigm}
-                  probabilities={paradigmProbabilities}
-                  confidence={paradigmProbabilities ? Math.max(...Object.values(paradigmProbabilities)) : 0}
-                  blendedParadigms={blendedParadigms}
-                />
-              </div>
-            )}
-
-            {/* Show active collaborations */}
-            {activeCollaborations.length > 0 && (
-              <div className="animate-slide-up mb-4 space-y-2">
-                <h3 className="text-sm font-medium text-gray-600 mb-2">Inter-Host Collaborations</h3>
-                {activeCollaborations.map(collab => (
-                  <InterHostCollaboration
-                    key={collab.id}
-                    fromHost={collab.fromHost}
-                    toHost={collab.toHost}
-                    reason={collab.reason}
-                    status={collab.status}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Show context density during processing */}
-            {isLoading && contextDensities && (
-              <div className="animate-slide-up mb-6">
-                <ContextDensityBar
-                  densities={contextDensities}
-                  phase={currentPhase}
-                  paradigm={paradigm || undefined}
-                  showHostColors={enhancedMode}
-                  showLabels={true}
-                />
-              </div>
-            )}
-
-            <div className="research-container flex flex-col">
-              <ResearchView
-                steps={Array.isArray(research) ? research : []}
-                activeModel={currentModel}
-                confidence={paradigmProbabilities ? Math.max(...Object.values(paradigmProbabilities)) : 0}
-                sourceCount={Array.isArray(research) ? research.flatMap(s => s.sources || []).length : 0}
-                paradigm={paradigm}
+          {activeTab === 'research' && (
+            <>
+              <Controls
+                selectedEffort={effort}
+                onEffortChange={setEffort}
+                selectedModel={currentModel}
+                onModelChange={setCurrentModel}
+                onNewSearch={handleClear}
+                onExport={research.length > 0 ? handleExport : undefined}
+                onToggleGraph={graphManager.getNodes().length > 0 ? handleToggleGraph : undefined}
                 isLoading={isLoading}
-                progressState={progressState}
+                enhancedMode={enhancedMode}
+                onEnhancedModeChange={handleEnhancedModeChange}
               />
 
-              {/* Function Call Dock - shows both live and history */}
-              {(() => {
-                console.log('FunctionCallDock render check:', {
-                  enhancedMode,
-                  liveCalls: liveCalls.length,
-                  functionHistory: functionHistory.length,
-                  shouldRender: enhancedMode && (liveCalls.length > 0 || functionHistory.length > 0)
-                });
-                return null;
-              })()}
-              {(liveCalls.length > 0 || functionHistory.length > 0) && (
-                <div className="mt-4">
-                  <FunctionCallDock
-                    mode={liveCalls.length > 0 ? 'live' : 'history'}
-                    showModeSelector={true}
+              {error && (
+                <ErrorDisplay error={error.message} onDismiss={clearError} />
+              )}
+
+              <ResearchGraphView graphManager={graphManager} isOpen={showGraph} onClose={handleToggleGraph} />
+              {/* Show paradigm UI when detected */}
+              {paradigm && paradigmProbabilities && !isLoading && (
+                <div className="animate-fade-in mb-6">
+                  <ParadigmIndicator
+                    paradigm={paradigm}
+                    probabilities={paradigmProbabilities}
+                    confidence={paradigmProbabilities ? Math.max(...Object.values(paradigmProbabilities)) : 0}
+                    blendedParadigms={blendedParadigms}
                   />
                 </div>
               )}
 
-              {/* Semantic Search */}
-              {enhancedMode && (
-                <div className="mt-4 p-4 bg-white rounded-lg shadow">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-gray-700">Semantic Search</h3>
-                    <button
-                      onClick={() => setShowSemanticSearch(!showSemanticSearch)}
-                      className="text-xs text-blue-600 hover:text-blue-800"
-                    >
-                      {showSemanticSearch ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                  {showSemanticSearch && (
-                    <SemanticSearch
-                      onSearch={handleSemanticSearch}
-                      isSearching={isSearching}
-                      onSelectResult={handleSelectSearchResult}
+              {/* Show active collaborations */}
+              {activeCollaborations.length > 0 && (
+                <div className="animate-slide-up mb-4 space-y-2">
+                  <h3 className="text-sm font-medium text-gray-600 mb-2">Inter-Host Collaborations</h3>
+                  {activeCollaborations.map(collab => (
+                    <InterHostCollaboration
+                      key={collab.id}
+                      fromHost={collab.fromHost}
+                      toHost={collab.toHost}
+                      reason={collab.reason}
+                      status={collab.status}
                     />
-                  )}
+                  ))}
                 </div>
               )}
 
-              {/* Session Management */}
-              {enhancedMode && (
-                <div className="mt-4 p-4 bg-white rounded-lg shadow">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-gray-700">Session Management</h3>
-                    <span className="text-xs text-gray-500">{sessions.length} saved sessions</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setShowSessionHistory(true)}
-                      className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Browse History
-                    </button>
-                    <button
-                      onClick={handleSaveCurrentSession}
-                      disabled={research.length === 0}
-                      className="flex-1 px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Save Session
-                    </button>
-                  </div>
+              {/* Show context density during processing */}
+              {isLoading && contextDensities && (
+                <div className="animate-slide-up mb-6">
+                  <ContextDensityBar
+                    densities={contextDensities}
+                    phase={currentPhase}
+                    paradigm={paradigm || undefined}
+                    showHostColors={enhancedMode}
+                    showLabels={true}
+                  />
                 </div>
               )}
+
+              <div className="research-container flex flex-col">
+                <ResearchView
+                  steps={Array.isArray(research) ? research : []}
+                  activeModel={currentModel}
+                  confidence={paradigmProbabilities ? Math.max(...Object.values(paradigmProbabilities)) : 0}
+                  sourceCount={Array.isArray(research) ? research.flatMap(s => s.sources || []).length : 0}
+                  paradigm={paradigm}
+                  isLoading={isLoading}
+                  progressState={progressState}
+                />
+
+                {/* Function Call Dock - shows both live and history */}
+                {(() => {
+                  console.log('FunctionCallDock render check:', {
+                    enhancedMode,
+                    liveCalls: liveCalls.length,
+                    functionHistory: functionHistory.length,
+                    shouldRender: enhancedMode && (liveCalls.length > 0 || functionHistory.length > 0)
+                  });
+                  return null;
+                })()}
+                {(liveCalls.length > 0 || functionHistory.length > 0) && (
+                  <div className="mt-4">
+                    <FunctionCallDock
+                      mode={liveCalls.length > 0 ? 'live' : 'history'}
+                      showModeSelector={true}
+                    />
+                  </div>
+                )}
+
+                {/* Semantic Search */}
+                {enhancedMode && (
+                  <div className="mt-4 p-4 bg-white rounded-lg shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-gray-700">Semantic Search</h3>
+                      <button
+                        onClick={() => setShowSemanticSearch(!showSemanticSearch)}
+                        className="text-xs text-blue-600 hover:text-blue-800"
+                      >
+                        {showSemanticSearch ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                    {showSemanticSearch && (
+                      <SemanticSearch
+                        onSearch={handleSemanticSearch}
+                        isSearching={isSearching}
+                        onSelectResult={handleSelectSearchResult}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Session Management */}
+                {enhancedMode && (
+                  <div className="mt-4 p-4 bg-white rounded-lg shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-gray-700">Session Management</h3>
+                      <span className="text-xs text-gray-500">{sessions.length} saved sessions</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowSessionHistory(true)}
+                        className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Browse History
+                      </button>
+                      <button
+                        onClick={handleSaveCurrentSession}
+                        disabled={research.length === 0}
+                        className="flex-1 px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Save Session
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {activeTab === 'sessions' && (
+            <SessionsView
+              sessions={sessions}
+              onLoadSession={handleLoadSession}
+            />
+          )}
+
+          {activeTab === 'analytics' && (
+            <AnalyticsView />
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="bg-white dark:bg-westworld-nearBlack rounded-xl shadow-sm border border-gray-200 dark:border-westworld-tan dark:border-opacity-30 p-6">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-westworld-cream mb-6">Settings</h3>
+              <p className="text-gray-600 dark:text-westworld-tan">Settings panel coming soon...</p>
             </div>
-          </>
-        )}
+          )}
 
-        {activeTab === 'sessions' && (
-          <SessionsView
-            sessions={sessions}
-            onLoadSession={handleLoadSession}
-          />
-        )}
+        </main>
 
-        {activeTab === 'analytics' && (
-          <AnalyticsView />
-        )}
-
-        {activeTab === 'settings' && (
-          <div className="bg-white dark:bg-westworld-nearBlack rounded-xl shadow-sm border border-gray-200 dark:border-westworld-tan dark:border-opacity-30 p-6">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-westworld-cream mb-6">Settings</h3>
-            <p className="text-gray-600 dark:text-westworld-tan">Settings panel coming soon...</p>
+        {/* Global progress bar – positioned above input bar with proper spacing */}
+        {isLoading && (
+          <div className="progress-meter-container px-4">
+            <ProgressMeter
+              value={progress}
+              label="Research Progress"
+              variant="gradient"
+              showLoadingDots={true}
+              showSegments={true}
+              showShimmer={true}
+              animate={true}
+              onError={(error) => console.error('ProgressMeter error:', error)}
+            />
           </div>
         )}
 
-      </main>
-
-      {/* Global progress bar – positioned above input bar with proper spacing */}
-      {isLoading && (
-        <div className="progress-meter-container px-4">
-          <ProgressMeter
-            value={progress}
-            label="Research Progress"
-            variant="gradient"
-            showLoadingDots={true}
-            showSegments={true}
-            showShimmer={true}
-            animate={true}
-            onError={(error) => console.error('ProgressMeter error:', error)}
+        {/* Fixed Input Bar - only show on research tab */}
+        {activeTab === 'research' && (
+          <InputBar
+            onQuerySubmit={handleSubmit}
+            isLoading={isLoading}
+            currentParadigm={paradigm || undefined}
+            paradigmProbabilities={paradigmProbabilities || undefined}
           />
-        </div>
-      )}
+        )}
 
-      {/* Fixed Input Bar - only show on research tab */}
-      {activeTab === 'research' && (
-        <InputBar
-          onQuerySubmit={handleSubmit}
-          isLoading={isLoading}
-          currentParadigm={paradigm || undefined}
-          paradigmProbabilities={paradigmProbabilities || undefined}
+        {/* Paradigm Dashboard */}
+        {paradigmProbabilities && (
+          <div className="paradigm-dashboard">
+            <ParadigmDashboard
+              paradigm={paradigm || 'bernard'}
+              probabilities={paradigmProbabilities}
+              layers={contextLayers}
+            />
+          </div>
+        )}
+
+        {/* Context Layer Progress */}
+        {isLoading && contextLayers.length > 0 && paradigm && (
+          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+            <ContextLayerProgress
+              layers={contextLayers}
+              currentLayer={currentLayer || undefined}
+              paradigm={paradigm}
+            />
+          </div>
+        )}
+
+        {/* Session History Browser */}
+        <SessionHistoryBrowser
+          sessions={sessions}
+          onLoadSession={handleLoadSession}
+          onDeleteSession={deleteSession}
+          onClose={() => setShowSessionHistory(false)}
+          isVisible={showSessionHistory}
         />
-      )}
-
-      {/* Paradigm Dashboard */}
-      {paradigmProbabilities && (
-        <div className="paradigm-dashboard">
-          <ParadigmDashboard
-            paradigm={paradigm || 'bernard'}
-            probabilities={paradigmProbabilities}
-            layers={contextLayers}
-          />
-        </div>
-      )}
-
-      {/* Context Layer Progress */}
-      {isLoading && contextLayers.length > 0 && paradigm && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-          <ContextLayerProgress
-            layers={contextLayers}
-            currentLayer={currentLayer || undefined}
-            paradigm={paradigm}
-          />
-        </div>
-      )}
-
-      {/* Session History Browser */}
-      <SessionHistoryBrowser
-        sessions={sessions}
-        onLoadSession={handleLoadSession}
-        onDeleteSession={deleteSession}
-        onClose={() => setShowSessionHistory(false)}
-        isVisible={showSessionHistory}
-      />
-    </div>
+      </div>
+    </ThemeProvider>
   )
 }
 

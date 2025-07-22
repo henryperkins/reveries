@@ -35,10 +35,12 @@
 
   /* Touch-friendly tap targets */
   @media (hover: none) and (pointer: coarse) {
+
     .btn,
     .input-field,
     .nav-link {
-      min-height: 44px; /* iOS recommended tap target */
+      min-height: 44px;
+      /* iOS recommended tap target */
       @apply py-3;
     }
   }
@@ -46,6 +48,7 @@
 
 /* ===== RESPONSIVE LAYOUT FIXES ===== */
 @layer components {
+
   /* Mobile-optimized input bar */
   @media (max-width: 768px) {
     .input-bar {
@@ -128,10 +131,36 @@
       margin-top: 0.5rem;
     }
   }
+
+  /* Theme toggle responsive positioning */
+  @media (max-width: 475px) {
+    .theme-toggle {
+      @apply w-12 h-6;
+      /* Smaller on mobile */
+    }
+
+    .theme-toggle-thumb {
+      @apply w-4 h-4;
+    }
+
+    .dark .theme-toggle-thumb {
+      @apply translate-x-6;
+      /* Adjust translation for smaller size */
+    }
+  }
+
+  /* Landscape mobile adjustments */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .theme-toggle {
+      @apply w-10 h-5;
+      /* Even smaller in landscape */
+    }
+  }
 }
 
 /* ===== RESPONSIVE TYPOGRAPHY ===== */
 @layer base {
+
   /* Fluid typography using clamp() */
   @media (max-width: 768px) {
     h1 {
@@ -146,7 +175,8 @@
       font-size: clamp(1.125rem, 3.5vw, 1.5rem);
     }
 
-    p, .text-base {
+    p,
+    .text-base {
       font-size: clamp(0.875rem, 2.5vw, 1rem);
     }
 
@@ -158,6 +188,7 @@
 
 /* ===== RESPONSIVE COMPONENTS ===== */
 @layer components {
+
   /* Responsive cards */
   @media (max-width: 640px) {
     .card {
@@ -203,6 +234,7 @@
 
   /* Responsive grid */
   @media (max-width: 640px) {
+
     .grid-dashboard,
     .grid-sidebar {
       @apply grid-cols-1;
@@ -269,6 +301,7 @@
 
 /* High contrast mode improvements */
 @media (prefers-contrast: high) {
+
   .card,
   .btn,
   .input-field {
@@ -282,8 +315,9 @@
 
 /* ===== UTILITY CLASSES FOR RESPONSIVE DESIGN ===== */
 @layer utilities {
+
   /* Responsive spacing */
-  .space-y-responsive > * + * {
+  .space-y-responsive>*+* {
     margin-top: clamp(0.5rem, 2vw, 1.5rem);
   }
 

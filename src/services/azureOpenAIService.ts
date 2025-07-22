@@ -61,14 +61,40 @@ export class AzureOpenAIService {
    * Validate function_call_output structure according to Responses API spec
    */
   private validateFunctionCallOutput(output: any): boolean {
-    return (
-      output &&
-      typeof output === 'object' &&
-      output.type === 'function_call_output' &&
-      typeof output.call_id === 'string' &&
-      output.call_id.length > 0 &&
-      typeof output.output === 'string'
-    );
+    const validationErrors: string[] = [];
+    
+    if (!output) {
+      validationErrors.push('Output is null or undefined');
+    } else if (typeof output !== 'object') {
+      validationErrors.push(`Output is not an object, got: ${typeof output}`);
+    } else {
+      if (output.type !== 'function_call_output') {
+        validationErrors.push(`Invalid type: expected 'function_call_output', got '${output.type}'`);
+      }
+      if (typeof output.call_id !== 'string') {
+        validationErrors.push(`Invalid call_id: expected string, got ${typeof output.call_id}`);
+      } else if (output.call_id.length === 0) {
+        validationErrors.push('call_id is empty string');
+      }
+      if (typeof output.output !== 'string') {
+        validationErrors.push(`Invalid output: expected string, got ${typeof output.output}`);
+      }
+    }
+    
+    if (validationErrors.length > 0) {
+      console.warn('🚨 O3 Tool Output Validation Failed:', {
+        errors: validationErrors,
+        receivedOutput: output,
+        expectedFormat: {
+          type: 'function_call_output',
+          call_id: 'string (non-empty)',
+          output: 'string (JSON serialized result)'
+        }
+      });
+      return false;
+    }
+    
+    return true;
   }
 
   private getConfig(): AzureOpenAIConfig {
@@ -227,12 +253,39 @@ export class AzureOpenAIService {
           console.log(`⏱️ O3 Background Task Configuration [${requestId}]:`, {
             isO3Model,
             timeoutMinutes: timeout / 60000,
-            pollStrategy: 'exponential-backoff'
+            pollStrategy: 'exponential-backoff-with-retry'
           });
           
-          data = await this.pollBackgroundTask(operationUrl, timeout, (message) => {
-            console.log(`📊 O3 Background Task Progress [${requestId}]: ${message}`);
-          });
+          // Retry logic for background task timeouts
+          let backgroundTaskAttempt = 0;
+          const maxBackgroundTaskAttempts = 2;
+          
+          while (backgroundTaskAttempt < maxBackgroundTaskAttempts) {
+            try {
+              backgroundTaskAttempt++;
+              console.log(`🔄 O3 Background Task Attempt ${backgroundTaskAttempt}/${maxBackgroundTaskAttempts} [${requestId}]`);
+              
+              data = await this.pollBackgroundTask(operationUrl, timeout, (message) => {
+                console.log(`📊 O3 Background Task Progress [${requestId}]: ${message}`);
+              });
+              
+              // Success - break out of retry loop
+              break;
+              
+            } catch (taskError) {
+              if (taskError instanceof APIError && taskError.code === 'BACKGROUND_TASK_TIMEOUT' && backgroundTaskAttempt < maxBackgroundTaskAttempts) {
+                console.warn(`⚠️ O3 Background Task Timeout - Retrying [${requestId}]:`, {
+                  attempt: backgroundTaskAttempt,
+                  willRetry: true,
+                  operationUrl
+                });
+                // Continue to next attempt
+              } else {
+                // Non-timeout error or max attempts reached
+                throw taskError;
+              }
+            }
+          }
         } else
 
         if (!response.ok) {
@@ -401,12 +454,21 @@ export class AzureOpenAIService {
         console.error(`❌ O3 Background Task Timeout [${pollId}]:`, {
           attempts: attempt,
           elapsedMinutes: (elapsedMs / 60000).toFixed(2),
-          timeoutMinutes: timeoutMs / 60000
+          timeoutMinutes: timeoutMs / 60000,
+          operationUrl,
+          suggestion: 'Task may still be processing - retry or check later'
         });
+        
+        // For O3 models, provide more context about long processing times
+        const isO3 = this.config.deploymentName.includes('o3');
+        const timeoutMessage = isO3 
+          ? `O3 background task polling timed out after ${timeoutMs / 60000} minutes. O3 models may require extended processing time for complex reasoning tasks.`
+          : `Background task polling timed out after ${timeoutMs / 1000}s`;
+        
         throw new APIError(
-          `Background task polling timed out after ${timeoutMs / 1000}s`,
+          timeoutMessage,
           'BACKGROUND_TASK_TIMEOUT',
-          false,
+          true, // Make it retryable
           504,
         );
       }
@@ -685,7 +747,18 @@ export class AzureOpenAIService {
         // Add tools if available
         if (filteredTools.length > 0) {
           requestBody.tools = filteredTools;
-          console.log('Tool format being sent to Azure API:', JSON.stringify(filteredTools[0], null, 2));
+          console.log('🔧 O3 Tool Format Validation:', {
+            totalTools: filteredTools.length,
+            firstTool: filteredTools[0],
+            toolNames: filteredTools.map(t => t.function?.name || t.name || 'unknown'),
+            toolStructure: {
+              hasFunction: !!filteredTools[0].function,
+              hasName: !!(filteredTools[0].function?.name || filteredTools[0].name),
+              hasDescription: !!(filteredTools[0].function?.description || filteredTools[0].description),
+              hasParameters: !!(filteredTools[0].function?.parameters || filteredTools[0].parameters)
+            }
+          });
+          console.log('📋 O3 First Tool Full Format:', JSON.stringify(filteredTools[0], null, 2));
         }
 
         // Only add temperature for non-o3 models
@@ -815,7 +888,12 @@ export class AzureOpenAIService {
                 // Add tool result for next iteration
                 const callId = toolCall.call_id || toolCall.id;
                 if (!callId) {
-                  console.warn('Tool call missing call_id, skipping result');
+                  console.error('🚨 O3 Tool Call ID Missing:', {
+                    toolCall,
+                    availableFields: Object.keys(toolCall),
+                    toolName,
+                    error: 'Tool call must have either call_id or id field'
+                  });
                   continue;
                 }
                 const toolResult = {
@@ -826,7 +904,12 @@ export class AzureOpenAIService {
                 if (this.validateFunctionCallOutput(toolResult)) {
                   toolResultsInput.push(toolResult);
                 } else {
-                  console.warn('Invalid tool result format, skipping:', toolResult);
+                  console.error('🚨 O3 Tool Result Validation Failed:', {
+                    toolName,
+                    callId,
+                    validationPassed: false,
+                    toolResult
+                  });
                 }
               } else {
                 // Add error result
@@ -981,6 +1064,16 @@ export class AzureOpenAIService {
    * Filter tools based on paradigm preferences
    */
   private filterToolsByParadigm(tools: any[], paradigm?: HostParadigm): any[] {
+    console.log('🎯 O3 Tool Filtering:', {
+      paradigm: paradigm || 'none',
+      inputToolCount: tools.length,
+      toolFormats: tools.map(t => ({
+        hasFunction: !!t.function,
+        name: t.function?.name || t.name || 'unknown',
+        type: t.type || 'function'
+      }))
+    });
+    
     if (!paradigm) return tools;
 
     // Define paradigm-specific tool priorities
@@ -994,7 +1087,7 @@ export class AzureOpenAIService {
     const preferredTools = paradigmToolPreferences[paradigm] || [];
 
     // Sort tools by paradigm preference, keeping all tools but prioritizing preferred ones
-    return tools.sort((a, b) => {
+    const sortedTools = tools.sort((a, b) => {
       // Handle both tool formats: { function: { name: ... } } and { name: ... }
       const aName = a.function?.name || a.name;
       const bName = b.function?.name || b.name;
@@ -1002,6 +1095,14 @@ export class AzureOpenAIService {
       const bPreferred = preferredTools.includes(bName) ? 1 : 0;
       return bPreferred - aPreferred;
     });
+    
+    console.log('📋 O3 Tool Priority Order:', {
+      paradigm,
+      preferredTools,
+      finalOrder: sortedTools.map(t => t.function?.name || t.name || 'unknown')
+    });
+    
+    return sortedTools;
   }
 
   /**

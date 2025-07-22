@@ -144,8 +144,7 @@ button:active:not(:disabled) {
 
 /* Loading states */
 .loading-skeleton {
-    @apply animate-shimmer;
-    @apply bg-westworld-tan bg-opacity-10 rounded-lg h-24 mb-4;
+    @apply animate-pulse bg-westworld-tan bg-opacity-10 rounded-lg h-24 mb-4;
 }
 
 /* Error display styling */

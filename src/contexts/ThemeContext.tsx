@@ -14,18 +14,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     const root = document.documentElement;
 
-    // Add transition class for smooth theme changes (but not on initial load)
-    const enableTransitions = () => {
-      root.classList.add('theme-transition');
-    };
-
-    // Remove old classes/attributes
-    root.classList.remove('light', 'dark');
+    // Remove all theme-related classes and attributes first
+    root.classList.remove('light', 'dark', 'theme-transition');
     root.removeAttribute('data-theme');
 
-    // Apply new theme
-    root.classList.add(theme);
-    root.setAttribute('data-theme', theme);
+    // Apply new theme using Tailwind's dark mode class strategy
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    }
 
     // Save to localStorage
     localStorage.setItem('theme', theme);
@@ -39,11 +35,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       );
     }
 
-    // Enable transitions after a short delay (avoid initial flash)
-    const timer = setTimeout(enableTransitions, 100);
+    // Add transition class after a delay to avoid initial flash
+    const timer = setTimeout(() => {
+      root.classList.add('theme-transition');
+    }, 100);
 
     return () => {
       clearTimeout(timer);
+      root.classList.remove('theme-transition');
     };
   }, [theme]);
 

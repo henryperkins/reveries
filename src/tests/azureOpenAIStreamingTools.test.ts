@@ -2,8 +2,32 @@ import { describe, it, expect, vi, beforeEach, afterEach, type MockedFunction } 
 import { AzureOpenAIService, ParadigmAwareToolContext } from '../services/azureOpenAIService';
 import { HostParadigm, EffortType, ParadigmProbabilities } from '../types';
 
+// Type assertion for result type
+type ToolResult = {
+  success: boolean;
+  error?: string;
+  result?: unknown;
+  retryable?: boolean;
+};
+
 // Mock the fetch API
 global.fetch = vi.fn();
+
+// Helper function to create a mock streaming response
+function createMockStreamResponse(chunks: string[]): Response {
+  const stream = new ReadableStream({
+    start(controller) {
+      chunks.forEach(chunk => {
+        controller.enqueue(new TextEncoder().encode(chunk + '\n'));
+      });
+      controller.close();
+    }
+  });
+  return new Response(stream, {
+    status: 200,
+    headers: new Headers({ 'content-type': 'text/event-stream' })
+  });
+}
 
 // Mock ResearchToolsService
 vi.mock('../services/researchToolsService', () => ({
@@ -78,50 +102,13 @@ describe('Azure OpenAI Streaming with Tools', () => {
         if (callCount === 0) {
           callCount++;
           // First call - streaming with tool
-          return {
-            ok: true,
-            headers: new Headers(),
-            body: {
-              getReader: () => ({
-                read: vi.fn()
-                  .mockResolvedValueOnce({
-                    done: false,
-                    value: new TextEncoder().encode(mockChunks[0] + '\n')
-                  })
-                  .mockResolvedValueOnce({
-                    done: false,
-                    value: new TextEncoder().encode(mockChunks[1] + '\n')
-                  })
-                  .mockResolvedValueOnce({
-                    done: false,
-                    value: new TextEncoder().encode(mockChunks[2] + '\n')
-                  })
-                  .mockResolvedValueOnce({ done: true }),
-                releaseLock: vi.fn()
-              })
-            }
-          };
+          return createMockStreamResponse(mockChunks);
         } else {
           // Second call - after tool execution
-          return {
-            ok: true,
-            headers: new Headers(),
-            body: {
-              getReader: () => ({
-                read: vi.fn()
-                  .mockResolvedValueOnce({
-                    done: false,
-                    value: new TextEncoder().encode('data: {"type":"response.output_text.delta","delta":"Based on the search results, "}\n')
-                  })
-                  .mockResolvedValueOnce({
-                    done: false,
-                    value: new TextEncoder().encode('data: {"type":"response.done"}\n')
-                  })
-                  .mockResolvedValueOnce({ done: true }),
-                releaseLock: vi.fn()
-              })
-            }
-          };
+          return createMockStreamResponse([
+            'data: {"type":"response.output_text.delta","delta":"Based on the search results, "}',
+            'data: {"type":"response.done"}'
+          ]);
         }
       });
 
@@ -177,46 +164,13 @@ describe('Azure OpenAI Streaming with Tools', () => {
       (global.fetch as MockedFunction<typeof global.fetch>).mockImplementation(async () => {
         if (callCount === 0) {
           callCount++;
-          return {
-            ok: true,
-            headers: new Headers(),
-            body: {
-              getReader: () => ({
-                read: vi.fn()
-                  .mockResolvedValueOnce({
-                    done: false,
-                    value: new TextEncoder().encode(mockChunks[0] + '\n')
-                  })
-                  .mockResolvedValueOnce({
-                    done: false,
-                    value: new TextEncoder().encode(mockChunks[1] + '\n')
-                  })
-                  .mockResolvedValueOnce({ done: true }),
-                releaseLock: vi.fn()
-              })
-            }
-          };
+          return createMockStreamResponse(mockChunks);
         } else {
           // After error handling
-          return {
-            ok: true,
-            headers: new Headers(),
-            body: {
-              getReader: () => ({
-                read: vi.fn()
-                  .mockResolvedValueOnce({
-                    done: false,
-                    value: new TextEncoder().encode('data: {"type":"response.output_text.delta","delta":"I encountered an error with the tool."}\n')
-                  })
-                  .mockResolvedValueOnce({
-                    done: false,
-                    value: new TextEncoder().encode('data: {"type":"response.done"}\n')
-                  })
-                  .mockResolvedValueOnce({ done: true }),
-                releaseLock: vi.fn()
-              })
-            }
-          };
+          return createMockStreamResponse([
+            'data: {"type":"response.output_text.delta","delta":"I encountered an error with the tool."}',
+            'data: {"type":"response.done"}'
+          ]);
         }
       });
 
@@ -287,43 +241,12 @@ describe('Azure OpenAI Streaming with Tools', () => {
         'data: {"type":"response.done"}'
       ];
 
-      (global.fetch as MockedFunction<typeof global.fetch>).mockResolvedValueOnce({
-        ok: true,
-        headers: new Headers(),
-        body: {
-          getReader: () => ({
-            read: vi.fn()
-              .mockResolvedValueOnce({
-                done: false,
-                value: new TextEncoder().encode(mockChunks[0] + '\n')
-              })
-              .mockResolvedValueOnce({
-                done: false,
-                value: new TextEncoder().encode(mockChunks[1] + '\n')
-              })
-              .mockResolvedValueOnce({ done: true }),
-            releaseLock: vi.fn()
-          })
-        }
-      }).mockResolvedValueOnce({
-        ok: true,
-        headers: new Headers(),
-        body: {
-          getReader: () => ({
-            read: vi.fn()
-              .mockResolvedValueOnce({
-                done: false,
-                value: new TextEncoder().encode('data: {"type":"response.output_text.delta","delta":"Tool timed out"}\n')
-              })
-              .mockResolvedValueOnce({
-                done: false,
-                value: new TextEncoder().encode('data: {"type":"response.done"}\n')
-              })
-              .mockResolvedValueOnce({ done: true }),
-            releaseLock: vi.fn()
-          })
-        }
-      });
+      (global.fetch as MockedFunction<typeof global.fetch>)
+        .mockResolvedValueOnce(createMockStreamResponse(mockChunks))
+        .mockResolvedValueOnce(createMockStreamResponse([
+          'data: {"type":"response.output_text.delta","delta":"Tool timed out"}',
+          'data: {"type":"response.done"}'
+        ]));
 
       const toolResults: { error?: string; result?: unknown }[] = [];
       const startTime = Date.now();
@@ -373,11 +296,10 @@ describe('Azure OpenAI Streaming with Tools', () => {
           paradigm: 'teddy'
         };
 
-        const result = await (service as unknown as { executeToolWithContext: (toolCall: unknown, context: unknown) => Promise<unknown> }).executeToolWithContext(
-          'broken_tool',
-          {},
+        const result = await (service as unknown as { executeToolWithContext: (toolCall: { name: string; args: any }, context: unknown) => Promise<{ success: boolean; error?: string; retryable?: boolean }> }).executeToolWithContext(
+          { name: 'broken_tool', args: {} },
           context
-        );
+        ) as ToolResult;
 
         if (i < 3) {
           expect(result.success).toBe(false);
