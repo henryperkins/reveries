@@ -30,7 +30,7 @@ export function GraphAccessibilityLayer({
   // Focus management
   useEffect(() => {
     if (isVisible && listRef.current) {
-      const firstFocusable = listRef.current.querySelector('[tabindex="0"]') as HTMLElement;
+      const firstFocusable = listRef.current.querySelector('[tabindex="0"]')!;
       if (firstFocusable) {
         firstFocusable.focus();
       }

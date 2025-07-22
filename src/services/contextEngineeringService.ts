@@ -73,7 +73,7 @@ export class ContextEngineeringService {
       console.warn(`No metrics found for phase: ${phase} (normalized: ${normalizedPhase}), using defaults`);
       const averageDensity = Object.values(defaultDensities).reduce((a, b) => a + b) / Object.values(defaultDensities).length;
       return {
-        phase: normalizedPhase as ResearchPhase,
+        phase: normalizedPhase,
         averageDensity,
         dominantParadigm: defaultParadigm,
         densities: defaultDensities,
@@ -107,7 +107,7 @@ export class ContextEngineeringService {
 
     const averageDensity = Object.values(densities).reduce((a, b) => a + b) / 4;
 
-    return { phase: normalizedPhase as ResearchPhase, averageDensity, dominantParadigm, densities, density: averageDensity };
+    return { phase: normalizedPhase, averageDensity, dominantParadigm, densities, density: averageDensity };
   }
 
   /**

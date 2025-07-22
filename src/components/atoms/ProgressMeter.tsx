@@ -31,12 +31,12 @@ export interface ProgressMeterProps {
   /** Custom gradient classes */
   gradientClass?: string;
   /** Segments for stacked variant */
-  stackedSegments?: Array<{
+  stackedSegments?: {
     value: number;
     color: string;
     label?: string;
     paradigm?: HostParadigm;
-  }>;
+  }[];
   /** Layout mode */
   layout?: 'default' | 'compact' | 'inline';
   /** Error callback for configuration issues */

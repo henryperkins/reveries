@@ -91,7 +91,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
       .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
-  const renderTool = (toolName: string, isRecommended: boolean = false) => {
+  const renderTool = (toolName: string, isRecommended = false) => {
     const category = toolCategories[categorizeToolName(toolName)];
     const Icon = category.icon;
     const purpose = getToolPurpose(toolName);

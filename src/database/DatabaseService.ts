@@ -18,7 +18,7 @@ export interface DatabaseConfig {
 export class DatabaseService {
   private static instance: DatabaseService;
   private pool: Pool;
-  private isInitialized: boolean = false;
+  private isInitialized = false;
 
   private constructor() {
     const config: DatabaseConfig = {
@@ -211,7 +211,7 @@ export class DatabaseService {
     };
   }
 
-  public async getRecentSessions(userSessionId: string, limit: number = 10): Promise<ResearchSession[]> {
+  public async getRecentSessions(userSessionId: string, limit = 10): Promise<ResearchSession[]> {
     const query = `
       SELECT rs.*, u.session_id as user_session_id
       FROM research_sessions rs

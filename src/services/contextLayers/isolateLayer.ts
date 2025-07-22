@@ -352,7 +352,7 @@ export class IsolateLayerService {
     return this.tasks.get(taskId);
   }
 
-  async waitForTask(taskId: string, timeout: number = 30000): Promise<any> {
+  async waitForTask(taskId: string, timeout = 30000): Promise<any> {
     const startTime = Date.now();
     
     while (Date.now() - startTime < timeout) {

@@ -26,7 +26,7 @@ export class MultiParadigmBlender {
   /**
    * Determine if blending is needed based on probability distribution
    */
-  shouldBlend(probabilities: ParadigmProbabilities, threshold: number = 0.35): boolean {
+  shouldBlend(probabilities: ParadigmProbabilities, threshold = 0.35): boolean {
     const highProbParadigms = Object.entries(probabilities)
       .filter(([_, prob]) => prob >= threshold)
       .length;
@@ -39,7 +39,7 @@ export class MultiParadigmBlender {
    */
   createBlendingStrategy(
     probabilities: ParadigmProbabilities,
-    threshold: number = 0.35
+    threshold = 0.35
   ): BlendedStrategy | null {
     const qualifyingParadigms = Object.entries(probabilities)
       .filter(([_, prob]) => prob >= threshold)
@@ -356,7 +356,7 @@ export class MultiParadigmBlender {
     paradigms: HostParadigm[],
     model: ModelType,
     effort: EffortType
-  ): Promise<Array<{ subQuery: string; assignedParadigm: HostParadigm; rationale: string }>> {
+  ): Promise<{ subQuery: string; assignedParadigm: HostParadigm; rationale: string }[]> {
     const decompositionPrompt = `
       Decompose this query into ${paradigms.length} complementary sub-problems:
       "${query}"
@@ -403,7 +403,7 @@ export class MultiParadigmBlender {
    * Check if paradigms are complementary
    */
   private areComplementary(paradigms: HostParadigm[]): boolean {
-    const complementaryPairs: Array<[HostParadigm, HostParadigm]> = [
+    const complementaryPairs: [HostParadigm, HostParadigm][] = [
       ['dolores', 'bernard'], // Action + Analysis
       ['teddy', 'maeve'],    // Protection + Strategy
       ['bernard', 'dolores'], // Theory + Practice
@@ -418,7 +418,7 @@ export class MultiParadigmBlender {
    * Check if paradigms might conflict
    */
   private areConflicting(paradigms: HostParadigm[]): boolean {
-    const conflictingPairs: Array<[HostParadigm, HostParadigm]> = [
+    const conflictingPairs: [HostParadigm, HostParadigm][] = [
       ['dolores', 'teddy'],  // Rapid change vs. careful protection
       ['maeve', 'teddy'],    // Control vs. inclusion
     ];

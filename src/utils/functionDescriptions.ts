@@ -55,7 +55,7 @@ export function getFunctionDescription(functionName: string, args?: Record<strin
   };
 
   // Get the description function or use default
-  const descriptionFn = descriptions[functionName] || descriptions['default'];
+  const descriptionFn = descriptions[functionName] || descriptions.default;
   
   try {
     return descriptionFn(args || {});
@@ -109,5 +109,5 @@ export function getToolPurpose(toolName: string): string {
     'default': 'Specialized processing tool'
   };
 
-  return purposes[toolName] || purposes['default'];
+  return purposes[toolName] || purposes.default;
 }

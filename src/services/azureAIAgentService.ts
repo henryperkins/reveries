@@ -506,7 +506,7 @@ When responding:
 
       if (source.url) {
         for (const [quality, domains] of Object.entries(qualityIndicators)) {
-          if (domains.some(domain => source.url!.includes(domain))) {
+          if (domains.some(domain => source.url.includes(domain))) {
             relevanceScore = quality === 'high' ? 0.9 : quality === 'medium' ? 0.6 : 0.3;
             break;
           }

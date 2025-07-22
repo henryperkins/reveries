@@ -42,7 +42,7 @@ export class SchedulingService {
     cost: number,
     paradigm: HostParadigm,
     executeFunction: () => Promise<any>,
-    priority: number = 0
+    priority = 0
   ): void {
     const task: Task = {
       id,
@@ -118,7 +118,7 @@ export class SchedulingService {
   getRunningTasks(): Task[] {
     return Array.from(this.runningTasks)
       .map(id => this.tasks.get(id))
-      .filter(task => task !== undefined) as Task[];
+      .filter(task => task !== undefined);
   }
 
   getTasksByParadigm(paradigm: HostParadigm): Task[] {

@@ -91,10 +91,10 @@ export class EvaluationService {
     };
 
     // Extract scores using regex
-    const completenessMatch = response.match(/COMPLETENESS:\s*([\d.]+)/);
-    const accuracyMatch = response.match(/ACCURACY:\s*([\d.]+)/);
-    const clarityMatch = response.match(/CLARITY:\s*([\d.]+)/);
-    const feedbackMatch = response.match(/FEEDBACK:\s*(.+?)(?=\n[A-Z]+:|$)/s);
+    const completenessMatch = /COMPLETENESS:\s*([\d.]+)/.exec(response);
+    const accuracyMatch = /ACCURACY:\s*([\d.]+)/.exec(response);
+    const clarityMatch = /CLARITY:\s*([\d.]+)/.exec(response);
+    const feedbackMatch = /FEEDBACK:\s*(.+?)(?=\n[A-Z]+:|$)/s.exec(response);
 
     if (completenessMatch) {
       metadata.completeness = parseFloat(completenessMatch[1]);
@@ -459,7 +459,7 @@ Focus on MAXIMUM IMPACT with MINIMUM EFFORT.
   shouldContinueRefinement(
     evaluation: EvaluationMetadata,
     refinementCount: number,
-    maxRefinements: number = 3
+    maxRefinements = 3
   ): boolean {
     if (refinementCount >= maxRefinements) {
       return false;
@@ -475,7 +475,7 @@ Focus on MAXIMUM IMPACT with MINIMUM EFFORT.
   private async executeWithRetry<T>(
     operation: () => Promise<T>,
     operationType: string,
-    retryCount: number = 0
+    retryCount = 0
   ): Promise<T> {
     try {
       return await operation();

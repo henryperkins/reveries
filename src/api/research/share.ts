@@ -159,7 +159,7 @@ class ShareStorage {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  async getPublicShares(limit: number = 50): Promise<ShareRecord[]> {
+  async getPublicShares(limit = 50): Promise<ShareRecord[]> {
     return Array.from(this.shares.values())
       .filter(share => share.isActive && share.options.isPublic && new Date() <= new Date(share.expiresAt))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -293,7 +293,7 @@ export class ShareAPIHandler {
   }
 
   // GET /api/research/share/session/:sessionId - Get all shares for a session
-  async getSessionShares(sessionId: string): Promise<Array<Omit<ShareRecord, 'data'>>> {
+  async getSessionShares(sessionId: string): Promise<Omit<ShareRecord, 'data'>[]> {
     try {
       const shares = await this.storage.getSharesBySession(sessionId);
       
@@ -315,14 +315,14 @@ export class ShareAPIHandler {
   }
 
   // GET /api/research/share/public - Get public shares
-  async getPublicShares(limit: number = 20): Promise<Array<{
+  async getPublicShares(limit = 20): Promise<{
     shareId: string;
     title: string;
     query: string;
     summary: any;
     createdAt: string;
     accessCount: number;
-  }>> {
+  }[]> {
     try {
       const shares = await this.storage.getPublicShares(limit);
       

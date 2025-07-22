@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { APIError, ErrorBoundary } from '@/services/errorHandler';
 import { AzureOpenAIService } from '@/services/azureOpenAIService';
@@ -502,7 +502,7 @@ export class ModelProviderService {
   /**
    * Enhanced generateTextWithGemini with research tools support
    */
-  public async generateTextWithGemini(prompt: string, selectedModel: ModelType, effort: EffortType, useSearch: boolean, useFunctions: boolean = false, useResearchTools: boolean = false): Promise<ProviderResponse> {
+  public async generateTextWithGemini(prompt: string, selectedModel: ModelType, effort: EffortType, useSearch: boolean, useFunctions = false, useResearchTools = false): Promise<ProviderResponse> {
     try {
       const model = this.geminiAI.getGenerativeModel({ model: selectedModel });
       const generationConfig: any = {};
@@ -619,7 +619,7 @@ export class ModelProviderService {
    */
   public async generateTextWithGrokAndTools(prompt: string): Promise<ProviderResponse> {
     const apiKey = getGrokApiKey();
-    type Message = { role: 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string; name?: string; };
+    interface Message { role: 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string; name?: string; }
     const tools = [{
       type: 'function',
       function: {
@@ -637,7 +637,7 @@ export class ModelProviderService {
         body: JSON.stringify({ model: GROK_MODEL_4, messages: msgs, tools }),
       });
       if (!response.ok) throw new Error(`Grok API error: ${response.status} ${await response.text()}`);
-      return (await response.json()) as any;
+      return (await response.json());
     };
 
     const executeTool = async (name: string, args: any): Promise<any> => {
@@ -657,7 +657,7 @@ export class ModelProviderService {
       const message = choice.message;
 
       if (message.tool_calls && message.tool_calls.length > 0) {
-        messages.push(message as any);
+        messages.push(message);
         for (const call of message.tool_calls) {
           const { id, function: fn } = call;
           const args = JSON.parse(fn.arguments || '{}');

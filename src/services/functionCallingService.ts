@@ -27,12 +27,12 @@ export interface FunctionResult<T = any> {
 
 export interface ToolUseState {
     currentStep: string;
-    history: Array<{
+    history: {
         function: string;
         arguments: Record<string, any>;
         result: any;
         timestamp: number;
-    }>;
+    }[];
     context: Record<string, any>;
 }
 

@@ -81,7 +81,7 @@ interface GoogleSearchItem {
   link?: string;
   snippet?: string;
   pagemap?: {
-    metatags?: Array<Record<string, string>>;
+    metatags?: Record<string, string>[];
   };
 }
 
@@ -108,11 +108,11 @@ interface ExaSearchResponse {
 }
 
 interface ExaContentsResponse {
-  results?: Array<{
+  results?: {
     url?: string;
     text?: string;
     highlights?: string[];
-  }>;
+  }[];
 }
 
 interface ExaFindSimilarResponse {
@@ -682,7 +682,7 @@ class ExaSearchProvider implements SearchProvider {
   /**
    * Get full content from URLs using Exa's contents endpoint
    */
-  async getContents(urls: string[], options?: { text?: boolean; summary?: boolean }): Promise<Array<{ url?: string; text?: string; highlights?: string[] }>> {
+  async getContents(urls: string[], options?: { text?: boolean; summary?: boolean }): Promise<{ url?: string; text?: string; highlights?: string[] }[]> {
     if (!await this.isAvailable()) {
       throw new Error('Exa Search provider not available');
     }
@@ -719,7 +719,7 @@ class ExaSearchProvider implements SearchProvider {
   /**
    * Find similar links using Exa's findSimilar endpoint
    */
-  async findSimilar(url: string, numResults: number = 10): Promise<SearchResult[]> {
+  async findSimilar(url: string, numResults = 10): Promise<SearchResult[]> {
     if (!await this.isAvailable()) {
       throw new Error('Exa Search provider not available');
     }
@@ -1179,7 +1179,7 @@ export class SearchProviderService {
     }));
   }
 
-  public async testProviders(): Promise<Array<{provider: string; available: boolean; error?: string}>> {
+  public async testProviders(): Promise<{provider: string; available: boolean; error?: string}[]> {
     const results = [];
 
     for (const provider of this.providers) {

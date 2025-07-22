@@ -237,24 +237,24 @@ export interface EnhancedResearchResults {
     /* Multi-paradigm blending support */
     blendedParadigms?: HostParadigm[];
     blendingStrategy?: string;
-    paradigmContributions?: Array<{
+    paradigmContributions?: {
       paradigm: HostParadigm;
       weight: number;
       contribution: string;
-    }>;
+    }[];
   };
 }
 
 // Azure OpenAI Responses API types
 export interface ResponsesRequest {
   model: string;
-  input: string | Array<{
+  input: string | {
     role: 'user' | 'assistant' | 'system';
-    content: string | Array<{
+    content: string | {
       type: 'input_text' | 'output_text';
       text: string;
-    }>;
-  }>;
+    }[];
+  }[];
   max_output_tokens?: number;
   temperature?: number;
   reasoning?: {
@@ -262,14 +262,14 @@ export interface ResponsesRequest {
   };
   stream?: boolean;
   background?: boolean;
-  tools?: Array<{
+  tools?: {
     type: 'function' | 'mcp';
     function?: {
       name: string;
       description: string;
       parameters: unknown;
     };
-  }>;
+  }[];
   previous_response_id?: string;
 }
 
@@ -279,14 +279,14 @@ export interface ResponsesResponse {
   created_at: number;
   model: string;
   status: 'completed' | 'in_progress' | 'queued' | 'failed' | 'cancelled';
-  output: Array<{
+  output: {
     id: string;
     role: 'assistant';
-    content: Array<{
+    content: {
       type: 'output_text';
       text: string;
-    }>;
-  }>;
+    }[];
+  }[];
   usage: {
     input_tokens: number;
     output_tokens: number;
@@ -305,7 +305,7 @@ export interface ResponsesResponse {
 // Use ResponsesRequest and ResponsesResponse instead
 /** @deprecated Use ResponsesRequest instead */
 export interface O3ChatCompletionRequest {
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+  messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
   maxCompletionTokens?: number;
   reasoningEffort?: 'low' | 'medium' | 'high';
   stream?: boolean;
@@ -378,12 +378,12 @@ export interface ResearchMetadata {
     executed: ContextLayer[];
     results: Record<string, unknown>;
   };
-  functionCalls?: Array<{
+  functionCalls?: {
     name: string;
     arguments: Record<string, unknown>;
     result: unknown;
     timestamp: number;
-  }>;
+  }[];
   errorDetails?: {
     message: string;
     code?: string;
@@ -391,12 +391,12 @@ export interface ResearchMetadata {
   };
   errorMessage?: string;
   searchQueries?: string[];
-  sections?: Array<{
+  sections?: {
     topic: string;
     description: string;
     research?: string;
     sources?: Citation[];
-  }>;
+  }[];
   evaluationMetadata?: {
     completeness?: number;
     accuracy?: number;
@@ -432,7 +432,7 @@ export interface ExportedResearchData {
     hostParadigm?: HostParadigm;
     confidenceScore?: number;
   };
-  steps: Array<{
+  steps: {
     id: string;
     type: ResearchStepType;
     title: string;
@@ -441,34 +441,34 @@ export interface ExportedResearchData {
     duration?: number;
     sources?: Citation[];
     metadata?: ResearchMetadata;
-  }>;
+  }[];
   graph: {
-    nodes: Array<{
+    nodes: {
       id: string;
       data: ResearchStep;
       metadata?: ResearchMetadata;
-    }>;
-    edges: Array<{
+    }[];
+    edges: {
       id: string;
       source: string;
       target: string;
       type: EdgeType;
-    }>;
+    }[];
   };
   sources: {
     all: Citation[];
     byStep: Record<string, Citation[]>;
     byDomain: Record<string, Citation[]>;
   };
-  functionCalls?: Array<{
+  functionCalls?: {
     step: string;
-    calls: Array<{
+    calls: {
       name: string;
       arguments: unknown;
       result: unknown;
       timestamp: number;
-    }>;
-  }>;
+    }[];
+  }[];
 }
 
 // Re-export ResearchGraphManager from researchGraph.ts

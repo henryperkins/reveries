@@ -6,12 +6,12 @@ import React from 'react';
 import { FunctionCallDock } from '@/components/FunctionCallDock';
 
 interface LiveFunctionCallIndicatorProps {
-  calls?: Array<{
+  calls?: {
     name: string;
     status: 'pending' | 'running' | 'completed' | 'failed';
     timestamp: number;
     duration?: number;
-  }>;
+  }[];
 }
 
 // Legacy wrapper - use FunctionCallDock with mode="live" instead

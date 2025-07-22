@@ -112,9 +112,9 @@ export class AzureOpenAIService {
   async generateResponse(
     prompt: string,
     effort: EffortType = EffortType.MEDIUM,
-    useReasoningEffort: boolean = true,
-    temperature: number = 0.7,
-    maxTokens: number = 4096
+    useReasoningEffort = true,
+    temperature = 0.7,
+    maxTokens = 4096
   ): Promise<AzureOpenAIResponse> {
     const requestId = `o3-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     console.log('🎯 O3 Azure OpenAI generateResponse called:', {
@@ -631,7 +631,7 @@ export class AzureOpenAIService {
     effort: EffortType = EffortType.MEDIUM,
     paradigm?: HostParadigm,
     paradigmProbabilities?: ParadigmProbabilities,
-    maxIterations: number = 5,
+    maxIterations = 5,
     onToolUse?: (toolName: string) => void // Add this parameter
   ): Promise<AzureOpenAIResponse> {
     return withRetry(async () => {
@@ -1812,7 +1812,7 @@ export class AzureOpenAIService {
    * Summarizes content using the Responses API
    * This replaces the database-level summarization that used azure_openai.create_chat_completion
    */
-  async summarizeContent(content: string, maxSentences: number = 3): Promise<string> {
+  async summarizeContent(content: string, maxSentences = 3): Promise<string> {
     const prompt = `Summarize the following research content in ${maxSentences} sentences. Focus on key findings, insights, and important information.
 
 Content:

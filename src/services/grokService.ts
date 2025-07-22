@@ -16,7 +16,7 @@ export interface ToolDefinition {
 
 export class GrokService {
   private apiKey: string;
-  private baseUrl: string = 'https://api.x.ai/v1';
+  private baseUrl = 'https://api.x.ai/v1';
   private static instance: GrokService;
   private rateLimiter = RateLimiter.getInstance();
 
@@ -59,7 +59,7 @@ export class GrokService {
   async generateResponse(
     prompt: string,
     effort: EffortType = EffortType.MEDIUM,
-    useSearch: boolean = false,
+    useSearch = false,
     searchSources?: string[]
   ): Promise<GrokResponse> {
     try {

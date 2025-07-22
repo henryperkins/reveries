@@ -459,7 +459,7 @@ export class ResearchAgentService {
           const blendedResult = await this.multiParadigmBlender.executeBlendedResearch(
             query,
             blendingStrategy,
-            model as ModelType,
+            model,
             effort,
             metadata?.onProgress
           );
@@ -517,7 +517,7 @@ export class ResearchAgentService {
           layerResults,
           sources: undefined,
           content: undefined,
-          model: model as ModelType,  // Ensure model is passed correctly
+          model: model,  // Ensure model is passed correctly
           effort,
           onProgress: metadata?.onProgress
         });
@@ -556,7 +556,7 @@ export class ResearchAgentService {
         );
 
         // Convert to expected ResearchResponse format
-        const typedResponse = paradigmResponse as { synthesis?: string; text?: string; sources?: Array<{ title?: string; name?: string; url?: string; snippet?: string; relevanceScore?: number }> };
+        const typedResponse = paradigmResponse as { synthesis?: string; text?: string; sources?: { title?: string; name?: string; url?: string; snippet?: string; relevanceScore?: number }[] };
         response = {
           text: typedResponse.synthesis || typedResponse.text || '',
           sources: typedResponse.sources?.map((s) => ({
@@ -607,7 +607,7 @@ export class ResearchAgentService {
           try {
             const collabResponse = await this.interHostCollaboration.executeCollaboration(
               collab.id,
-              model as ModelType,
+              model,
               effort,
               metadata?.onProgress
             );
@@ -940,7 +940,7 @@ export class ResearchAgentService {
         accuracy: 0.9,
         clarity: 0.85
       },
-      sections: (metadata as Record<string, unknown>).sections as Array<{ id?: string; title?: string; content?: string; confidence?: number; topic: string; description: string; research?: string; sources?: any[] }> || [],
+      sections: (metadata as Record<string, unknown>).sections as { id?: string; title?: string; content?: string; confidence?: number; topic: string; description: string; research?: string; sources?: any[] }[] || [],
       refinementCount: (metadata as Record<string, unknown>).refinementCount as number || 0
     };
   }

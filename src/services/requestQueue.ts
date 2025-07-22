@@ -17,7 +17,7 @@
 export class RequestQueue {
   private static concurrencyLimit: number = RequestQueue.resolveConcurrency();
   private static activeCount = 0;
-  private static queue: Array<() => void> = [];
+  private static queue: (() => void)[] = [];
 
   // --- Rate-limit back-off state ---
   private static pauseUntil = 0;

@@ -24,21 +24,21 @@ export interface JSONGraphExport {
     totalEdges: number;
     exportedBy: string;
   };
-  nodes: Array<{
+  nodes: {
     id: string;
     title: string;
     type: string;
     position: { x: number; y: number };
     dimensions: { width: number; height: number };
     metadata?: Record<string, unknown>;
-  }>;
-  edges: Array<{
+  }[];
+  edges: {
     id: string;
     source: string;
     target: string;
     type: string;
-    points: Array<{ x: number; y: number }>;
-  }>;
+    points: { x: number; y: number }[];
+  }[];
   statistics: Record<string, unknown>;
 }
 
@@ -448,9 +448,9 @@ export class GraphExportService {
   </g>`;
   }
 
-  private async exportLargeMermaidGraph(nodes: Array<{ id: string; label: string; type: string }>, baseFilename: string): Promise<void> {
+  private async exportLargeMermaidGraph(nodes: { id: string; label: string; type: string }[], baseFilename: string): Promise<void> {
     const chunkSize = 25;
-    const chunks: Array<Array<{ id: string; label: string; type: string }>> = [];
+    const chunks: { id: string; label: string; type: string }[][] = [];
     
     for (let i = 0; i < nodes.length; i += chunkSize) {
       chunks.push(nodes.slice(i, i + chunkSize));
@@ -481,7 +481,7 @@ export class GraphExportService {
     });
   }
 
-  private generateMermaidForChunk(nodes: Array<{ id: string; label: string; type: string }>, chunkNumber: number): string {
+  private generateMermaidForChunk(nodes: { id: string; label: string; type: string }[], chunkNumber: number): string {
     let mermaid = `graph TD\n`;
     mermaid += `    subgraph "Part ${chunkNumber}"\n`;
     

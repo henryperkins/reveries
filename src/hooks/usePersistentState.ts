@@ -595,7 +595,7 @@ export function useDatabaseHealth() {
 export function usePersistedState<T>(
   key: string,
   defaultValue: T,
-  version: number = 1
+  version = 1
 ): [T, React.Dispatch<React.SetStateAction<T>>, () => void] {
   console.warn('usePersistedState is deprecated. Please use usePersistentState instead.');
   return usePersistentState(key, defaultValue, { version });
@@ -604,7 +604,7 @@ export function usePersistedState<T>(
 export function useEnhancedPersistedState<T>(
   key: string,
   defaultValue: T,
-  version: number = 1
+  version = 1
 ): [T, React.Dispatch<React.SetStateAction<T>>, () => void] {
   console.warn('useEnhancedPersistedState is deprecated. Please use usePersistentState instead.');
   return usePersistentState(key, defaultValue, { 

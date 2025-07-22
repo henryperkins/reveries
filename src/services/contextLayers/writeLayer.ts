@@ -58,7 +58,7 @@ export class WriteLayerService {
   /**
    * ACE-Graph style memory writing with explicit type classification
    */
-  writeMemory(taskId: string, content: string, memoryType: MemoryType, paradigm: HostParadigm, density: number = 50): void {
+  writeMemory(taskId: string, content: string, memoryType: MemoryType, paradigm: HostParadigm, density = 50): void {
     const memory: Memory = {
       content: { task: taskId, body: content, type: memoryType },
       timestamp: Date.now(),

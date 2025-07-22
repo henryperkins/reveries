@@ -167,7 +167,7 @@ export class GraphLayoutEngine {
   }
 
   // Force-directed layout for complex graphs
-  forceDirectedLayout(nodes: { id: string; type: ResearchStepType; title: string; level?: number; x?: number; y?: number; width?: number; height?: number; fx?: number; fy?: number }[], edges: { source: string; target: string }[], iterations: number = 100): GraphNode[] {
+  forceDirectedLayout(nodes: { id: string; type: ResearchStepType; title: string; level?: number; x?: number; y?: number; width?: number; height?: number; fx?: number; fy?: number }[], edges: { source: string; target: string }[], iterations = 100): GraphNode[] {
     const layoutNodes: GraphNode[] = nodes.map((node) => ({
       id: node.id,
       x: node.x || 0,

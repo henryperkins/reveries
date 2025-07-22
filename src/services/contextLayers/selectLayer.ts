@@ -88,7 +88,7 @@ export class SelectLayerService {
    */
   async select(
     paradigm: HostParadigm,
-    k: number = 5,
+    k = 5,
     query?: string,
     sources?: Citation[]
   ): Promise<{

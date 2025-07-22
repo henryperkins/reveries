@@ -138,7 +138,7 @@ export function GraphContextProvider({ graphManager, children }: GraphContextPro
         const workerEdges: WorkerGraphEdge[] = graphData.edges.map(edge => ({
           source: edge.source,
           target: edge.target,
-          type: edge.type as 'sequential' | 'dependency' | 'error'
+          type: edge.type
         }));
 
         // Calculate layout in worker

@@ -70,7 +70,7 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
                   <span className={`capitalize ${
                     isDominant
                       ? useParadigmStyle
-                        ? `font-semibold ${paradigmTheme!.text}`
+                        ? `font-semibold ${paradigmTheme.text}`
                         : 'font-semibold text-westworld-gold'
                       : ''
                   }`}>

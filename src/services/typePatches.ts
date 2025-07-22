@@ -9,16 +9,16 @@ export type LayerResults = Record<string, unknown> & {
   };
 };
 
-export type InitialContext = {
+export interface InitialContext {
   research?: unknown;
   synthesis?: string;
   sources?: unknown[];
   query?: string;
   paradigm?: string;
   evaluation?: unknown;
-};
+}
 
-export type AdaptiveMetadata = {
+export interface AdaptiveMetadata {
   cacheHit?: boolean;
   learnedPatterns?: boolean;
   processingTime?: number;
@@ -46,4 +46,4 @@ export type AdaptiveMetadata = {
   };
   currentContextLayer?: string;
   layerOutputs?: Record<string, unknown>;
-};
+}

@@ -8,7 +8,7 @@ import { EmbeddingService } from "./ai/EmbeddingService";
 export class ParadigmClassifier {
   private static instance: ParadigmClassifier;
   private embeddingService: EmbeddingService;
-  private useMLClassification: boolean = true;
+  private useMLClassification = true;
 
   private constructor() {
     this.embeddingService = EmbeddingService.getInstance();

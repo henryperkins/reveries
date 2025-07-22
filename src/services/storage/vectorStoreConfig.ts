@@ -34,12 +34,12 @@ export interface VectorQueryRequest {
 }
 
 export interface VectorQueryResponse {
-  matches: Array<{
+  matches: {
     id: string;
     score: number;
     values?: number[];
     metadata?: Record<string, unknown>;
-  }>;
+  }[];
 }
 
 interface VectorDatabaseRow {
@@ -268,7 +268,7 @@ export class MemoryAdapter implements VectorStoreAdapter {
   }
 
   async query(request: VectorQueryRequest): Promise<VectorQueryResponse> {
-    const results: Array<{ id: string; score: number; metadata?: Record<string, unknown>; values?: number[] }> = [];
+    const results: { id: string; score: number; metadata?: Record<string, unknown>; values?: number[] }[] = [];
 
     for (const [id, vector] of this.vectors.entries()) {
       // Apply metadata filters

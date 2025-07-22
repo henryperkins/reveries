@@ -3,13 +3,13 @@ import { ProgressMeter, ProgressMeterProps } from './ProgressMeter';
 import { type HostParadigm } from '@/theme';
 
 export interface ProgressMeterGroupProps {
-  meters: Array<{
+  meters: {
     label: string;
     value: number;
     color?: string;
     paradigm?: HostParadigm;
     id?: string;
-  }>;
+  }[];
   variant?: ProgressMeterProps['variant'];
   size?: ProgressMeterProps['size'];
   showValues?: boolean;

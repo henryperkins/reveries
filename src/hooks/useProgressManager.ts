@@ -55,18 +55,18 @@ export function useProgressManager({ onProgressUpdate, onStepUpdate, isO3Model }
     onProgressUpdate(phase, message);
 
     // Create new step for this phase (except idle and complete)
-    if (phase !== 'idle' && phase !== 'complete' && stepTypeMap[phase as keyof typeof stepTypeMap]) {
+    if (phase !== 'idle' && phase !== 'complete' && stepTypeMap[phase]) {
       const newStep: ResearchStep = {
         id: crypto.randomUUID(),
-        title: titleMap[phase as keyof typeof titleMap],
+        title: titleMap[phase],
         icon: () => null,
         content: message || `Starting ${phase} phase...`,
         timestamp: new Date().toISOString(),
-        type: stepTypeMap[phase as keyof typeof stepTypeMap],
+        type: stepTypeMap[phase],
         sources: [],
         isSpinning: true,
         toolsUsed: [],
-        recommendedTools: [...(toolMap[phase as keyof typeof toolMap] || [])]
+        recommendedTools: [...(toolMap[phase] || [])]
       };
       onStepUpdate(newStep);
     }

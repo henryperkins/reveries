@@ -21,10 +21,10 @@ export interface StructuredResearchOutput {
   confidenceScore: number;
   gaps: string[];
   recommendations?: string[];
-  timeline?: Array<{
+  timeline?: {
     period: string;
     events: string[];
-  }>;
+  }[];
 }
 
 export class ResearchTaskService {

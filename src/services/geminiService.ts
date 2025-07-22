@@ -178,10 +178,10 @@ export class GeminiService {
         }
         // Method 2: Try extracting from candidates structure
         else if (response.response?.candidates?.[0]?.content?.parts) {
-          const parts = response.response.candidates[0].content.parts as Array<{ text?: string }>;
+          const parts = response.response.candidates[0].content.parts as { text?: string }[];
           text = parts
             .filter((p) => p.text && typeof p.text === 'string')
-            .map((p) => p.text as string)
+            .map((p) => p.text!)
             .join('\n')
             .trim();
         }
@@ -205,7 +205,7 @@ export class GeminiService {
 
       // Extract function calls if present
       if (response.response?.candidates?.[0]?.content?.parts) {
-        const parts = response.response.candidates[0].content.parts as Array<{ functionCall?: { name: string; args?: Record<string, unknown> } }>;
+        const parts = response.response.candidates[0].content.parts as { functionCall?: { name: string; args?: Record<string, unknown> } }[];
         for (const part of parts) {
           if (part.functionCall) {
             functionCalls.push({
@@ -218,7 +218,7 @@ export class GeminiService {
 
       // Extract sources from grounding metadata
       if (useSearch && response.response?.candidates?.[0]?.groundingMetadata?.groundingChunks) {
-        const chunks = response.response.candidates[0].groundingMetadata.groundingChunks as Array<{ web?: { uri?: string; title?: string } }>;
+        const chunks = response.response.candidates[0].groundingMetadata.groundingChunks as { web?: { uri?: string; title?: string } }[];
         sources.push(
           ...chunks
             .filter((chunk) => chunk.web && chunk.web.uri)
@@ -299,7 +299,7 @@ export class GeminiService {
    */
   async generateWithGenAI(
     prompt: string,
-    functions: Array<{
+    functions: {
       name: string;
       description: string;
       parameters: {
@@ -311,14 +311,14 @@ export class GeminiService {
         }>;
         required: string[];
       };
-    }>,
+    }[],
     options: Omit<GeminiServiceOptions, 'functions'> = {}
   ): Promise<{
     text: string;
-    functionCalls?: Array<{
+    functionCalls?: {
       name: string;
       args: Record<string, unknown>;
-    }>;
+    }[];
     sources?: { name: string; url?: string }[];
   }> {
     try {
@@ -363,7 +363,7 @@ export class GeminiService {
       }));
 
       // Build tools array with function declarations and optionally Google Search
-      const tools: Array<{ functionDeclarations?: typeof functionDeclarations; googleSearch?: Record<string, never> }> = [];
+      const tools: { functionDeclarations?: typeof functionDeclarations; googleSearch?: Record<string, never> }[] = [];
       
       if (functionDeclarations.length > 0) {
         tools.push({
@@ -398,7 +398,7 @@ export class GeminiService {
       const functionCalls = response.functionCalls
         ?.filter(fc => fc.name) // Filter out calls without names
         .map(fc => ({
-          name: fc.name as string,
+          name: fc.name!,
           args: fc.args || {}
         }));
       

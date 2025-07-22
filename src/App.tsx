@@ -11,7 +11,7 @@ import { AnalyticsView } from '@/components/AnalyticsView'
 import { InputBar, ErrorDisplay, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress, Controls, ParadigmIndicator, InterHostCollaboration } from '@/components'
 import ResearchGraphView from '@/components/ResearchGraphView';
 import { ProgressMeter } from '@/components/atoms'
-import { usePersistentState } from '@/hooks/usePersistentState'
+import { usePersistentState, ResearchSession } from '@/hooks/usePersistentState'
 import { useFunctionCalls } from '@/components/FunctionCallDock'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
 import { ThemeToggle } from './components/ThemeToggle'
@@ -32,7 +32,6 @@ import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
 import { DEFAULT_MODEL, TIMEOUTS } from '@/constants'
 import { useTimeoutManager, TimeoutManager } from '@/utils/timeoutManager'
 import '@/App.css'
-import { ResearchSession } from '@/hooks/usePersistentState'
 
 const App: React.FC = () => {
   const [research, setResearch] = usePersistentState<ResearchStep[]>('reveries_research', [], { version: 1 })
@@ -48,13 +47,13 @@ const App: React.FC = () => {
   const [currentLayer, setCurrentLayer] = useState<ContextLayer | null>(null)
   const [currentPhase, setCurrentPhase] = useState<ResearchPhase>('discovery')
   const [blendedParadigms, setBlendedParadigms] = useState<HostParadigm[]>([])
-  const [activeCollaborations, setActiveCollaborations] = useState<Array<{
+  const [activeCollaborations, setActiveCollaborations] = useState<{
     id: string;
     fromHost: HostParadigm;
     toHost: HostParadigm;
     reason: string;
     status: 'pending' | 'processing' | 'completed' | 'failed';
-  }>>([])
+  }[]>([])
   const [activeTab, setActiveTab] = useState('research')
 
   // Progress state machine
@@ -231,7 +230,9 @@ const App: React.FC = () => {
   }, [currentPhase, setCurrentPhase]);
 
   const handleSubmit = useCallback(async (input: string) => {
-    if (!input.trim() || isLoading) return
+    if (!input.trim() || isLoading) {
+      return;
+    }
 
     setIsLoading(true)
     setProgress(0)
@@ -252,11 +253,21 @@ const App: React.FC = () => {
         const currentProgress = currentProgressRef.current;
 
         // Force advance to next phase based on current progress
-        if (currentProgress < 25) updateProgressState('routing', `Timeout in ${phase}, continuing...`);
-        else if (currentProgress < 40) updateProgressState('researching', `Timeout in ${phase}, continuing...`);
-        else if (currentProgress < 60) updateProgressState('evaluating', `Timeout in ${phase}, continuing...`);
-        else if (currentProgress < 80) updateProgressState('synthesizing', `Timeout in ${phase}, continuing...`);
-        else updateProgressState('complete');
+        if (currentProgress < 25) {
+          updateProgressState('routing', `Timeout in ${phase}, continuing...`);
+        }
+        else if (currentProgress < 40) {
+          updateProgressState('researching', `Timeout in ${phase}, continuing...`);
+        }
+        else if (currentProgress < 60) {
+          updateProgressState('evaluating', `Timeout in ${phase}, continuing...`);
+        }
+        else if (currentProgress < 80) {
+          updateProgressState('synthesizing', `Timeout in ${phase}, continuing...`);
+        }
+        else {
+          updateProgressState('complete');
+        }
       });
     };
 

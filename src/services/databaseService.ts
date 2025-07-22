@@ -634,7 +634,7 @@ Insights:`;
       const lines = aiResponse.split('\n').filter(line => line.trim());
 
       for (const line of lines) {
-        if (line.match(/^\d+\./)) {
+        if (/^\d+\./.exec(line)) {
           insights.push({
             type: 'key_insight',
             content: line.replace(/^\d+\.\s*/, ''),

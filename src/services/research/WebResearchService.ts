@@ -756,7 +756,7 @@ Focus on providing factual, well-sourced information that directly addresses the
   /**
    * Filter sources by quality criteria
    */
-  filterSourcesByQuality(sources: Citation[], minRelevance: number = 0.3): Citation[] {
+  filterSourcesByQuality(sources: Citation[], minRelevance = 0.3): Citation[] {
     return sources.filter(source => {
       // Filter by relevance score
       if ((source.relevanceScore || 0) < minRelevance) {
@@ -795,10 +795,10 @@ Focus on providing factual, well-sourced information that directly addresses the
           grouped[domain].push(source);
         } catch {
           // Invalid URL, group under 'other'
-          if (!grouped['other']) {
-            grouped['other'] = [];
+          if (!grouped.other) {
+            grouped.other = [];
           }
-          grouped['other'].push(source);
+          grouped.other.push(source);
         }
       } else {
         // No URL, group under 'no-url'

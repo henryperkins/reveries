@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { EffortType, ModelType, GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL } from './types';
+import { EffortType, ModelType, GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL, ContextWindowMetrics } from './types';
 import { getEnv } from './utils/getEnv';
 
 // Check if Grok API key is available
@@ -32,7 +32,6 @@ export const DEFAULT_EFFORT: EffortType = EffortType.MEDIUM;
  * Default Context Window Density metrics adapted for Westworld host paradigms.
  * These values guide UI visualizations and agent heuristics for each research phase.
  */
-import { ContextWindowMetrics } from './types';
 
 export const DEFAULT_CONTEXT_WINDOW_METRICS: ContextWindowMetrics[] = [
   {
