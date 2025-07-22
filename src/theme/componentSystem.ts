@@ -1,5 +1,5 @@
 // Theme-agnostic component system that decouples from Westworld theme
-import { spacing, borderRadius, shadows, transitions } from './designTokens';
+import { spacing, borderRadius, shadows, transitions } from './designSystem';
 
 // Base component variants that can be themed
 export const componentVariants = {
@@ -23,20 +23,20 @@ export const componentVariants = {
   card: {
     base: `rounded-lg ${shadows.md} bg-white`,
     variants: {
-      elevated: `${shadows.lg} hover:${shadows.xl} transition-shadow ${transitions.base}`,
+      elevated: `${shadows.lg} hover:${shadows.xl} transition-shadow ${transitions.duration.base}`,
       outlined: 'border border-gray-200',
       minimal: 'border-0 shadow-none',
     },
     padding: {
-      sm: spacing.sm,
-      md: spacing.md,
-      lg: spacing.lg,
-      xl: spacing.xl,
+      sm: spacing[2],
+      md: spacing[4],
+      lg: spacing[6],
+      xl: spacing[8],
     },
   },
 
   input: {
-    base: `block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary ${transitions.base}`,
+    base: `block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary ${transitions.duration.base}`,
     sizes: {
       sm: `px-3 py-2 text-sm ${borderRadius.md}`,
       md: `px-4 py-2 text-sm ${borderRadius.md}`,
@@ -75,8 +75,8 @@ export const componentVariants = {
 export const layout = {
   container: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8',
   stack: {
-    vertical: (gap: string = spacing.md) => `flex flex-col ${gap}`,
-    horizontal: (gap: string = spacing.md) => `flex ${gap}`,
+    vertical: (gap: string = spacing[4]) => `flex flex-col ${gap}`,
+    horizontal: (gap: string = spacing[4]) => `flex ${gap}`,
   },
   grid: {
     responsive: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4',

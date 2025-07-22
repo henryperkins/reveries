@@ -1,57 +1,173 @@
-/* Design Tokens - Base design values only */
-/* Theme variables are now managed by JS in themeConfig.ts */
+/* Design Tokens - Generated from designSystem.ts */
 
 @layer base {
   :root {
-    /* Typography */
-    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-serif: 'Crimson Text', Georgia, serif;
-    --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
+    /* ===== COLOR TOKENS ===== */
+    /* Westworld Theme Colors */
+    --colors-westworld-cream: #FAF6F2;
+    --colors-westworld-beige: #F5EDE4;
+    --colors-westworld-tan: #E8D5C4;
+    --colors-westworld-brown: #8B6F47;
+    --colors-westworld-dark-brown: #6B5637;
+    --colors-westworld-near-black: #2A2522;
+    --colors-westworld-black: #1A1512;
+    --colors-westworld-gold: #D4AF37;
+    --colors-westworld-dark-gold: #B8941F;
+    --colors-westworld-rust: #A85732;
+    --colors-westworld-copper: #C87543;
+    --colors-westworld-dark-copper: #A65E36;
+    --colors-westworld-white: #FFFFFF;
 
-    /* Spacing Scale */
-    --spacing-xs: 0.25rem;
-    --spacing-sm: 0.5rem;
-    --spacing-md: 1rem;
-    --spacing-lg: 1.5rem;
-    --spacing-xl: 2rem;
-    --spacing-2xl: 2.5rem;
-    --spacing-3xl: 3rem;
+    /* Semantic Colors */
+    --colors-semantic-primary: #D4AF37;
+    --colors-semantic-primary-dark: #B8941F;
+    --colors-semantic-secondary: #C87543;
+    --colors-semantic-secondary-dark: #A65E36;
+    --colors-semantic-background: #F5EDE4;
+    --colors-semantic-surface: #FAF6F2;
+    --colors-semantic-text: #2A2522;
+    --colors-semantic-text-muted: #8B6F47;
+    --colors-semantic-border: #E8D5C4;
 
-    /* Border Radius */
-    --radius-sm: 0.125rem;
-    --radius-md: 0.375rem;
-    --radius-lg: 0.5rem;
-    --radius-xl: 0.75rem;
-    --radius-2xl: 1rem;
-    --radius-full: 9999px;
+    /* State Colors */
+    --colors-semantic-success: #10B981;
+    --colors-semantic-success-light: #D1FAE5;
+    --colors-semantic-warning: #F59E0B;
+    --colors-semantic-warning-light: #FEF3C7;
+    --colors-semantic-error: #EF4444;
+    --colors-semantic-error-light: #FEE2E2;
+    --colors-semantic-info: #3B82F6;
+    --colors-semantic-info-light: #DBEAFE;
 
-    /* Transitions */
-    --transition-fast: 150ms ease-in-out;
-    --transition-base: 200ms ease-in-out;
-    --transition-slow: 300ms ease-in-out;
-    --transition-slower: 500ms ease-in-out;
+    /* ===== TYPOGRAPHY TOKENS ===== */
+    /* Font Families */
+    --typography-font-family-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --typography-font-family-serif: 'Georgia', 'Times New Roman', serif;
+    --typography-font-family-mono: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
 
-    /* Durations (for animations) */
-    --duration-fast: 150ms;
-    --duration-base: 200ms;
-    --duration-slow: 300ms;
-    --duration-slower: 500ms;
+    /* Font Sizes */
+    --typography-font-size-xs: 0.75rem;    /* 12px */
+    --typography-font-size-sm: 0.875rem;   /* 14px */
+    --typography-font-size-base: 1rem;     /* 16px */
+    --typography-font-size-lg: 1.125rem;   /* 18px */
+    --typography-font-size-xl: 1.25rem;    /* 20px */
+    --typography-font-size-2xl: 1.5rem;    /* 24px */
+    --typography-font-size-3xl: 1.875rem;  /* 30px */
+    --typography-font-size-4xl: 2.25rem;   /* 36px */
+    --typography-font-size-5xl: 3rem;      /* 48px */
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
-    --shadow-none: 0 0 #0000;
+    /* Font Weights */
+    --typography-font-weight-thin: 100;
+    --typography-font-weight-light: 300;
+    --typography-font-weight-normal: 400;
+    --typography-font-weight-medium: 500;
+    --typography-font-weight-semibold: 600;
+    --typography-font-weight-bold: 700;
+    --typography-font-weight-extrabold: 800;
 
-    /* Breakpoints (for reference in JS) */
-    --breakpoint-xs: 475px;
-    --breakpoint-sm: 640px;
-    --breakpoint-md: 768px;
-    --breakpoint-lg: 1024px;
-    --breakpoint-xl: 1280px;
-    --breakpoint-2xl: 1536px;
+    /* Line Heights */
+    --typography-line-height-none: 1;
+    --typography-line-height-tight: 1.25;
+    --typography-line-height-snug: 1.375;
+    --typography-line-height-normal: 1.5;
+    --typography-line-height-relaxed: 1.625;
+    --typography-line-height-loose: 2;
+
+    /* ===== SPACING TOKENS ===== */
+    --spacing-0: 0;
+    --spacing-1: 0.25rem;   /* 4px */
+    --spacing-2: 0.5rem;    /* 8px */
+    --spacing-3: 0.75rem;   /* 12px */
+    --spacing-4: 1rem;      /* 16px */
+    --spacing-5: 1.25rem;   /* 20px */
+    --spacing-6: 1.5rem;    /* 24px */
+    --spacing-8: 2rem;      /* 32px */
+    --spacing-10: 2.5rem;   /* 40px */
+    --spacing-12: 3rem;     /* 48px */
+    --spacing-16: 4rem;     /* 64px */
+    --spacing-20: 5rem;     /* 80px */
+    --spacing-24: 6rem;     /* 96px */
+
+    /* ===== BORDER RADIUS TOKENS ===== */
+    --border-radius-none: 0;
+    --border-radius-sm: 0.125rem;  /* 2px */
+    --border-radius-base: 0.25rem; /* 4px */
+    --border-radius-md: 0.375rem;  /* 6px */
+    --border-radius-lg: 0.5rem;    /* 8px */
+    --border-radius-xl: 0.75rem;   /* 12px */
+    --border-radius-2xl: 1rem;     /* 16px */
+    --border-radius-3xl: 1.5rem;   /* 24px */
+    --border-radius-full: 9999px;
+
+    /* ===== SHADOW TOKENS ===== */
+    --shadows-none: none;
+    --shadows-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadows-base: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadows-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadows-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadows-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadows-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    --shadows-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+    --shadows-glow: 0 0 10px rgba(212, 175, 55, 0.5);
+    --shadows-glow-lg: 0 0 20px rgba(212, 175, 55, 0.8), 0 0 30px rgba(212, 175, 55, 0.6);
+
+    /* ===== Z-INDEX TOKENS ===== */
+    --z-index-auto: auto;
+    --z-index-0: 0;
+    --z-index-base: 1;
+    --z-index-dropdown: 10;
+    --z-index-sticky: 20;
+    --z-index-fixed: 30;
+    --z-index-modal-backdrop: 40;
+    --z-index-modal: 50;
+    --z-index-popover: 60;
+    --z-index-tooltip: 70;
+    --z-index-notification: 80;
+    --z-index-top: 90;
+
+    /* ===== TRANSITION TOKENS ===== */
+    --transitions-duration-fast: 150ms;
+    --transitions-duration-base: 200ms;
+    --transitions-duration-slow: 300ms;
+    --transitions-duration-slower: 500ms;
+
+    --transitions-timing-linear: linear;
+    --transitions-timing-ease: ease;
+    --transitions-timing-ease-in: ease-in;
+    --transitions-timing-ease-out: ease-out;
+    --transitions-timing-ease-in-out: ease-in-out;
+    --transitions-timing-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    /* ===== BREAKPOINT TOKENS ===== */
+    --breakpoints-xs: 475px;
+    --breakpoints-sm: 640px;
+    --breakpoints-md: 768px;
+    --breakpoints-lg: 1024px;
+    --breakpoints-xl: 1280px;
+    --breakpoints-2xl: 1536px;
+  }
+
+  /* Dark theme overrides */
+  [data-theme="dark"] {
+    /* Color overrides for dark mode */
+    --colors-semantic-background: var(--colors-westworld-black);
+    --colors-semantic-surface: var(--colors-westworld-near-black);
+    --colors-semantic-text: var(--colors-westworld-cream);
+    --colors-semantic-text-muted: var(--colors-westworld-tan);
+    --colors-semantic-border: #3A3532;
+
+    /* Adjusted semantic colors for dark mode */
+    --colors-semantic-primary: var(--colors-westworld-gold);
+    --colors-semantic-primary-dark: var(--colors-westworld-copper);
+    --colors-semantic-secondary: var(--colors-westworld-rust);
+    --colors-semantic-secondary-dark: var(--colors-westworld-dark-brown);
+
+    /* Adjusted shadows for dark mode */
+    --shadows-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadows-base: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+    --shadows-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadows-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+    --shadows-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+    --shadows-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.7);
   }
 }

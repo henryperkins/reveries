@@ -60,8 +60,8 @@ export function generateCSSVariables(mode: ThemeMode): Record<string, string> {
   }
 
   // Typography variables
-  Object.entries(designSystem.typography.fontSize).forEach(([key, value]) => {
-    variables[`--text-${key}`] = value;
+  Object.entries(designSystem.typography['font-size']).forEach(([key, value]) => {
+    variables[`--text-${key}`] = value as string;
   });
 
   // Spacing variables
@@ -81,8 +81,8 @@ export function generateCSSVariables(mode: ThemeMode): Record<string, string> {
   variables['--shadow-glow-lg'] = designSystem.shadows.glowLg;
 
   // Border radius variables
-  Object.entries(designSystem.borderRadius).forEach(([key, value]) => {
-    variables[`--radius-${key}`] = value;
+  Object.entries(designSystem['border-radius']).forEach(([key, value]) => {
+    variables[`--radius-${key}`] = value as string;
   });
 
   // Transition variables
@@ -105,7 +105,7 @@ export function createThemeConfig(mode: ThemeMode): UnifiedTheme {
     colors: designSystem.colors,
     typography: designSystem.typography,
     spacing: designSystem.spacing,
-    borderRadius: designSystem.borderRadius,
+    borderRadius: designSystem['border-radius'],
     shadows: designSystem.shadows,
     zIndex: designSystem.zIndex,
     transitions: designSystem.transitions,
@@ -140,7 +140,7 @@ export function applyThemeToDOM(mode: ThemeMode): void {
   if (metaThemeColor) {
     metaThemeColor.setAttribute(
       'content',
-      mode === 'dark' ? designSystem.colors.westworld.nearBlack : designSystem.colors.westworld.cream
+      mode === 'dark' ? designSystem.colors.westworld['near-black'] : designSystem.colors.westworld.cream
     );
   }
 

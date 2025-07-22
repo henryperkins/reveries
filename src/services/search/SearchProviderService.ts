@@ -487,7 +487,8 @@ class ExaSearchProvider implements SearchProvider {
   private async initializeSDK() {
     try {
       // Try to dynamically import the official Exa SDK if available
-      const ExaModule = await import('exa-js').catch(() => null);
+      // Use a condition to prevent Vite from trying to resolve this at build time
+      const ExaModule = typeof window !== 'undefined' && false ? await import('exa-js').catch(() => null) : null;
 
       if (ExaModule) {
         const Exa = ExaModule.default || ExaModule;

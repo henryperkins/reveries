@@ -1,4 +1,4 @@
-import { spacing, sizing, zIndex, borderRadius, shadows, transitions, breakpoints } from './designTokens';
+import { spacing, zIndex, borderRadius, shadows, transitions, breakpoints } from './designSystem';
 
 // Color palette for light and dark themes
 export const colors = {
@@ -212,6 +212,19 @@ export const darkShadows = {
   '2xl': '0 25px 50px -12px rgba(255, 255, 255, 0.25)',
   inner: 'inset 0 2px 4px 0 rgba(255, 255, 255, 0.05)',
 };
+
+// Legacy sizing tokens for backward compatibility 
+export const sizing = {
+  xs: '0.75rem',    // 12px
+  sm: '1rem',       // 16px
+  md: '1.5rem',     // 24px
+  lg: '2rem',       // 32px
+  xl: '2.5rem',     // 40px
+  '2xl': '3rem',    // 48px
+  '3xl': '3.5rem',  // 56px
+  '4xl': '4rem',    // 64px
+  '5xl': '5rem',    // 80px
+} as const;
 
 // Complete theme object
 export const theme = {

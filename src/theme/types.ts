@@ -10,7 +10,7 @@ export interface UnifiedTheme {
   colors: typeof designSystem.colors;
   typography: typeof designSystem.typography;
   spacing: typeof designSystem.spacing;
-  borderRadius: typeof designSystem.borderRadius;
+  borderRadius: typeof designSystem['border-radius'];
   shadows: typeof designSystem.shadows;
   zIndex: typeof designSystem.zIndex;
   transitions: typeof designSystem.transitions;

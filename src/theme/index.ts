@@ -29,7 +29,7 @@ export {
 } from './paradigm';
 
 // Design tokens (for backward compatibility)
-export { spacing, sizing, zIndex, borderRadius, shadows, transitions, breakpoints } from './designTokens';
+export { spacing, zIndex, shadows, transitions, breakpoints, borderRadius } from './designSystem';
 
 // CSS-in-JS utilities (for advanced usage)
-export { styled, themeVariables, keyframes, themeTransition } from './styled';
+export { styled, keyframes, themeTransition } from './styled';
