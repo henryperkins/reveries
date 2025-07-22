@@ -16,7 +16,8 @@ export {
 export type { ParadigmTheme, Paradigm } from './paradigm';
 
 // Re-export the main ThemeContext and ThemeToggle from their correct locations
-export { ThemeProvider, useTheme } from '../contexts/ThemeContext';
+export { ThemeProvider } from '../contexts/ThemeContext';
+export { useTheme } from '../contexts/useTheme';
 export { ThemeToggle } from '../components/ThemeToggle';
 
 // Export styled components and CSS variables for CSS-in-JS usage
