@@ -50,8 +50,9 @@ export const Tooltip: React.FC<TooltipProps> = ({
     }
 
     // Keep tooltip within viewport
-    x = Math.max(8, Math.min(x, window.innerWidth - tooltipRect.width - 8));
-    y = Math.max(8, Math.min(y, window.innerHeight - tooltipRect.height - 8));
+    const margin = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--spacing-tooltip-margin') || '8');
+    x = Math.max(margin, Math.min(x, window.innerWidth - tooltipRect.width - margin));
+    y = Math.max(margin, Math.min(y, window.innerHeight - tooltipRect.height - margin));
 
     setCoords({ x, y });
   }, [position]);
@@ -106,8 +107,10 @@ export const Tooltip: React.FC<TooltipProps> = ({
       {isVisible && content && (
         <div
           ref={tooltipRef}
-          className={`fixed z-tooltip px-3 py-2 text-sm text-white bg-gray-900 rounded-lg shadow-lg pointer-events-none ${className}`}
+          className={`fixed z-tooltip px-3 py-2 text-sm rounded-lg shadow-lg pointer-events-none ${className}`}
           style={{
+            backgroundColor: 'var(--color-tooltip-bg, #111827)',
+            color: 'var(--color-tooltip-text, #ffffff)',
             left: `${coords.x}px`,
             top: `${coords.y}px`,
             opacity: coords.x === 0 && coords.y === 0 ? 0 : 1,
@@ -116,12 +119,13 @@ export const Tooltip: React.FC<TooltipProps> = ({
         >
           {content}
           <div
-            className={`absolute w-2 h-2 bg-gray-900 transform rotate-45 ${
+            className={`absolute w-2 h-2 transform rotate-45 ${
               position === 'top' ? 'bottom-[-4px] left-1/2 -translate-x-1/2' :
               position === 'bottom' ? 'top-[-4px] left-1/2 -translate-x-1/2' :
               position === 'left' ? 'right-[-4px] top-1/2 -translate-y-1/2' :
               'left-[-4px] top-1/2 -translate-y-1/2'
             }`}
+            style={{ backgroundColor: 'var(--color-tooltip-bg, #111827)' }}
           />
         </div>
       )}

@@ -35,7 +35,7 @@ export const ProgressMeterGroup: React.FC<ProgressMeterGroupProps> = ({
     return (
       <div className={`flex flex-wrap gap-4 ${className}`} role="group" aria-label="Progress meters group">
         {meters.map((meter, index) => (
-          <div key={meter.id || index} className="flex-1 min-w-[200px]">
+          <div key={meter.id || index} className="flex-1" style={{ minWidth: 'var(--width-progress-group-min, 200px)' }}>
             <ProgressMeter
               value={meter.value}
               label={showLabels ? meter.label : undefined}

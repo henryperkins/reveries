@@ -95,6 +95,18 @@ export function generateCSSVariables(mode: ThemeMode): Record<string, string> {
     variables[`--z-${key}`] = String(value);
   });
 
+  // Component-specific size variables
+  variables['--height-research-area-min'] = '200px';
+  variables['--height-input-min'] = '24px';
+  variables['--height-input-max'] = '200px';
+  variables['--height-textarea-min'] = '100px';
+  variables['--width-progress-group-min'] = '200px';
+  
+  // Tooltip-specific variables
+  variables['--color-tooltip-bg'] = isDark ? '#111827' : '#1F2937';
+  variables['--color-tooltip-text'] = '#FFFFFF';
+  variables['--spacing-tooltip-margin'] = '8px';
+
   return variables;
 }
 

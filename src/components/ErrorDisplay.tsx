@@ -24,19 +24,19 @@ interface ErrorDisplayProps {
  * <ErrorDisplay error={error} onDismiss={() => setError(null)} />
  */
 export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onDismiss }) => (
-  <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800/50 shadow-theme-md">
-    <span className="shrink-0 mt-1 text-red-600 dark:text-red-400">
+  <div className="flex items-start gap-3 p-4 rounded-xl bg-semantic-error/10 border border-semantic-error/30 shadow-md">
+    <span className="shrink-0 mt-1 text-semantic-error">
       <XMarkIcon className="w-5 h-5" />
     </span>
 
-    <p className="flex-1 text-sm text-red-700 dark:text-red-300">{error}</p>
+    <p className="flex-1 text-sm text-semantic-error">{error}</p>
 
     {onDismiss && (
       <button
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss error"
-        className="shrink-0 p-2 -m-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 min-w-[44px] min-h-[44px] flex items-center justify-center focus-theme-ring"
+        className="shrink-0 p-2 -m-2 text-semantic-error hover:text-semantic-error-light transition-colors rounded-lg hover:bg-semantic-error/10 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center focus:ring-2 focus:ring-semantic-error/30"
       >
         <XMarkIcon className="w-5 h-5" />
       </button>

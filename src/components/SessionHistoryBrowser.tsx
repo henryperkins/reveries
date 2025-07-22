@@ -87,16 +87,16 @@ export const SessionHistoryBrowser: React.FC<SessionHistoryBrowserProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search sessions..."
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-westworld-cream"
+                  className="w-full pl-9 pr-3 py-2 border border-semantic-border rounded-lg text-sm focus:ring-2 focus:ring-semantic-primary focus:border-semantic-primary bg-semantic-surface text-semantic-text"
                 />
-                <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-4 w-4 text-semantic-text-muted" />
               </div>
             </div>
 
             {/* Session List */}
             <div className="overflow-y-auto h-full">
               {filteredSessions.length === 0 ? (
-                <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                <div className="p-4 text-center text-semantic-text-muted">
                   {searchQuery ? 'No sessions match your search' : 'No sessions found'}
                 </div>
               ) : (
@@ -104,35 +104,35 @@ export const SessionHistoryBrowser: React.FC<SessionHistoryBrowserProps> = ({
                   <div
                     key={session.id}
                     onClick={() => setSelectedSession(session)}
-                    className={`p-4 border-b cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
-                      selectedSession?.id === session.id ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500 dark:border-l-blue-400' : ''
+                    className={`p-4 border-b cursor-pointer hover:bg-semantic-surface transition-colors ${
+                      selectedSession?.id === session.id ? 'bg-semantic-info/10 border-l-4 border-l-semantic-info' : ''
                     }`}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-medium text-gray-900 dark:text-westworld-cream truncate">
+                        <h3 className="text-sm font-medium text-semantic-text truncate">
                           {session.query}
                         </h3>
-                        <div className="mt-1 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="mt-1 flex items-center gap-4 text-xs text-semantic-text-muted">
                           <span>{formatDate(session.timestamp)}</span>
                           <span>{session.steps.length} steps</span>
                           <span>{formatDuration(session.duration)}</span>
                         </div>
                         <div className="mt-1 flex items-center gap-2">
                           {session.model && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-semantic-surface text-semantic-text">
                               {session.model}
                             </span>
                           )}
                           {session.effort && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-semantic-info/10 text-semantic-info">
                               {session.effort}
                             </span>
                           )}
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             session.completed 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-yellow-100 text-yellow-800'
+                              ? 'bg-semantic-success/10 text-semantic-success' 
+                              : 'bg-semantic-warning/10 text-semantic-warning'
                           }`}>
                             {session.completed ? 'Completed' : 'In Progress'}
                           </span>
@@ -151,24 +151,24 @@ export const SessionHistoryBrowser: React.FC<SessionHistoryBrowserProps> = ({
               <div className="h-full flex flex-col">
                 {/* Session Header */}
                 <div className="p-4 border-b">
-                  <h3 className="font-medium text-gray-900 dark:text-westworld-cream mb-2">
+                  <h3 className="font-medium text-semantic-text mb-2">
                     {selectedSession.query}
                   </h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-500 dark:text-gray-400">Date:</span>
+                      <span className="text-semantic-text-muted">Date:</span>
                       <span className="ml-2">{formatDate(selectedSession.timestamp)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500 dark:text-gray-400">Duration:</span>
+                      <span className="text-semantic-text-muted">Duration:</span>
                       <span className="ml-2">{formatDuration(selectedSession.duration)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500 dark:text-gray-400">Steps:</span>
+                      <span className="text-semantic-text-muted">Steps:</span>
                       <span className="ml-2">{selectedSession.steps.length}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500 dark:text-gray-400">Sources:</span>
+                      <span className="text-semantic-text-muted">Sources:</span>
                       <span className="ml-2">
                         {selectedSession.steps.reduce((acc, step) => acc + (step.sources?.length || 0), 0)}
                       </span>
@@ -178,25 +178,25 @@ export const SessionHistoryBrowser: React.FC<SessionHistoryBrowserProps> = ({
 
                 {/* Session Steps Preview */}
                 <div className="flex-1 overflow-y-auto p-4">
-                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Research Steps</h4>
+                  <h4 className="text-sm font-medium text-semantic-text mb-3">Research Steps</h4>
                   <div className="space-y-3">
                     {selectedSession.steps.map((step, index) => (
-                      <div key={step.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
+                      <div key={step.id} className="border border-semantic-border rounded-lg p-3 bg-semantic-surface">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Step {index + 1}</span>
-                          <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
+                          <span className="text-xs font-medium text-semantic-text-muted">Step {index + 1}</span>
+                          <span className="text-xs px-2 py-0.5 bg-semantic-info/10 text-semantic-info rounded">
                             {step.type}
                           </span>
                         </div>
-                        <h5 className="text-sm font-medium text-gray-900 dark:text-westworld-cream mb-1">{step.title}</h5>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                        <h5 className="text-sm font-medium text-semantic-text mb-1">{step.title}</h5>
+                        <p className="text-xs text-semantic-text-muted line-clamp-2">
                           {typeof step.content === 'string' 
                             ? step.content.substring(0, 150) + '...'
                             : String(step.content).substring(0, 150) + '...'
                           }
                         </p>
                         {step.sources && step.sources.length > 0 && (
-                          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                          <div className="mt-2 text-xs text-semantic-text-muted">
                             {step.sources.length} source{step.sources.length > 1 ? 's' : ''}
                           </div>
                         )}
@@ -209,7 +209,7 @@ export const SessionHistoryBrowser: React.FC<SessionHistoryBrowserProps> = ({
                 <div className="p-4 border-t flex gap-2">
                   <button
                     onClick={() => handleLoadSession(selectedSession)}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-semantic-primary text-westworld-white rounded-lg hover:bg-semantic-primary-dark transition-colors"
                   >
                     <ArrowDownTrayIcon className="w-4 h-4" />
                     Load Session
@@ -221,14 +221,14 @@ export const SessionHistoryBrowser: React.FC<SessionHistoryBrowserProps> = ({
                         setSelectedSession(null);
                       }
                     }}
-                    className="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+                    className="px-4 py-2 text-semantic-error border border-semantic-error/30 rounded-lg hover:bg-semantic-error/10 transition-colors"
                   >
                     <TrashIcon className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
+              <div className="h-full flex items-center justify-center text-semantic-text-muted">
                 Select a session to view details
               </div>
             )}

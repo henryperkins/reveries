@@ -112,15 +112,15 @@ export const InputBar: React.FC<InputBarProps> = ({
   const getSuggestionColor = (type: string) => {
     switch (type) {
       case 'memory':
-        return 'border-l-blue-400 bg-blue-50';
+        return 'border-l-4 border-l-blue-500 bg-blue-500/10';
       case 'paradigm':
-        return 'border-l-purple-400 bg-purple-50';
+        return 'border-l-4 border-l-purple-500 bg-purple-500/10';
       case 'tool':
-        return 'border-l-green-400 bg-green-50';
+        return 'border-l-4 border-l-green-500 bg-green-500/10';
       case 'collaboration':
-        return 'border-l-orange-400 bg-orange-50';
+        return 'border-l-4 border-l-orange-500 bg-orange-500/10';
       default:
-        return 'border-l-gray-400 bg-gray-50';
+        return 'border-l-4 border-l-gray-500 bg-gray-500/10';
     }
   };
 
@@ -148,7 +148,8 @@ export const InputBar: React.FC<InputBarProps> = ({
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
             placeholder={placeholder}
             disabled={disabled || isLoading}
-            className="flex-1 px-4 py-3 bg-theme-secondary border border-theme-primary rounded-lg resize-none outline-none focus-theme-ring text-theme-primary placeholder:text-theme-secondary min-h-[24px] max-h-[200px]"
+            className="flex-1 px-4 py-3 bg-theme-secondary border border-theme-primary rounded-lg resize-none outline-none focus-theme-ring text-theme-primary placeholder:text-theme-secondary"
+            style={{ minHeight: 'var(--height-input-min, 24px)', maxHeight: 'var(--height-input-max, 200px)' }}
             rows={1}
             aria-label="Research question input"
             aria-expanded={showSuggestions}
@@ -191,11 +192,11 @@ export const InputBar: React.FC<InputBarProps> = ({
               <button
                 key={index}
                 onClick={() => applySuggestion(suggestion)}
-                className={`w-full text-left p-3 rounded-md transition-colors border-l-3 mb-1
+                className={`w-full text-left p-3 rounded-md transition-colors mb-1
                           ${
                             index === selectedSuggestionIndex
-                              ? 'bg-indigo-100 border-l-indigo-500'
-                              : `hover:bg-gray-50 ${getSuggestionColor(
+                              ? 'bg-indigo-500/20 border-l-4 border-l-indigo-500'
+                              : `hover:bg-theme-secondary ${getSuggestionColor(
                                   suggestion.type
                                 )}`
                           }`}

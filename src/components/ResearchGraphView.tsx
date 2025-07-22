@@ -27,18 +27,26 @@ interface LayoutData {
   version: number;
 }
 
-// WCAG AA compliant color palette
-const THEME = {
-  background: '#faf9f7',
-  cardBackground: '#ffffff',
-  border: '#d1d5db',
-  text: '#1f2937',
-  textSecondary: '#4b5563',
-  accent: '#3b82f6',
-  error: '#dc2626',
-  success: '#059669',
-  warning: '#d97706'
+// Helper to get CSS variable value at runtime
+const getCSSVar = (varName: string): string => {
+  if (typeof window !== 'undefined') {
+    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  }
+  return '';
 };
+
+// Theme using CSS variables from design system
+const getTheme = () => ({
+  background: getCSSVar('--colors-semantic-background') || '#FAF6F2',
+  cardBackground: getCSSVar('--colors-semantic-surface') || '#FFFFFF',
+  border: getCSSVar('--colors-semantic-border') || '#E8D5C4',
+  text: getCSSVar('--colors-semantic-text') || '#2A2522',
+  textSecondary: getCSSVar('--colors-semantic-text-muted') || '#8B6F47',
+  accent: getCSSVar('--colors-semantic-info') || '#3B82F6',
+  error: getCSSVar('--colors-semantic-error') || '#EF4444',
+  success: getCSSVar('--colors-semantic-success') || '#10B981',
+  warning: getCSSVar('--colors-semantic-warning') || '#F59E0B'
+});
 
 export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
   graphManager,
@@ -190,11 +198,11 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
         // Style based on edge type with improved contrast
         if (edge.type === 'error') {
-          ctx.strokeStyle = THEME.error;
+          ctx.strokeStyle = getTheme().error;
           ctx.setLineDash([5, 5]);
           ctx.lineWidth = 2;
         } else {
-          ctx.strokeStyle = '#94a3b8'; // Better contrast than original
+          ctx.strokeStyle = getCSSVar('--colors-semantic-text-muted') || '#94a3b8';
           ctx.setLineDash([]);
           ctx.lineWidth = 1.5;
         }
@@ -215,7 +223,7 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
           ctx.lineTo(-10, -5);
           ctx.lineTo(-10, 5);
           ctx.closePath();
-          ctx.fillStyle = edge.type === 'error' ? THEME.error : '#94a3b8';
+          ctx.fillStyle = edge.type === 'error' ? getTheme().error : getCSSVar('--colors-semantic-text-muted') || '#94a3b8';
           ctx.fill();
           ctx.restore();
         }
@@ -229,7 +237,7 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
         // Shadow for depth
         if (isHovered || isSelected) {
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+          ctx.shadowColor = getCSSVar('--shadows-base') ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.2)';
           ctx.shadowBlur = 10;
           ctx.shadowOffsetX = 0;
           ctx.shadowOffsetY = 4;
@@ -242,7 +250,7 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
         );
 
         // Extract colors from style.background
-        const bgColors = style.background.match(/#[0-9a-f]{6}/gi) || ['#64748b', '#475569'];
+        const bgColors = style.background.match(/#[0-9a-f]{6}/gi) || [getCSSVar('--colors-semantic-text-muted') || '#64748b', getCSSVar('--colors-semantic-text') || '#475569'];
         gradient.addColorStop(0, bgColors[0]);
         gradient.addColorStop(1, bgColors[1]);
 
@@ -264,7 +272,7 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
         ctx.fill();
 
         // Border with improved visibility
-        ctx.strokeStyle = isSelected ? THEME.warning : style.border;
+        ctx.strokeStyle = isSelected ? getTheme().warning : style.border;
         ctx.lineWidth = isSelected ? 3 : 1.5;
         ctx.stroke();
 
@@ -276,7 +284,7 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
         // Icon
         if (style.icon) {
-          ctx.font = '20px sans-serif';
+          ctx.font = `${getCSSVar('--typography-font-size-xl') || '20px'} ${getCSSVar('--typography-font-family-sans') || 'sans-serif'}`.trim();
           ctx.fillStyle = style.textColor;
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
@@ -284,7 +292,9 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
         }
 
         // Text with better contrast
-        ctx.font = isHovered ? 'bold 13px sans-serif' : '12px sans-serif';
+        const fontSize = getCSSVar('--typography-font-size-sm') || '12px';
+        const fontFamily = getCSSVar('--typography-font-family-sans') || 'sans-serif';
+        ctx.font = isHovered ? `bold ${fontSize} ${fontFamily}` : `${fontSize} ${fontFamily}`;
         ctx.fillStyle = style.textColor;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -311,8 +321,8 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
           const duration = graphNode?.duration;
           if (duration) {
             const durationText = formatDuration(duration);
-            ctx.font = '10px sans-serif';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = `${getCSSVar('--typography-font-size-xs') || '10px'} ${getCSSVar('--typography-font-family-sans') || 'sans-serif'}`.trim();
+            ctx.fillStyle = `${getCSSVar('--colors-westworld-white') || '#FFFFFF'}E6`; // E6 = 90% opacity
             ctx.textAlign = 'right';
             ctx.fillText(durationText, node.x + node.width - 10, node.y + node.height - 10);
           }
@@ -324,8 +334,8 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
       console.error('Error drawing canvas:', error);
       // Draw error message
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.font = '16px sans-serif';
-      ctx.fillStyle = THEME.error;
+      ctx.font = `${getCSSVar('--typography-font-size-base') || '16px'} ${getCSSVar('--typography-font-family-sans') || 'sans-serif'}`.trim();
+      ctx.fillStyle = getTheme().error;
       ctx.textAlign = 'center';
       ctx.fillText('Error rendering graph', canvas.width / 2, canvas.height / 2);
     }
@@ -650,28 +660,28 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
       aria-labelledby="graph-title"
     >
       <div
-        className="bg-theme-primary rounded-xl max-w-7xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
+        className="bg-semantic-surface rounded-xl max-w-7xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
       >
         <div
-          className="p-6 border-b border-theme-primary flex justify-between items-center bg-theme-secondary"
+          className="p-6 border-b border-semantic-primary flex justify-between items-center bg-semantic-text-muted"
         >
           <h2
             id="graph-title"
-            className="text-2xl font-bold flex items-center gap-2 text-theme-primary"
+            className="text-2xl font-bold flex items-center gap-2 text-semantic-primary"
           >
             <ChartBarIcon className="w-6 h-6" />
             Research Graph Analysis
           </h2>
           <button
             onClick={onClose}
-            className="transition-colors p-2 rounded text-theme-secondary hover:text-theme-primary"
+            className="transition-colors p-2 rounded text-semantic-text-muted hover:text-semantic-primary"
             aria-label="Close graph view (Escape key)"
           >
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
 
-        <div className="flex h-[calc(90vh-100px)]">
+        <div className="flex h-[calc(90vh-6.25rem)]">
           {/* Main Graph Area */}
           <div className="flex-1 p-6 overflow-hidden">
             <div className="flex gap-2 mb-4" role="toolbar" aria-label="Graph controls">
@@ -707,14 +717,14 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
             <canvas
               ref={canvasRef}
-              className="w-full h-full border border-theme-primary rounded bg-westworld-cream"
+              className="w-full h-full border border-semantic-primary rounded bg-westworld-cream"
               role="img"
               aria-label={`Research graph with ${layoutData.nodes.length} nodes and ${layoutData.edges.length} connections`}
             />
 
             {layoutData.nodes.length === 0 && (
               <div
-                className="absolute inset-0 flex items-center justify-center text-theme-secondary"
+                className="absolute inset-0 flex items-center justify-center text-semantic-text-muted"
               >
                 <p>No research steps to display yet.</p>
               </div>
@@ -723,39 +733,39 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
           {/* Sidebar */}
           <div
-            className="w-80 border-l border-theme-primary p-6 overflow-y-auto bg-theme-secondary"
+            className="w-80 border-l border-semantic-primary p-6 overflow-y-auto bg-semantic-text-muted"
           >
             {/* Statistics */}
             <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3 text-theme-primary">
+              <h3 className="text-lg font-semibold mb-3 text-semantic-primary">
                 Graph Statistics
               </h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-theme-secondary">Total Nodes:</span>
-                  <span className="text-theme-primary">{stats.totalNodes}</span>
+                  <span className="text-semantic-text-muted">Total Nodes:</span>
+                  <span className="text-semantic-primary">{stats.totalNodes}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-theme-secondary">Duration:</span>
-                  <span className="text-theme-primary">{formatDuration(stats.totalDuration)}</span>
+                  <span className="text-semantic-text-muted">Duration:</span>
+                  <span className="text-semantic-primary">{formatDuration(stats.totalDuration)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-theme-secondary">Avg Step:</span>
-                  <span className="text-theme-primary">{formatDuration(stats.averageStepDuration)}</span>
+                  <span className="text-semantic-text-muted">Avg Step:</span>
+                  <span className="text-semantic-primary">{formatDuration(stats.averageStepDuration)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-theme-secondary">Success Rate:</span>
-                  <span className="text-theme-primary">
+                  <span className="text-semantic-text-muted">Success Rate:</span>
+                  <span className="text-semantic-primary">
                     {isNaN(stats.successRate) ? '0%' : `${(stats.successRate * 100).toFixed(1)}%`}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-theme-secondary">Sources:</span>
-                  <span className="text-theme-primary">{stats.sourcesCollected}</span>
+                  <span className="text-semantic-text-muted">Sources:</span>
+                  <span className="text-semantic-primary">{stats.sourcesCollected}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-theme-secondary">Citations:</span>
-                  <span className="text-theme-primary">{stats.uniqueCitations}</span>
+                  <span className="text-semantic-text-muted">Citations:</span>
+                  <span className="text-semantic-primary">{stats.uniqueCitations}</span>
                 </div>
               </div>
             </div>
@@ -763,20 +773,16 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
             {/* Selected Node Details */}
             {selectedDetails && (
               <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3" style={{ color: THEME.text }}>
+                <h3 className="text-lg font-semibold mb-3 text-semantic-text">
                   Selected Node
                 </h3>
                 <div
-                  className="p-4 rounded border"
-                  style={{
-                    borderColor: THEME.border,
-                    backgroundColor: THEME.cardBackground
-                  }}
+                  className="p-4 rounded border border-semantic-border bg-semantic-surface"
                 >
-                  <h4 className="font-medium mb-2" style={{ color: THEME.text }}>
+                  <h4 className="font-medium mb-2 text-semantic-text">
                     {selectedDetails.title}
                   </h4>
-                  <div className="text-sm space-y-1" style={{ color: THEME.textSecondary }}>
+                  <div className="text-sm space-y-1 text-semantic-text-muted">
                     <div>Type: {selectedDetails.type}</div>
                     {selectedDetails.duration && (
                       <div>Duration: {formatDuration(selectedDetails.duration)}</div>
@@ -791,10 +797,10 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
             {/* Usage Instructions */}
             <div>
-              <h3 className="text-lg font-semibold mb-3 text-theme-primary">
+              <h3 className="text-lg font-semibold mb-3 text-semantic-primary">
                 Controls
               </h3>
-              <div className="text-sm space-y-2 text-theme-secondary">
+              <div className="text-sm space-y-2 text-semantic-text-muted">
                 <div>• Click nodes to select and view details</div>
                 <div>• Drag to pan the view</div>
                 <div>• Scroll to zoom in/out</div>

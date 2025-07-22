@@ -13,16 +13,16 @@ import { ProgressMeter } from '@/components/atoms';
 /*                             STYLE & META DATA                              */
 /* -------------------------------------------------------------------------- */
 
-// Extended paradigm styles for non-host paradigms
+// Extended paradigm styles using semantic colors with opacity
 const EXTENDED_PARADIGM_STYLES = {
-  factual:     { bg: 'bg-blue-50',      border: 'border-blue-200',      text: 'text-blue-700' },
-  analytical:  { bg: 'bg-purple-50',    border: 'border-purple-200',    text: 'text-purple-700' },
-  exploratory: { bg: 'bg-green-50',     border: 'border-green-200',     text: 'text-green-700' },
-  comparative: { bg: 'bg-amber-50',     border: 'border-amber-200',     text: 'text-amber-700' },
-  theoretical: { bg: 'bg-indigo-50',    border: 'border-indigo-200',    text: 'text-indigo-700' },
-  creative:    { bg: 'bg-pink-50',      border: 'border-pink-200',      text: 'text-pink-700' },
-  diagnostic:  { bg: 'bg-cyan-50',      border: 'border-cyan-200',      text: 'text-cyan-700' },
-  evaluative:  { bg: 'bg-emerald-50',   border: 'border-emerald-200',   text: 'text-emerald-700' }
+  factual:     { bg: 'bg-semantic-info/10',      border: 'border-semantic-info/30',      text: 'text-semantic-info' },
+  analytical:  { bg: 'bg-semantic-primary/10',   border: 'border-semantic-primary/30',   text: 'text-semantic-primary' },
+  exploratory: { bg: 'bg-semantic-success/10',   border: 'border-semantic-success/30',   text: 'text-semantic-success' },
+  comparative: { bg: 'bg-semantic-warning/10',   border: 'border-semantic-warning/30',   text: 'text-semantic-warning' },
+  theoretical: { bg: 'bg-semantic-secondary/10', border: 'border-semantic-secondary/30', text: 'text-semantic-secondary' },
+  creative:    { bg: 'bg-westworld-rust/10',     border: 'border-westworld-rust/30',     text: 'text-westworld-rust' },
+  diagnostic:  { bg: 'bg-westworld-copper/10',   border: 'border-westworld-copper/30',   text: 'text-westworld-copper' },
+  evaluative:  { bg: 'bg-westworld-gold/10',     border: 'border-westworld-gold/30',     text: 'text-westworld-gold' }
 } as const;
 
 // Helper to get styles for any paradigm - now uses direct access to PARADIGM_COLORS
@@ -38,7 +38,7 @@ function getParadigmStyles(paradigm: string) {
   }
   // Fall back to extended styles
   return EXTENDED_PARADIGM_STYLES[paradigm as keyof typeof EXTENDED_PARADIGM_STYLES] ||
-         { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700' };
+         { bg: 'bg-semantic-surface', border: 'border-semantic-border', text: 'text-semantic-text' };
 }
 
 /** Rich labels and emoji avatars for each host paradigm */
@@ -58,22 +58,21 @@ export const ParadigmProbabilityBar: React.FC<{
 }> = ({ probabilities }) => {
   const paradigms: HostParadigm[] = ['dolores', 'teddy', 'bernard', 'maeve'];
 
-  // Use centralized paradigm colors
-  const paradigmColors: Record<HostParadigm, string> = Object.fromEntries(
-    Object.entries(PARADIGM_COLORS).map(([key, theme]) => [key, theme.primary])
-  ) as Record<HostParadigm, string>;
 
   return (
     <div className="w-full">
       {/* stacked bar */}
       <ProgressMeter
         variant="stacked"
-        stackedSegments={paradigms.map(p => ({
-          value: probabilities[p] * 100,
-          color: `bg-[${paradigmColors[p]}]`,
-          label: PARADIGM_INFO[p].name,
-          paradigm: p,
-        }))}
+        stackedSegments={paradigms.map(p => {
+          const theme = PARADIGM_COLORS[p];
+          return {
+            value: probabilities[p] * 100,
+            color: theme.bg,
+            label: PARADIGM_INFO[p].name,
+            paradigm: p,
+          };
+        })}
         size="lg"
         showPercentage={false}
         animate={true}
@@ -84,10 +83,9 @@ export const ParadigmProbabilityBar: React.FC<{
         {paradigms.map((p) => (
           <div key={p} className="flex items-center">
             <span
-              className="mr-1 h-3 w-3 rounded"
-              style={{ backgroundColor: paradigmColors[p] }}
+              className={`mr-1 h-3 w-3 rounded ${PARADIGM_COLORS[p].bg}`}
             />
-            <span className="text-gray-600">
+            <span className="text-semantic-text-muted">
               {PARADIGM_INFO[p].name.split(' ')[0]}
             </span>
           </div>
@@ -118,7 +116,7 @@ export const ParadigmIndicator: React.FC<{
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-600">Multi-Paradigm Mode:</span>
+          <span className="text-sm font-medium text-semantic-text-muted">Multi-Paradigm Mode:</span>
           <div className="flex flex-wrap gap-2">
             {blendedParadigms.map(p => {
               const pInfo = PARADIGM_INFO[p];
@@ -239,7 +237,7 @@ export const ContextLayerProgress: React.FC<{
                     ? `${paradigmTheme.primaryClass} text-white`
                     : isActive
                     ? `${paradigmTheme.primaryClass} animate-pulse text-white opacity-80`
-                    : 'bg-gray-300 text-gray-600'
+                    : 'bg-semantic-border text-semantic-text-muted'
                 ].join(' ')}
               >
                 <span className="text-xl">{info.emoji}</span>
@@ -249,13 +247,13 @@ export const ContextLayerProgress: React.FC<{
                   className={`text-xs font-bold ${
                     isActive
                       ? paradigmTheme.text
-                      : 'text-gray-600'
+                      : 'text-semantic-text-muted'
                   }`}
                 >
                   {info.label}
                 </div>
                 {isActive && (
-                  <div className="mt-1 text-xs text-gray-500">
+                  <div className="mt-1 text-xs text-semantic-text-muted">
                     {info.description}
                   </div>
                 )}
@@ -284,14 +282,14 @@ export const ResearchAnalytics: React.FC<{
       {/* confidence */}
       {metadata.confidenceScore !== undefined && (
         <div className="rounded-lg bg-white p-4 shadow">
-          <div className="text-sm text-gray-500">Confidence</div>
-          <div className="text-2xl font-bold text-gray-700">
+          <div className="text-sm text-semantic-text-muted">Confidence</div>
+          <div className="text-2xl font-bold text-semantic-text">
             {(metadata.confidenceScore * 100).toFixed(0)}%
           </div>
           <ProgressMeter
             value={metadata.confidenceScore * 100}
             variant="minimal"
-            colorClass="bg-blue-500"
+            colorClass="bg-semantic-info"
             size="xs"
             showPercentage={false}
             className="mt-1"
@@ -302,8 +300,8 @@ export const ResearchAnalytics: React.FC<{
       {/* processing time */}
       {metadata.processingTime !== undefined && (
         <div className="rounded-lg bg-white p-4 shadow">
-          <div className="text-sm text-gray-500">Processing Time</div>
-          <div className="text-2xl font-bold text-gray-700">
+          <div className="text-sm text-semantic-text-muted">Processing Time</div>
+          <div className="text-2xl font-bold text-semantic-text">
             {(metadata.processingTime / 1000).toFixed(1)} s
           </div>
         </div>
@@ -312,14 +310,14 @@ export const ResearchAnalytics: React.FC<{
       {/* complexity */}
       {metadata.complexityScore !== undefined && (
         <div className="rounded-lg bg-white p-4 shadow">
-          <div className="text-sm text-gray-500">Complexity</div>
-          <div className="text-2xl font-bold text-gray-700">
+          <div className="text-sm text-semantic-text-muted">Complexity</div>
+          <div className="text-2xl font-bold text-semantic-text">
             {(metadata.complexityScore * 100).toFixed(0)}%
           </div>
           <ProgressMeter
             value={metadata.complexityScore * 100}
             variant="minimal"
-            colorClass="bg-purple-500"
+            colorClass="bg-semantic-primary"
             size="xs"
             showPercentage={false}
             className="mt-1"
@@ -336,8 +334,8 @@ export const ResearchAnalytics: React.FC<{
             <span
               className={`rounded-full px-2 py-1 text-xs font-semibold ${
                 metadata.cacheHit
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-gray-100 text-gray-600'
+                  ? 'bg-semantic-success/10 text-semantic-success'
+                  : 'bg-semantic-surface text-semantic-text-muted'
               }`}
             >
               {metadata.cacheHit ? 'Cache Hit' : 'Cache Miss'}
@@ -347,8 +345,8 @@ export const ResearchAnalytics: React.FC<{
             <span
               className={`rounded-full px-2 py-1 text-xs font-semibold ${
                 metadata.learnedPatterns
-                  ? 'bg-blue-100 text-blue-800'
-                  : 'bg-gray-100 text-gray-600'
+                  ? 'bg-semantic-info/10 text-semantic-info'
+                  : 'bg-semantic-surface text-semantic-text-muted'
               }`}
             >
               {metadata.learnedPatterns
@@ -360,8 +358,8 @@ export const ResearchAnalytics: React.FC<{
             <span
               className={`rounded-full px-2 py-1 text-xs font-semibold ${
                 metadata.selfHealed
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-gray-100 text-gray-600'
+                  ? 'bg-semantic-warning/10 text-semantic-warning'
+                  : 'bg-semantic-surface text-semantic-text-muted'
               }`}
             >
               {metadata.selfHealed
@@ -379,8 +377,8 @@ export const ResearchAnalytics: React.FC<{
       {/* context density */}
       {metadata.contextDensity !== undefined && (
         <div className="rounded-lg bg-white p-4 shadow">
-          <div className="text-sm text-gray-500">Context Density</div>
-          <div className="text-2xl font-bold text-gray-700">
+          <div className="text-sm text-semantic-text-muted">Context Density</div>
+          <div className="text-2xl font-bold text-semantic-text">
             {metadata.contextDensity.toFixed(0)}%
           </div>
         </div>
@@ -389,8 +387,8 @@ export const ResearchAnalytics: React.FC<{
       {/* pyramid layer */}
       {metadata.pyramidLayer && (
         <div className="rounded-lg bg-white p-4 shadow">
-          <div className="text-sm text-gray-500">Pyramid Layer</div>
-          <div className="text-lg font-bold capitalize text-gray-700">
+          <div className="text-sm text-semantic-text-muted">Pyramid Layer</div>
+          <div className="text-lg font-bold capitalize text-semantic-text">
             {metadata.pyramidLayer.replace('_', ' ')}
           </div>
         </div>
@@ -417,10 +415,10 @@ export const InterHostCollaboration: React.FC<{
   const toTheme = getParadigmTheme(toHost);
 
   const statusStyles = {
-    pending: 'bg-gray-100 text-gray-600',
-    processing: 'bg-blue-100 text-blue-700 animate-pulse',
-    completed: 'bg-green-100 text-green-700',
-    failed: 'bg-red-100 text-red-700'
+    pending: 'bg-semantic-surface text-semantic-text-muted',
+    processing: 'bg-semantic-info/10 text-semantic-info animate-pulse',
+    completed: 'bg-semantic-success/10 text-semantic-success',
+    failed: 'bg-semantic-error/10 text-semantic-error'
   };
 
   return (
@@ -432,10 +430,10 @@ export const InterHostCollaboration: React.FC<{
       <div className="flex-1">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">{fromInfo.name.split(' ')[0]}</span>
-          <span className="text-gray-400">→</span>
+          <span className="text-semantic-text-muted">→</span>
           <span className="text-sm font-medium">{toInfo.name.split(' ')[0]}</span>
         </div>
-        <div className="text-xs text-gray-500">{reason}</div>
+        <div className="text-xs text-semantic-text-muted">{reason}</div>
       </div>
 
       <div className={`flex h-10 w-10 items-center justify-center rounded-full ${toTheme.bg} ${toTheme.border} border`}>

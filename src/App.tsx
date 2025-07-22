@@ -931,7 +931,7 @@ const App: React.FC = () => {
             {/* Show active collaborations */}
             {activeCollaborations.length > 0 && (
               <div className="animate-slide-up mb-4 space-y-2">
-                <h3 className="text-sm font-medium text-gray-600 mb-2">Inter-Host Collaborations</h3>
+                <h3 className="text-sm font-medium text-theme-secondary mb-2">Inter-Host Collaborations</h3>
                 {activeCollaborations.map(collab => (
                   <InterHostCollaboration
                     key={collab.id}

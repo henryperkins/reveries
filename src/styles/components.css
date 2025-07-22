@@ -97,7 +97,8 @@
   }
 
   .textarea-field {
-    @apply input-field resize-y min-h-[100px];
+    @apply input-field resize-y;
+    min-height: var(--height-textarea-min, 100px);
   }
 
   .select-field {

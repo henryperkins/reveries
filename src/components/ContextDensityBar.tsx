@@ -54,11 +54,11 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
         </h3>
         <div className="flex items-center gap-2">
           {paradigm && showHostColors && (
-            <span className={`text-xs px-2 py-1 rounded-full ${paradigmClasses?.badge || 'bg-gray-100'}`}>
+            <span className={`text-xs px-2 py-1 rounded-full ${paradigmClasses?.badge || 'bg-theme-secondary'}`}>
               {paradigm.charAt(0).toUpperCase() + paradigm.slice(1)} Mode
             </span>
           )}
-          <span className="text-sm text-gray-500 capitalize">{phase}</span>
+          <span className="text-sm text-theme-secondary capitalize">{phase}</span>
         </div>
       </div>
       <div className="space-y-3">

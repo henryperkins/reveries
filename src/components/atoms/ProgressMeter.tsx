@@ -92,13 +92,13 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
         // Log warning and notify parent of configuration issue
         console.warn('ProgressMeter: paradigm variant used but no paradigm provided');
         onError?.('Missing paradigm configuration');
-        return 'bg-gray-500 animate-pulse'; // Visual indication of error
+        return 'bg-theme-secondary animate-pulse'; // Visual indication of error
 
       case 'gradient':
         return gradientClass || 'bg-gradient-to-r from-westworld-gold to-westworld-copper';
 
       case 'minimal':
-        return colorClass || 'bg-gray-600';
+        return colorClass || 'bg-theme-secondary';
 
       default:
         return colorClass || 'bg-westworld-rust';
@@ -139,11 +139,11 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
         {/* Header with label */}
         {layout !== 'compact' && label && (
           <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-medium text-gray-600">
+            <span className="text-xs font-medium text-theme-secondary">
               {label}
             </span>
             {showPercentage && (
-              <span className="text-xs font-mono text-gray-500">
+              <span className="text-xs font-mono text-theme-secondary">
                 {Math.round(finalTotalValue)}%
                 {totalValue > 100 && (
                   <span
@@ -160,7 +160,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
 
         {/* Stacked bar */}
         <div
-          className={`relative w-full ${sizeClasses[size]} bg-gray-200 rounded-full overflow-hidden shadow-inner`}
+          className={`relative w-full ${sizeClasses[size]} bg-theme-secondary/20 rounded-full overflow-hidden shadow-inner`}
           role="progressbar"
           aria-valuenow={finalTotalValue}
           aria-valuemin={0}

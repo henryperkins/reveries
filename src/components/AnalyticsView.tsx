@@ -23,7 +23,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-gray-50 dark:bg-westworld-brown dark:bg-opacity-20 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600 dark:text-westworld-tan">Total Sessions</span>
+              <span className="text-sm text-semantic-text-muted">Total Sessions</span>
               <BarChart3 className="w-4 h-4 text-gray-400 dark:text-westworld-tan" />
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-westworld-cream">{totalQueries}</p>
@@ -31,7 +31,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
           <div className="bg-gray-50 dark:bg-westworld-brown dark:bg-opacity-20 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600 dark:text-westworld-tan">Avg. Duration</span>
+              <span className="text-sm text-semantic-text-muted">Avg. Duration</span>
               <Clock className="w-4 h-4 text-gray-400 dark:text-westworld-tan" />
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-westworld-cream">{avgResponseTime}s</p>
@@ -39,7 +39,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
           <div className="bg-gray-50 dark:bg-westworld-brown dark:bg-opacity-20 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600 dark:text-westworld-tan">Success Rate</span>
+              <span className="text-sm text-semantic-text-muted">Success Rate</span>
               <TrendingUp className="w-4 h-4 text-gray-400 dark:text-westworld-tan" />
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-westworld-cream">{successRate}%</p>
@@ -47,7 +47,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
           <div className="bg-gray-50 dark:bg-westworld-brown dark:bg-opacity-20 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600 dark:text-westworld-tan">Paradigms Used</span>
+              <span className="text-sm text-semantic-text-muted">Paradigms Used</span>
               <Layers className="w-4 h-4 text-gray-400 dark:text-westworld-tan" />
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-westworld-cream">{sourcesAnalyzed.toLocaleString()}</p>
@@ -55,7 +55,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </div>
 
         <div className="text-center py-12">
-          <p className="text-gray-500 dark:text-westworld-tan">Analytics data will be available after completing research sessions.</p>
+          <p className="text-semantic-text-muted dark:text-westworld-tan">Analytics data will be available after completing research sessions.</p>
         </div>
       </div>
     </div>
