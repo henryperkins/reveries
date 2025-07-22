@@ -1,0 +1,104 @@
+name: 'CI/CD Pipeline'
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - 'src/**'
+      - 'package*.json'
+      - '.github/workflows/**'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - 'src/**'
+      - 'package*.json'
+      - '.github/workflows/**'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
+
+jobs:
+  lint-and-typecheck:
+    name: 'Lint & Type Check'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node environment
+        uses: ./.github/actions/setup-node
+      
+      - name: Run ESLint
+        run: npm run lint
+      
+      - name: Run TypeScript type checking
+        run: npx tsc --noEmit
+
+  test:
+    name: 'Tests'
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node environment
+        uses: ./.github/actions/setup-node
+      
+      - name: Run tests with coverage
+        run: npm test -- --coverage --run
+      
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          fail_ci_if_error: false
+
+  build:
+    name: 'Build'
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node environment
+        uses: ./.github/actions/setup-node
+      
+      - name: Setup environment variables
+        uses: ./.github/actions/setup-env
+      
+      - name: Build for production
+        run: npm run build
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+          retention-days: 7
+
+  accessibility:
+    name: 'Accessibility & Performance'
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node environment
+        uses: ./.github/actions/setup-node
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+      
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          configPath: './.lighthouserc.json'
+          uploadArtifacts: true

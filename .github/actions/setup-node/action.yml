@@ -1,0 +1,18 @@
+name: 'Setup Node Environment'
+description: 'Setup Node.js with caching and version verification'
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Verify Node.js version
+      shell: bash
+      run: |
+        node -e "const v=process.versions.node.split('.')[0]; if(v<20){console.error('Node.js version 20 or higher required'); process.exit(1)}"
+    
+    - name: Install dependencies
+      shell: bash
+      run: npm ci

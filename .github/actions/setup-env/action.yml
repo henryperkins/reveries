@@ -1,0 +1,13 @@
+name: 'Setup Environment Variables'
+description: 'Setup dummy environment variables for build'
+runs:
+  using: "composite"
+  steps:
+    - name: Create .env.local
+      shell: bash
+      run: |
+        echo "VITE_GEMINI_API_KEY=dummy" > .env.local
+        echo "VITE_XAI_API_KEY=dummy" >> .env.local
+        echo "VITE_AZURE_OPENAI_API_KEY=dummy" >> .env.local
+        echo "VITE_AZURE_OPENAI_ENDPOINT=https://dummy.openai.azure.com" >> .env.local
+        echo "VITE_EXA_API_KEY=dummy" >> .env.local
