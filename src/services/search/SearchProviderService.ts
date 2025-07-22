@@ -487,7 +487,6 @@ class ExaSearchProvider implements SearchProvider {
   private async initializeSDK() {
     try {
       // Try to dynamically import the official Exa SDK if available
-      // @ts-expect-error - Optional dependency that may not be installed
       const ExaModule = await import('exa-js').catch(() => null);
 
       if (ExaModule) {
