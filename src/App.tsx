@@ -858,7 +858,7 @@ const App: React.FC = () => {
   }, [progress, realTimeContextDensities, isLoading])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 dark:from-westworld-black dark:to-westworld-near-black transition-colors duration-300">
       <TopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
       <main className="max-w-7xl mx-auto px-4 py-8 pb-24">
@@ -1020,9 +1020,9 @@ const App: React.FC = () => {
         )}
 
         {activeTab === 'settings' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">Settings</h3>
-            <p className="text-gray-600">Settings panel coming soon...</p>
+          <div className="bg-white dark:bg-westworld-near-black rounded-xl shadow-sm border border-gray-200 dark:border-westworld-tan/30 p-6">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-westworld-cream mb-6">Settings</h3>
+            <p className="text-gray-600 dark:text-westworld-tan">Settings panel coming soon...</p>
           </div>
         )}
 

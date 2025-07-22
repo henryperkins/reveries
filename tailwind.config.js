@@ -4,23 +4,24 @@ export default {
         "./index.html",
         "./src/**/*.{js,ts,jsx,tsx}",
     ],
+    darkMode: ['class', '[data-theme="dark"]'],
     theme: {
         extend: {
             colors: {
                 westworld: {
-                    cream: '#FAF6F2',
-                    beige: '#F5EDE4',
-                    tan: '#E8D5C4',
-                    brown: '#8B6F47',
-                    darkbrown: '#6B5637',
-                    nearblack: '#2A2522',
-                    black: '#1A1512',
-                    gold: '#D4AF37',
-                    darkGold: '#B8941F',
-                    rust: '#A85732',
-                    copper: '#C87543',
-                    darkcopper: '#A65E36',
-                    white: '#FFFFFF',
+                    cream: 'var(--color-westworld-cream)',
+                    beige: 'var(--color-westworld-beige)',
+                    tan: 'var(--color-westworld-tan)',
+                    brown: 'var(--color-westworld-brown)',
+                    'dark-brown': 'var(--color-westworld-dark-brown)',
+                    'near-black': 'var(--color-westworld-near-black)',
+                    black: 'var(--color-westworld-black)',
+                    gold: 'var(--color-westworld-gold)',
+                    'dark-gold': 'var(--color-westworld-dark-gold)',
+                    rust: 'var(--color-westworld-rust)',
+                    copper: 'var(--color-westworld-copper)',
+                    'dark-copper': 'var(--color-westworld-dark-copper)',
+                    white: 'var(--color-westworld-white)',
                 }
             },
             animation: {
@@ -54,7 +55,34 @@ export default {
                 }
             },
             boxShadow: {
-                'westworld-glow': '0 0 20px rgba(212, 175, 55, 0.5)'
+                'westworld-glow': '0 0 20px rgba(212, 175, 55, 0.5)',
+                'sm': 'var(--shadow-sm)',
+                'md': 'var(--shadow-md)',
+                'lg': 'var(--shadow-lg)',
+                'xl': 'var(--shadow-xl)',
+            },
+            spacing: {
+                'xs': 'var(--spacing-xs, 0.25rem)',
+                'sm': 'var(--spacing-sm, 0.5rem)',
+                'md': 'var(--spacing-md, 1rem)',
+                'lg': 'var(--spacing-lg, 1.5rem)',
+                'xl': 'var(--spacing-xl, 2rem)',
+                '2xl': 'var(--spacing-2xl, 2.5rem)',
+                '3xl': 'var(--spacing-3xl, 3rem)',
+            },
+            borderRadius: {
+                'sm': 'var(--radius-sm, 0.125rem)',
+                'md': 'var(--radius-md, 0.375rem)',
+                'lg': 'var(--radius-lg, 0.5rem)',
+                'xl': 'var(--radius-xl, 0.75rem)',
+                '2xl': 'var(--radius-2xl, 1rem)',
+                'full': 'var(--radius-full, 9999px)',
+            },
+            transitionDuration: {
+                'fast': 'var(--duration-fast, 150ms)',
+                'base': 'var(--duration-base, 200ms)',
+                'slow': 'var(--duration-slow, 300ms)',
+                'slower': 'var(--duration-slower, 500ms)',
             }
         },
     },

@@ -6,6 +6,9 @@
 /* Import Tailwind base */
 @import './base.css';
 
+/* Import dark mode styles early (after base) */
+@import './dark-mode.css';
+
 /* Import all other style modules in the correct order */
 @import './z-index.css';
 @import './typography.css';

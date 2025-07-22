@@ -20,18 +20,18 @@ export const themeVariables = `
     --color-info: #3B82F6;
 
     /* Westworld theme colors */
-    --color-westworld-cream: #F7F3E9;
-    --color-westworld-beige: #E8E2D5;
-    --color-westworld-tan: #D4C4A8;
-    --color-westworld-brown: #8B4513;
-    --color-westworld-darkbrown: #654321;
-    --color-westworld-nearblack: #1A1A1A;
-    --color-westworld-black: #000000;
-    --color-westworld-gold: #FFD700;
-    --color-westworld-darkgold: #B8860B;
-    --color-westworld-rust: #B7410E;
-    --color-westworld-copper: #B87333;
-    --color-westworld-darkcopper: #8B4513;
+    --color-westworld-cream: #FAF6F2;
+    --color-westworld-beige: #F5EDE4;
+    --color-westworld-tan: #E8D5C4;
+    --color-westworld-brown: #8B6F47;
+    --color-westworld-dark-brown: #6B5637;
+    --color-westworld-near-black: #2A2522;
+    --color-westworld-black: #1A1512;
+    --color-westworld-gold: #D4AF37;
+    --color-westworld-dark-gold: #B8941F;
+    --color-westworld-rust: #A85732;
+    --color-westworld-copper: #C87543;
+    --color-westworld-dark-copper: #A65E36;
     --color-westworld-white: #FFFFFF;
 
     /* Shadows */
@@ -46,12 +46,15 @@ export const themeVariables = `
     --spacing-md: 1rem;
     --spacing-lg: 1.5rem;
     --spacing-xl: 2rem;
+    --spacing-2xl: 2.5rem;
+    --spacing-3xl: 3rem;
 
     /* Border radius */
     --radius-sm: 0.125rem;
     --radius-md: 0.375rem;
     --radius-lg: 0.5rem;
     --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
     --radius-full: 9999px;
 
     /* Transitions */
@@ -77,25 +80,25 @@ export const themeVariables = `
     --color-info: #60A5FA;
 
     /* Westworld dark theme colors */
-    --color-westworld-cream: #1A1A1A;
-    --color-westworld-beige: #2A2A2A;
-    --color-westworld-tan: #3A3A3A;
-    --color-westworld-brown: #B87333;
-    --color-westworld-darkbrown: #D4AF37;
-    --color-westworld-nearblack: #FAFAFA;
-    --color-westworld-black: #FFFFFF;
+    --color-westworld-cream: #1A1512;
+    --color-westworld-beige: #2A2522;
+    --color-westworld-tan: #3A3532;
+    --color-westworld-brown: #D4AF37;
+    --color-westworld-dark-brown: #E4BF47;
+    --color-westworld-near-black: #F5EDE4;
+    --color-westworld-black: #FAF6F2;
     --color-westworld-gold: #F4CF57;
-    --color-westworld-darkgold: #E4BF47;
-    --color-westworld-rust: #D4733D;
-    --color-westworld-copper: #E89353;
-    --color-westworld-darkcopper: #D88343;
-    --color-westworld-white: #0A0A0A;
+    --color-westworld-dark-gold: #E4BF47;
+    --color-westworld-rust: #E89353;
+    --color-westworld-copper: #F4A460;
+    --color-westworld-dark-copper: #E89353;
+    --color-westworld-white: #0A0806;
 
     /* Dark shadows */
-    --shadow-sm: 0 1px 2px 0 rgba(255, 255, 255, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(255, 255, 255, 0.1), 0 2px 4px -2px rgba(255, 255, 255, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(255, 255, 255, 0.1), 0 4px 6px -4px rgba(255, 255, 255, 0.1);
-    --shadow-xl: 0 20px 25px -5px rgba(255, 255, 255, 0.1), 0 8px 10px -6px rgba(255, 255, 255, 0.1);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
   }
 `;
 
