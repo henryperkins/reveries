@@ -79,6 +79,7 @@ export function useGraphLayoutWorker(): UseGraphLayoutWorkerResult {
 
     return () => {
       // Copy ref to local variable for cleanup
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       const currentRequests = pendingRequestsRef.current;
       const currentWorker = workerRef.current;
 

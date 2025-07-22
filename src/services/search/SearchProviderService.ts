@@ -487,6 +487,7 @@ class ExaSearchProvider implements SearchProvider {
   private async initializeSDK() {
     try {
       // Try to dynamically import the official Exa SDK if available
+      // @ts-expect-error - Optional dependency that may not be installed
       const ExaModule = await import('exa-js').catch(() => null);
 
       if (ExaModule) {
@@ -504,36 +505,38 @@ class ExaSearchProvider implements SearchProvider {
     }
   }
 
-  private async executeCustomHeaders(headerConfig: any): Promise<Record<string, string>> {
-    const headers: Record<string, string> = {};
+  // TODO: Implement custom headers functionality if needed
+  // Currently unused - commented out to avoid TypeScript warnings
+  // private async executeCustomHeaders(headerConfig: any): Promise<Record<string, string>> {
+  //   const headers: Record<string, string> = {};
 
-    for (const [key, value] of Object.entries(headerConfig)) {
-      if (typeof value === 'string') {
-        // Check if it's a function string
-        if (value.trim().startsWith('function') || value.includes('=>')) {
-          try {
-            // Use eval in a controlled way with strict validation
-            const funcStr = value.trim();
-            if (!/^(function\s*\(.*\)\s*{[\s\S]*}|.*=>\s*[\s\S]*)$/.test(funcStr)) {
-              throw new Error('Invalid function format');
-            }
+  //   for (const [key, value] of Object.entries(headerConfig)) {
+  //     if (typeof value === 'string') {
+  //       // Check if it's a function string
+  //       if (value.trim().startsWith('function') || value.includes('=>')) {
+  //         try {
+  //           // Use eval in a controlled way with strict validation
+  //           const funcStr = value.trim();
+  //           if (!/^(function\s*\(.*\)\s*{[\s\S]*}|.*=>\s*[\s\S]*)$/.test(funcStr)) {
+  //             throw new Error('Invalid function format');
+  //           }
 
-            // Create function in isolated scope
-            const func = (0, eval)(`(${funcStr})`);
-            if (typeof func === 'function') {
-              headers[key] = await func();
-            }
-          } catch (error) {
-            console.error(`Failed to execute custom header function for ${key}:`, error);
-          }
-        } else {
-          headers[key] = value;
-        }
-      }
-    }
+  //           // Create function in isolated scope
+  //           const func = (0, eval)(`(${funcStr})`);
+  //           if (typeof func === 'function') {
+  //             headers[key] = await func();
+  //           }
+  //         } catch (error) {
+  //           console.error(`Failed to execute custom header function for ${key}:`, error);
+  //         }
+  //       } else {
+  //         headers[key] = value;
+  //       }
+  //     }
+  //   }
 
-    return headers;
-  }
+  //   return headers;
+  // }
 
   async isAvailable(): Promise<boolean> {
     return !!this.apiKey && typeof fetch !== 'undefined';
