@@ -255,6 +255,14 @@
   /* Dark mode utilities */
   .dark-invert {
     @apply invert hue-rotate-180;
+  }
+
+  .dark .dark-invert,
+  [data-theme="dark"] .dark-invert {
+    @apply invert-0 hue-rotate-0;
+  }
+
+  .dark-dim {
     @apply opacity-80;
   }
 
