@@ -175,7 +175,7 @@ export class ExaResearchExample {
       const taskId = await this.demonstrateIntelligentRouting();
 
       // Example 2: Structured research
-      const structuredTaskIds = await this.demonstrateStructuredResearch();
+      await this.demonstrateStructuredResearch();
 
       // Example 3: Monitor a task (if we have one)
       if (taskId) {

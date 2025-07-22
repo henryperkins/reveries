@@ -45,10 +45,8 @@ export function usePromptSuggestions(
         });
 
         // 2. Tool-based suggestions from research tools
-        const queryType = analyzeQueryType(query);
         const toolRecommendations = toolsService.getToolRecommendations(
-          query,
-          queryType
+          query
         );
         toolRecommendations.slice(0, 2).forEach((tool: any) => {
           const suggestion = generateToolSuggestion(query, tool);
@@ -121,7 +119,7 @@ export function usePromptSuggestions(
   return { suggestions, isLoading };
 }
 
-function analyzeQueryType(query: string): string {
+/* function analyzeQueryType(query: string): string {
   const lower = query.toLowerCase();
   if (lower.includes("what") || lower.includes("define")) return "factual";
   if (lower.includes("analyze") || lower.includes("evaluate"))
@@ -129,7 +127,7 @@ function analyzeQueryType(query: string): string {
   if (lower.includes("compare") || lower.includes("versus"))
     return "comparative";
   return "exploratory";
-}
+} */
 
 function generateToolSuggestion(query: string, tool: string): string | null {
   const mainTopic = extractMainTopic(query);

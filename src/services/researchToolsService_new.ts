@@ -49,7 +49,8 @@ export class ResearchToolsService {
           const service = ComprehensiveResearchService.getInstance();
           const result = await service.performComprehensiveResearch(
             args.query,
-            args.depth || 'standard'
+            'grok-4' as ModelType,
+            EffortType.MEDIUM
           );
           console.log('✅ Comprehensive research completed');
           return result;
@@ -76,7 +77,7 @@ export class ResearchToolsService {
       execute: async (args: any) => {
         console.log('🔍 Executing search_web with args:', args);
         try {
-          const { SearchProviderService } = await import('./providers/SearchProviderService');
+          const { SearchProviderService } = await import('./search/SearchProviderService');
           const searchService = SearchProviderService.getInstance();
           const results = await searchService.search(args.query, { maxResults: args.num_results || 10 });
           return {
@@ -107,7 +108,7 @@ export class ResearchToolsService {
       execute: async (args: any) => {
         console.log('📚 Executing search_academic_papers with args:', args);
         try {
-          const { SearchProviderService } = await import('./providers/SearchProviderService');
+          const { SearchProviderService } = await import('./search/SearchProviderService');
           const searchService = SearchProviderService.getInstance();
 
           // Add academic search modifiers
@@ -147,7 +148,7 @@ export class ResearchToolsService {
         console.log('📊 Executing analyze_text with args:', { analysis_type: args.analysis_type, text_length: args.text?.length });
         try {
           const { ModelProviderService } = await import('./providers/ModelProviderService');
-          const modelProvider = await ModelProviderService.getInstance();
+          const modelProvider = ModelProviderService.getInstance();
 
           let prompt = '';
           switch (args.analysis_type) {
@@ -167,11 +168,11 @@ export class ResearchToolsService {
               prompt = `Analyze the following text and provide insights:\n\n${args.text}`;
           }
 
-          const result = await modelProvider.generateText(prompt, 'gpt-4o-mini', 'medium');
+          const result = await modelProvider.generateText(prompt, 'grok-4' as ModelType, EffortType.MEDIUM);
           return {
             analysis_type: args.analysis_type,
             result: result.text,
-            confidence: result.confidence || 0.8
+            confidence: 0.8 // Default confidence score
           };
         } catch (error) {
           console.error('❌ Text analysis failed:', error);
@@ -197,16 +198,16 @@ export class ResearchToolsService {
         console.log('📄 Executing summarize_document with args:', { length: args.length, content_length: args.content?.length });
         try {
           const { ModelProviderService } = await import('./providers/ModelProviderService');
-          const modelProvider = await ModelProviderService.getInstance();
+          const modelProvider = ModelProviderService.getInstance();
 
           const lengthInstruction = {
             short: 'in 2-3 sentences',
             medium: 'in 1-2 paragraphs',
             long: 'in 3-4 paragraphs with detailed analysis'
-          }[args.length] || 'in 1-2 paragraphs';
+          }[args.length as keyof { short: string; medium: string; long: string; }] || 'in 1-2 paragraphs';
 
           const prompt = `Summarize the following document ${lengthInstruction}:\n\n${args.content}`;
-          const result = await modelProvider.generateText(prompt, 'gpt-4o-mini', 'medium');
+          const result = await modelProvider.generateText(prompt, 'grok-4' as ModelType, EffortType.MEDIUM);
 
           return {
             summary: result.text,
@@ -266,7 +267,7 @@ export class ResearchToolsService {
       throw new Error(`Tool not found: ${call.name}`);
     }
 
-    await this.rateLimiter.waitForCapacity();
+    await this.rateLimiter.waitForCapacity(100); // Default token estimate for tool execution
 
     try {
       const result = await tool.execute(call.arguments);
@@ -278,7 +279,7 @@ export class ResearchToolsService {
     }
   }
 
-  public getToolRecommendations(query: string, _effort: EffortType = 'medium'): string[] {
+  public getToolRecommendations(query: string, _effort: EffortType = EffortType.MEDIUM): string[] {
     const queryLower = query.toLowerCase();
     const recommendations: string[] = [];
 

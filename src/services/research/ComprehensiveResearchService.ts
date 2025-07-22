@@ -6,7 +6,7 @@
 import {
   ModelType,
   EffortType,
-  Citation,
+  // Citation,
   EnhancedResearchResults,
   QueryType
 } from '@/types';
@@ -15,7 +15,7 @@ import {
 } from '@/services/research/types';
 import { WebResearchService } from './WebResearchService';
 import { ModelProviderService } from '@/services/providers/ModelProviderService';
-import { ResearchUtilities } from '@/services/utils/ResearchUtilities';
+// import { ResearchUtilities } from '@/services/utils/ResearchUtilities';
 import { ResearchStrategyService } from './ResearchStrategyService';
 
 export class ComprehensiveResearchService {
@@ -123,7 +123,7 @@ export class ComprehensiveResearchService {
   /**
    * Break down complex query into research sections
    */
-  private async breakdownQuery(
+  /* private async breakdownQuery(
     query: string,
     model: ModelType,
     effort: EffortType
@@ -146,10 +146,12 @@ export class ComprehensiveResearchService {
     return this.parseSectionBreakdown(result.text);
   }
 
+  */
+
   /**
    * Parse section breakdown response
    */
-  private parseSectionBreakdown(response: string): { topic: string; description: string }[] {
+  /* private parseSectionBreakdown(response: string): { topic: string; description: string }[] {
     const sections: { topic: string; description: string }[] = [];
     const lines = response.split('\n');
 
@@ -173,12 +175,12 @@ export class ComprehensiveResearchService {
     }
 
     return sections.slice(0, 5); // Maximum 5 sections
-  }
+  } */
 
   /**
    * Research sections with controlled concurrency
    */
-  private async researchSectionsInParallel(
+  /* private async researchSectionsInParallel(
     sections: { topic: string; description: string }[],
     model: ModelType,
     effort: EffortType,
@@ -331,10 +333,12 @@ export class ComprehensiveResearchService {
     return results;
   }
 
+  */
+
   /**
    * Get batch size from environment or default
    */
-  private getBatchSize(model: ModelType): number {
+  /* private getBatchSize(model: ModelType): number {
     const envBatchSize = import.meta?.env?.VITE_RESEARCH_BATCH_SIZE ||
                         (typeof process !== 'undefined' && process.env.RESEARCH_BATCH_SIZE);
     const parsed = Number(envBatchSize);
@@ -350,12 +354,12 @@ export class ComprehensiveResearchService {
     }
 
     return defaultBatchSize; // Improved default for better performance
-  }
+  } */
 
   /**
    * Synthesize findings from all sections
    */
-  private async synthesizeFindings(
+  /* private async synthesizeFindings(
     originalQuery: string,
     sections: ResearchSection[],
     model: ModelType,
@@ -380,6 +384,8 @@ export class ComprehensiveResearchService {
     return this.modelProvider.generateText(synthesisPrompt, model, effort);
   }
 
+  */
+
   /**
    * Aggregate sources from all sections
    */
@@ -393,7 +399,7 @@ export class ComprehensiveResearchService {
     return Math.min(baseConfidence + typeBoost + 0.3, 0.95);
   }
 
-  private calculateConfidenceScore(sectionResults: ResearchSection[], processingTime: number): number {
+  /* private calculateConfidenceScore(sectionResults: ResearchSection[], processingTime: number): number {
     if (sectionResults.length === 0) return 0.1;
 
     // Base confidence from section completion
@@ -413,8 +419,9 @@ export class ComprehensiveResearchService {
 
     return Math.max(0.1, Math.min(1.0, confidence));
   }
+  */
 
-  private aggregateSources(sections: ResearchSection[]): Citation[] {
+  /* private aggregateSources(sections: ResearchSection[]): Citation[] {
     const allSources: Citation[] = [];
     const seenKeys = new Set<string>();
 
@@ -432,6 +439,7 @@ export class ComprehensiveResearchService {
 
     return allSources;
   }
+  */
 
   /**
    * Create worker task for a specific research section

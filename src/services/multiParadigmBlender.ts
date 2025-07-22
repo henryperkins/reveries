@@ -1,6 +1,6 @@
 // services/multiParadigmBlender.ts
 import { HostParadigm, ParadigmProbabilities, Citation, ModelType, EffortType, EnhancedResearchResults } from '../types';
-import { ResearchAgentService } from './researchAgentServiceWrapper';
+// import { ResearchAgentService } from './researchAgentServiceWrapper';
 
 interface BlendedStrategy {
   paradigms: HostParadigm[];
@@ -13,10 +13,10 @@ export class MultiParadigmBlender {
   private static instance: MultiParadigmBlender;
 
   private constructor(
-    private researchAgent: ResearchAgentService
+    private researchAgent: any // ResearchAgentService instance
   ) {}
 
-  public static getInstance(researchAgent: ResearchAgentService): MultiParadigmBlender {
+  public static getInstance(researchAgent: any): MultiParadigmBlender {
     if (!MultiParadigmBlender.instance) {
       MultiParadigmBlender.instance = new MultiParadigmBlender(researchAgent);
     }
@@ -121,14 +121,14 @@ export class MultiParadigmBlender {
           'analytical', // Default type
           model,
           effort,
-          (msg) => onProgress?.(`[${paradigm}] ${msg}`)
+          (msg: any) => onProgress?.(`[${paradigm}] ${msg}`)
         );
         return { paradigm, result, weight: strategy.weights[paradigm] };
       })
     );
 
     // Blend sources weighted by paradigm
-    const blendedSources: Citation[] = [];
+    // const blendedSources: Citation[] = [];
     const sourceMap = new Map<string, { citation: Citation; weight: number }>();
 
     paradigmResults.forEach(({ result, weight }) => {

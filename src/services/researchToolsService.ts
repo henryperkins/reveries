@@ -1,4 +1,4 @@
-import { EffortType } from '@/types';
+import { EffortType, ModelType } from '@/types';
 import { FunctionCall, FunctionDefinition } from './functionCallingService';
 import { RateLimiter } from './rateLimiter';
 
@@ -49,7 +49,8 @@ export class ResearchToolsService {
           const service = ComprehensiveResearchService.getInstance();
           const result = await service.performComprehensiveResearch(
             args.query,
-            args.depth || 'standard'
+            'grok-4' as ModelType,
+            EffortType.MEDIUM
           );
           console.log('✅ Comprehensive research completed');
           return result;
@@ -147,7 +148,7 @@ export class ResearchToolsService {
         console.log('📊 Executing analyze_text with args:', { analysis_type: args.analysis_type, text_length: args.text?.length });
         try {
           const { ModelProviderService } = await import('./providers/ModelProviderService');
-          const modelProvider = await ModelProviderService.getInstance();
+          const modelProvider = ModelProviderService.getInstance();
 
           let prompt = '';
           switch (args.analysis_type) {
@@ -171,7 +172,7 @@ export class ResearchToolsService {
           return {
             analysis_type: args.analysis_type,
             result: result.text,
-            confidence: result.confidence || 0.8
+            confidence: 0.8 // Default confidence score
           };
         } catch (error) {
           console.error('❌ Text analysis failed:', error);
@@ -197,13 +198,13 @@ export class ResearchToolsService {
         console.log('📄 Executing summarize_document with args:', { length: args.length, content_length: args.content?.length });
         try {
           const { ModelProviderService } = await import('./providers/ModelProviderService');
-          const modelProvider = await ModelProviderService.getInstance();
+          const modelProvider = ModelProviderService.getInstance();
 
           const lengthInstruction = {
             short: 'in 2-3 sentences',
             medium: 'in 1-2 paragraphs',
             long: 'in 3-4 paragraphs with detailed analysis'
-          }[args.length] || 'in 1-2 paragraphs';
+          }[args.length as keyof { short: string; medium: string; long: string; }] || 'in 1-2 paragraphs';
 
           const prompt = `Summarize the following document ${lengthInstruction}:\n\n${args.content}`;
           const result = await modelProvider.generateText(prompt, 'grok-4' as ModelType, EffortType.MEDIUM);
@@ -278,7 +279,7 @@ export class ResearchToolsService {
     }
   }
 
-  public getToolRecommendations(query: string, _effort: EffortType = 'medium'): string[] {
+  public getToolRecommendations(query: string, _effort: EffortType = EffortType.MEDIUM): string[] {
     const queryLower = query.toLowerCase();
     const recommendations: string[] = [];
 

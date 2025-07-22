@@ -1,6 +1,6 @@
 // services/interHostCollaboration.ts
 import { HostParadigm, ModelType, EffortType, Citation } from '../types';
-import { ResearchAgentService } from './researchAgentServiceWrapper';
+// Using any type for ResearchAgentService since it's exported as a const
 import { WriteLayerService } from './contextLayers/writeLayer';
 
 export interface CollaborationRequest {
@@ -114,16 +114,16 @@ export class InterHostCollaborationService {
     }
   ];
 
-  private researchAgentInstance: ResearchAgentService;
+  private researchAgentInstance: any; // ResearchAgentService instance
 
   private constructor(
-      researchAgent: ResearchAgentService
+      researchAgent: any // ResearchAgentService instance
   ) {
       this.researchAgentInstance = researchAgent;
       this.writeLayer = WriteLayerService.getInstance();
   }
 
-  public static getInstance(researchAgent: ResearchAgentService): InterHostCollaborationService {
+  public static getInstance(researchAgent: any): InterHostCollaborationService {
     if (!InterHostCollaborationService.instance) {
       InterHostCollaborationService.instance = new InterHostCollaborationService(researchAgent);
     }
