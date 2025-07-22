@@ -5,16 +5,15 @@ import { ThemeMode, ThemeContextType } from './types';
 import { createThemeConfig, applyThemeToDOM, initializeTheme } from './themeConfig';
 import { getParadigmTheme } from './paradigm';
 import { componentVariants } from './componentSystem';
-import type { HostParadigm } from './paradigm';
 
 interface ThemeProviderProps {
   children: React.ReactNode;
   defaultMode?: ThemeMode;
 }
 
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ 
-  children, 
-  defaultMode 
+export const ThemeProvider: React.FC<ThemeProviderProps> = ({
+  children,
+  defaultMode
 }) => {
   const [mode, setMode] = useState<ThemeMode>(() => {
     return defaultMode || initializeTheme();
@@ -40,11 +39,11 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   // Utility functions (from themeUtils)
   const getCSSVariable = useCallback((variable: string, fallback?: string): string => {
     if (typeof document === 'undefined') return fallback || '';
-    
+
     const value = getComputedStyle(document.documentElement)
       .getPropertyValue(variable)
       .trim();
-    
+
     return value || fallback || '';
   }, []);
 
@@ -75,10 +74,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const getComponentVariant = useCallback((component: string, variant: string): string => {
     const componentConfig = componentVariants[component as keyof typeof componentVariants];
     if (!componentConfig) return '';
-    
+
     const variantConfig = componentConfig.variants?.[variant];
     if (!variantConfig) return '';
-    
+
     return typeof variantConfig === 'string' ? variantConfig : '';
   }, []);
 

@@ -4,15 +4,15 @@ import { PARADIGM_COLORS } from './paradigm';
 import { ThemeMode, UnifiedTheme } from './types';
 
 // Generate CSS variables from design system
-export function generateCSSVariables(mode: ThemeMode): Record<string, string> {
+export function generateCSSVariables(_mode: ThemeMode): Record<string, string> {
   const variables: Record<string, string> = {};
-  
+
   // Westworld color variables
   const westworldColors = designSystem.colors.westworld;
   Object.entries(westworldColors).forEach(([key, value]) => {
     variables[`--color-westworld-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`] = value;
   });
-  
+
   // Semantic color variables
   const semanticColors = designSystem.colors.semantic;
   Object.entries(semanticColors).forEach(([key, value]) => {
@@ -20,38 +20,38 @@ export function generateCSSVariables(mode: ThemeMode): Record<string, string> {
       variables[`--color-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`] = value;
     }
   });
-  
+
   // Typography variables
   Object.entries(designSystem.typography.fontSize).forEach(([key, value]) => {
     variables[`--text-${key}`] = value;
   });
-  
+
   // Spacing variables
   Object.entries(designSystem.spacing).forEach(([key, value]) => {
     variables[`--spacing-${key}`] = value;
   });
-  
+
   // Shadow variables
   Object.entries(designSystem.shadows).forEach(([key, value]) => {
     if (key !== 'glow' && key !== 'glowLg') {
       variables[`--shadow-${key}`] = value;
     }
   });
-  
+
   // Special glow shadows
   variables['--shadow-glow'] = designSystem.shadows.glow;
   variables['--shadow-glow-lg'] = designSystem.shadows.glowLg;
-  
+
   // Border radius variables
   Object.entries(designSystem.borderRadius).forEach(([key, value]) => {
     variables[`--radius-${key}`] = value;
   });
-  
+
   // Transition variables
   Object.entries(designSystem.transitions.duration).forEach(([key, value]) => {
     variables[`--transition-${key}`] = value;
   });
-  
+
   return variables;
 }
 
