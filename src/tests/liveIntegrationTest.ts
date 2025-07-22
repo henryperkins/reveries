@@ -63,7 +63,7 @@ async function testLiveIntegration() {
     console.log('\n3. Testing streaming response...');
     
     const chunks: string[] = [];
-    const metadata: Array<{ type: string; timestamp: number }> = [];
+    const metadata: { type: string; timestamp: number }[] = [];
     
     await new Promise<void>((resolve, reject) => {
       azureService.streamResponse(

@@ -11,7 +11,7 @@ export interface ResearchRequest {
 
 export interface ResearchResponse {
   text: string;
-  sources?: Array<{ name: string; url?: string }>;
+  sources?: { name: string; url?: string }[];
   metadata?: {
     model: string;
     reasoningEffort?: string;

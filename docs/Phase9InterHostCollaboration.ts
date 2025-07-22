@@ -271,16 +271,16 @@ export class InterHostCollaborationService {
   async getCollaborationSuggestions(
     currentHost: HostParadigm,
     query: string
-  ): Promise<Array<{
+  ): Promise<{
     targetHost: HostParadigm;
     reason: string;
     benefit: string;
-  }>> {
-    const suggestions: Array<{
+  }[]> {
+    const suggestions: {
       targetHost: HostParadigm;
       reason: string;
       benefit: string;
-    }> = [];
+    }[] = [];
 
     // Analyze query for potential collaboration benefits
     const queryLower = query.toLowerCase();
@@ -365,7 +365,7 @@ export class InterHostCollaborationService {
    */
   getCollaborationHistory(
     filterHost?: HostParadigm,
-    limit: number = 50
+    limit = 50
   ): CollaborationRequest[] {
     let history = [...this.collaborationHistory];
 
@@ -384,7 +384,7 @@ export class InterHostCollaborationService {
    * Analyze collaboration patterns
    */
   analyzeCollaborationPatterns(): {
-    mostCommonPairs: Array<{ pair: string; count: number; successRate: number }>;
+    mostCommonPairs: { pair: string; count: number; successRate: number }[];
     reasonDistribution: Record<CollaborationReason, number>;
     averageConfidenceGain: number;
     recommendations: string[];

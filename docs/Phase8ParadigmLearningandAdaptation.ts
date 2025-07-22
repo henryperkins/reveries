@@ -500,8 +500,8 @@ export class ParadigmLearningService {
    */
   exportLearningData(): {
     records: LearningRecord[];
-    patterns: Array<[HostParadigm, ParadigmPattern[]]>;
-    weights: Array<[string, number]>;
+    patterns: [HostParadigm, ParadigmPattern[]][];
+    weights: [string, number][];
     insights: Record<HostParadigm, any>;
   } {
     const insights: Record<HostParadigm, any> = {} as any;

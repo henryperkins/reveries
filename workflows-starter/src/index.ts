@@ -1,16 +1,16 @@
 // <docs-tag name="full-workflow-example">
 import { WorkflowEntrypoint, WorkflowStep, WorkflowEvent } from 'cloudflare:workers';
 
-type Env = {
+interface Env {
 	// Add your bindings here, e.g. Workers KV, D1, Workers AI, etc.
 	MY_WORKFLOW: Workflow;
-};
+}
 
 // User-defined params passed to your workflow
-type Params = {
+interface Params {
 	email: string;
 	metadata: Record<string, string>;
-};
+}
 
 // <docs-tag name="workflow-entrypoint">
 export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {

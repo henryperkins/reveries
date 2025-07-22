@@ -46,12 +46,16 @@
   },
   "include": [
     "src/**/*",
-    "index.tsx"
+    "index.tsx",
+    "test-azure-integration.ts",
+    "test-azure-o3-agentic.js",
+    "test-multi-paradigm.js",
+    "api/**/*",
+    "docs/**/*.ts",
+    "workflows-starter/src/**/*"
   ],
   "exclude": [
     "components",
-    "api",
-    "src/tests/**/*",
     "**/*.test.ts",
     "**/*.spec.ts"
   ]
