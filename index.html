@@ -24,7 +24,26 @@
     "remark-gfm": "https://esm.sh/remark-gfm@^4.0.0"
   }
 }
-</script>
+  </script>
+  <script>
+    // Prevent FOUC: Apply theme before any content renders
+    (function() {
+      // Get saved theme or use system preference
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+
+      // Apply to html element immediately
+      document.documentElement.classList.add(initialTheme);
+      document.documentElement.setAttribute('data-theme', initialTheme);
+
+      // Update meta theme-color for mobile browsers
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', initialTheme === 'dark' ? '#1A1512' : '#FAF6F2');
+      }
+    })();
+  </script>
   <script>
     // Enhanced polyfills - set up globals before anything loads
     if (typeof global === 'undefined') {

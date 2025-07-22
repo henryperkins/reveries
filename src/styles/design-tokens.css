@@ -8,16 +8,16 @@
     --color-westworld-beige: #F5EDE4;
     --color-westworld-tan: #E8D5C4;
     --color-westworld-brown: #8B6F47;
-    --color-westworld-darkbrown: #6B5637;
-    --color-westworld-nearblack: #2A2522;
+    --color-westworld-dark-brown: #6B5637;
+    --color-westworld-near-black: #2A2522;
     --color-westworld-black: #1A1512;
     --color-westworld-gold: #D4AF37;
-    --color-westworld-darkgold: #B8941F;
+    --color-westworld-dark-gold: #B8941F;
     --color-westworld-rust: #A85732;
     --color-westworld-copper: #C87543;
-    --color-westworld-darkcopper: #A65E36;
+    --color-westworld-dark-copper: #A65E36;
     --color-westworld-white: #FFFFFF;
-    
+
     /* Semantic Colors */
     --color-primary: var(--color-westworld-gold);
     --color-primary-dark: var(--color-westworld-dark-gold);
@@ -25,10 +25,10 @@
     --color-secondary-dark: var(--color-westworld-dark-copper);
     --color-background: var(--color-westworld-beige);
     --color-surface: var(--color-westworld-cream);
-    --color-text: var(--color-westworld-nearblack);
+    --color-text: var(--color-westworld-near-black);
     --color-text-muted: var(--color-westworld-brown);
     --color-border: var(--color-westworld-tan);
-    
+
     /* State Colors */
     --color-success: #10B981;
     --color-success-light: #D1FAE5;
@@ -38,13 +38,13 @@
     --color-error-light: #FEE2E2;
     --color-info: #3B82F6;
     --color-info-light: #DBEAFE;
-    
+
     /* ===== TYPOGRAPHY TOKENS ===== */
     /* Font Families */
     --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --font-serif: 'Georgia', 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
-    
+
     /* Font Sizes */
     --text-xs: 0.75rem;    /* 12px */
     --text-sm: 0.875rem;   /* 14px */
@@ -55,7 +55,7 @@
     --text-3xl: 1.875rem;  /* 30px */
     --text-4xl: 2.25rem;   /* 36px */
     --text-5xl: 3rem;      /* 48px */
-    
+
     /* Font Weights */
     --font-thin: 100;
     --font-light: 300;
@@ -64,7 +64,7 @@
     --font-semibold: 600;
     --font-bold: 700;
     --font-extrabold: 800;
-    
+
     /* Line Heights */
     --leading-none: 1;
     --leading-tight: 1.25;
@@ -72,7 +72,7 @@
     --leading-normal: 1.5;
     --leading-relaxed: 1.625;
     --leading-loose: 2;
-    
+
     /* ===== SPACING TOKENS ===== */
     --space-0: 0;
     --space-1: 0.25rem;   /* 4px */
@@ -87,7 +87,7 @@
     --space-16: 4rem;     /* 64px */
     --space-20: 5rem;     /* 80px */
     --space-24: 6rem;     /* 96px */
-    
+
     /* ===== BORDER RADIUS TOKENS ===== */
     --radius-none: 0;
     --radius-sm: 0.125rem;  /* 2px */
@@ -98,7 +98,7 @@
     --radius-2xl: 1rem;     /* 16px */
     --radius-3xl: 1.5rem;   /* 24px */
     --radius-full: 9999px;
-    
+
     /* ===== SHADOW TOKENS ===== */
     --shadow-none: none;
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -110,7 +110,7 @@
     --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
     --shadow-glow: 0 0 10px rgba(212, 175, 55, 0.5);
     --shadow-glow-lg: 0 0 20px rgba(212, 175, 55, 0.8), 0 0 30px rgba(212, 175, 55, 0.6);
-    
+
     /* ===== Z-INDEX TOKENS ===== */
     --z-auto: auto;
     --z-0: 0;
@@ -124,20 +124,20 @@
     --z-tooltip: 70;
     --z-notification: 80;
     --z-top: 90;
-    
+
     /* ===== TRANSITION TOKENS ===== */
     --duration-fast: 150ms;
     --duration-base: 200ms;
     --duration-slow: 300ms;
     --duration-slower: 500ms;
-    
+
     --timing-linear: linear;
     --timing-ease: ease;
     --timing-ease-in: ease-in;
     --timing-ease-out: ease-out;
     --timing-ease-in-out: ease-in-out;
     --timing-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    
+
     /* ===== BREAKPOINT TOKENS ===== */
     --breakpoint-xs: 475px;
     --breakpoint-sm: 640px;
@@ -146,22 +146,22 @@
     --breakpoint-xl: 1280px;
     --breakpoint-2xl: 1536px;
   }
-  
+
   /* Dark theme overrides */
   [data-theme="dark"] {
     /* Color overrides for dark mode */
     --color-background: var(--color-westworld-black);
-    --color-surface: var(--color-westworld-nearblack);
+    --color-surface: var(--color-westworld-near-black);
     --color-text: var(--color-westworld-cream);
     --color-text-muted: var(--color-westworld-tan);
     --color-border: #3A3532;
-    
+
     /* Adjusted semantic colors for dark mode */
     --color-primary: var(--color-westworld-gold);
     --color-primary-dark: var(--color-westworld-copper);
     --color-secondary: var(--color-westworld-rust);
-    --color-secondary-dark: var(--color-westworld-darkbrown);
-    
+    --color-secondary-dark: var(--color-westworld-dark-brown);
+
     /* Adjusted shadows for dark mode */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
     --shadow-base: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
