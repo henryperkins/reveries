@@ -46,8 +46,8 @@ export interface ExaResearchTask {
   id: string;
   status: 'running' | 'completed' | 'failed';
   instructions: string;
-  schema?: object;
-  data?: any;
+  schema?: Record<string, unknown>;
+  data?: Record<string, unknown>;
   citations?: Record<string, Citation[]>;
   error?: string;
   createdAt?: string;
@@ -59,6 +59,76 @@ export interface ExaResearchTaskList {
   data: ExaResearchTask[];
   hasMore: boolean;
   nextCursor?: string;
+}
+
+// Type definitions for external APIs
+interface BingWebPage {
+  name?: string;
+  url?: string;
+  snippet?: string;
+  dateLastCrawled?: string;
+}
+
+interface BingSearchResponse {
+  webPages?: {
+    value?: BingWebPage[];
+    totalEstimatedMatches?: number;
+  };
+}
+
+interface GoogleSearchItem {
+  title?: string;
+  link?: string;
+  snippet?: string;
+  pagemap?: {
+    metatags?: Array<Record<string, string>>;
+  };
+}
+
+interface GoogleSearchResponse {
+  items?: GoogleSearchItem[];
+  searchInformation?: {
+    totalResults?: string;
+    searchTime?: number;
+  };
+}
+
+interface ExaSearchResult {
+  title?: string;
+  url?: string;
+  text?: string;
+  highlights?: string[];
+  publishedDate?: string;
+  score?: number;
+  summary?: string;
+}
+
+interface ExaSearchResponse {
+  results?: ExaSearchResult[];
+}
+
+interface ExaContentsResponse {
+  results?: Array<{
+    url?: string;
+    text?: string;
+    highlights?: string[];
+  }>;
+}
+
+interface ExaFindSimilarResponse {
+  results?: ExaSearchResult[];
+}
+
+interface ExaResearchCreateResponse {
+  id: string;
+}
+
+interface ExaResearchGetResponse {
+  id: string;
+  status: 'running' | 'completed' | 'failed';
+  instructions: string;
+  data?: Record<string, unknown>;
+  error?: string;
 }
 
 // Bing Search API Provider
@@ -105,7 +175,7 @@ class BingSearchProvider implements SearchProvider {
       // Apply rate limiting for Bing API call
       const estimatedTokens = estimateTokens(query) + 100; // Add overhead for API call
       await this.rateLimiter.waitForCapacity(estimatedTokens);
-      
+
       const startTime = Date.now();
       const response = await fetch(`${this.endpoint}?${searchParams}`, {
         headers: {
@@ -118,7 +188,7 @@ class BingSearchProvider implements SearchProvider {
         throw new Error(`Bing API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as BingSearchResponse;
       const searchTime = Date.now() - startTime;
 
       // Update rate limit from headers
@@ -172,7 +242,7 @@ class BingSearchProvider implements SearchProvider {
     return mapping[timeRange] || 'Week';
   }
 
-  private parseBingResults(results: any[]): SearchResult[] {
+  private parseBingResults(results: BingWebPage[]): SearchResult[] {
     return results.map(result => ({
       title: result.name || 'No title',
       url: result.url || '',
@@ -183,7 +253,7 @@ class BingSearchProvider implements SearchProvider {
     }));
   }
 
-  private calculateRelevance(result: any): number {
+  private calculateRelevance(result: BingWebPage): number {
     // Simple relevance calculation based on available metadata
     let score = 0.5;
 
@@ -275,19 +345,19 @@ class GoogleSearchProvider implements SearchProvider {
       // Apply rate limiting for Google API call
       const estimatedTokens = estimateTokens(query) + 100; // Add overhead for API call
       await this.rateLimiter.waitForCapacity(estimatedTokens);
-      
+
       const startTime = Date.now();
       const response = await fetch(`${this.endpoint}?${searchParams}`, {
         headers,
         method: 'GET'
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as GoogleSearchResponse;
       const searchTime = Date.now() - startTime;
 
       // Handle specific Google API errors according to REST API documentation
-      if (!response.ok || data.error) {
-        const error = data.error || { code: response.status, message: response.statusText };
+      if (!response.ok || (data as Record<string, unknown>).error) {
+        const error = (data as Record<string, unknown>).error || { code: response.status, message: response.statusText } as { code: number; message: string };
 
         // Handle quota exceeded errors specifically
         if (error.code === 403 && error.message?.includes('Quota exceeded')) {
@@ -373,7 +443,7 @@ class GoogleSearchProvider implements SearchProvider {
     return mapping[timeRange] || 'w1';
   }
 
-  private parseGoogleResults(results: any[]): SearchResult[] {
+  private parseGoogleResults(results: GoogleSearchItem[]): SearchResult[] {
     return results.map(result => ({
       title: result.title || 'No title',
       url: result.link || '',
@@ -384,7 +454,7 @@ class GoogleSearchProvider implements SearchProvider {
     }));
   }
 
-  private calculateRelevance(result: any): number {
+  private calculateRelevance(result: GoogleSearchItem): number {
     // Simple relevance calculation
     let score = 0.5;
 
@@ -407,7 +477,7 @@ class ExaSearchProvider implements SearchProvider {
   private endpoint = 'https://api.exa.ai';
   private rateLimit = { remaining: 1000, resetTime: Date.now() + 86400000 };
   private rateLimiter = RateLimiter.getInstance();
-  private exaSDK: any = null; // Optional Exa SDK instance
+  private exaSDK: { search?: (query: string, options: Record<string, unknown>) => Promise<ExaSearchResponse>; research?: { createTask: (options: Record<string, unknown>) => Promise<ExaResearchCreateResponse>; getTask: (id: string) => Promise<ExaResearchGetResponse> } } | null = null;
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || getEnv('VITE_EXA_API_KEY', 'EXA_API_KEY') || '';
@@ -420,10 +490,10 @@ class ExaSearchProvider implements SearchProvider {
       // Use Function constructor to avoid static analysis
       const dynamicImport = new Function('moduleName', 'return import(moduleName)');
       const ExaModule = await dynamicImport('exa-js').catch(() => null);
-      
+
       if (ExaModule) {
         const Exa = ExaModule.default || ExaModule;
-        this.exaSDK = new Exa(this.apiKey);
+        this.exaSDK = new Exa(this.apiKey) as unknown as { search?: (query: string, options: Record<string, unknown>) => Promise<ExaSearchResponse>; research?: { createTask: (options: Record<string, unknown>) => Promise<ExaResearchCreateResponse>; getTask: (id: string) => Promise<ExaResearchGetResponse> } };
         console.log('[ExaSearchProvider] Using official Exa SDK');
       } else {
         this.exaSDK = null;
@@ -453,7 +523,7 @@ class ExaSearchProvider implements SearchProvider {
 
     try {
       // Use SDK if available, otherwise fall back to HTTP
-      if (this.exaSDK) {
+      if (this.exaSDK && this.exaSDK.search) {
         return await this.searchWithSDK(query, options, startTime);
       } else {
         return await this.searchWithHTTP(query, options, startTime);
@@ -465,7 +535,7 @@ class ExaSearchProvider implements SearchProvider {
   }
 
   private async searchWithSDK(query: string, options: SearchOptions, startTime: number): Promise<SearchResponse> {
-    const searchOptions: any = {
+    const searchOptions: Record<string, unknown> = {
       query: this.buildSearchQuery(query, options),
       type: 'auto',
       numResults: Math.min(options.maxResults || 10, 100),
@@ -490,7 +560,7 @@ class ExaSearchProvider implements SearchProvider {
       searchOptions.endCrawlDate = new Date().toISOString();
     }
 
-    const data = await this.exaSDK.searchAndContents(query, searchOptions);
+    const data = await this.exaSDK!.search!(query, searchOptions);
     const searchTime = Date.now() - startTime;
 
     const results = this.parseExaResults(data.results || []);
@@ -505,7 +575,7 @@ class ExaSearchProvider implements SearchProvider {
   }
 
   private async searchWithHTTP(query: string, options: SearchOptions, startTime: number): Promise<SearchResponse> {
-    const requestBody = {
+    const requestBody: Record<string, unknown> = {
       query: this.buildSearchQuery(query, options),
       type: 'auto',
       numResults: Math.min(options.maxResults || 10, 100),
@@ -542,7 +612,7 @@ class ExaSearchProvider implements SearchProvider {
       throw new Error(`Exa API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as ExaSearchResponse;
     const searchTime = Date.now() - startTime;
 
     const results = this.parseExaResults(data.results || []);
@@ -580,7 +650,7 @@ class ExaSearchProvider implements SearchProvider {
     return (mapping[timeRange] || mapping.week).toISOString();
   }
 
-  private parseExaResults(results: any[]): SearchResult[] {
+  private parseExaResults(results: ExaSearchResult[]): SearchResult[] {
     return results.map(result => ({
       title: result.title || 'No title',
       url: result.url || '',
@@ -591,14 +661,14 @@ class ExaSearchProvider implements SearchProvider {
     }));
   }
 
-  private extractSnippet(result: any): string {
+  private extractSnippet(result: ExaSearchResult): string {
     // Try highlights first, then text, then fallback
     if (result.highlights && result.highlights.length > 0) {
       return result.highlights.join(' ... ');
     }
     if (result.text) {
       // Truncate to reasonable snippet length
-      return result.text.length > 300 
+      return result.text.length > 300
         ? result.text.substring(0, 300) + '...'
         : result.text;
     }
@@ -612,7 +682,7 @@ class ExaSearchProvider implements SearchProvider {
   /**
    * Get full content from URLs using Exa's contents endpoint
    */
-  async getContents(urls: string[], options?: { text?: boolean; summary?: boolean }): Promise<any[]> {
+  async getContents(urls: string[], options?: { text?: boolean; summary?: boolean }): Promise<Array<{ url?: string; text?: string; highlights?: string[] }>> {
     if (!await this.isAvailable()) {
       throw new Error('Exa Search provider not available');
     }
@@ -638,7 +708,7 @@ class ExaSearchProvider implements SearchProvider {
         throw new Error(`Exa Contents API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as ExaContentsResponse;
       return data.results || [];
     } catch (error) {
       console.error('Exa get contents failed:', error);
@@ -681,7 +751,7 @@ class ExaSearchProvider implements SearchProvider {
         throw new Error(`Exa FindSimilar API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as ExaFindSimilarResponse;
       return this.parseExaResults(data.results || []);
     } catch (error) {
       console.error('Exa find similar failed:', error);
@@ -693,10 +763,10 @@ class ExaSearchProvider implements SearchProvider {
    * Create a research task using Exa's research API
    */
   async createResearchTask(
-    instructions: string, 
+    instructions: string,
     options?: {
       model?: 'exa-research' | 'exa-research-pro';
-      outputSchema?: object;
+      outputSchema?: Record<string, unknown>;
       inferSchema?: boolean;
     }
   ): Promise<string> {
@@ -707,7 +777,7 @@ class ExaSearchProvider implements SearchProvider {
     try {
       // Use SDK if available
       if (this.exaSDK && this.exaSDK.research) {
-        const taskOptions: any = {
+        const taskOptions: Record<string, unknown> = {
           model: options?.model || 'exa-research',
           instructions
         };
@@ -734,11 +804,11 @@ class ExaSearchProvider implements SearchProvider {
     instructions: string,
     options?: {
       model?: 'exa-research' | 'exa-research-pro';
-      outputSchema?: object;
+      outputSchema?: Record<string, unknown>;
       inferSchema?: boolean;
     }
   ): Promise<string> {
-    const requestBody: any = {
+    const requestBody: Record<string, unknown> = {
       instructions,
       model: options?.model || 'exa-research'
     };
@@ -764,7 +834,7 @@ class ExaSearchProvider implements SearchProvider {
       throw new Error(`Exa Research API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as ExaResearchCreateResponse;
     return data.id;
   }
 
@@ -795,7 +865,7 @@ class ExaSearchProvider implements SearchProvider {
           throw new Error(`Exa Research API error: ${response.status} ${response.statusText} - ${errorText}`);
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as ExaResearchGetResponse;
         return data as ExaResearchTask;
       }
     } catch (error) {
@@ -807,9 +877,9 @@ class ExaSearchProvider implements SearchProvider {
   /**
    * List research tasks with optional pagination
    */
-  async listResearchTasks(options?: { 
-    cursor?: string; 
-    limit?: number 
+  async listResearchTasks(options?: {
+    cursor?: string;
+    limit?: number
   }): Promise<ExaResearchTaskList> {
     if (!await this.isAvailable()) {
       throw new Error('Exa Search provider not available');
@@ -833,8 +903,8 @@ class ExaSearchProvider implements SearchProvider {
         throw new Error(`Exa Research API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
-      const data = await response.json();
-      return data as ExaResearchTaskList;
+      const data = (await response.json()) as ExaResearchTaskList;
+      return data;
     } catch (error) {
       console.error('Exa list research tasks failed:', error);
       throw error;
@@ -845,7 +915,7 @@ class ExaSearchProvider implements SearchProvider {
    * Poll a research task until completion or timeout
    */
   async pollResearchTask(
-    taskId: string, 
+    taskId: string,
     options?: {
       timeoutMs?: number;
       intervalMs?: number;
@@ -857,8 +927,8 @@ class ExaSearchProvider implements SearchProvider {
 
     try {
       // Use SDK polling if available
-      if (this.exaSDK && this.exaSDK.research && this.exaSDK.research.pollTask) {
-        const task = await this.exaSDK.research.pollTask(taskId);
+      if (this.exaSDK && this.exaSDK.research) {
+        const task = await this.exaSDK.research.getTask(taskId);
         return task as ExaResearchTask;
       } else {
         // Fall back to manual polling
@@ -880,7 +950,7 @@ class ExaSearchProvider implements SearchProvider {
 
     while (Date.now() - startTime < timeoutMs) {
       const task = await this.getResearchTask(taskId);
-      
+
       if (onProgress) {
         onProgress(task);
       }
@@ -925,7 +995,7 @@ class DuckDuckGoProvider implements SearchProvider {
       // Apply rate limiting for DuckDuckGo API call
       const estimatedTokens = estimateTokens(query) + 50; // Lower overhead for DuckDuckGo
       await this.rateLimiter.waitForCapacity(estimatedTokens);
-      
+
       const startTime = Date.now();
       const response = await fetch(`${this.endpoint}?${searchParams}`);
 
@@ -933,7 +1003,7 @@ class DuckDuckGoProvider implements SearchProvider {
         throw new Error(`DuckDuckGo API error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as Record<string, unknown>;
       const searchTime = Date.now() - startTime;
 
       const results = this.parseDuckDuckGoResults(data);
@@ -951,15 +1021,15 @@ class DuckDuckGoProvider implements SearchProvider {
     }
   }
 
-  private parseDuckDuckGoResults(data: any): SearchResult[] {
+  private parseDuckDuckGoResults(data: Record<string, unknown>): SearchResult[] {
     const results: SearchResult[] = [];
 
     // Add instant answer if available
     if (data.Abstract && data.AbstractURL) {
       results.push({
-        title: data.Heading || 'Instant Answer',
-        url: data.AbstractURL,
-        snippet: data.Abstract,
+        title: (data.Heading as string) || 'Instant Answer',
+        url: data.AbstractURL as string,
+        snippet: data.Abstract as string,
         relevanceScore: 0.9,
         source: 'duckduckgo-instant'
       });
@@ -967,12 +1037,13 @@ class DuckDuckGoProvider implements SearchProvider {
 
     // Add related topics
     if (data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
-      data.RelatedTopics.slice(0, 5).forEach((topic: any) => {
-        if (topic.FirstURL && topic.Text) {
+      data.RelatedTopics.slice(0, 5).forEach((topic) => {
+        const topicObj = topic as Record<string, unknown>;
+        if (topicObj.FirstURL && topicObj.Text) {
           results.push({
-            title: topic.Text.split(' - ')[0] || 'Related Topic',
-            url: topic.FirstURL,
-            snippet: topic.Text,
+            title: (topicObj.Text as string).split(' - ')[0] || 'Related Topic',
+            url: topicObj.FirstURL as string,
+            snippet: topicObj.Text as string,
             relevanceScore: 0.6,
             source: 'duckduckgo-related'
           });
@@ -991,7 +1062,6 @@ class DuckDuckGoProvider implements SearchProvider {
 export class SearchProviderService {
   private static instance: SearchProviderService;
   private providers: SearchProvider[] = [];
-  // Remove unused currentProviderIndex
   private cache: Map<string, { response: SearchResponse; timestamp: number }> = new Map();
   private readonly cacheTimeout = 3600000; // 1 hour
 

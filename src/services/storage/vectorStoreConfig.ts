@@ -5,10 +5,10 @@
 
 export interface VectorStoreConfig {
   type: 'pinecone' | 'weaviate' | 'pgvector' | 'memory';
-  connection: any;
+  connection: Record<string, unknown>;
   indexName?: string;
   dimensions: number;
-  options?: Record<string, any>;
+  options?: Record<string, unknown>;
 }
 
 export interface VectorStoreAdapter {
@@ -22,13 +22,13 @@ export interface VectorStoreAdapter {
 export interface VectorUpsertRequest {
   id: string;
   values: number[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface VectorQueryRequest {
   vector: number[];
   topK: number;
-  filter?: Record<string, any>;
+  filter?: Record<string, unknown>;
   includeMetadata?: boolean;
   includeValues?: boolean;
 }
@@ -38,8 +38,30 @@ export interface VectorQueryResponse {
     id: string;
     score: number;
     values?: number[];
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }>;
+}
+
+// Type definitions for external libraries
+interface PineconeIndex {
+  upsert(vectors: VectorUpsertRequest[]): Promise<void>;
+  query(request: VectorQueryRequest): Promise<VectorQueryResponse>;
+  delete1(params: { ids: string[] }): Promise<void>;
+  describeIndexStats(): Promise<unknown>;
+}
+
+interface PineconeClient {
+  index(name: string): PineconeIndex;
+}
+
+interface PoolClient {
+  query(query: string, params?: unknown[]): Promise<{ rows: unknown[] }>;
+  release(): void;
+}
+
+interface Pool {
+  query(query: string, params?: unknown[]): Promise<{ rows: unknown[] }>;
+  connect(): Promise<PoolClient>;
 }
 
 /**
@@ -47,7 +69,7 @@ export interface VectorQueryResponse {
  */
 export class PineconeAdapter implements VectorStoreAdapter {
   name = 'pinecone';
-  private index: any;
+  private index: PineconeIndex | null = null;
 
   constructor(private config: VectorStoreConfig) {}
 
@@ -56,8 +78,8 @@ export class PineconeAdapter implements VectorStoreAdapter {
       const { Pinecone } = await import('@pinecone-database/pinecone');
       const pinecone = new Pinecone({
         apiKey: process.env.PINECONE_API_KEY!
-      });
-      
+      }) as unknown as PineconeClient;
+
       this.index = pinecone.index(this.config.indexName || 'reveries-memories');
     } catch (error) {
       console.error('Failed to initialize Pinecone:', error);
@@ -66,19 +88,22 @@ export class PineconeAdapter implements VectorStoreAdapter {
   }
 
   async upsert(vectors: VectorUpsertRequest[]): Promise<void> {
+    if (!this.index) throw new Error('Pinecone not initialized');
     await this.index.upsert(vectors);
   }
 
   async query(request: VectorQueryRequest): Promise<VectorQueryResponse> {
-    const result = await this.index.query(request);
-    return result;
+    if (!this.index) throw new Error('Pinecone not initialized');
+    return await this.index.query(request);
   }
 
   async delete(ids: string[]): Promise<void> {
+    if (!this.index) throw new Error('Pinecone not initialized');
     await this.index.delete1({ ids });
   }
 
   async isHealthy(): Promise<boolean> {
+    if (!this.index) return false;
     try {
       const stats = await this.index.describeIndexStats();
       return stats !== null;
@@ -93,7 +118,7 @@ export class PineconeAdapter implements VectorStoreAdapter {
  */
 export class PgVectorAdapter implements VectorStoreAdapter {
   name = 'pgvector';
-  private pool: any;
+  private pool: Pool | null = null;
 
   constructor(private config: VectorStoreConfig) {}
 
@@ -102,7 +127,7 @@ export class PgVectorAdapter implements VectorStoreAdapter {
       const { Pool } = await import('pg');
       this.pool = new Pool({
         connectionString: process.env.DATABASE_URL
-      });
+      }) as unknown as Pool;
 
       // Ensure table exists
       await this.createTable();
@@ -113,6 +138,8 @@ export class PgVectorAdapter implements VectorStoreAdapter {
   }
 
   private async createTable(): Promise<void> {
+    if (!this.pool) throw new Error('Pool not initialized');
+
     const query = `
       CREATE EXTENSION IF NOT EXISTS vector;
       CREATE TABLE IF NOT EXISTS vector_memories (
@@ -121,29 +148,31 @@ export class PgVectorAdapter implements VectorStoreAdapter {
         metadata JSONB,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-      CREATE INDEX IF NOT EXISTS vector_memories_embedding_idx 
+      CREATE INDEX IF NOT EXISTS vector_memories_embedding_idx
       ON vector_memories USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
     `;
-    
+
     await this.pool.query(query);
   }
 
   async upsert(vectors: VectorUpsertRequest[]): Promise<void> {
+    if (!this.pool) throw new Error('Pool not initialized');
+
     const client = await this.pool.connect();
-    
+
     try {
       await client.query('BEGIN');
-      
+
       for (const vector of vectors) {
         await client.query(
-          `INSERT INTO vector_memories (id, embedding, metadata) 
-           VALUES ($1, $2, $3) 
-           ON CONFLICT (id) DO UPDATE SET 
+          `INSERT INTO vector_memories (id, embedding, metadata)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (id) DO UPDATE SET
            embedding = $2, metadata = $3, created_at = CURRENT_TIMESTAMP`,
           [vector.id, JSON.stringify(vector.values), JSON.stringify(vector.metadata)]
         );
       }
-      
+
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -154,8 +183,10 @@ export class PgVectorAdapter implements VectorStoreAdapter {
   }
 
   async query(request: VectorQueryRequest): Promise<VectorQueryResponse> {
+    if (!this.pool) throw new Error('Pool not initialized');
+
     let whereClause = '';
-    const params: any[] = [JSON.stringify(request.vector), request.topK];
+    const params: unknown[] = [JSON.stringify(request.vector), request.topK];
     let paramIndex = 3;
 
     // Build filter conditions
@@ -172,28 +203,30 @@ export class PgVectorAdapter implements VectorStoreAdapter {
     }
 
     const query = `
-      SELECT id, 1 - (embedding <=> $1) as score, 
-             ${request.includeMetadata ? 'metadata,' : ''} 
+      SELECT id, 1 - (embedding <=> $1) as score,
+             ${request.includeMetadata ? 'metadata,' : ''}
              ${request.includeValues ? 'embedding,' : ''}
-      FROM vector_memories 
+      FROM vector_memories
       ${whereClause}
-      ORDER BY embedding <=> $1 
+      ORDER BY embedding <=> $1
       LIMIT $2
     `;
 
     const result = await this.pool.query(query, params);
-    
+
     return {
-      matches: result.rows.map((row: any) => ({
-        id: row.id,
-        score: row.score,
-        metadata: request.includeMetadata ? row.metadata : undefined,
-        values: request.includeValues ? JSON.parse(row.embedding) : undefined
+      matches: result.rows.map((row) => ({
+        id: row.id as string,
+        score: row.score as number,
+        metadata: request.includeMetadata ? row.metadata as Record<string, unknown> : undefined,
+        values: request.includeValues ? JSON.parse(row.embedding as string) as number[] : undefined
       }))
     };
   }
 
   async delete(ids: string[]): Promise<void> {
+    if (!this.pool) throw new Error('Pool not initialized');
+
     await this.pool.query(
       'DELETE FROM vector_memories WHERE id = ANY($1)',
       [ids]
@@ -201,6 +234,7 @@ export class PgVectorAdapter implements VectorStoreAdapter {
   }
 
   async isHealthy(): Promise<boolean> {
+    if (!this.pool) return false;
     try {
       const result = await this.pool.query('SELECT 1');
       return result.rows.length > 0;
@@ -224,17 +258,17 @@ export class MemoryAdapter implements VectorStoreAdapter {
   }
 
   async query(request: VectorQueryRequest): Promise<VectorQueryResponse> {
-    const results: Array<{ id: string; score: number; metadata?: any; values?: number[] }> = [];
-    
+    const results: Array<{ id: string; score: number; metadata?: Record<string, unknown>; values?: number[] }> = [];
+
     for (const [id, vector] of this.vectors.entries()) {
       // Apply metadata filters
       if (request.filter && !this.matchesFilter(vector.metadata, request.filter)) {
         continue;
       }
-      
+
       // Calculate cosine similarity
       const score = this.cosineSimilarity(request.vector, vector.values);
-      
+
       results.push({
         id,
         score,
@@ -242,10 +276,10 @@ export class MemoryAdapter implements VectorStoreAdapter {
         values: request.includeValues ? vector.values : undefined
       });
     }
-    
+
     // Sort by score and return top K
     results.sort((a, b) => b.score - a.score);
-    
+
     return {
       matches: results.slice(0, request.topK)
     };
@@ -259,9 +293,9 @@ export class MemoryAdapter implements VectorStoreAdapter {
     return true;
   }
 
-  private matchesFilter(metadata: any, filter: Record<string, any>): boolean {
+  private matchesFilter(metadata: Record<string, unknown> | undefined, filter: Record<string, unknown>): boolean {
     if (!metadata) return false;
-    
+
     for (const [key, value] of Object.entries(filter)) {
       if (metadata[key] !== value) {
         return false;
@@ -272,19 +306,19 @@ export class MemoryAdapter implements VectorStoreAdapter {
 
   private cosineSimilarity(a: number[], b: number[]): number {
     if (a.length !== b.length) return 0;
-    
+
     let dotProduct = 0;
     let normA = 0;
     let normB = 0;
-    
+
     for (let i = 0; i < a.length; i++) {
       dotProduct += a[i] * b[i];
       normA += a[i] * a[i];
       normB += b[i] * b[i];
     }
-    
+
     if (normA === 0 || normB === 0) return 0;
-    
+
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   }
 }
@@ -295,7 +329,7 @@ export class MemoryAdapter implements VectorStoreAdapter {
 export class VectorStoreFactory {
   static async create(config: VectorStoreConfig): Promise<VectorStoreAdapter> {
     let adapter: VectorStoreAdapter;
-    
+
     switch (config.type) {
       case 'pinecone':
         adapter = new PineconeAdapter(config);
@@ -308,18 +342,18 @@ export class VectorStoreFactory {
         adapter = new MemoryAdapter();
         break;
     }
-    
+
     if ('initialize' in adapter) {
-      await (adapter as any).initialize();
+      await (adapter as { initialize: () => Promise<void> }).initialize();
     }
-    
+
     return adapter;
   }
 
   static getConfigFromEnv(): VectorStoreConfig {
-    const type = (process.env.VECTOR_STORE_TYPE as any) || 'memory';
+    const type = (process.env.VECTOR_STORE_TYPE as 'pinecone' | 'weaviate' | 'pgvector' | 'memory') || 'memory';
     const dimensions = parseInt(process.env.VECTOR_DIMENSIONS || '384');
-    
+
     return {
       type,
       connection: {},
