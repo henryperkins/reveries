@@ -466,7 +466,7 @@ export class ParadigmLearningService {
       // In a real implementation, load from localStorage or database
       const stored = localStorage.getItem('paradigm_learning');
       if (stored) {
-        const data = JSON.parse(stored);
+        const _data = JSON.parse(stored);
         // Restore learning history and patterns
       }
     } catch (error) {

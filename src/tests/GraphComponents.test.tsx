@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { GraphLayoutEngine, getNodeStyle } from '../utils/graphLayout';
 import { ResearchGraphManager } from '../researchGraph';

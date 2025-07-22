@@ -128,7 +128,6 @@ export class MultiParadigmBlender {
     );
 
     // Blend sources weighted by paradigm
-    const blendedSources: Citation[] = [];
     const sourceMap = new Map<string, { citation: Citation; weight: number }>();
 
     paradigmResults.forEach(({ result, weight }) => {
@@ -233,7 +232,6 @@ export class MultiParadigmBlender {
       // Accumulate context
       cumulativeContext += `\n\n${paradigm.toUpperCase()} INSIGHTS:\n${result.synthesis}`;
       allSources = [...allSources, ...result.sources];
-      lastResult = result;
     }
 
     // Final integration

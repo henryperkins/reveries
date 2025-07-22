@@ -380,7 +380,7 @@ export function useEnhancedPersistence(sessionId: string) {
         const dbService = DatabaseService.getInstance();
         await dbService.getRecentSessions(sessionId, 1);
         setPersistenceState(prev => ({ ...prev, isConnected: true }));
-      } catch (error) {
+      } catch (_error) {
         console.warn('Database not available, using localStorage fallback');
         setPersistenceState(prev => ({
           ...prev,

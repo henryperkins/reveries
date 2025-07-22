@@ -105,7 +105,7 @@ export class IsolateLayerService {
           success: true
         }
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         output: null,
         metrics: {

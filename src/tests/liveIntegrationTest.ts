@@ -4,7 +4,7 @@
  */
 
 import { AzureOpenAIService } from '@/services/azureOpenAIService';
-import { EffortType, HostParadigm, ParadigmProbabilities } from '@/types';
+import { ParadigmProbabilities } from '@/types';
 
 async function testLiveIntegration() {
   console.log('🚀 Testing Live Azure OpenAI Integration...\n');

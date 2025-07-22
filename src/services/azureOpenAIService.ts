@@ -1354,7 +1354,7 @@ export class AzureOpenAIService {
                   onComplete();
                   return;
                 }
-              } catch (e) {
+              } catch (_e) {
                 // Skip invalid JSON
               }
             }
@@ -1649,7 +1649,7 @@ export class AzureOpenAIService {
                 callbacks.onComplete();
                 return;
               }
-            } catch (e) {
+            } catch (_e) {
               // Skip invalid JSON
             }
           }
