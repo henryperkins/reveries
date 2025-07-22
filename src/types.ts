@@ -129,8 +129,8 @@ export interface ResearchState {
 
 export interface FunctionCallHistory {
   function: string;
-  arguments: Record<string, any>;
-  result: any;
+  arguments: Record<string, unknown>;
+  result: unknown;
   timestamp: number;
   context?: string; // Human-readable description of what this function is doing
 }
@@ -267,7 +267,7 @@ export interface ResponsesRequest {
     function?: {
       name: string;
       description: string;
-      parameters: any;
+      parameters: unknown;
     };
   }>;
   previous_response_id?: string;
@@ -464,8 +464,8 @@ export interface ExportedResearchData {
     step: string;
     calls: Array<{
       name: string;
-      arguments: any;
-      result: any;
+      arguments: unknown;
+      result: unknown;
       timestamp: number;
     }>;
   }>;

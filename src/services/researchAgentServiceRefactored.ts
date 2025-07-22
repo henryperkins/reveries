@@ -154,7 +154,7 @@ export class ResearchAgentService {
       switch (layer) {
         // ────────────────── write ──────────────────
         case 'write': {
-          onProgress?.(`[${paradigm}] Writing reveries to memory banks...`);
+          onProgress?.(`📝 Write Layer [${paradigm}]: Scratchpad (10min) | Memory Store (24h) | Paradigm Namespaced`);
           await this.writeLayer.write(
             'query_context',
             {
@@ -174,7 +174,7 @@ export class ResearchAgentService {
 
         // ────────────────── select ──────────────────
         case 'select': {
-          onProgress?.(`[${paradigm}] Selecting relevant memories and tools...`);
+          onProgress?.(`🔍 Select Layer [${paradigm}]: Source Ranking | Tool Selection | Paradigm Criteria`);
           const recommendedTools = this.selectLayer.recommendTools(paradigm);
           const availableSources =
             layerResults.selectedSources ||
@@ -196,7 +196,7 @@ export class ResearchAgentService {
 
         // ────────────────── compress ──────────────────
         case 'compress': {
-          onProgress?.(`[${paradigm}] Compressing narrative threads...`);
+          onProgress?.(`🗜️ Compress Layer [${paradigm}]: Token Reduction | Keyword Preservation | Format by Paradigm`);
           const sourceContent = layerResults.selectedSources
             ? layerResults.selectedSources
                 .map((s: Citation) => `${s.title || s.name}: ${s.snippet || s.url}`)
@@ -226,7 +226,7 @@ export class ResearchAgentService {
 
         // ────────────────── isolate ──────────────────
         case 'isolate': {
-          onProgress?.(`[${paradigm}] Isolating consciousness for focused analysis...`);
+          onProgress?.(`🚪 Isolate Layer [${paradigm}]: Async Sub-tasks | Focused Analysis | Parallel Execution`);
           const isolationCtx = {
             content:
               layerResults.compressedContent ||
@@ -412,10 +412,17 @@ export class ResearchAgentService {
     try {
       // 1) Detect paradigm with learning adjustments
       console.log('🔍 Detecting paradigm...');
+      metadata?.onProgress?.('🧠 Paradigm Classifier: Analyzing probability distribution...');
       let paradigmProbs = await this.paradigmClassifier.classify(query);
 
       // Apply learned adjustments from Phase 8
       paradigmProbs = this.paradigmLearning.getLearnedAdjustments(query, paradigmProbs);
+      
+      // Report probabilities like in the diagram
+      const probReport = Object.entries(paradigmProbs)
+        .map(([p, prob]) => `${p.charAt(0).toUpperCase() + p.slice(1)} ${Math.round(prob * 100)}%`)
+        .join(' | ');
+      metadata?.onProgress?.(`📊 Probability Distribution: ${probReport}`);
 
       // Get effort and phase early as they're needed for blending
       const effort = metadata?.effort ?? EffortType.MEDIUM;
@@ -478,9 +485,12 @@ export class ResearchAgentService {
 
       // 2) Context‑density for phase
       const contextDensity = this.contextEngineering.adaptContextDensity(phase, paradigm);
+      metadata?.onProgress?.(`🎛️ Context Engineering Service: Phase: ${phase} | Density: ${Math.round(contextDensity.averageDensity ?? 50)}%`);
 
       // 3) Layer sequence
       const layerSequence = this.contextEngineering.getLayerSequence(paradigm);
+      const layerSeqStr = layerSequence.map(l => l.charAt(0).toUpperCase() + l.slice(1)).join(' → ');
+      metadata?.onProgress?.(`📋 Layer Sequence: ${layerSeqStr}`);
 
       // 4) Execute layers
       console.log('🔄 Executing layers:', layerSequence);
@@ -620,6 +630,9 @@ export class ResearchAgentService {
         );
       }
 
+      // Send synthesis completion message to trigger UI transition
+      metadata?.onProgress?.('Finalizing comprehensive answer through synthesis...');
+
       // 8) Compose final
       return {
         ...response,
@@ -675,6 +688,10 @@ export class ResearchAgentService {
       gen
     );
     res.evaluationMetadata = evalRes;
+    
+    // Send synthesis completion message after evaluation
+    onProgress?.('Finalizing comprehensive answer through synthesis...');
+    
     return res;
   }
 
@@ -722,16 +739,21 @@ export class ResearchAgentService {
   ): Promise<EnhancedResearchResults> {
     const startTime = Date.now();
     onProgress?.('tool_used:memory_cache');
-    const cachedResult = this.memoryService.getCachedResult(query);
+    
+    // Get the paradigm early for cache statistics
+    const paradigm = await this.paradigmService.determineHostParadigm(query);
+    const cacheHitRate = this.memoryService.getCacheHitRate(paradigm || undefined);
+    
+    const cachedResult = this.memoryService.getCachedResult(query, paradigm || undefined);
     if (cachedResult) {
-      onProgress?.('Found cached research result.');
+      onProgress?.(`💾 Paradigm Cache Hit! (${paradigm || 'general'} hit rate: ${cacheHitRate}%)`);
       return cachedResult;
     }
     onProgress?.('tool_used:query_classification');
     const queryType = this.strategyService.classifyQueryType(query);
     onProgress?.(`Query classified as: ${queryType}`);
     onProgress?.('tool_used:paradigm_detection');
-    const paradigm = await this.paradigmService.determineHostParadigm(query);
+    // paradigm already declared above for cache statistics
     let result: EnhancedResearchResults;
     if (paradigm) {
       onProgress?.(`Routing to ${paradigm} paradigm research...`);
@@ -772,7 +794,14 @@ export class ResearchAgentService {
     onProgress?.('Evaluating research quality and self‑healing if needed');
     onProgress?.('Research evaluation phase initiated');
     result.confidenceScore = ResearchUtilities.calculateConfidenceScore(result);
+    
+    // Report confidence like in the diagram
+    const confidencePercent = Math.round((result.confidenceScore || 0) * 100);
+    onProgress?.(`🔍 Evaluation: Confidence: ${confidencePercent}%`);
+    
     if (ResearchUtilities.needsSelfHealing(result)) {
+      onProgress?.(`🔧 Self-Healing: Confidence ${confidencePercent}% < 35% threshold`);
+      onProgress?.(`🔄 Strategy: ${paradigm ? paradigm.charAt(0).toUpperCase() + paradigm.slice(1) : 'General'} Deep Analysis`);
       const webResearchFunction = async (queries: string[], m: ModelType, e: EffortType) =>
         this.performWebResearch(queries, m, e);
       const generateTextFunction = async (p: string, m: ModelType, e: EffortType) =>
@@ -787,6 +816,10 @@ export class ResearchAgentService {
         generateTextFunction
       );
     }
+    
+    // Send synthesis completion message to trigger UI transition
+    onProgress?.('Finalizing comprehensive answer through synthesis...');
+    
     const processingTime = Date.now() - startTime;
     result.adaptiveMetadata = {
       ...result.adaptiveMetadata,
@@ -794,6 +827,12 @@ export class ResearchAgentService {
       paradigmProbabilities: this.lastParadigmProbabilities || undefined,
       cacheHit: false
     };
+    
+    // Report final results like in the diagram
+    const finalConfidence = Math.round((result.confidenceScore || 0.75) * 100);
+    const sourceCount = result.sources?.length || 0;
+    onProgress?.(`✅ Enhanced Research Results: Paradigm: ${paradigm ? paradigm.charAt(0).toUpperCase() + paradigm.slice(1) : 'General'} | Confidence: ${finalConfidence}% | Sources: ${sourceCount}`);
+    
     this.memoryService.cacheResult(query, result, paradigm || undefined);
     return result;
   }

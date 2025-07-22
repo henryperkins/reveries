@@ -207,8 +207,8 @@ export class ResearchUtilities {
       return true;
     }
 
-    // Check for low confidence scores
-    if (result.confidenceScore !== undefined && result.confidenceScore < 0.4) {
+    // Check for low confidence scores (35% threshold as per diagram)
+    if (result.confidenceScore !== undefined && result.confidenceScore < 0.35) {
       return true;
     }
 

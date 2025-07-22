@@ -17,6 +17,9 @@ export class ResearchMemoryService {
 
   private researchCache = new Map<string, CachedResult>();
   private researchMemory = new Map<string, ResearchMemoryEntry>();
+  
+  // Cache hit rate tracking for paradigms
+  private cacheStats = new Map<string, { hits: number; misses: number }>();
 
   private readonly CACHE_TTL = 1000 * 60 * 30; // 30 minutes
   private readonly MEMORY_TTL = 1000 * 60 * 60 * 24; // 24 hours
@@ -49,10 +52,17 @@ export class ResearchMemoryService {
    */
   getCachedResult(query: string, paradigm?: HostParadigm): EnhancedResearchResults | null {
     const cacheKey = ResearchUtilities.generateCacheKey(query, paradigm);
+    const statsKey = paradigm || 'general';
+
+    // Initialize stats if not exists
+    if (!this.cacheStats.has(statsKey)) {
+      this.cacheStats.set(statsKey, { hits: 0, misses: 0 });
+    }
 
     // Check exact match with paradigm
     const exactMatch = this.researchCache.get(cacheKey);
     if (exactMatch && Date.now() - exactMatch.timestamp < this.CACHE_TTL) {
+      this.cacheStats.get(statsKey)!.hits++;
       return exactMatch.result;
     }
 
@@ -60,6 +70,7 @@ export class ResearchMemoryService {
     const baseKey = ResearchUtilities.generateCacheKey(query);
     const baseMatch = this.researchCache.get(baseKey);
     if (baseMatch && Date.now() - baseMatch.timestamp < this.CACHE_TTL) {
+      this.cacheStats.get(statsKey)!.hits++;
       return baseMatch.result;
     }
 
@@ -67,10 +78,13 @@ export class ResearchMemoryService {
     for (const [cachedQuery, cached] of this.researchCache.entries()) {
       if (ResearchUtilities.isQuerySimilar(query, cachedQuery.replace(/^[^:]+:/, '')) &&
         Date.now() - cached.timestamp < this.CACHE_TTL) {
+        this.cacheStats.get(statsKey)!.hits++;
         return cached.result;
       }
     }
 
+    // Cache miss
+    this.cacheStats.get(statsKey)!.misses++;
     return null;
   }
 
@@ -189,6 +203,7 @@ export class ResearchMemoryService {
     memorySize: number;
     oldestCache: number | null;
     oldestMemory: number | null;
+    hitRates: Map<string, number>;
   } {
     let oldestCache: number | null = null;
     let oldestMemory: number | null = null;
@@ -205,11 +220,32 @@ export class ResearchMemoryService {
       }
     }
 
+    // Calculate hit rates
+    const hitRates = new Map<string, number>();
+    for (const [paradigm, stats] of this.cacheStats.entries()) {
+      const total = stats.hits + stats.misses;
+      const rate = total > 0 ? (stats.hits / total) * 100 : 0;
+      hitRates.set(paradigm, Math.round(rate));
+    }
+
     return {
       cacheSize: this.researchCache.size,
       memorySize: this.researchMemory.size,
       oldestCache,
-      oldestMemory
+      oldestMemory,
+      hitRates
     };
+  }
+
+  /**
+   * Get cache hit rate for a specific paradigm
+   */
+  getCacheHitRate(paradigm?: HostParadigm): number {
+    const statsKey = paradigm || 'general';
+    const stats = this.cacheStats.get(statsKey);
+    if (!stats) return 0;
+    
+    const total = stats.hits + stats.misses;
+    return total > 0 ? Math.round((stats.hits / total) * 100) : 0;
   }
 }
