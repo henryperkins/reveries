@@ -115,10 +115,10 @@ export class InterHostCollaborationService {
   ];
 
   private constructor(
-    private researchAgent: ResearchAgentService
+    private researchAgent: typeof ResearchAgentService
   ) {}
 
-  public static getInstance(researchAgent: ResearchAgentService): InterHostCollaborationService {
+  public static getInstance(researchAgent: typeof ResearchAgentService): InterHostCollaborationService {
     if (!InterHostCollaborationService.instance) {
       InterHostCollaborationService.instance = new InterHostCollaborationService(researchAgent);
     }
@@ -221,7 +221,7 @@ export class InterHostCollaborationService {
         'analytical',
         model,
         effort,
-        (msg) => onProgress?.(`[${request.toHost}] ${msg}`)
+        (msg: string) => onProgress?.(`[${request.toHost}] ${msg}`)
       );
 
       // Extract insights and recommendations

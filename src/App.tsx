@@ -24,7 +24,9 @@ import {
   ContextLayer,
   ResearchPhase,
   ModelType,
-  FunctionCallHistory
+  FunctionCallHistory,
+  ResearchResponse,
+  ContextDensity
 } from '@/types'
 import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
 import { DEFAULT_MODEL, TIMEOUTS } from '@/constants'
@@ -322,7 +324,17 @@ const App: React.FC = () => {
         console.error('Failed to check service availability:', e);
       }
 
-      let result;
+      let result: ResearchResponse & {
+        paradigmProbabilities?: ParadigmProbabilities;
+        contextDensity?: ContextDensity;
+        contextLayers?: ContextLayer[];
+        layerResults?: Record<string, any>;
+        synthesis?: string;
+        adaptiveMetadata?: {
+          blendedParadigms?: HostParadigm[];
+          [key: string]: any;
+        };
+      };
       try {
         result = await researchAgent.processQuery(
           input,

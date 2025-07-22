@@ -8,7 +8,7 @@ import { ResearchTaskService } from '../services/research/ResearchTaskService';
 import { ModelType, EffortType } from '../types';
 
 // Mock generateText function for example
-const mockGenerateText = async (prompt: string, model: ModelType, effort: EffortType) => {
+const mockGenerateText = async (_prompt: string, _model: ModelType, _effort: EffortType) => {
   return { text: "Mock response", sources: [] };
 };
 
@@ -34,7 +34,7 @@ export class ExaResearchExample {
     const simpleResult = await this.webResearch.performIntelligentResearch(
       simpleQuery,
       'gemini-2.5-flash',
-      'balanced',
+      EffortType.MEDIUM,
       mockGenerateText,
       (msg) => console.log(`  📋 ${msg}`)
     );
@@ -51,7 +51,7 @@ export class ExaResearchExample {
     const complexResult = await this.webResearch.performIntelligentResearch(
       complexQuery,
       'gemini-2.5-flash', 
-      'balanced',
+      EffortType.MEDIUM,
       mockGenerateText,
       (msg) => console.log(`  📋 ${msg}`)
     );

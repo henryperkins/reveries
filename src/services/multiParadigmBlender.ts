@@ -264,8 +264,7 @@ export class MultiParadigmBlender {
       adaptiveMetadata: {
         paradigm: strategy.primaryParadigm,
         blendedParadigms: strategy.paradigms,
-        blendingStrategy: 'sequential',
-        sequenceOrder: strategy.paradigms
+        blendingStrategy: 'sequential'
       }
     };
   }
@@ -439,8 +438,8 @@ export class MultiParadigmBlender {
   private deduplicateSources(sources: Citation[]): Citation[] {
     const seen = new Set<string>();
     return sources.filter(source => {
-      const key = source.url || source.title;
-      if (seen.has(key)) return false;
+      const key = source.url || source.title || '';
+      if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
     });

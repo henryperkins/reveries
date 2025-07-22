@@ -417,6 +417,10 @@ export class ResearchAgentService {
       // Apply learned adjustments from Phase 8
       paradigmProbs = this.paradigmLearning.getLearnedAdjustments(query, paradigmProbs);
 
+      // Get effort and phase early as they're needed for blending
+      const effort = metadata?.effort ?? EffortType.MEDIUM;
+      const phase = metadata?.phase ?? 'discovery';
+
       // Record interaction for learning
       this.currentInteractionId = this.paradigmLearning.recordInteraction(
         query,
@@ -453,10 +457,15 @@ export class ResearchAgentService {
 
           return {
             text: blendedResult.synthesis,
-            sources: blendedResult.sources,
+            sources: blendedResult.sources.map(s => ({
+              name: s.name || s.title || '',
+              url: s.url,
+              snippet: s.snippet || '',
+              relevanceScore: s.relevanceScore || 0
+            })),
             paradigmProbabilities: paradigmProbs,
-            contextDensity: this.contextEngineering.adaptContextDensity(phase, blendedResult.hostParadigm),
-            contextLayers: this.contextEngineering.getLayerSequence(blendedResult.hostParadigm),
+            contextDensity: this.contextEngineering.adaptContextDensity(phase, blendedResult.hostParadigm || 'bernard'),
+            contextLayers: this.contextEngineering.getLayerSequence(blendedResult.hostParadigm || 'bernard'),
             layerResults: {}
           };
         }
@@ -468,8 +477,6 @@ export class ResearchAgentService {
       console.log('✅ Single paradigm selected:', paradigm, paradigmProbs);
 
       // 2) Context‑density for phase
-      const phase = metadata?.phase ?? 'discovery';
-      const effort = metadata?.effort ?? EffortType.MEDIUM;
       const contextDensity = this.contextEngineering.adaptContextDensity(phase, paradigm);
 
       // 3) Layer sequence
@@ -588,7 +595,14 @@ export class ResearchAgentService {
 
             // Deduplicate sources before merging
             const existingUrls = new Set(response.sources.map(s => s.url));
-            const newSources = collabResponse.sources.filter(s => !existingUrls.has(s.url));
+            const newSources = collabResponse.sources
+              .filter(s => !existingUrls.has(s.url))
+              .map(s => ({
+                name: s.name || s.title || '',
+                url: s.url,
+                snippet: s.snippet || '',
+                relevanceScore: s.relevanceScore || 0
+              }));
             response.sources = [...response.sources, ...newSources];
           } catch (error) {
             console.warn(`Collaboration ${collab.id} failed:`, error);
