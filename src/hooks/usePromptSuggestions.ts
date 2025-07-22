@@ -46,11 +46,11 @@ export function usePromptSuggestions(
 
         // 2. Tool-based suggestions from research tools
         const queryType = analyzeQueryType(query);
-        const toolRecommendations = toolsService.recommendToolsForQuery(
+        const toolRecommendations = toolsService.getToolRecommendations(
           query,
           queryType
         );
-        toolRecommendations.slice(0, 2).forEach((tool) => {
+        toolRecommendations.slice(0, 2).forEach((tool: any) => {
           const suggestion = generateToolSuggestion(query, tool);
           if (suggestion) {
             allSuggestions.push({

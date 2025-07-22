@@ -132,7 +132,7 @@ export class MultiParadigmBlender {
     const sourceMap = new Map<string, { citation: Citation; weight: number }>();
 
     paradigmResults.forEach(({ result, weight }) => {
-      result.sources.forEach(source => {
+      result.sources.forEach((source: any) => {
         const key = source.url || source.title;
         const existing = sourceMap.get(key);
         if (existing) {
@@ -210,7 +210,7 @@ export class MultiParadigmBlender {
 
     let cumulativeContext = '';
     let allSources: Citation[] = [];
-    let lastResult: EnhancedResearchResults | null = null;
+    // let lastResult: EnhancedResearchResults | null = null;
 
     // Execute paradigms in sequence
     for (const paradigm of strategy.paradigms) {
@@ -233,7 +233,7 @@ export class MultiParadigmBlender {
       // Accumulate context
       cumulativeContext += `\n\n${paradigm.toUpperCase()} INSIGHTS:\n${result.synthesis}`;
       allSources = [...allSources, ...result.sources];
-      lastResult = result;
+      // lastResult = result;
     }
 
     // Final integration
@@ -342,12 +342,8 @@ export class MultiParadigmBlender {
       adaptiveMetadata: {
         paradigm: strategy.primaryParadigm,
         blendedParadigms: strategy.paradigms,
-        blendingStrategy: 'collaborative',
-        collaborativeTasks: collaborativeResults.map(r => ({
-          paradigm: r.paradigm,
-          subQuery: r.subQuery,
-          rationale: r.rationale
-        }))
+        blendingStrategy: 'collaborative'
+        // collaborativeTasks is not a valid property in adaptiveMetadata
       }
     };
   }

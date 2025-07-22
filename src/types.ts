@@ -233,7 +233,7 @@ export interface EnhancedResearchResults {
     };
     currentContextLayer?: ContextLayer;
     layerOutputs?: Record<string, unknown>;
-    
+
     /* Multi-paradigm blending support */
     blendedParadigms?: HostParadigm[];
     blendingStrategy?: string;

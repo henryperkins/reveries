@@ -3,7 +3,7 @@ import { HostParadigm, ModelType, EffortType, Citation } from '../types';
 import { ResearchAgentService } from './researchAgentServiceWrapper';
 import { WriteLayerService } from './contextLayers/writeLayer';
 
-interface CollaborationRequest {
+export interface CollaborationRequest {
   id: string;
   fromHost: HostParadigm;
   toHost: HostParadigm;
@@ -114,11 +114,16 @@ export class InterHostCollaborationService {
     }
   ];
 
-  private constructor(
-    private researchAgent: typeof ResearchAgentService
-  ) {}
+  private researchAgentInstance: ResearchAgentService;
 
-  public static getInstance(researchAgent: typeof ResearchAgentService): InterHostCollaborationService {
+  private constructor(
+      researchAgent: ResearchAgentService
+  ) {
+      this.researchAgentInstance = researchAgent;
+      this.writeLayer = WriteLayerService.getInstance();
+  }
+
+  public static getInstance(researchAgent: ResearchAgentService): InterHostCollaborationService {
     if (!InterHostCollaborationService.instance) {
       InterHostCollaborationService.instance = new InterHostCollaborationService(researchAgent);
     }
@@ -215,11 +220,11 @@ export class InterHostCollaborationService {
       `;
 
       // Execute specialized research
-      const response = await this.researchAgent.performHostBasedResearch(
+      const response = await this.researchAgentInstance.performHostBasedResearch(
         collaborationPrompt,
         request.toHost,
         'analytical',
-        model,
+        model as ModelType,
         effort,
         (msg: string) => onProgress?.(`[${request.toHost}] ${msg}`)
       );
@@ -390,7 +395,16 @@ export class InterHostCollaborationService {
     recommendations: string[];
   } {
     const pairCounts = new Map<string, { count: number; successful: number }>();
-    const reasonCounts: Record<CollaborationReason, number> = {} as any;
+    const reasonCounts: Record<CollaborationReason, number> = {
+        expertise_needed: 0,
+        validation_required: 0,
+        synthesis_help: 0,
+        strategy_consult: 0,
+        implementation_gap: 0,
+        analysis_depth: 0,
+        protection_check: 0,
+        creativity_boost: 0
+    };
     let totalConfidenceGain = 0;
     let gainCount = 0;
 
@@ -464,14 +478,13 @@ export class InterHostCollaborationService {
    */
   private async determineCollaborationReason(
     fromHost: HostParadigm,
-    toHost: HostParadigm,
+    _toHost: HostParadigm,
     query: string,
-    context: string,
+    _context: string,
     possibleReasons: CollaborationReason[]
   ): Promise<CollaborationReason | null> {
     // Analyze query and context to determine the most appropriate reason
     const queryLower = query.toLowerCase();
-    const contextLower = context.toLowerCase();
 
     for (const reason of possibleReasons) {
       switch (reason) {
@@ -599,7 +612,7 @@ export class InterHostCollaborationService {
       Format as a JSON array of strings.
     `;
 
-    const response = await this.researchAgent.generateText(prompt, model, effort);
+    const response = await this.researchAgentInstance.generateText(prompt, model, effort);
 
     try {
       const jsonMatch = response.text.match(/\[[\s\S]*\]/);

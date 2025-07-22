@@ -1,4 +1,4 @@
-import { EffortType } from '@/types';
+import { EffortType, ModelType } from '@/types';
 import { FunctionCall, FunctionDefinition } from './functionCallingService';
 import { RateLimiter } from './rateLimiter';
 
@@ -76,7 +76,7 @@ export class ResearchToolsService {
       execute: async (args: any) => {
         console.log('🔍 Executing search_web with args:', args);
         try {
-          const { SearchProviderService } = await import('./search/SearchProviderService');
+          const { SearchProviderService } = await import('./providers/SearchProviderService');
           const searchService = SearchProviderService.getInstance();
           const results = await searchService.search(args.query, { maxResults: args.num_results || 10 });
           return {
@@ -107,7 +107,7 @@ export class ResearchToolsService {
       execute: async (args: any) => {
         console.log('📚 Executing search_academic_papers with args:', args);
         try {
-          const { SearchProviderService } = await import('./search/SearchProviderService');
+          const { SearchProviderService } = await import('./providers/SearchProviderService');
           const searchService = SearchProviderService.getInstance();
 
           // Add academic search modifiers
@@ -167,7 +167,7 @@ export class ResearchToolsService {
               prompt = `Analyze the following text and provide insights:\n\n${args.text}`;
           }
 
-          const result = await modelProvider.generateText(prompt, 'grok-4' as ModelType, EffortType.MEDIUM);
+          const result = await modelProvider.generateText(prompt, 'gpt-4o-mini', 'medium');
           return {
             analysis_type: args.analysis_type,
             result: result.text,
@@ -206,7 +206,7 @@ export class ResearchToolsService {
           }[args.length] || 'in 1-2 paragraphs';
 
           const prompt = `Summarize the following document ${lengthInstruction}:\n\n${args.content}`;
-          const result = await modelProvider.generateText(prompt, 'grok-4' as ModelType, EffortType.MEDIUM);
+          const result = await modelProvider.generateText(prompt, 'gpt-4o-mini', 'medium');
 
           return {
             summary: result.text,
@@ -266,7 +266,7 @@ export class ResearchToolsService {
       throw new Error(`Tool not found: ${call.name}`);
     }
 
-    await this.rateLimiter.waitForCapacity(100); // Default token estimate for tool execution
+    await this.rateLimiter.waitForCapacity();
 
     try {
       const result = await tool.execute(call.arguments);

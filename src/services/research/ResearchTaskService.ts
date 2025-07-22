@@ -3,7 +3,7 @@
  * Manages asynchronous research tasks using Exa's research API
  */
 
-import { ModelType, EffortType, Citation } from '@/types';
+import { Citation } from '@/types';
 import { ExaResearchTask, ExaResearchTaskList } from '../search/SearchProviderService';
 
 export interface ResearchTaskOptions {
@@ -170,7 +170,7 @@ export class ResearchTaskService {
     const result = await exa.listResearchTasks(options);
     
     // Update local cache
-    result.data.forEach(task => {
+    result.data.forEach((task: any) => {
       this.activeTasks.set(task.id, task);
     });
 

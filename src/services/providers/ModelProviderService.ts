@@ -409,7 +409,7 @@ export class ModelProviderService {
       }
       if (useFunctions || useResearchTools) {
         const functionDefs = this.functionCallingService.getFunctionDefinitions();
-        const researchToolDefs = useResearchTools ? this.researchToolsService.getToolDefinitions() : [];
+        const researchToolDefs = useResearchTools ? this.researchToolsService.getFunctionDefinitions() : [];
         tools.push({
           functionDeclarations: [...functionDefs, ...researchToolDefs].map(fn => ({
             name: fn.name,
