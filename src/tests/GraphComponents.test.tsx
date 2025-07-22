@@ -80,7 +80,7 @@ describe('GraphLayoutEngine', () => {
       // Check that spacing is reduced for large number of nodes
       const sortedNodes = result.nodes.sort((a, b) => a.x - b.x);
       const spacing = sortedNodes[1].x - sortedNodes[0].x;
-      
+
       // Should be less than the base spacing of 250px
       expect(spacing).toBeLessThan(250);
       expect(spacing).toBeGreaterThanOrEqual(180); // Minimum spacing
@@ -147,7 +147,7 @@ describe('GraphLayoutEngine', () => {
 
       // First call
       const result1 = layoutEngine.layoutGraph(nodes, []);
-      
+
       // Second call with same data should return cached result
       const result2 = layoutEngine.layoutGraph(nodes, []);
 
@@ -202,7 +202,7 @@ describe('ResearchGraphManager', () => {
       const nodeData = {
         type: ResearchStepType.USER_QUERY,
         title: 'Test Query',
-        parentId: null
+        parentId: undefined
       };
 
       const nodeId = await graphManager.addNode(nodeData);
@@ -218,7 +218,7 @@ describe('ResearchGraphManager', () => {
       const parentId = await graphManager.addNode({
         type: ResearchStepType.USER_QUERY,
         title: 'Parent',
-        parentId: null
+        parentId: undefined
       });
 
       const childId = await graphManager.addNode({
@@ -257,13 +257,13 @@ describe('ResearchGraphManager', () => {
       await graphManager.addNode({
         type: ResearchStepType.USER_QUERY,
         title: 'Query 1',
-        parentId: null
+        parentId: undefined
       });
 
       await graphManager.addNode({
         type: ResearchStepType.WEB_RESEARCH,
         title: 'Research 1',
-        parentId: null
+        parentId: undefined
       });
 
       const stats = graphManager.getStatistics();
@@ -293,7 +293,7 @@ describe('ResearchGraphManager', () => {
       await graphManager.addNode({
         type: ResearchStepType.USER_QUERY,
         title: 'Test',
-        parentId: null
+        parentId: undefined
       });
 
       expect(eventListener).toHaveBeenCalled();
@@ -310,7 +310,7 @@ describe('ResearchGraphManager', () => {
       await graphManager.addNode({
         type: ResearchStepType.USER_QUERY,
         title: 'Test',
-        parentId: null
+        parentId: undefined
       });
 
       expect(listener1).toHaveBeenCalled();
@@ -326,7 +326,7 @@ describe('ResearchGraphManager', () => {
       await graphManager.addNode({
         type: ResearchStepType.USER_QUERY,
         title: 'Test Query',
-        parentId: null
+        parentId: undefined
       });
 
       const exportData = graphManager.exportForVisualization();
@@ -428,7 +428,7 @@ describe('GraphErrorBoundary', () => {
 describe('GraphContextProvider', () => {
   test('should provide graph context', () => {
     const graphManager = new ResearchGraphManager();
-    
+
     const TestComponent = () => {
       return <div>Test</div>;
     };
@@ -466,7 +466,7 @@ describe('Graph Integration', () => {
     const queryId = await graphManager.addNode({
       type: ResearchStepType.USER_QUERY,
       title: 'What is AI?',
-      parentId: null
+      parentId: undefined
     });
 
     const researchId = await graphManager.addNode({
