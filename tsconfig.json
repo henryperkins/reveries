@@ -47,9 +47,9 @@
   "include": [
     "src/**/*",
     "index.tsx",
-    "test-azure-integration.ts",
-    "test-azure-o3-agentic.js",
-    "test-multi-paradigm.js",
+    "src/tests/test-azure-integration.ts",
+    "src/tests/test-azure-o3-agentic.js",
+    "src/tests/test-multi-paradigm.js",
     "api/**/*",
     "docs/**/*.ts",
     "workflows-starter/src/**/*"

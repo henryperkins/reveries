@@ -1,8 +1,8 @@
 // Quick test to verify Azure O3 integration with agentic tools
 
-import { ModelProviderService } from './src/services/providers/ModelProviderService';
-import { AzureOpenAIService } from './src/services/azureOpenAIService';
-import { AZURE_O3_MODEL, EffortType } from './src/types';
+import { ModelProviderService } from '../services/providers/ModelProviderService';
+import { AzureOpenAIService } from '../services/azureOpenAIService';
+import { AZURE_O3_MODEL, EffortType } from '../types';
 
 async function testAzureO3Integration() {
   console.log('Testing Azure O3 Integration...\n');
@@ -23,7 +23,7 @@ async function testAzureO3Integration() {
     // Get Azure service instance to check available tools
     const azureService = AzureOpenAIService.getInstance();
     const availableTools = azureService.getAvailableResearchTools();
-    
+
     console.log(`\nAvailable research tools: ${availableTools.length}`);
     availableTools.forEach((tool, index) => {
       console.log(`  ${index + 1}. ${tool.function.name}: ${tool.function.description}`);
@@ -31,7 +31,7 @@ async function testAzureO3Integration() {
 
     // Test with ModelProviderService
     const modelProvider = ModelProviderService.getInstance();
-    
+
     console.log('\n\nTesting basic query without tools...');
     const simpleResult = await modelProvider.generateText(
       'What is the capital of France?',
@@ -39,7 +39,7 @@ async function testAzureO3Integration() {
       EffortType.LOW,
       (progress) => console.log(`  Progress: ${progress}`)
     );
-    
+
     console.log('\nResult:', simpleResult.text.substring(0, 200));
     console.log('Sources:', simpleResult.sources?.length || 0);
 
@@ -50,7 +50,7 @@ async function testAzureO3Integration() {
       EffortType.HIGH,
       (progress) => console.log(`  Progress: ${progress}`)
     );
-    
+
     console.log('\nResult:', researchResult.text.substring(0, 200));
     console.log('Sources found:', researchResult.sources?.length || 0);
     if (researchResult.sources && researchResult.sources.length > 0) {
