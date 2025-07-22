@@ -9,7 +9,7 @@
   }
 
   .btn-primary {
-    @apply bg-westworld-gold text-westworld-nearblack;
+    @apply bg-westworld-gold text-westworld-nearBlack;
     @apply hover:bg-westworld-rust hover:shadow-lg;
     @apply focus:ring-westworld-gold;
   }
@@ -22,7 +22,7 @@
 
   .btn-ghost {
     @apply bg-transparent text-westworld-brown border border-westworld-tan;
-    @apply hover:bg-westworld-tan hover:text-westworld-nearblack;
+    @apply hover:bg-westworld-tan hover:text-westworld-nearBlack;
     @apply focus:ring-westworld-tan;
   }
 
@@ -79,7 +79,7 @@
 
   .input-field {
     @apply w-full px-4 py-2 bg-westworld-cream border border-westworld-tan rounded-md;
-    @apply text-westworld-nearblack placeholder-westworld-brown/50;
+    @apply text-westworld-nearBlack placeholder-westworld-brown placeholder-opacity-50;
     @apply focus:outline-none focus:ring-2 focus:ring-westworld-gold focus:border-transparent;
     @apply transition-all duration-200;
   }
@@ -110,11 +110,11 @@
   }
 
   .badge-primary {
-    @apply bg-westworld-gold/20 text-westworld-brown;
+    @apply bg-westworld-gold bg-opacity-20 text-westworld-brown;
   }
 
   .badge-secondary {
-    @apply bg-westworld-copper/20 text-westworld-brown;
+    @apply bg-westworld-copper bg-opacity-20 text-westworld-brown;
   }
 
   .badge-success {
@@ -126,12 +126,12 @@
   }
 
   .badge-danger {
-    @apply bg-westworld-rust/20 text-westworld-rust;
+    @apply bg-westworld-rust bg-opacity-20 text-westworld-rust;
   }
 
   /* ===== MODALS ===== */
   .modal-overlay {
-    @apply fixed inset-0 bg-westworld-nearblack/50 backdrop-blur-sm;
+    @apply fixed inset-0 bg-westworld-nearBlack bg-opacity-50 backdrop-blur-sm;
     @apply flex items-center justify-center p-4;
     z-index: var(--z-modal-backdrop);
   }
@@ -182,13 +182,13 @@
   /* ===== NAVIGATION ===== */
   .nav-link {
     @apply px-3 py-2 text-sm font-medium rounded-md;
-    @apply text-westworld-brown hover:text-westworld-nearblack;
-    @apply hover:bg-westworld-tan/50;
+    @apply text-westworld-brown hover:text-westworld-nearBlack;
+    @apply hover:bg-westworld-tan hover:bg-opacity-50;
     @apply transition-all duration-200;
   }
 
   .nav-link-active {
-    @apply bg-westworld-tan text-westworld-nearblack;
+    @apply bg-westworld-tan text-westworld-nearBlack;
   }
 
   .breadcrumb {
@@ -228,7 +228,7 @@
 
   /* ===== TOOLTIPS ===== */
   .tooltip {
-    @apply absolute bg-westworld-nearblack text-westworld-cream;
+    @apply absolute bg-westworld-nearBlack text-westworld-cream;
     @apply px-2 py-1 text-xs rounded;
     @apply shadow-lg;
     z-index: var(--z-tooltip);
@@ -241,7 +241,7 @@
   }
 
   .tooltip-top .tooltip-arrow {
-    @apply border-t-westworld-nearblack;
+    @apply border-t-westworld-nearBlack;
     @apply -bottom-2 left-1/2 -translate-x-1/2;
   }
 

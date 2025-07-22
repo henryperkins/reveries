@@ -46,7 +46,7 @@ export const ResearchArea: React.FC<ResearchAreaProps> = ({ steps }) => {
             if (isFinalAnswer) {
               return (
                 <div key={step.id} className="mt-8 p-6 bg-gradient-to-r from-westworld-gold/10 to-transparent rounded-lg border-l-4 border-westworld-gold">
-                  <h3 className="text-xl font-bold text-westworld-darkbrown mb-2">
+                  <h3 className="text-xl font-bold text-westworld-darkBrown mb-2">
                     Research Complete
                   </h3>
                   <ResearchStepCard

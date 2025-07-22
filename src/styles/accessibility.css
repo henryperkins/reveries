@@ -48,7 +48,7 @@
 /* ===== SKIP LINKS ===== */
 .skip-link {
   @apply absolute left-0 top-0 z-max;
-  @apply bg-westworld-gold text-westworld-nearblack;
+  @apply bg-westworld-gold text-westworld-nearBlack;
   @apply px-4 py-2 rounded-br-lg font-medium;
   @apply transform -translate-y-full;
   @apply transition-transform duration-200;
@@ -196,7 +196,7 @@
   }
 
   .form-group-accessible label {
-    @apply block font-medium text-westworld-nearblack;
+    @apply block font-medium text-westworld-nearBlack;
     cursor: pointer;
   }
 
@@ -206,7 +206,7 @@
   }
 
   legend {
-    @apply px-2 font-semibold text-westworld-nearblack;
+    @apply px-2 font-semibold text-westworld-nearBlack;
   }
 }
 
@@ -270,7 +270,7 @@
 
   /* Tab order helpers */
   .tab-highlight:focus {
-    @apply bg-westworld-gold/10;
+    @apply bg-westworld-gold bg-opacity-10;
   }
 }
 
@@ -365,7 +365,7 @@
   }
 
   a:not(.btn):visited {
-    @apply text-westworld-darkbrown;
+    @apply text-westworld-darkBrown;
   }
 
   /* External link indicator */

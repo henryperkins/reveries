@@ -131,7 +131,7 @@ export const InputBar: React.FC<InputBarProps> = ({
           <div className="relative flex items-end gap-2">
           {/* Suggestion indicator */}
           {(suggestions.length > 0 || suggestionsLoading) && (
-            <div className="absolute top-2 right-12 text-westworld-darkbrown/60">
+            <div className="absolute top-2 right-12 text-westworld-darkBrown/60">
               <LightBulbIcon
                 className={`w-4 h-4 ${
                   suggestionsLoading ? 'animate-pulse' : ''

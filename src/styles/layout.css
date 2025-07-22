@@ -9,7 +9,7 @@
   
   .app-header {
     @apply fixed top-0 left-0 right-0;
-    @apply bg-westworld-cream/95 backdrop-blur-sm;
+    @apply bg-westworld-cream bg-opacity-95 backdrop-blur-sm;
     @apply border-b border-westworld-tan;
     @apply shadow-sm;
     z-index: var(--z-sticky);
@@ -21,7 +21,7 @@
   }
   
   .app-footer {
-    @apply bg-westworld-nearblack text-westworld-cream;
+    @apply bg-westworld-nearBlack text-westworld-cream;
     @apply py-8 mt-auto;
   }
   
@@ -100,12 +100,12 @@
   
   /* ===== OVERLAYS ===== */
   .overlay-dark {
-    @apply fixed inset-0 bg-westworld-nearblack/50;
+    @apply fixed inset-0 bg-westworld-nearBlack bg-opacity-50;
     z-index: var(--z-modal-backdrop);
   }
   
   .overlay-light {
-    @apply fixed inset-0 bg-westworld-cream/80;
+    @apply fixed inset-0 bg-westworld-cream bg-opacity-80;
     z-index: var(--z-modal-backdrop);
   }
   

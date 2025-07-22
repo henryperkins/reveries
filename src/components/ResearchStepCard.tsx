@@ -33,30 +33,30 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
         animate: true
       },
       [ResearchStepType.GENERATING_QUERIES]: {
-        iconColor: 'text-westworld-darkbrown',
-        borderColor: 'border-westworld-darkbrown/30',
-        bgGradient: 'from-westworld-darkbrown/5 to-transparent',
+        iconColor: 'text-westworld-darkBrown',
+        borderColor: 'border-westworld-darkBrown/30',
+        bgGradient: 'from-westworld-darkBrown/5 to-transparent',
         glowColor: '',
         animate: false
       },
       [ResearchStepType.WEB_RESEARCH]: {
-        iconColor: 'text-westworld-darkbrown',
-        borderColor: 'border-westworld-darkbrown/30',
-        bgGradient: 'from-westworld-darkbrown/5 to-transparent',
+        iconColor: 'text-westworld-darkBrown',
+        borderColor: 'border-westworld-darkBrown/30',
+        bgGradient: 'from-westworld-darkBrown/5 to-transparent',
         glowColor: '',
         animate: false
       },
       [ResearchStepType.REFLECTION]: {
-        iconColor: 'text-westworld-darkbrown',
-        borderColor: 'border-westworld-darkbrown/30',
-        bgGradient: 'from-westworld-darkbrown/5 to-transparent',
+        iconColor: 'text-westworld-darkBrown',
+        borderColor: 'border-westworld-darkBrown/30',
+        bgGradient: 'from-westworld-darkBrown/5 to-transparent',
         glowColor: '',
         animate: false
       },
       [ResearchStepType.SEARCHING_FINAL_ANSWER]: {
-        iconColor: 'text-westworld-darkbrown',
-        borderColor: 'border-westworld-darkbrown/30',
-        bgGradient: 'from-westworld-darkbrown/5 to-transparent',
+        iconColor: 'text-westworld-darkBrown',
+        borderColor: 'border-westworld-darkBrown/30',
+        bgGradient: 'from-westworld-darkBrown/5 to-transparent',
         glowColor: '',
         animate: false
       },
@@ -75,9 +75,9 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
         animate: false
       },
       [ResearchStepType.ANALYTICS]: {
-        iconColor: 'text-westworld-darkbrown',
-        borderColor: 'border-westworld-darkbrown/30',
-        bgGradient: 'from-westworld-darkbrown/5 to-transparent',
+        iconColor: 'text-westworld-darkBrown',
+        borderColor: 'border-westworld-darkBrown/30',
+        bgGradient: 'from-westworld-darkBrown/5 to-transparent',
         glowColor: '',
         animate: false
       }
@@ -105,7 +105,7 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
       <div className="absolute inset-0 opacity-5">
         <div className="absolute inset-0" style={{
           backgroundImage: `radial-gradient(circle at 20% 80%, var(--westworld-gold) 0%, transparent 50%),
-                           radial-gradient(circle at 80% 20%, var(--westworld-darkbrown) 0%, transparent 50%)`,
+                           radial-gradient(circle at 80% 20%, var(--westworld-darkBrown) 0%, transparent 50%)`,
         }} />
       </div>
 
@@ -126,17 +126,17 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-westworld-darkbrown mb-3 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-westworld-darkBrown mb-3 flex items-center justify-between">
             <span>{step.title}</span>
             {step.type === ResearchStepType.FINAL_ANSWER && (
-              <span className="text-xs px-2 py-1 bg-westworld-gold/20 text-westworld-darkbrown rounded-full font-medium">
+              <span className="text-xs px-2 py-1 bg-westworld-gold/20 text-westworld-darkBrown rounded-full font-medium">
                 Narrative Complete
               </span>
             )}
           </h3>
           <div className="text-westworld-rust space-y-3">
             {typeof step.content === 'string' ? (
-              <div className="prose prose-sm max-w-none prose-headings:text-westworld-darkbrown prose-a:text-westworld-gold hover:prose-a:text-westworld-rust">
+              <div className="prose prose-sm max-w-none prose-headings:text-westworld-darkBrown prose-a:text-westworld-gold hover:prose-a:text-westworld-rust">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {step.content}
                 </ReactMarkdown>
@@ -157,7 +157,7 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
 
           {/* Sources section with Westworld-themed styling */}
           {step.sources && step.sources.length > 0 && (
-            <div className="mt-4 p-3 bg-westworld-darkbrown/5 rounded-md border border-westworld-gold/20">
+            <div className="mt-4 p-3 bg-westworld-darkBrown/5 rounded-md border border-westworld-gold/20">
               <p className="text-xs font-medium text-westworld-gold mb-2 uppercase tracking-wide">
                 Memory Fragments ({step.sources.length})
               </p>

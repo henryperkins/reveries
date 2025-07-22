@@ -86,7 +86,7 @@
 
     /* Card backgrounds */
     .card {
-      @apply bg-westworld-beige border-westworld-tan/30;
+      @apply bg-westworld-beige border-westworld-tan border-opacity-30;
       @apply shadow-md;
     }
 
@@ -94,9 +94,9 @@
     .input,
     .textarea,
     .select {
-      @apply bg-westworld-tan/20 border-westworld-tan/50;
-      @apply text-westworld-nearBlack placeholder-westworld-copper/50;
-      @apply focus:border-westworld-gold focus:ring-westworld-gold/20;
+      @apply bg-westworld-tan bg-opacity-20 border-westworld-tan border-opacity-50;
+      @apply text-westworld-nearBlack placeholder-westworld-copper placeholder-opacity-50;
+      @apply focus:border-westworld-gold focus:ring-westworld-gold focus:ring-opacity-20;
     }
 
     /* Button adjustments */
@@ -107,20 +107,20 @@
     }
 
     .btn-secondary {
-      @apply bg-westworld-tan/30 border-westworld-copper/50 text-westworld-nearBlack;
-      @apply hover:bg-westworld-tan/50 hover:border-westworld-copper;
+      @apply bg-westworld-tan bg-opacity-30 border-westworld-copper border-opacity-50 text-westworld-nearBlack;
+      @apply hover:bg-westworld-tan hover:bg-opacity-50 hover:border-westworld-copper;
     }
 
     .btn-ghost {
       @apply text-westworld-nearBlack;
-      @apply hover:bg-westworld-tan/20;
+      @apply hover:bg-westworld-tan hover:bg-opacity-20;
     }
 
     /* Code blocks */
     .code-block,
     pre,
     code {
-      @apply bg-westworld-black/10 border-westworld-tan/30;
+      @apply bg-westworld-black bg-opacity-10 border-westworld-tan border-opacity-30;
       @apply text-westworld-nearBlack;
     }
 
@@ -139,8 +139,8 @@
     }
 
     ::-webkit-scrollbar-thumb {
-      @apply bg-westworld-gold/30 rounded-full;
-      @apply hover:bg-westworld-gold/50;
+      @apply bg-westworld-gold bg-opacity-30 rounded-full;
+      @apply hover:bg-westworld-gold hover:bg-opacity-50;
     }
 
     /* Focus states */
@@ -151,7 +151,7 @@
 
     /* Selection */
     ::selection {
-      @apply bg-westworld-gold/30 text-westworld-black;
+      @apply bg-westworld-gold bg-opacity-30 text-westworld-black;
     }
   }
 
@@ -175,7 +175,7 @@
 
   .dark .theme-toggle,
   [data-theme="dark"] .theme-toggle {
-    @apply bg-westworld-gold/30;
+    @apply bg-westworld-gold bg-opacity-30;
   }
 
   .dark .theme-toggle-thumb,

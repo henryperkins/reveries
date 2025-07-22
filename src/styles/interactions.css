@@ -2,7 +2,7 @@
 @layer components {
   /* Loading States */
   .skeleton {
-    @apply relative overflow-hidden bg-westworld-tan/20;
+    @apply relative overflow-hidden bg-westworld-tan bg-opacity-20;
     background: linear-gradient(
       90deg,
       var(--color-westworld-tan) 0%,
@@ -46,7 +46,7 @@
 
   /* Progress Indicators */
   .progress-bar {
-    @apply relative h-2 bg-westworld-tan/30 rounded-full overflow-hidden;
+    @apply relative h-2 bg-westworld-tan bg-opacity-30 rounded-full overflow-hidden;
   }
 
   .progress-bar-fill {
@@ -171,7 +171,7 @@
   }
 
   .tooltip-content {
-    @apply absolute z-50 px-3 py-2 text-sm text-westworld-cream bg-westworld-nearblack rounded-md;
+    @apply absolute z-50 px-3 py-2 text-sm text-westworld-cream bg-westworld-nearBlack rounded-md;
     @apply opacity-0 invisible transition-all duration-200;
     @apply -translate-y-1;
     white-space: nowrap;
@@ -236,7 +236,7 @@
 
   /* Selection Styles */
   ::selection {
-    @apply bg-westworld-gold/30 text-westworld-nearblack;
+    @apply bg-westworld-gold bg-opacity-30 text-westworld-nearBlack;
   }
 
   /* Custom Scrollbar */
@@ -250,12 +250,12 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-westworld-tan/20 rounded-full;
+    @apply bg-westworld-tan bg-opacity-20 rounded-full;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-westworld-gold/50 rounded-full;
-    @apply hover:bg-westworld-gold/70;
+    @apply bg-westworld-gold bg-opacity-50 rounded-full;
+    @apply hover:bg-westworld-gold hover:bg-opacity-70;
   }
 
   /* Reduced Motion Support */

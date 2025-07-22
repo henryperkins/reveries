@@ -41,7 +41,7 @@ export const RateLimitIndicator: React.FC<{ intervalMs?: number }> = ({
   const barWidth = Math.min(100, Math.max(0, 100 - stats.tokenCapacityPercent));
 
   return (
-    <div className="mt-4 flex flex-col items-center text-sm text-westworld-darkbrown">
+    <div className="mt-4 flex flex-col items-center text-sm text-westworld-darkBrown">
       <div className="flex gap-4">
         <span>Req/min: {stats.requestsLastMinute}</span>
         <span>Tokens/min: {stats.tokensUsedLastMinute}</span>

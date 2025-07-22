@@ -276,7 +276,7 @@
   }
 
   .text-westworld-brown {
-    @apply text-westworld-nearblack;
+    @apply text-westworld-nearBlack;
   }
 }
 

@@ -1,0 +1,38 @@
+name: 'Accessibility & Responsive Design'
+on:
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  accessibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Verify Node.js version
+        run: |
+          node -e "const v=process.versions.node.split('.')[0]; 
+          if(v<20){console.error('Node.js version 20 or higher required'); process.exit(1)}"
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build project
+        run: |
+          echo "VITE_GEMINI_API_KEY=dummy" > .env.local
+          echo "VITE_XAI_API_KEY=dummy" >> .env.local
+          echo "VITE_AZURE_OPENAI_API_KEY=dummy" >> .env.local
+          echo "VITE_AZURE_OPENAI_ENDPOINT=https://dummy.openai.azure.com" >> .env.local
+          echo "VITE_EXA_API_KEY=dummy" >> .env.local
+          npm run build
+      
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          configPath: './.lighthouserc.json'
+          uploadArtifacts: true

@@ -45,12 +45,12 @@
   }
 
   .session-active {
-    @apply border-westworld-gold bg-westworld-gold/10;
+    @apply border-westworld-gold bg-westworld-gold bg-opacity-10;
   }
 
   /* Message styles */
   .message-user {
-    @apply bg-westworld-tan/20 rounded-lg p-4;
+    @apply bg-westworld-tan bg-opacity-20 rounded-lg p-4;
     @apply border-l-4 border-westworld-copper;
   }
 
@@ -61,7 +61,7 @@
 
   /* Code block styles */
   .code-block {
-    @apply bg-westworld-nearblack text-westworld-cream;
+    @apply bg-westworld-nearBlack text-westworld-cream;
     @apply rounded-md p-4 overflow-x-auto;
     @apply font-mono text-sm;
   }
