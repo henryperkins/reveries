@@ -2,8 +2,8 @@
  * Generate human-readable descriptions for function calls based on their name and arguments
  */
 
-export function getFunctionDescription(functionName: string, args?: Record<string, any>): string {
-  const descriptions: Record<string, (_args: any) => string> = {
+export function getFunctionDescription(functionName: string, args?: Record<string, unknown>): string {
+  const descriptions: Record<string, (_args: Record<string, unknown>) => string> = {
     // Search functions
     'web_search': (args) => `Searching the web for: "${args.query || 'information'}"`,
     'google_search': (args) => `Searching Google for: "${args.query || 'information'}"`,
@@ -11,37 +11,37 @@ export function getFunctionDescription(functionName: string, args?: Record<strin
     'academic_search': (args) => `Searching academic papers for: "${args.query || 'research'}"`,
     
     // Analysis functions
-    'query_analysis': (_args) => `Analyzing the query to understand intent and requirements`,
-    'paradigm_classification': (_args) => `Classifying query into research paradigms (analytical, narrative, etc.)`,
+    'query_analysis': () => `Analyzing the query to understand intent and requirements`,
+    'paradigm_classification': () => `Classifying query into research paradigms (analytical, narrative, etc.)`,
     'paradigm_routing': (args) => `Routing query to appropriate research paradigm: ${args.paradigm || 'best match'}`,
-    'strategy_selection': (_args) => `Selecting optimal research strategy for this query`,
+    'strategy_selection': () => `Selecting optimal research strategy for this query`,
     
     // Evaluation functions
-    'quality_evaluation': (_args) => `Evaluating the quality and reliability of research findings`,
-    'fact_verification': (_args) => `Verifying facts and claims against reliable sources`,
-    'source_validation': (_args) => `Validating the credibility of information sources`,
+    'quality_evaluation': () => `Evaluating the quality and reliability of research findings`,
+    'fact_verification': () => `Verifying facts and claims against reliable sources`,
+    'source_validation': () => `Validating the credibility of information sources`,
     
     // Synthesis functions
-    'synthesis_engine': (_args) => `Synthesizing research findings into a comprehensive answer`,
-    'content_compression': (_args) => `Compressing and summarizing key insights`,
-    'narrative_generation': (_args) => `Generating a coherent narrative from research data`,
+    'synthesis_engine': () => `Synthesizing research findings into a comprehensive answer`,
+    'content_compression': () => `Compressing and summarizing key insights`,
+    'narrative_generation': () => `Generating a coherent narrative from research data`,
     
     // Context engineering
-    'context_write': (_args) => `Writing key insights to context memory`,
+    'context_write': () => `Writing key insights to context memory`,
     'context_select': (args) => `Selecting relevant context for query: "${args.query || 'current topic'}"`,
-    'context_compress': (_args) => `Compressing context to optimize information density`,
+    'context_compress': () => `Compressing context to optimize information density`,
     'context_isolate': (args) => `Isolating specific context relevant to: "${args.topic || 'query'}"`,
     
     // Model-specific
-    'azure_ai_agent': (_args) => `Using Azure AI Agent with Bing grounding for enhanced research`,
-    'grok_search': (_args) => `Using Grok with live X/Twitter data for real-time insights`,
-    'gemini_research': (_args) => `Using Google Gemini for comprehensive research`,
+    'azure_ai_agent': () => `Using Azure AI Agent with Bing grounding for enhanced research`,
+    'grok_search': () => `Using Grok with live X/Twitter data for real-time insights`,
+    'gemini_research': () => `Using Google Gemini for comprehensive research`,
     
     // Tool-specific descriptions
     'calculate': (args) => `Calculating: ${args.expression || 'mathematical expression'}`,
-    'verify_facts': (_args) => `Cross-referencing facts with reliable sources`,
-    'format_citations': (args) => `Formatting ${args.sources?.length || 'research'} sources in ${args.style || 'standard'} style`,
-    'extract_entities': (_args) => `Extracting key entities and concepts from text`,
+    'verify_facts': () => `Cross-referencing facts with reliable sources`,
+    'format_citations': (args) => `Formatting ${(args.sources as { length?: number })?.length || 'research'} sources in ${args.style || 'standard'} style`,
+    'extract_entities': () => `Extracting key entities and concepts from text`,
     'summarize_text': (args) => `Summarizing text to ${args.length || 'concise'} length`,
     
     // Research tools
@@ -51,7 +51,7 @@ export function getFunctionDescription(functionName: string, args?: Record<strin
     'patent_search': (args) => `Searching patents related to: "${args.query || 'innovation'}"`,
     
     // Default fallback
-    'default': (_args) => `Processing request with specialized tools`
+    'default': () => `Processing request with specialized tools`
   };
 
   // Get the description function or use default
@@ -59,7 +59,7 @@ export function getFunctionDescription(functionName: string, args?: Record<strin
   
   try {
     return descriptionFn(args || {});
-  } catch (error) {
+  } catch {
     // Fallback if description function fails
     return `Executing ${functionName.replace(/_/g, ' ')}`;
   }

@@ -1,8 +1,8 @@
 // <docs-tag name="simple-workflow-example">
 import { WorkflowEntrypoint, WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 
-interface Env {}
-type Params = {};
+interface Env extends Record<string, unknown> {}
+type Params = Record<string, unknown>;
 
 // Create your own class that implements a Workflow
 export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
@@ -16,6 +16,7 @@ export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
 		await step.do('my second step', async () => {
 			for (const data of state) {
 				// Do something with your state
+				console.log('Processing:', data);
 			}
 		});
 	}

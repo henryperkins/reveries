@@ -249,10 +249,10 @@ export const designSystem = {
 // Helper function to get CSS variables
 export const getCSSVariable = (path: string) => {
   const keys = path.split('.');
-  let value: any = designSystem;
+  let value: unknown = designSystem;
   
   for (const key of keys) {
-    value = value[key];
+    value = (value as Record<string, unknown>)[key];
     if (value === undefined) return undefined;
   }
   

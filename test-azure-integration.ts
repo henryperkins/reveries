@@ -58,13 +58,14 @@ async function testAzureO3Integration() {
     }
 
     console.log('\n✅ Azure O3 integration test completed successfully!');
-  } catch (error: any) {
-    console.error('\n❌ Test failed:', error.message);
-    if (error.code) {
-      console.error('Error code:', error.code);
+  } catch (error: unknown) {
+    const errorObj = error as { message?: string; code?: string; statusCode?: number };
+    console.error('\n❌ Test failed:', errorObj.message || 'Unknown error');
+    if (errorObj.code) {
+      console.error('Error code:', errorObj.code);
     }
-    if (error.statusCode) {
-      console.error('HTTP status:', error.statusCode);
+    if (errorObj.statusCode) {
+      console.error('HTTP status:', errorObj.statusCode);
     }
   }
 }

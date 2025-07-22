@@ -30,7 +30,7 @@ export interface JSONGraphExport {
     type: string;
     position: { x: number; y: number };
     dimensions: { width: number; height: number };
-    metadata?: any;
+    metadata?: Record<string, unknown>;
   }>;
   edges: Array<{
     id: string;
@@ -39,7 +39,7 @@ export interface JSONGraphExport {
     type: string;
     points: Array<{ x: number; y: number }>;
   }>;
-  statistics: any;
+  statistics: Record<string, unknown>;
 }
 
 export class GraphExportService {
@@ -228,10 +228,10 @@ export class GraphExportService {
         nodes: nodes.map(node => ({
           id: node.id,
           title: node.title,
-          type: node.type,
+          type: node.type.toString(),
           position: { x: node.x, y: node.y },
           dimensions: { width: node.width, height: node.height },
-          metadata: node
+          metadata: node as unknown as Record<string, unknown>
         })),
         edges: edges.map((edge, index) => ({
           id: `edge-${index}`,
@@ -263,7 +263,7 @@ export class GraphExportService {
       
       if (nodes.length > 50) {
         // Split large graphs into multiple diagrams
-        await this.exportLargeMermaidGraph(nodes, filename);
+        await this.exportLargeMermaidGraph(nodes.map(node => ({ id: node.id, label: node.title, type: node.type.toString() })), filename);
       } else {
         // Standard export
         const mermaidCode = generateMermaidDiagram(this.graphManager);
@@ -448,9 +448,9 @@ export class GraphExportService {
   </g>`;
   }
 
-  private async exportLargeMermaidGraph(nodes: any[], baseFilename: string): Promise<void> {
+  private async exportLargeMermaidGraph(nodes: Array<{ id: string; label: string; type: string }>, baseFilename: string): Promise<void> {
     const chunkSize = 25;
-    const chunks: any[][] = [];
+    const chunks: Array<Array<{ id: string; label: string; type: string }>> = [];
     
     for (let i = 0; i < nodes.length; i += chunkSize) {
       chunks.push(nodes.slice(i, i + chunkSize));
@@ -481,13 +481,13 @@ export class GraphExportService {
     });
   }
 
-  private generateMermaidForChunk(nodes: any[], chunkNumber: number): string {
+  private generateMermaidForChunk(nodes: Array<{ id: string; label: string; type: string }>, chunkNumber: number): string {
     let mermaid = `graph TD\n`;
     mermaid += `    subgraph "Part ${chunkNumber}"\n`;
     
     nodes.forEach(node => {
       const safeId = node.id.replace(/[^a-zA-Z0-9]/g, '_');
-      const safeLabel = node.title.replace(/"/g, "'");
+      const safeLabel = node.label.replace(/"/g, "'");
       mermaid += `        ${safeId}["${safeLabel}"]\n`;
     });
     
@@ -498,8 +498,8 @@ export class GraphExportService {
 
 // Convenience functions for direct use
 export async function exportGraphToPNG(
-  _canvas: HTMLCanvasElement,
-  _options?: ExportOptions
+  // _canvas: HTMLCanvasElement,
+  // _options?: ExportOptions
 ): Promise<void> {
   // This requires a graph manager instance, so it's mainly for use within components
   throw new Error('exportGraphToPNG requires GraphExportService instance');

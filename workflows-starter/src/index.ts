@@ -18,7 +18,7 @@ export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
 		// Can access bindings on `this.env`
 		// Can access params on `event.payload`
 
-		const files = await step.do('my first step', async () => {
+		await step.do('my first step', async () => {
 			// Fetch a list of files from $SOME_SERVICE
 			return {
 				inputParams: event,
@@ -38,14 +38,14 @@ export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
 		// You can optionally have a Workflow wait for additional data:
 		// human approval or an external webhook or HTTP request, before progressing.
 		// You can submit data via HTTP POST to /accounts/{account_id}/workflows/{workflow_name}/instances/{instance_id}/events/{eventName}
-		const waitForApproval = await step.waitForEvent('request-approval', {
+		await step.waitForEvent('request-approval', {
 			type: 'approval', // define an optional key to switch on
 			timeout: '1 minute', // keep it short for the example!
 		});
 
-		const apiResponse = await step.do('some other step', async () => {
-			let resp = await fetch('https://api.cloudflare.com/client/v4/ips');
-			return await resp.json<any>();
+		await step.do('some other step', async () => {
+			const resp = await fetch('https://api.cloudflare.com/client/v4/ips');
+			return await resp.json<Record<string, unknown>>();
 		});
 
 		await step.sleep('wait on something', '1 minute');
@@ -75,7 +75,7 @@ export class MyWorkflow extends WorkflowEntrypoint<Env, Params> {
 // <docs-tag name="workflows-fetch-handler">
 export default {
 	async fetch(req: Request, env: Env): Promise<Response> {
-		let url = new URL(req.url);
+		const url = new URL(req.url);
 
 		if (url.pathname.startsWith('/favicon')) {
 			return Response.json({}, { status: 404 });
@@ -83,16 +83,16 @@ export default {
 
 		// Get the status of an existing instance, if provided
 		// GET /?instanceId=<id here>
-		let id = url.searchParams.get('instanceId');
+		const id = url.searchParams.get('instanceId');
 		if (id) {
-			let instance = await env.MY_WORKFLOW.get(id);
+			const instance = await env.MY_WORKFLOW.get(id);
 			return Response.json({
 				status: await instance.status(),
 			});
 		}
 
 		// Spawn a new instance and return the ID and status
-		let instance = await env.MY_WORKFLOW.create();
+		const instance = await env.MY_WORKFLOW.create();
 		// You can also set the ID to match an ID in your own system
 		// and pass an optional payload to the Workflow
 		// let instance = await env.MY_WORKFLOW.create({

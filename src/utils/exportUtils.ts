@@ -11,7 +11,7 @@ export function formatDuration(ms: number): string {
 export async function exportToMarkdown(
   query: string,
   steps: ResearchStep[],
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ): Promise<string> {
   let markdown = `# Research: ${query}\n\n`;
 
@@ -20,7 +20,7 @@ export async function exportToMarkdown(
     markdown += `**Generated:** ${metadata.timestamp}\n`;
     markdown += `**Model:** ${metadata.model}\n`;
     markdown += `**Effort:** ${metadata.effort}\n`;
-    if (metadata.duration) {
+    if (typeof metadata.duration === 'number') {
       markdown += `**Duration:** ${formatDuration(metadata.duration)}\n`;
     }
     markdown += '\n';
@@ -270,7 +270,7 @@ export function estimateReadingTime(text: string): string {
 }
 
 // New export utilities
-export function exportResearchAsJSON(data: any, filename: string): void {
+export function exportResearchAsJSON(data: unknown, filename: string): void {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

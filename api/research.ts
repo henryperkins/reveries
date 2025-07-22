@@ -1,4 +1,4 @@
-import { AzureOpenAIService } from '../src/services/azureOpenAIService';
+// import { AzureOpenAIService } from '../src/services/azureOpenAIService';
 import { ResearchAgentService } from '../src/services';
 import { ModelType, EffortType, GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL } from '../src/types';
 
@@ -56,14 +56,15 @@ export async function handleResearchRequest(req: ResearchRequest): Promise<Resea
 
 // Example Express/Fastify handler
 export function createResearchHandler() {
-  return async (req: any, res: any) => {
+  return async (req: { body: ResearchRequest }, res: { status: (code: number) => { json: (data: unknown) => void } }) => {
     try {
       const result = await handleResearchRequest(req.body);
       res.status(200).json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorObj = error as { message?: string; code?: string };
       res.status(500).json({
-        error: error.message || 'Internal server error',
-        code: error.code || 'UNKNOWN_ERROR'
+        error: errorObj.message || 'Internal server error',
+        code: errorObj.code || 'UNKNOWN_ERROR'
       });
     }
   };

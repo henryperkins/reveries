@@ -1550,7 +1550,7 @@ export class AzureOpenAIService {
 
     const decoder = new TextDecoder();
     let buffer = '';
-    let currentMessage = { content: '', tool_calls: [] as any[] };
+    const currentMessage = { content: '', tool_calls: [] as any[] };
     let isCollectingToolCalls = false;
 
     try {

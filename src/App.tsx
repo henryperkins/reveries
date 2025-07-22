@@ -328,11 +328,11 @@ const App: React.FC = () => {
         paradigmProbabilities?: ParadigmProbabilities;
         contextDensity?: ContextDensity;
         contextLayers?: ContextLayer[];
-        layerResults?: Record<string, any>;
+        layerResults?: Record<string, unknown>;
         synthesis?: string;
         adaptiveMetadata?: {
           blendedParadigms?: HostParadigm[];
-          [key: string]: any;
+          [key: string]: unknown;
         };
       };
       try {

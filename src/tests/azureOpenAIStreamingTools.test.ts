@@ -80,7 +80,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
       };
 
       let callCount = 0;
-      (global.fetch as any).mockImplementation(async () => {
+      (global.fetch as vi.MockedFunction<typeof global.fetch>).mockImplementation(async () => {
         if (callCount === 0) {
           callCount++;
           // First call - streaming with tool
@@ -132,8 +132,8 @@ describe('Azure OpenAI Streaming with Tools', () => {
       });
 
       const chunks: string[] = [];
-      const toolCalls: any[] = [];
-      const metadata: any[] = [];
+      const toolCalls: Array<{ name: string; args: unknown; result: unknown }> = [];
+      const metadata: Array<{ type: string; timestamp: number }> = [];
 
       await azureService.streamResponseWithTools(
         "Tell me about quantum computing",
@@ -164,7 +164,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
     it('should handle tool execution errors gracefully', async () => {
       // Mock a failing tool
       const { ResearchToolsService } = await import('../services/researchToolsService');
-      const mockGetTool = ResearchToolsService.getInstance().getTool as any;
+      const mockGetTool = ResearchToolsService.getInstance().getTool as vi.MockedFunction<typeof ResearchToolsService.getInstance().getTool>;
       mockGetTool.mockImplementation((name: string) => {
         if (name === 'failing_tool') {
           return {
@@ -180,7 +180,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
       ];
 
       let callCount = 0;
-      (global.fetch as any).mockImplementation(async () => {
+      (global.fetch as vi.MockedFunction<typeof global.fetch>).mockImplementation(async () => {
         if (callCount === 0) {
           callCount++;
           return {
@@ -226,8 +226,8 @@ describe('Azure OpenAI Streaming with Tools', () => {
         }
       });
 
-      const toolCalls: any[] = [];
-      const errors: any[] = [];
+      const toolCalls: Array<{ name: string; args: unknown; result: unknown }> = [];
+      const errors: string[] = [];
 
       await azureService.streamResponseWithTools(
         "Test query",
@@ -275,7 +275,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
 
       // Mock a slow tool that times out
       const { ResearchToolsService } = await import('../services/researchToolsService');
-      const mockGetTool = ResearchToolsService.getInstance().getTool as any;
+      const mockGetTool = ResearchToolsService.getInstance().getTool as vi.MockedFunction<typeof ResearchToolsService.getInstance().getTool>;
       mockGetTool.mockImplementation((name: string) => {
         if (name === 'slow_tool') {
           return {
@@ -293,7 +293,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
         'data: {"type":"response.done"}'
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as vi.MockedFunction<typeof global.fetch>).mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
         body: {
@@ -331,7 +331,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
         }
       });
 
-      const toolResults: any[] = [];
+      const toolResults: Array<{ error?: string; result?: unknown }> = [];
       const startTime = Date.now();
 
       await azureService.streamResponseWithTools(
@@ -362,7 +362,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
       
       // Mock a consistently failing tool
       const { ResearchToolsService } = await import('../services/researchToolsService');
-      const mockGetTool = ResearchToolsService.getInstance().getTool as any;
+      const mockGetTool = ResearchToolsService.getInstance().getTool as vi.MockedFunction<typeof ResearchToolsService.getInstance().getTool>;
       mockGetTool.mockImplementation((name: string) => {
         if (name === 'broken_tool') {
           return {
@@ -379,7 +379,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
           paradigm: 'teddy'
         };
 
-        const result = await (service as any).executeToolWithContext(
+        const result = await (service as unknown as { executeToolWithContext: (toolCall: unknown, context: unknown) => Promise<unknown> }).executeToolWithContext(
           'broken_tool',
           {},
           context
@@ -399,7 +399,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
 
     it('should propagate paradigm context through tool execution', async () => {
       const { WriteLayerService } = await import('../services/contextLayers/writeLayer');
-      const mockWriteMemory = WriteLayerService.getInstance().writeMemory as any;
+      const mockWriteMemory = WriteLayerService.getInstance().writeMemory as vi.MockedFunction<typeof WriteLayerService.getInstance().writeMemory>;
 
       const paradigm: HostParadigm = 'maeve';
       const probabilities: ParadigmProbabilities = {
@@ -414,7 +414,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
         'data: {"type":"response.done"}'
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as vi.MockedFunction<typeof global.fetch>).mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
         body: {
@@ -477,7 +477,7 @@ describe('Azure OpenAI Streaming with Tools', () => {
         'data: {"type":"response.done"}'
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as vi.MockedFunction<typeof global.fetch>).mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
         body: {
