@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/utils/cn';
-import { componentVariants } from '@/theme/componentSystem';
+import { useComponentVariants } from '@/theme';
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'elevated' | 'outlined' | 'minimal';
@@ -9,10 +9,12 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant = 'elevated', padding = 'md', children, ...props }, ref) => {
+    const { variants } = useComponentVariants();
+    
     const cardClasses = cn(
-      componentVariants.card.base,
-      componentVariants.card.variants[variant],
-      componentVariants.card.padding[padding],
+      variants.card.base,
+      variants.card.variants[variant],
+      variants.card.padding[padding],
       className
     );
 

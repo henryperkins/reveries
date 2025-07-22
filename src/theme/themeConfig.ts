@@ -1,0 +1,125 @@
+// Theme configuration builder that combines all theme systems
+import { designSystem } from './designSystem';
+import { PARADIGM_COLORS } from './paradigm';
+import { ThemeMode, UnifiedTheme } from './types';
+
+// Generate CSS variables from design system
+export function generateCSSVariables(mode: ThemeMode): Record<string, string> {
+  const variables: Record<string, string> = {};
+  
+  // Westworld color variables
+  const westworldColors = designSystem.colors.westworld;
+  Object.entries(westworldColors).forEach(([key, value]) => {
+    variables[`--color-westworld-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`] = value;
+  });
+  
+  // Semantic color variables
+  const semanticColors = designSystem.colors.semantic;
+  Object.entries(semanticColors).forEach(([key, value]) => {
+    if (typeof value === 'string') {
+      variables[`--color-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`] = value;
+    }
+  });
+  
+  // Typography variables
+  Object.entries(designSystem.typography.fontSize).forEach(([key, value]) => {
+    variables[`--text-${key}`] = value;
+  });
+  
+  // Spacing variables
+  Object.entries(designSystem.spacing).forEach(([key, value]) => {
+    variables[`--spacing-${key}`] = value;
+  });
+  
+  // Shadow variables
+  Object.entries(designSystem.shadows).forEach(([key, value]) => {
+    if (key !== 'glow' && key !== 'glowLg') {
+      variables[`--shadow-${key}`] = value;
+    }
+  });
+  
+  // Special glow shadows
+  variables['--shadow-glow'] = designSystem.shadows.glow;
+  variables['--shadow-glow-lg'] = designSystem.shadows.glowLg;
+  
+  // Border radius variables
+  Object.entries(designSystem.borderRadius).forEach(([key, value]) => {
+    variables[`--radius-${key}`] = value;
+  });
+  
+  // Transition variables
+  Object.entries(designSystem.transitions.duration).forEach(([key, value]) => {
+    variables[`--transition-${key}`] = value;
+  });
+  
+  return variables;
+}
+
+// Create unified theme configuration
+export function createThemeConfig(mode: ThemeMode): UnifiedTheme {
+  return {
+    mode,
+    colors: designSystem.colors,
+    typography: designSystem.typography,
+    spacing: designSystem.spacing,
+    borderRadius: designSystem.borderRadius,
+    shadows: designSystem.shadows,
+    zIndex: designSystem.zIndex,
+    transitions: designSystem.transitions,
+    breakpoints: designSystem.breakpoints,
+    components: designSystem.components,
+    paradigms: PARADIGM_COLORS,
+  };
+}
+
+// Apply theme to DOM
+export function applyThemeToDOM(mode: ThemeMode): void {
+  if (typeof document === 'undefined') return;
+
+  const root = document.documentElement;
+  const variables = generateCSSVariables(mode);
+
+  // Remove old theme classes
+  root.classList.remove('light', 'dark', 'theme-transition');
+  root.removeAttribute('data-theme');
+
+  // Apply new theme
+  root.classList.add(mode);
+  root.setAttribute('data-theme', mode);
+
+  // Set CSS variables
+  Object.entries(variables).forEach(([property, value]) => {
+    root.style.setProperty(property, value);
+  });
+
+  // Update meta theme-color for mobile browsers
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+  if (metaThemeColor) {
+    metaThemeColor.setAttribute(
+      'content',
+      mode === 'dark' ? designSystem.colors.westworld.black : designSystem.colors.westworld.cream
+    );
+  }
+
+  // Add transition class after a delay to avoid initial flash
+  setTimeout(() => {
+    root.classList.add('theme-transition');
+  }, 50);
+
+  // Save to localStorage
+  localStorage.setItem('theme', mode);
+}
+
+// Initialize theme from localStorage or system preference
+export function initializeTheme(): ThemeMode {
+  if (typeof window === 'undefined') return 'light';
+
+  // Check localStorage first
+  const stored = localStorage.getItem('theme');
+  if (stored === 'dark' || stored === 'light') {
+    return stored;
+  }
+
+  // Fall back to system preference
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}

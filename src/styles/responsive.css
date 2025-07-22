@@ -349,3 +349,49 @@
     padding-top: env(safe-area-inset-top);
   }
 }
+
+/* ===== ADDITIONAL RESPONSIVE STYLES (migrated from App.css) ===== */
+
+/* Adjust when keyboard is visible */
+@media (max-height: 500px) {
+  .progress-meter-container {
+    display: none; /* Hide progress when keyboard takes up space */
+  }
+}
+
+/* Mobile keyboard handling */
+@supports (height: 100dvh) {
+  .input-bar {
+    position: fixed;
+    bottom: 0; /* Use dynamic viewport height for better keyboard handling */
+  }
+}
+
+/* Hide input bar when keyboard is active on very small screens */
+@media (max-height: 500px) and (max-width: 768px) {
+  .input-bar {
+    transform: translateY(100%);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  main {
+    padding-bottom: 140px; /* Adjusted for mobile */
+  }
+
+  .research-container {
+    padding: 1rem;
+  }
+
+  .modal-content {
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+
+  /* Mobile progress bar positioning */
+  .progress-bar-container,
+  .progress-meter-container {
+    bottom: 80px; /* Closer to input bar on mobile */
+  }
+}

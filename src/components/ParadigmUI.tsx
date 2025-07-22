@@ -6,7 +6,7 @@ import {
   ContextLayer,
   EnhancedResearchResults
 } from '@/types';
-import { getParadigmTheme, PARADIGM_COLORS } from '@/theme';
+import { useParadigmTheme, PARADIGM_COLORS } from '@/theme';
 import { ProgressMeter } from '@/components/atoms';
 
 /* -------------------------------------------------------------------------- */
@@ -25,11 +25,11 @@ const EXTENDED_PARADIGM_STYLES = {
   evaluative:  { bg: 'bg-emerald-50',   border: 'border-emerald-200',   text: 'text-emerald-700' }
 } as const;
 
-// Helper to get styles for any paradigm
+// Helper to get styles for any paradigm - now uses direct access to PARADIGM_COLORS
 function getParadigmStyles(paradigm: string) {
   // Check if it's a host paradigm first
   if (paradigm in PARADIGM_COLORS) {
-    const theme = getParadigmTheme(paradigm as HostParadigm);
+    const theme = PARADIGM_COLORS[paradigm as HostParadigm];
     return {
       bg: theme.bg,
       border: theme.border,
@@ -193,6 +193,8 @@ export const ContextLayerProgress: React.FC<{
   currentLayer?: ContextLayer;
   paradigm: HostParadigm;
 }> = ({ layers, currentLayer, paradigm }) => {
+  const getParadigmTheme = useParadigmTheme();
+  
   const layerInfo: Record<
     ContextLayer,
     { emoji: string; label: string; description: string }
@@ -407,6 +409,8 @@ export const InterHostCollaboration: React.FC<{
   reason: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
 }> = ({ fromHost, toHost, reason, status }) => {
+  const getParadigmTheme = useParadigmTheme();
+  
   const fromInfo = PARADIGM_INFO[fromHost];
   const toInfo = PARADIGM_INFO[toHost];
   const fromTheme = getParadigmTheme(fromHost);

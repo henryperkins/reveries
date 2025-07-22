@@ -4,7 +4,7 @@ import App from '@/App'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { FunctionCallProvider } from '@/components/FunctionCallDock'
 import { FunctionCallingService } from '@/services/functionCallingService'
-import { ThemeProvider } from '@/contexts/ThemeContext'
+import { ThemeProvider } from '@/theme'
 import '@/index.css'
 
 const functionHistory = FunctionCallingService.getInstance().getExecutionHistory();

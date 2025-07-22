@@ -232,4 +232,20 @@
       page-break-inside: avoid;
     }
   }
+
+  /* ===== ADDITIONAL PRINT STYLES (migrated from App.css) ===== */
+  .input-bar,
+  .progress-bar-container,
+  button {
+    display: none !important;
+  }
+
+  main {
+    padding-bottom: 0;
+  }
+
+  .research-container {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
 }

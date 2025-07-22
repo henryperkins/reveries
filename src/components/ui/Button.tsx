@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/utils/cn';
-import { componentVariants } from '@/theme/componentSystem';
+import { useComponentVariants } from '@/theme';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
@@ -22,10 +22,12 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     disabled,
     ...props
   }, ref) => {
+    const { variants } = useComponentVariants();
+    
     const buttonClasses = cn(
-      componentVariants.button.base,
-      componentVariants.button.variants[variant],
-      componentVariants.button.sizes[size],
+      variants.button.base,
+      variants.button.variants[variant],
+      variants.button.sizes[size],
       className
     );
 

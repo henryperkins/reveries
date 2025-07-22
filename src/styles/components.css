@@ -266,4 +266,96 @@
   .skeleton-card {
     @apply skeleton h-32;
   }
+
+  /* ===== ADDITIONAL COMPONENT STYLES (migrated from App.css) ===== */
+  
+  /* Progress bar container styling */
+  .progress-bar-container {
+    @apply fixed left-0 right-0 h-1 bg-amber-200;
+    bottom: 80px;
+    z-index: var(--z-fixed-progress);
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-westworld-gold), var(--color-westworld-copper));
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+  }
+
+  /* Suggestions dropdown */
+  .suggestions-dropdown {
+    z-index: var(--z-dropdown);
+  }
+
+  /* Fix component visibility and z-index stacking */
+  .card,
+  .input-field,
+  .btn-primary,
+  .btn-secondary {
+    position: relative;
+    z-index: var(--z-base);
+  }
+
+  /* Modal and overlay improvements */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: var(--z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .modal-content {
+    background-color: var(--color-westworld-white);
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+    animation: slideUp 0.3s ease-out;
+  }
+
+  /* Ensure proper text contrast */
+  .text-westworld-black {
+    color: var(--color-westworld-black) !important;
+  }
+
+  .text-westworld-white {
+    color: var(--color-westworld-white) !important;
+  }
+
+  /* Fix button states */
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  button:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  /* Research step styling */
+  .research-step {
+    @apply animate-fadeIn mb-6 p-6;
+    @apply bg-white/90 rounded-lg;
+    @apply border border-westworld-tan border-opacity-20;
+    @apply transition-all duration-300;
+    @apply hover:translate-x-1 hover:shadow-md;
+  }
+
+  /* Loading states */
+  .loading-skeleton {
+    @apply animate-pulse bg-westworld-tan bg-opacity-10 rounded-lg h-24 mb-4;
+  }
+
+  /* Error display styling */
+  .error-display {
+    @apply animate-slideUp mb-4;
+  }
 }

@@ -264,3 +264,57 @@
     border: 1px solid currentColor;
   }
 }
+
+/* ===== APP LAYOUT (migrated from App.css) ===== */
+@layer components {
+  .app {
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Main container spacing - increased to prevent content being hidden */
+  main {
+    min-height: calc(100vh - 80px);
+    padding-bottom: 120px; /* Space for fixed input bar */
+  }
+
+  /* Research container improvements */
+  .research-container {
+    @apply space-y-6;
+  }
+
+  /* Progress meter container - new positioning class */
+  .progress-meter-container {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--input-bar-height, 80px) + env(safe-area-inset-bottom, 0px));
+    z-index: var(--z-fixed-progress);
+    padding: 0 1rem;
+    padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+    padding-right: calc(1rem + env(safe-area-inset-right, 0px));
+    pointer-events: none;
+    transition: bottom 0.3s ease;
+  }
+
+  /* Input bar positioning */
+  .input-bar {
+    @apply fixed bottom-0 left-0 right-0;
+    @apply bg-westworld-cream bg-opacity-95 backdrop-blur-sm;
+    @apply border-t border-westworld-tan border-opacity-30;
+    box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+    z-index: var(--z-fixed-input);
+    padding: 1rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    transition: transform 0.3s ease-out;
+  }
+
+  /* Paradigm Dashboard positioning */
+  .paradigm-dashboard {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: var(--z-fixed-controls);
+  }
+}

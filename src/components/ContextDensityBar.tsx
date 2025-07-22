@@ -1,6 +1,6 @@
 import React from 'react'
 import { HostParadigm, ResearchPhase } from '@/types'
-import { getParadigmTheme, getParadigmClasses } from '@/theme'
+import { useParadigmTheme, getParadigmClasses } from '@/theme'
 import { ProgressMeter } from '@/components/atoms'
 
 interface ContextDensityBarProps {
@@ -23,6 +23,8 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
   paradigm,
   showHostColors = false
 }) => {
+  const getParadigmTheme = useParadigmTheme();
+  
   // Get paradigm theme and classes
   const paradigmTheme = paradigm ? getParadigmTheme(paradigm) : null;
   const paradigmClasses = paradigm ? getParadigmClasses(paradigm) : null;

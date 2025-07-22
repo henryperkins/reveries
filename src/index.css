@@ -1,19 +1,5 @@
-/* Import the new organized styles */
+/* 
+ * Main CSS Entry Point
+ * All styles are now organized in src/styles/ directory
+ */
 @import './styles/index.css';
-
-/* Color variables are now defined in styles/design-tokens.css */
-
-/* Any app-specific overrides that aren't in the organized styles can go here */
-
-/* Import dark mode styles */
-@import './styles/dark-mode.css';
-
-/* Ensure smooth theme transitions */
-html.theme-transition,
-html.theme-transition *,
-html.theme-transition *:before,
-html.theme-transition *:after {
-    transition: color 200ms ease-in-out,
-        background-color 200ms ease-in-out,
-        border-color 200ms ease-in-out !important;
-}

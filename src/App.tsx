@@ -14,8 +14,7 @@ import { ProgressMeter } from '@/components/atoms'
 import { usePersistentState, ResearchSession } from '@/hooks/usePersistentState'
 import { useFunctionCalls } from '@/components/FunctionCallDock'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
-import { ThemeProvider } from './contexts/ThemeContext';
-import { ThemeToggle } from './components/molecules/ThemeToggle';
+import { ThemeToggle } from '@/theme';
 import {
   ResearchStep,
   ResearchStepType,
@@ -32,7 +31,6 @@ import {
 import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
 import { DEFAULT_MODEL, TIMEOUTS } from '@/constants'
 import { useTimeoutManager, TimeoutManager } from '@/utils/timeoutManager'
-import '@/App.css'
 
 const App: React.FC = () => {
   const [research, setResearch] = usePersistentState<ResearchStep[]>('reveries_research', [], { version: 1 })

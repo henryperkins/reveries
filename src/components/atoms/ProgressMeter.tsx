@@ -1,5 +1,5 @@
 import React from 'react';
-import { getParadigmTheme, getParadigmClasses, type HostParadigm } from '@/theme';
+import { useParadigmTheme, getParadigmClasses, type HostParadigm } from '@/theme';
 
 export interface ProgressMeterProps {
   /** Progress value from 0 to 100 */
@@ -62,6 +62,8 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
   layout = 'default',
   onError,
 }) => {
+  const getParadigmTheme = useParadigmTheme();
+
   // Validate and clamp value between 0 and 100
   const percentage = (() => {
     if (typeof value !== 'number' || Number.isNaN(value) || !Number.isFinite(value)) {

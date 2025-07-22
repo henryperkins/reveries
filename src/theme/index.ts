@@ -1,9 +1,25 @@
-// Theme exports
-export * from './paradigm';
-export * from './designTokens';
+// Unified theme system exports
 
-// Re-export commonly used functions for convenience
+// Core theme system
+export { ThemeProvider } from './ThemeProvider';
+export { useTheme, useThemeMode, useThemeColors, useParadigmTheme, useComponentVariants } from './useTheme';
+
+// Theme UI components
+export { ThemeToggle } from '../components/ThemeToggle';
+
+// Theme configuration and utilities
+export { createThemeConfig, generateCSSVariables, applyThemeToDOM, initializeTheme } from './themeConfig';
+
+// Types
+export type { ThemeMode, UnifiedTheme, ThemeContextType, ParadigmTheme, HostParadigm } from './types';
+
+// Design system components
+export { designSystem, getCSSVariable } from './designSystem';
+export { componentVariants, layout, spacingUtils, zIndexUtils, responsive } from './componentSystem';
+
+// Paradigm system
 export {
+  PARADIGM_COLORS,
   getParadigmTheme,
   getParadigmGradient,
   getParadigmClasses,
@@ -12,16 +28,8 @@ export {
   DEFAULT_PARADIGM
 } from './paradigm';
 
-// Export types
-export type { ParadigmTheme, Paradigm } from './paradigm';
-
-// Re-export the main ThemeContext and ThemeToggle from their correct locations
-export { ThemeProvider } from '../contexts/ThemeContext';
-export { useTheme } from '../contexts/useTheme';
-export { ThemeToggle } from '../components/ThemeToggle';
-
-// Export styled components and CSS variables for CSS-in-JS usage
-export { styled, themeVariables, keyframes, themeTransition } from './styled';
-
-// Export design tokens
+// Design tokens (for backward compatibility)
 export { spacing, sizing, zIndex, borderRadius, shadows, transitions, breakpoints } from './designTokens';
+
+// CSS-in-JS utilities (for advanced usage)
+export { styled, themeVariables, keyframes, themeTransition } from './styled';
