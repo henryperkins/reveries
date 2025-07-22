@@ -164,7 +164,9 @@ describe('Azure OpenAI Streaming with Tools', () => {
     it('should handle tool execution errors gracefully', async () => {
       // Mock a failing tool
       const { ResearchToolsService } = await import('../services/researchToolsService');
-      const mockGetTool = ResearchToolsService.getInstance().getTool as vi.MockedFunction<typeof ResearchToolsService.getInstance().getTool>;
+      const mockGetTool = ResearchToolsService.getInstance().getTool as vi.MockedFunction<
+        typeof ResearchToolsService.getInstance().getTool
+      >;
       mockGetTool.mockImplementation((name: string) => {
         if (name === 'failing_tool') {
           return {

@@ -8,6 +8,7 @@ import { ModelProviderService } from '../services/providers/ModelProviderService
 import { ResearchAgentService } from '../services/researchAgentServiceRefactored';
 import { ResearchUtilities } from '../services/utils/ResearchUtilities';
 import { EffortType, AZURE_O3_MODEL } from '../types';
+import { APIError, withRetry } from '../services/errorHandler';
 
 // Mock environment variables for testing
 const mockConfig = {
@@ -18,8 +19,6 @@ const mockConfig = {
 };
 
 describe('Azure AI Agent Service Integration', () => {
-  let azureAIAgent: AzureAIAgentService;
-  let modelProvider: ModelProviderService;
   let researchAgent: ResearchAgentService;
 
   beforeEach(() => {
@@ -27,8 +26,6 @@ describe('Azure AI Agent Service Integration', () => {
     Object.assign(import.meta.env, mockConfig);
     
     // Initialize services
-    azureAIAgent = AzureAIAgentService.getInstance();
-    modelProvider = ModelProviderService.getInstance();
     researchAgent = ResearchAgentService.getInstance();
   });
 
@@ -162,8 +159,8 @@ describe('Azure AI Agent Service Integration', () => {
       const service = new AzureAIAgentService();
       
       // Test effort-based instruction generation
-      const highEffortInstructions = (service as any).getEffortBasedInstructions(EffortType.HIGH);
-      const lowEffortInstructions = (service as any).getEffortBasedInstructions(EffortType.LOW);
+      const highEffortInstructions = (service as { getEffortBasedInstructions(effort: EffortType): string }).getEffortBasedInstructions(EffortType.HIGH);
+      const lowEffortInstructions = (service as { getEffortBasedInstructions(effort: EffortType): string }).getEffortBasedInstructions(EffortType.LOW);
 
       expect(highEffortInstructions).toContain('thorough');
       expect(highEffortInstructions).toContain('comprehensive');
@@ -186,13 +183,9 @@ describe('Azure AI Agent Service Integration', () => {
 
   describe('Fallback Integration', () => {
     test('should integrate properly with ModelProviderService fallback chain', async () => {
-      // Mock Azure AI Agent Service failure
-      const mockAzureAIAgent = {
-        generateText: jest.fn().mockRejectedValue(new Error('Service unavailable'))
-      };
-
       // Test that ModelProviderService handles fallback correctly
-      const fallbackChain = (modelProvider as any).buildFallbackChain(AZURE_O3_MODEL, new Set());
+      const modelProvider = ModelProviderService.getInstance();
+      const fallbackChain = (modelProvider as { buildFallbackChain(model: ModelType, excludedModels: Set<ModelType>): ModelType[] }).buildFallbackChain(AZURE_O3_MODEL, new Set());
       
       // Should include other models as fallbacks
       expect(fallbackChain.length).toBeGreaterThan(0);
@@ -230,7 +223,7 @@ describe('Azure AI Agent Service Integration', () => {
       expect(mockProcessQuery).toBeDefined();
       
       // Test paradigm integration
-      const paradigmProbs = (researchAgent as any).paradigmClassifier?.classify(query);
+      const paradigmProbs = (researchAgent as { paradigmClassifier?: { classify(query: string): Record<string, number> } }).paradigmClassifier?.classify(query);
       expect(paradigmProbs).toBeDefined();
     });
   });
@@ -255,7 +248,7 @@ describe('Azure AI Agent Service Integration', () => {
     test('should use existing error handling patterns', () => {
       // Test that APIError is used consistently
       expect(() => {
-        throw new (require('../services/errorHandler').APIError)(
+        throw new APIError(
           'Test error',
           'TEST_ERROR',
           false
@@ -264,7 +257,7 @@ describe('Azure AI Agent Service Integration', () => {
     });
 
     test('should integrate with withRetry utility', async () => {
-      const { withRetry } = require('../services/errorHandler');
+      // withRetry imported at top level
       
       let attempts = 0;
       const mockOperation = jest.fn().mockImplementation(() => {
@@ -309,7 +302,7 @@ export const testAzureAIAgentIntegration = {
   /**
    * Test source quality enhancement
    */
-  testSourceQualityEnhancement(sources: any[]) {
+  testSourceQualityEnhancement(sources: Array<{ title?: string; url?: string; snippet?: string; [key: string]: unknown }>) {
     const enhanced = sources.map(source => {
       const qualityIndicators = {
         high: ['.gov', '.edu', 'wikipedia.org', 'nature.com'],

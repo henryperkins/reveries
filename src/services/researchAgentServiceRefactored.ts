@@ -249,7 +249,7 @@ export class ResearchAgentService {
                 query,
                 paradigm,
                 isolationCtx,
-                async (task: string, ctx: any) => {
+                async (task: string, ctx: { model: ModelType; effort: EffortType; [key: string]: unknown }) => {
                   const generateText = this.modelProvider.generateText.bind(this.modelProvider);
                   if (paradigm === 'bernard' || paradigm === 'maeve') {
                     const subQueries = await this.webResearchService.generateSearchQueries(
@@ -305,16 +305,16 @@ export class ResearchAgentService {
               })
             );
             return { taskId: directTaskId, status: 'direct_execution', message: 'Executed directly without scheduling' };
-          } catch (err: any) {
-            return { error: err?.message ?? 'Isolation failed', status: 'failed' };
+          } catch (err: unknown) {
+            return { error: (err as Error)?.message ?? 'Isolation failed', status: 'failed' };
           }
         }
       }
 
       // Should never reach here
       return { error: 'Unknown layer', layer, paradigm };
-    } catch (err: any) {
-      const message = err?.message ?? 'Unknown error';
+    } catch (err: unknown) {
+      const message = (err as Error)?.message ?? 'Unknown error';
       onProgress?.(`[${paradigm}] ${layer} layer failed: ${message}`);
       return {
         error: message,
@@ -556,11 +556,12 @@ export class ResearchAgentService {
         );
 
         // Convert to expected ResearchResponse format
+        const typedResponse = paradigmResponse as { synthesis?: string; text?: string; sources?: Array<{ title?: string; name?: string; url?: string; snippet?: string; relevanceScore?: number }> };
         response = {
-          text: (paradigmResponse as any).synthesis || (paradigmResponse as any).text || '',
-          sources: (paradigmResponse as any).sources?.map((s: any) => ({
+          text: typedResponse.synthesis || typedResponse.text || '',
+          sources: typedResponse.sources?.map((s) => ({
             name: s.title || s.name || '',
-            url: s.url,
+            url: s.url || '',
             snippet: s.snippet || '',
             relevanceScore: s.relevanceScore || 0
           })) || []
@@ -578,7 +579,7 @@ export class ResearchAgentService {
 
         // Convert to expected ResearchResponse format
         response = {
-          text: (strategyResponse as any).synthesis || strategyResponse.text || '',
+          text: (strategyResponse as { synthesis?: string; text?: string }).synthesis || strategyResponse.text || '',
           sources: strategyResponse.sources?.map(s => ({
             name: s.title || s.name || '',
             url: s.url,
@@ -897,12 +898,12 @@ export class ResearchAgentService {
     try {
       const step = this.convertStateToStep(state);
       const enhancedMetadata = {
+        model: GENAI_MODEL_FLASH as ModelType,
+        effort: EffortType.MEDIUM,
         ...step.metadata,
         refinementCount: state.refinementCount,
-        evaluation: state.evaluation,
-        model: GENAI_MODEL_FLASH as ModelType,
-        effort: EffortType.MEDIUM
-      } as any;
+        evaluation: state.evaluation
+      };
       step.metadata = enhancedMetadata;
       await this.databaseService.saveResearchStepWithAI(sessionId, step, parentId);
     } catch (error) {
@@ -915,6 +916,7 @@ export class ResearchAgentService {
     prompt: string,
     _options: { temperature?: number; maxTokens?: number } = {}
   ): Promise<{ text: string; sources?: Citation[] }> {
+    void _options; // Suppress unused parameter warning
     return this.modelProvider.generateText(prompt, 'azure-o3' as ModelType, EffortType.MEDIUM);
   }
 
@@ -932,14 +934,14 @@ export class ResearchAgentService {
       query: step.title || '',
       searchResults: step.sources || [],
       synthesis: typeof step.content === 'string' ? step.content : '',
-      evaluation: (metadata as any).evaluation || {
-        quality: 'good',
+      evaluation: (metadata as Record<string, unknown>).evaluation as { quality: 'excellent' | 'good' | 'needs_improvement'; completeness: number; accuracy: number; clarity: number } || {
+        quality: 'good' as const,
         completeness: 0.8,
         accuracy: 0.9,
         clarity: 0.85
       },
-      sections: (metadata as any).sections || [],
-      refinementCount: (metadata as any).refinementCount || 0
+      sections: (metadata as Record<string, unknown>).sections as Array<{ id?: string; title?: string; content?: string; confidence?: number; topic: string; description: string; research?: string; sources?: any[] }> || [],
+      refinementCount: (metadata as Record<string, unknown>).refinementCount as number || 0
     };
   }
 

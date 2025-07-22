@@ -98,7 +98,7 @@ export interface ParadigmResearchContext {
   query: string;
   model: ModelType;
   effort: EffortType;
-  layerResults: Record<string, any> & {
+  layerResults: Record<string, unknown> & {
     select?: { recommendedTools?: string[]; selectedSources?: unknown[] };
   };
   onProgress?: (message: string) => void;

@@ -4,7 +4,7 @@
  */
 
 import { Citation } from '@/types';
-import { ExaResearchTask, ExaResearchTaskList } from '../search/SearchProviderService';
+import { ExaResearchTask, ExaResearchTaskList, SearchProvider } from '../search/SearchProviderService';
 
 export interface ResearchTaskOptions {
   model?: 'exa-research' | 'exa-research-pro';
@@ -170,7 +170,7 @@ export class ResearchTaskService {
     const result = await exa.listResearchTasks(options);
     
     // Update local cache
-    result.data.forEach((task: any) => {
+    result.data.forEach((task: ExaResearchTask) => {
       this.activeTasks.set(task.id, task);
     });
 
@@ -319,7 +319,7 @@ export class ResearchTaskService {
    */
   private startPolling(
     taskId: string, 
-    exaProvider: any, 
+    exaProvider: SearchProvider, 
     options: ResearchTaskOptions
   ): void {
     // Don't start multiple polling instances
@@ -329,7 +329,7 @@ export class ResearchTaskService {
 
     const poll = async () => {
       try {
-        const task = await exaProvider.getResearchTask(taskId);
+        const task = await (exaProvider as any).getResearchTask(taskId);
         this.activeTasks.set(taskId, task);
 
         if (options.onProgress) {

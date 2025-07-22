@@ -205,7 +205,7 @@ Be BOLD. Focus on BREAKING loops, not maintaining them.
       adaptiveMetadata: {
         ...result.adaptiveMetadata,
         selfHealed: true,
-        healingStrategy: 'dolores_action_expansion' as any
+        healingStrategy: 'dolores_action_expansion'
       }
     };
   }
@@ -262,7 +262,7 @@ Be BOLD. Focus on BREAKING loops, not maintaining them.
       adaptiveMetadata: {
         ...result.adaptiveMetadata,
         selfHealed: true,
-        healingStrategy: 'teddy_comprehensive_expansion' as any
+        healingStrategy: 'teddy_comprehensive_expansion'
       }
     };
   }
@@ -335,7 +335,7 @@ Be BOLD. Focus on BREAKING loops, not maintaining them.
       adaptiveMetadata: {
         ...result.adaptiveMetadata,
         selfHealed: true,
-        healingStrategy: 'bernard_analytical_deepening' as any
+        healingStrategy: 'bernard_analytical_deepening'
       }
     };
   }
@@ -393,7 +393,7 @@ Focus on MAXIMUM IMPACT with MINIMUM EFFORT.
       adaptiveMetadata: {
         ...result.adaptiveMetadata,
         selfHealed: true,
-        healingStrategy: 'maeve_strategic_optimization' as any
+        healingStrategy: 'maeve_strategic_optimization'
       }
     };
   }
@@ -502,11 +502,12 @@ Focus on MAXIMUM IMPACT with MINIMUM EFFORT.
   /**
    * Check if error is retryable (HTTP 500, timeouts, etc.)
    */
-  private isRetryableError(error: any): boolean {
-    if (error?.status === 500) return true;
-    if (error?.code === 'TIMEOUT') return true;
-    if (error?.code === 'ECONNRESET') return true;
-    if (error?.message?.includes('rate limit')) return false; // Don't retry rate limits
+  private isRetryableError(error: unknown): boolean {
+    const err = error as { status?: number; code?: string; message?: string };
+    if (err?.status === 500) return true;
+    if (err?.code === 'TIMEOUT') return true;
+    if (err?.code === 'ECONNRESET') return true;
+    if (err?.message?.includes('rate limit')) return false; // Don't retry rate limits
     return false;
   }
 
