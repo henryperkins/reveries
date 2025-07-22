@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { DatabaseService } from "databaseService";
+import { DatabaseService } from "@/services"; // Import from index to get adapter
 import { ResearchStep } from '@/types';
 import { ResearchGraphManager } from '@/researchGraph';
 
@@ -60,11 +60,18 @@ export function usePersistentState<T>(
         try {
           // First try localStorage
           const localData = localStorage.getItem(storageKey);
-          let localParsed: any = null;
+          let localParsed: { value?: T; timestamp?: number } | null = null;
           if (localData) {
             try {
-              localParsed = JSON.parse(localData);
-              const value = localParsed.value !== undefined ? localParsed.value : localParsed;
+              const parsed = JSON.parse(localData);
+              // Handle both old format (direct value) and new format ({value, timestamp})
+              if (parsed && typeof parsed === 'object' && 'value' in parsed) {
+                localParsed = parsed as { value: T; timestamp: number };
+              } else {
+                // Old format - just the value
+                localParsed = { value: parsed, timestamp: 0 };
+              }
+              const value = localParsed.value;
               setState(value !== null && value !== undefined ? value : defaultValueRef.current);
             } catch (error) {
               console.warn('Failed to parse localStorage data:', error);
@@ -83,7 +90,7 @@ export function usePersistentState<T>(
 
                 if (isConnected) {
                   const prefs = await dbService.getUserPreferences(userId);
-                  const dbData = prefs?.[key];
+                  const dbData = prefs?.[key] as { value: T; timestamp: number } | undefined;
                   if (dbData && dbData.timestamp > (localParsed?.timestamp || 0)) {
                     const value = dbData.value !== null && dbData.value !== undefined ? dbData.value : defaultValueRef.current;
                     setState(value);
@@ -175,9 +182,21 @@ export function usePersistentState<T>(
         if (userId) {
           const dbService = DatabaseService.getInstance();
           const prefs = await dbService.getUserPreferences(userId);
-          const dbData = prefs?.[key];
+          const dbData = prefs?.[key] as { value: T; timestamp: number } | undefined;
           const localData = localStorage.getItem(storageKey);
-          const localParsed = localData ? JSON.parse(localData) : null;
+          let localParsed: { value?: T; timestamp?: number } | null = null;
+          if (localData) {
+            try {
+              const parsed = JSON.parse(localData);
+              if (parsed && typeof parsed === 'object' && 'value' in parsed) {
+                localParsed = parsed;
+              } else {
+                localParsed = { value: parsed, timestamp: 0 };
+              }
+            } catch {
+              localParsed = null;
+            }
+          }
 
           // If database has newer data, update local state
           if (dbData && dbData.timestamp > (localParsed?.timestamp || 0)) {
@@ -383,7 +402,7 @@ export function useEnhancedPersistence(sessionId: string) {
     const checkConnection = async () => {
       try {
         const dbService = DatabaseService.getInstance();
-        await dbService.getRecentSessions(sessionId, 1);
+        await dbService.getRecentSessions(1);
         setPersistenceState(prev => ({ ...prev, isConnected: true }));
       } catch (_error) {
         console.warn('Database not available, using localStorage fallback');

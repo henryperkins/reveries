@@ -102,14 +102,14 @@ export const Controls: React.FC<ControlsProps> = ({
   );
 
   return (
-    <div className="relative flex flex-col gap-4 p-4 bg-white border-b border-gray-200">
+    <div className="relative flex flex-col gap-4 p-4 bg-theme-primary border-b border-theme-primary">
       {/* Primary Actions Row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button
             onClick={onNewSearch}
             disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="btn btn-primary flex items-center gap-2"
           >
             <PlusIcon className="w-4 h-4" />
             New Search
@@ -119,7 +119,7 @@ export const Controls: React.FC<ControlsProps> = ({
             <button
               onClick={onStart}
               disabled={isLoading}
-              className="flex items-center gap-2 px-4 py-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-50"
+              className="btn btn-secondary flex items-center gap-2"
             >
               <PlayIcon className="w-4 h-4" />
               Start
@@ -131,7 +131,7 @@ export const Controls: React.FC<ControlsProps> = ({
           {onToggleGraph && (
             <button
               onClick={onToggleGraph}
-              className="flex items-center gap-2 px-3 py-2 text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100"
+              className="btn btn-ghost flex items-center gap-2"
             >
               <ChartBarIcon className="w-4 h-4" />
               Graph
@@ -141,7 +141,7 @@ export const Controls: React.FC<ControlsProps> = ({
           {onExport && !isEmpty && (
             <button
               onClick={onExport}
-              className="flex items-center gap-2 px-3 py-2 text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100"
+              className="btn btn-ghost flex items-center gap-2"
             >
               <ArrowDownTrayIcon className="w-4 h-4" />
               Export
@@ -151,7 +151,7 @@ export const Controls: React.FC<ControlsProps> = ({
           {onClear && !isEmpty && (
             <button
               onClick={onClear}
-              className="flex items-center gap-2 px-3 py-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+              className="btn btn-danger flex items-center gap-2"
             >
               <TrashIcon className="w-4 h-4" />
               Clear
@@ -170,11 +170,11 @@ export const Controls: React.FC<ControlsProps> = ({
 
       {/* Configuration Panel */}
       {showConfig && (
-        <div className="p-4 bg-gray-50 rounded-lg border">
+        <div className="p-4 bg-theme-secondary rounded-lg border border-theme-primary">
           <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-2 gap-4">
             {/* Model Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-theme-primary mb-2">
                 AI Model
               </label>
               <div className="space-y-2">
@@ -183,7 +183,7 @@ export const Controls: React.FC<ControlsProps> = ({
                   return (
                     <label
                       key={model}
-                      className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-white"
+                      className="flex items-center p-3 border border-theme-primary rounded-lg cursor-pointer hover-theme-primary"
                     >
                       <input
                         type="radio"
@@ -198,7 +198,7 @@ export const Controls: React.FC<ControlsProps> = ({
                           <span className="text-lg">{info.icon}</span>
                           <span className="font-medium">{info.name}</span>
                         </div>
-                        <p className="text-sm text-gray-600">{info.description}</p>
+                        <p className="text-sm text-theme-secondary">{info.description}</p>
                       </div>
                     </label>
                   );
@@ -208,7 +208,7 @@ export const Controls: React.FC<ControlsProps> = ({
 
             {/* Effort Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-theme-primary mb-2">
                 Research Effort
               </label>
               <div className="space-y-2">
@@ -227,7 +227,7 @@ export const Controls: React.FC<ControlsProps> = ({
                     />
                     <div>
                       <div className="font-medium">{effort} Effort</div>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-theme-secondary">
                         {effort === EffortType.LOW && 'Quick research with basic analysis'}
                         {effort === EffortType.MEDIUM && 'Balanced research with moderate depth'}
                         {effort === EffortType.HIGH && 'Comprehensive research with deep analysis'}
@@ -241,10 +241,10 @@ export const Controls: React.FC<ControlsProps> = ({
             {/* Enhanced Mode Toggle */}
             {onEnhancedModeChange && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-theme-primary mb-2">
                   Features
                 </label>
-                <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-white">
+                <label className="flex items-center p-3 border border-theme-primary rounded-lg cursor-pointer hover-theme-primary">
                   <input
                     type="checkbox"
                     checked={enhancedMode}
@@ -253,7 +253,7 @@ export const Controls: React.FC<ControlsProps> = ({
                   />
                   <div>
                     <div className="font-medium">Enhanced Mode</div>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-theme-secondary">
                       Enable advanced features and deeper analysis
                     </p>
                   </div>

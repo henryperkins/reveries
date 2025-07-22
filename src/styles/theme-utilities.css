@@ -1,0 +1,99 @@
+@layer utilities {
+
+    /* Theme-specific utility classes */
+    /* Color utilities using CSS variables */
+    .bg-theme-primary {
+        background-color: var(--color-bg-primary);
+    }
+
+    .bg-theme-secondary {
+        background-color: var(--color-bg-secondary);
+    }
+
+    .bg-theme-tertiary {
+        background-color: var(--color-bg-tertiary);
+    }
+
+    .text-theme-primary {
+        color: var(--color-text-primary);
+    }
+
+    .text-theme-secondary {
+        color: var(--color-text-secondary);
+    }
+
+    .text-theme-muted {
+        color: var(--color-text-muted);
+    }
+
+    .border-theme-primary {
+        border-color: var(--color-border);
+    }
+
+    .border-theme-light {
+        border-color: var(--color-border-light);
+    }
+
+    /* Surface utilities */
+    .bg-surface {
+        background-color: var(--color-surface);
+    }
+
+    .bg-surface-hover {
+        background-color: var(--color-surface-hover);
+    }
+
+    /* Accent utilities */
+    .bg-accent {
+        background-color: var(--color-accent);
+    }
+
+    .bg-accent-hover {
+        background-color: var(--color-accent-hover);
+    }
+
+    .text-accent {
+        color: var(--color-accent);
+    }
+
+    /* Shadow utilities using CSS variables */
+    .shadow-theme-sm {
+        box-shadow: var(--shadow-sm);
+    }
+
+    .shadow-theme-md {
+        box-shadow: var(--shadow-md);
+    }
+
+    .shadow-theme-lg {
+        box-shadow: var(--shadow-lg);
+    }
+
+    .shadow-theme-xl {
+        box-shadow: var(--shadow-xl);
+    }
+
+    /* Interactive theme utilities */
+    .hover-theme-primary {
+        @apply transition-colors duration-200;
+    }
+
+    .hover-theme-primary:hover {
+        background-color: var(--color-bg-secondary);
+    }
+
+    .focus-theme-ring {
+        @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+        --tw-ring-color: var(--color-accent);
+        --tw-ring-offset-color: var(--color-bg-primary);
+    }
+
+    /* Theme-aware gradients */
+    .gradient-theme-primary {
+        background: linear-gradient(135deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
+    }
+
+    .gradient-theme-accent {
+        background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
+    }
+}

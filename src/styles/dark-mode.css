@@ -1,5 +1,6 @@
 /* Dark Mode Styles */
 @layer base {
+
   /* Base theme colors with CSS variables */
   :root {
     /* Light mode colors (default) */
@@ -15,13 +16,13 @@
     --color-accent-hover: #B8941F;
     --color-surface: #FFFFFF;
     --color-surface-hover: #FAF6F2;
-    
+
     /* Component-specific colors */
     --color-input-bg: #FFFFFF;
     --color-input-border: #E8D5C4;
     --color-button-primary: #D4AF37;
     --color-button-secondary: #8B6F47;
-    
+
     /* Original Westworld colors for reference */
     --color-westworld-cream: #FAF6F2;
     --color-westworld-beige: #F5EDE4;
@@ -36,7 +37,7 @@
     --color-westworld-copper: #C87543;
     --color-westworld-darkCopper: #A65E36;
     --color-westworld-white: #FFFFFF;
-    
+
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -59,13 +60,13 @@
     --color-accent-hover: #E4BF47;
     --color-surface: #2A2522;
     --color-surface-hover: #3A3532;
-    
+
     /* Component-specific colors */
     --color-input-bg: #2A2522;
     --color-input-border: #3A3532;
     --color-button-primary: #D4AF37;
     --color-button-secondary: #3A3532;
-    
+
     /* Adjusted shadows for dark mode */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
@@ -75,6 +76,7 @@
 }
 
 @layer components {
+
   /* Apply base styles using CSS variables */
   body {
     @apply antialiased;
@@ -103,7 +105,9 @@
   }
 
   /* Input styles */
-  input, textarea, select {
+  input,
+  textarea,
+  select {
     background-color: var(--color-input-bg);
     border-color: var(--color-input-border);
     color: var(--color-text-primary);
@@ -160,27 +164,103 @@
   html:not(.theme-transition) * {
     @apply transition-none !important;
   }
+
+  /* Dark mode color adjustments - REMOVED confusing swaps */
+
+  /* Dark mode base styles */
+  .dark body {
+    @apply bg-westworld-nearBlack text-westworld-cream;
+  }
+
+  /* Ensure proper contrast for dark mode */
+  .dark .bg-theme-primary {
+    @apply bg-westworld-nearBlack;
+  }
+
+  .dark .text-theme-primary {
+    @apply text-westworld-cream;
+  }
+
+  .dark .border-theme-primary {
+    @apply border-westworld-tan border-opacity-30;
+  }
+
+  /* Dark mode scrollbar */
+  .dark ::-webkit-scrollbar-track {
+    @apply bg-westworld-darkBrown;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-westworld-tan hover:bg-westworld-gold;
+  }
+
+  /* Dark mode focus styles */
+  .dark :focus-visible {
+    @apply ring-westworld-gold ring-offset-westworld-nearBlack;
+  }
+
+  /* Dark mode selection */
+  .dark ::selection {
+    @apply bg-westworld-gold text-westworld-nearBlack;
+  }
 }
 
-@layer utilities {
-  /* Dark mode utility classes */
-  .bg-primary {
-    background-color: var(--color-bg-primary);
+/* Component-specific dark mode fixes */
+@layer components {
+  /* Fix components identified in UI analysis */
+
+  /* ErrorDisplay dark mode support */
+  .dark .bg-red-50 {
+    @apply bg-red-950;
   }
 
-  .bg-secondary {
-    background-color: var(--color-bg-secondary);
+  .dark .text-red-800 {
+    @apply text-red-200;
   }
 
-  .text-primary {
-    color: var(--color-text-primary);
+  .dark .border-red-200 {
+    @apply border-red-800;
   }
 
-  .text-secondary {
-    color: var(--color-text-secondary);
+  /* SemanticSearch dark mode */
+  .dark .bg-white {
+    @apply bg-westworld-nearBlack;
   }
 
-  .border-primary {
-    border-color: var(--color-border);
+  /* SessionHistoryBrowser dark mode */
+  .dark .bg-blue-50 {
+    @apply bg-blue-950;
   }
+
+  .dark .text-blue-700 {
+    @apply text-blue-300;
+  }
+
+  /* ResearchView sidebar */
+  .dark .bg-amber-50 {
+    @apply bg-amber-950;
+  }
+
+  .dark .text-amber-700 {
+    @apply text-amber-300;
+  }
+}
+
+/* SessionHistoryBrowser dark mode */
+.dark .bg-blue-50 {
+  @apply bg-blue-950;
+}
+
+.dark .text-blue-700 {
+  @apply text-blue-300;
+}
+
+/* ResearchView sidebar */
+.dark .bg-amber-50 {
+  @apply bg-amber-950;
+}
+
+.dark .text-amber-700 {
+  @apply text-amber-300;
+}
 }

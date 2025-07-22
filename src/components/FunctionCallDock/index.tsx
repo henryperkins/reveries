@@ -42,7 +42,7 @@ const FunctionCallDockContent: React.FC<FunctionCallDockProps> = ({
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
                 currentMode === mode.value
                   ? 'bg-westworld-rust text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-theme-secondary text-theme-primary hover-theme-primary'
               }`}
             >
               <span className="mr-2">{mode.icon}</span>
@@ -54,7 +54,7 @@ const FunctionCallDockContent: React.FC<FunctionCallDockProps> = ({
 
       {/* Content Area */}
       <div
-        className="overflow-auto rounded-lg border border-gray-200"
+        className="overflow-auto rounded-lg border border-theme-primary shadow-theme"
         style={{ maxHeight }}
       >
         {currentMode === 'history' && <HistoryView history={history} />}

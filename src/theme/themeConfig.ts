@@ -97,7 +97,7 @@ export function applyThemeToDOM(mode: ThemeMode): void {
   if (metaThemeColor) {
     metaThemeColor.setAttribute(
       'content',
-      mode === 'dark' ? designSystem.colors.westworld.black : designSystem.colors.westworld.cream
+      mode === 'dark' ? designSystem.colors.westworld.nearBlack : designSystem.colors.westworld.cream
     );
   }
 

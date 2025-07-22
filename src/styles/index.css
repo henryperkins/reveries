@@ -1,5 +1,5 @@
-/* Main entry point for all styles */
-
+/* This file has been merged into src/index.css to avoid circular dependencies */
+/* DELETE THIS FILE */
 /* Import design tokens first (before Tailwind) */
 @import './design-tokens.css';
 
@@ -33,7 +33,7 @@
   }
 
   .research-edge {
-    stroke: theme('colors.westworld.copper');
+    stroke: var(--color-westworld-copper);
     stroke-width: 2;
     fill: none;
   }

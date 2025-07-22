@@ -17,3 +17,9 @@ export { RateLimiter } from './rateLimiter'
 
 // Stubs for browser builds
 export { AzureOpenAIService as azureOpenAIStub } from './azureOpenAIStub'
+
+// Re-export the appropriate DatabaseService based on environment
+// This allows imports to use a single path regardless of environment
+
+// Always use the adapter which provides compatibility layer
+export { DatabaseService, databaseService } from './databaseServiceAdapter';

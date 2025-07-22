@@ -226,7 +226,7 @@ describe('Azure AI Agent Service Integration', () => {
       expect(mockProcessQuery).toBeDefined();
       
       // Test paradigm integration
-      const paradigmProbs = (researchAgent as { paradigmClassifier?: { classify(query: string): Record<string, number> } }).paradigmClassifier?.classify(query);
+      const paradigmProbs = (researchAgent as unknown as { paradigmClassifier?: { classify(query: string): Record<string, number> } }).paradigmClassifier?.classify(query);
       expect(paradigmProbs).toBeDefined();
     });
   });

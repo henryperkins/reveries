@@ -41,23 +41,23 @@ export const SemanticSearch: React.FC<SemanticSearchProps> = ({
             onChange={(e) => setQuery(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Search similar research..."
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-westworld-nearBlack text-gray-900 dark:text-westworld-cream"
           />
           <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
         </div>
         <button
           onClick={handleSearch}
           disabled={isSearching || !query.trim()}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSearching ? 'Searching...' : 'Search'}
         </button>
       </div>
 
       {showResults && results.length > 0 && (
-        <div className="absolute top-full mt-2 w-full bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-y-auto z-50">
+        <div className="absolute top-full mt-2 w-full bg-white dark:bg-westworld-nearBlack rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto z-dropdown">
           <div className="p-2">
-            <div className="text-xs text-gray-500 px-2 py-1">
+            <div className="text-xs text-gray-500 dark:text-gray-400 px-2 py-1">
               Found {results.length} similar results
             </div>
             {results.map((step) => (
@@ -67,15 +67,15 @@ export const SemanticSearch: React.FC<SemanticSearchProps> = ({
                   onSelectResult(step);
                   setShowResults(false);
                 }}
-                className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md transition-colors"
+                className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors"
               >
-                <div className="text-sm font-medium text-gray-900">
+                <div className="text-sm font-medium text-gray-900 dark:text-westworld-cream">
                   {step.query}
                 </div>
-                <div className="text-xs text-gray-600 mt-1 line-clamp-2">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
                   {step.metadata?.summary || (typeof step.content === 'string' ? step.content.substring(0, 100) : String(step.content).substring(0, 100))}...
                 </div>
-                <div className="text-xs text-indigo-600 mt-1">
+                <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">
                   Similarity: {Math.round((1 - (step.metadata?.distance || 0)) * 100)}%
                 </div>
               </button>

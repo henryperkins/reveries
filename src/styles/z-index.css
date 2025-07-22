@@ -266,8 +266,9 @@
 }
 
 /* Add mobile-specific z-index adjustments */
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   :root {
+    --z-fixed-input: 35; /* Higher on mobile to avoid conflicts */
     --z-suggestions: calc(var(--z-sticky) + 10);
     /* Above input bar */
     --z-progress: calc(var(--z-sticky) + 5);

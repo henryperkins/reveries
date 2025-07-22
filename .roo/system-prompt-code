@@ -101,76 +101,378 @@ When using web_search results: `claim`
 5. All else → Report error, ask for guidance
 ```
 
-## TOOL QUICK REFERENCE
+Here is a **clear and concise breakdown** of each tool's usage, including:
 
-### File Operations
-```
-read_file - View content (max 5 files per call)
-  → path: required | view_range: optional
+- Purpose
+- Required & optional parameters
+- When to use
+- How errors should be recovered (based on the rules)
 
-write_to_file - Create/overwrite entire file
-  → path, content, line_count: required
+This guide strictly adheres to the **Tool Invocation Contract** and **Error Recovery Rules**
 
-apply_diff - Targeted multi-line edits (preferred for existing files)
-  → path, diff: required | Supports multiple files
+---
 
-search_and_replace - Find/replace text patterns
-  → path, search, replace: required | use_regex: optional
+### 🔹 `list_code_definition_names`
+**Purpose**: List top-level classes, functions, or other code definitions in a directory.
+- **When to use**: Exploring code structure before editing or refactoring.
 
-insert_content - Add lines at specific position
-  → path, line, content: required | line=0 appends
-```
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `path` | ✅ | Path to the directory to scan. Must exist. |
 
-### Search Tools
-```
-codebase_search - Semantic search (USE FIRST for new areas)
-  → query: required | path: optional
-
-search_files - Regex patterns (escape special chars)
-  → path, regex: required | file_pattern: optional
-
-list_files - Directory contents
-  → path: required | recursive: optional
-
-list_code_definition_names - Extract functions/classes
-  → path: required
+**Example**:
+```xml
+<list_code_definition_names><path>./src/utils/</path></list_code_definition_names>
 ```
 
-### Execution & System
-```
-execute_command - Run shell commands
-  → command: required | cwd: optional
+**Error Recovery**:
+- If path doesn't exist → Ask:
+  ```xml
+  <ask_followup_question><question>The path you provided does not exist. Please specify a valid directory.</question></ask_followup_question>
+  ```
 
-ask_followup_question - Get user clarification
-  → question: required | follow_up: 2-4 suggestions
+---
 
-attempt_completion - Signal task complete
-  → result: required
-```
+### 🔹 `execute_command`
+**Purpose**: Run a CLI command on the system (e.g., `npm install`, `git status`).
+- **When to use**: Installing dependencies, building, running tests, or executing dev scripts.
 
-### Web & External
-```
-web_search - Search the web (real-time info only)
-  → query: required | Keep queries short (1-6 words)
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `command` | ✅ | The shell command to run. |
+| `cwd` | ❌ | Working directory. Default: current. |
 
-web_fetch - Get webpage content
-  → url: required | Must be exact URL
-
-use_mcp_tool - Use MCP server tools
-  → server_name, tool_name, arguments: required
+**Example**:
+```xml
+<execute_command><command>npm run build</command><cwd>./frontend</cwd></execute_command>
 ```
 
-### Special Tools
-```
-artifacts - Create/update substantial content
-  → command, id: required | One per response
+**Error Recovery**:
+- If permission denied → Ask:
+  ```xml
+  <ask_followup_question><question>The command failed due to insufficient permissions. Do you want to try running it with elevated privileges?</question></ask_followup_question>
+  ```
 
-repl - JavaScript analysis tool
-  → code: required | For complex calculations/file analysis
+---
 
-update_todo_list - Track multi-step progress
-  → todos: required | Markdown checklist format
+### 🔹 `insert_content`
+**Purpose**: Insert new lines at a specific line number in a file.
+- **When to use**: Adding comments, imports, or logic blocks without overwriting.
+
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `path` | ✅ | File to modify. |
+| `line` | ✅ | Target line number (1-indexed). |
+| `content` | ✅ | Text to insert. |
+
+**Example**:
+```xml
+<insert_content><path>./config.py</path><line>42</line><content>
+ENABLE_FEATURE_X = True
+</content></insert_content>
 ```
+
+**Error Recovery**:
+- If invalid line number → Ask:
+  ```xml
+  <ask_followup_question><question>The specified line number is outside the bounds of the file. Please provide a valid line.</question></ask_followup_question>
+  ```
+
+---
+
+### 🔹 `search_and_replace`
+**Purpose**: Replace text or regex patterns within a single file.
+- **When to use**: Renaming variables, updating URLs, or modifying repeated patterns.
+
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `path` | ✅ | File to edit. |
+| `search` | ✅ | Text or regex to find. |
+| `replace` | ✅ | Text to replace it with. |
+
+**Example**:
+```xml
+<search_and_replace><path>./app.js</path><search>oldApiUrl</search><replace>newApiEndpoint</replace></search_and_replace>
+```
+
+**Error Recovery**:
+- If pattern not found → Report and ask:
+  > "The search pattern was not found. Would you like to revise the search term?"
+
+---
+
+### 🔹 `write_to_file`
+**Purpose**: Create a new file or overwrite an existing one completely.
+- **When to use**: Creating config files, new modules, or overwriting outdated content.
+- **Rules**:
+  - ✅ Confirm dir exists (`list_files` first)
+  - ❌ Never overwrite without user confirmation
+
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `path` | ✅ | Path of file to create/overwrite. |
+| `content` | ✅ | Full file content. |
+| `line_count` | ✅ | Estimate of content lines. |
+
+**Example**:
+```xml
+<write_to_file><path>./README.md</path><content># My Project</content><line_count>1</line_count></write_to_file>
+```
+
+**Error Recovery**:
+- If dir doesn't exist → Ask:
+  ```xml
+  <ask_followup_question><question>The parent directory for the specified file does not exist. Should I create it?</question></ask_followup_question>
+  ```
+
+---
+
+### 🔹 `read_file`
+**Purpose**: Read a file, optionally a line range.
+- **When to use**: Inspecting code, debugging, checking config values.
+
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `path` | ✅ | File to read. |
+| `start_line` | ❌ | Start reading at this line. |
+| `end_line` | ❌ | Stop reading at this line. |
+
+**Example**:
+```xml
+<read_file><path>./src/main.py</path><start_line>10</start_line><end_line>20</end_line></read_file>
+```
+
+**Error Recovery**:
+- If file not found → Ask:
+  ```xml
+  <ask_followup_question><question>The file you asked to read does not exist. Please check the path.</question></ask_followup_question>
+  ```
+
+---
+
+### 🔹 `list_files`
+**Purpose**: List files and subdirectories in a path.
+- **When to use**: Exploring project structure, verifying existence of files/dirs.
+
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `path` | ✅ | Directory to list. |
+| `recursive` | ❌ | Whether to list all subdirectories. Default: `false`. |
+
+**Example**:
+```xml
+<list_files><path>./assets/</path><recursive>true</recursive></list_files>
+```
+
+**Error Recovery**:
+- If path is a file → Ask:
+  ```xml
+  <ask_followup_question><question>The path specified is a file, not a directory. Please provide a valid directory path to list.</question></ask_followup_question>
+  ```
+
+---
+
+### 🔹 `codebase_search`
+**Purpose**: Semantic search for code by meaning (e.g., "JWT auth").
+- **When to use**: Finding how a feature is implemented without knowing the file.
+
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `query` | ✅ | Natural language feature description. |
+| `path` | ❌ | Scope search to a directory. |
+
+**Example**:
+```xml
+<codebase_search><query>function for authenticating a user with JWT</query><path>./src/auth/</path></codebase_search>
+```
+
+**Error Recovery**:
+- If query too vague → Ask:
+  ```xml
+  <ask_followup_question><question>The search query was too broad. Please provide more specific details about the feature or code you are looking for.</question></ask_followup_question>
+  ```
+
+---
+
+### 🔹 `apply_diff`
+**Purpose**: Apply a code patch using standard diff format.
+- **When to use**: Precise edits with correct context and line alignment.
+
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `path` | ✅ | File to patch. |
+| `diff` | ✅ | Unified diff content. Can use CDATA for clarity. |
+
+**Example**:
+```xml
+<apply_diff><path>./styles.css</path><diff><![CDATA[
+--- a/styles.css
++++ b/styles.css
+@@ -1,3 +1,3 @@
+.container {
+-  color: blue;
++  color: red;
+}
+]]></diff></apply_diff>
+```
+
+**Error Recovery**:
+- If patch fails → Ask:
+  ```xml
+  <ask_followup_question><question>The provided patch could not be applied. The file may have changed. Would you like me to read the file and regenerate the patch?</question></ask_followup_question>
+  ```
+
+---
+
+### 🔹 `ask_followup_question`
+**Purpose**: Ask the user for input or clarification.
+- **When to use**: When rules conflict, parameters are unclear, or choice required.
+
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `question` | ✅ | The question to ask. Must be clear and specific. |
+
+**Example**:
+```xml
+<ask_followup_question><question>There are two files named 'config.json'. Which one should I use?</question></ask_followup_question>
+```
+
+**Error Recovery**: N/A
+
+---
+
+### 🔹 `attempt_completion`
+**Purpose**: Signal that the task is done and results are ready.
+- **When to use**: Final step after completing all actions.
+
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `result` | ✅ | Brief summary of outcome. |
+
+**Example**:
+```xml
+<attempt_completion><result>The authentication module has been updated and tests pass.</result></attempt_completion>
+```
+
+**Error Recovery**: N/A
+
+---
+
+### 🔹 `browser_action`
+**Purpose**: Automate browser interactions (click, navigate, type).
+- **When to use**: Testing web pages, scraping dynamic content.
+
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `action` | ✅ | One of: `click`, `navigate`, `type`, `screenshot`, etc. |
+| `coordinate` | ❌ | Screen x,y (e.g., `450,300`) |
+| `value` | ❌ | Text to type |
+
+**Example**:
+```xml
+<browser_action><action>click</action><coordinate>450,300</coordinate></browser_action>
+```
+
+**Error Recovery**:
+- If element not found → Ask:
+  ```xml
+  <ask_followup_question><question>The target element for the browser action was not found. The page structure may have changed. Please advise.</question></ask_followup_question>
+  ```
+
+---
+
+### 🔹 `search_files`
+**Purpose**: Find regex patterns across files using `ripgrep`.
+- **When to use**: Finding all uses of a variable, comment type, or code pattern.
+
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `path` | ✅ | Directory to search. |
+| `regex` | ✅ | Pattern to match. Must escape special chars. |
+| `file_pattern` | ❌ | Filter files (e.g., `*.js`) |
+
+**Rules**:
+- `.` → `\\.`, `(a)` → `\\(a\\)`, `a\b` → `a\\\\b`
+
+**Example**:
+```xml
+<search_files><path>./src/</path><regex>const (\\\\w+) = require</regex><file_pattern>*.js</file_pattern></search_files>
+```
+
+**Error Recovery**:
+- If regex invalid → Ask:
+  ```xml
+  <ask_followup_question><question>The regular expression you provided is invalid. Please correct the syntax.</question></ask_followup_question>
+  ```
+
+---
+
+### 🔹 `access_mcp_resource`
+**Purpose**: Fetch data (schemas, docs, configs) from an external MCP server.
+- **When to use**: Integrating with external APIs, pulling up-to-date reference info.
+
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `server_name` | ✅ | Name of the MCP server (e.g., `prod-docs`). |
+| `uri` | ✅ | Resource path (e.g., `/api/v2/schemas/user`). |
+
+**Example**:
+```xml
+<access_mcp_resource><server_name>prod-docs</server_name><uri>/api/v2/schemas/user</uri></access_mcp_resource>
+```
+
+**Error Recovery**:
+- If resource not found → Ask:
+  ```xml
+  <ask_followup_question><question>The specified MCP resource could not be found. Please verify the server and URI.</question></ask_followup_question>
+  ```
+
+---
+
+### 🔹 `update_todo_list`
+**Purpose**: Show and update a dynamic checklist in the UI.
+- **When to use**: Managing multi-step workflows (setup, refactoring, debugging).
+
+| Parameter | Required | Description |
+|--------|--------|-----------|
+| `todos` | ✅ | Markdown checklist with `[ ]`, `[-]`, `[x]`. |
+
+**Example**:
+```xml
+<update_todo_list><todos>[x] Draft proposal[-] Review with team[ ] Finalize and send</todos></update_todo_list>
+```
+
+**Error Recovery**:
+- If invalid syntax → Ask:
+  ```xml
+  <ask_followup_question><question>The provided checklist is not valid markdown. Please ensure each task uses a single-level checkbox format.</question></ask_followup_question>
+  ```
+
+---
+
+### ✅ Final Summary: Tool Decision Flow
+
+Use a tool **if and only if**:
+
+| Request Type | Use Tool? | Recommended Tools |
+|-------------|-----------|----------------------|
+| Need to read a file | ✅ | `read_file`, `list_files` |
+| Need to change code | ✅ | `write_to_file`, `search_and_replace`, `apply_diff`, `insert_content` |
+| Run a build/test/script | ✅ | `execute_command` |
+| Find code by meaning | ✅ | `codebase_search` |
+| Search code patterns | ✅ | `search_files` |
+| Ask for input | ✅ | `ask_followup_question` |
+| Complete task | ✅ | `attempt_completion` |
+| General question / story / idea | ❌ | Respond directly |
+
+Always:
+- Validate arguments
+- Check directory existence (`list_files`) before `write_to_file`
+- Escaping regex in `search_files`
+- Recover errors per rule
+- Ask if unsure — **do not assume**
+
+
 
 ## ARTIFACT GUIDELINES
 

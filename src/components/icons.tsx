@@ -59,7 +59,9 @@ export const AdjustmentsHorizontalIcon: React.FC<SVGProps> = (props) => (
 
 export const CpuChipIcon: React.FC<SVGProps> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M8.25 21v-1.5M21 15.75h-1.5M15.75 3h-1.5M3 15.75h1.5M15.75 21h-1.5m-6.232-2.933A2.25 2.25 0 0 1 9.75 18c.001 0 .002 0 .003 0A2.25 2.25 0 0 1 12 15.75c0-.001 0-.002 0-.003A2.25 2.25 0 0 1 14.25 18c.001 0 .002 0 .003 0a2.25 2.25 0 0 1 1.482 2.276M18 15.75a3 3 0 0 0-3-3V9.75a3 3 0 0 0-3-3h-1.5a3 3 0 0 0-3 3v3a3 3 0 0 0-3 3M3.75 6A2.25 2.25 0 0 1 6 3.75h1.5A2.25 2.25 0 0 1 9.75 6v1.5A2.25 2.25 0 0 1 12 9.75h.003A2.25 2.25 0 0 1 14.25 12v1.5a2.25 2.25 0 0 1 2.25 2.25H18A2.25 2.25 0 0 1 20.25 18v1.5A2.25 2.25 0 0 1 18 21.75h-1.5A2.25 2.25 0 0 1 14.25 24v-1.5A2.25 2.25 0 0 1 12 20.25h-.003A2.25 2.25 0 0 1 9.75 18v-1.5A2.25 2.25 0 0 1 7.5 14.25H6A2.25 2.25 0 0 1 3.75 12V9.75A2.25 2.25 0 0 1 1.5 7.5H0V6A2.25 2.25 0 0 1 2.25 3.75h1.5Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M8.25 21v-1.5m7.5-13.5v1.5m0 13.5v-1.5M3 15.75h1.5m7.5-7.5h1.5m-7.5 0v-1.5m7.5 1.5v1.5m-7.5 7.5v1.5m7.5-1.5v-1.5M21 15.75h-1.5M15.75 3v1.5M3 8.25h1.5M15.75 21v-1.5" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.25h13.5v13.5H5.25z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 9h6v6H9z" />
   </svg>
 );
 
@@ -77,7 +79,8 @@ export const ChevronDownIcon: React.FC<SVGProps> = (props) => (
 
 export const ChatBubbleLeftRightIcon: React.FC<SVGProps> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3.686-3.686c-1.33.476-2.754.726-4.224.726H8.25c-1.33 0-2.51-.202-3.58-.562L1.5 21V11.251C1.5 9.121 3.121 7.5 5.25 7.5h9.75c.514 0 .989.089 1.438.253Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3a11.658 11.658 0 01-4.25.826h-2.59c-3.18 0-5.91-2.097-5.91-4.759v-4.31c0-2.9 2.35-5.25 5.25-5.25h3.5c3.02 0 5.5 1.885 5.5 4.754z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 14.786c0 .966.784 1.75 1.75 1.75h6.586a6.721 6.721 0 002.914-.654l3 3V15.79a2.728 2.728 0 001.02-.071c1.133-.093 1.98-1.057 1.98-2.193V9.24c0-.969-.616-1.813-1.5-2.097A5.067 5.067 0 0015 5.757H7.5c-.937 0-1.813.24-2.574.665" />
   </svg>
 );
 

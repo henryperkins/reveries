@@ -4,7 +4,7 @@ import { ThemeContext } from './ThemeContext';
 import { ThemeMode, ThemeContextType } from './types';
 import { createThemeConfig, applyThemeToDOM, initializeTheme } from './themeConfig';
 import { getParadigmTheme } from './paradigm';
-import { componentVariants } from './componentSystem';
+import { designSystem } from './designSystem';
 
 interface ThemeProviderProps {
   children: React.ReactNode;
@@ -72,13 +72,28 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
   // Component system utilities
   const getComponentVariant = useCallback((component: string, variant: string): string => {
-    const componentConfig = componentVariants[component as keyof typeof componentVariants];
+    const componentConfig = designSystem.components[component as keyof typeof designSystem.components];
     if (!componentConfig) return '';
 
-    const variantConfig = componentConfig.variants?.[variant];
-    if (!variantConfig) return '';
+    // Handle different component configurations
+    if (componentConfig && typeof componentConfig === 'object' && 'variants' in componentConfig) {
+      const variants = (componentConfig as any).variants;
+      const variantConfig = variants?.[variant];
+      if (!variantConfig) return '';
+      return typeof variantConfig === 'string' ? variantConfig : '';
+    }
 
-    return typeof variantConfig === 'string' ? variantConfig : '';
+    // Handle components without variants (like input)
+    if (componentConfig && typeof componentConfig === 'object' && 'sizes' in componentConfig) {
+      const sizes = (componentConfig as any).sizes;
+      const sizeConfig = sizes?.[variant];
+      if (!sizeConfig) return '';
+      return Object.entries(sizeConfig)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join('; ');
+    }
+
+    return '';
   }, []);
 
   // Context value

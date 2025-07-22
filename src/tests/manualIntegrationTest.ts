@@ -4,7 +4,7 @@
  */
 
 import { AzureOpenAIService } from '@/services/azureOpenAIService';
-import { EffortType, HostParadigm, ParadigmProbabilities } from '@/types';
+import { HostParadigm, ParadigmProbabilities } from '@/types';
 
 async function testParadigmAwareToolIntegration() {
   console.log('🧪 Testing Azure OpenAI Paradigm-Aware Tool Integration...\n');
@@ -50,7 +50,7 @@ async function testParadigmAwareToolIntegration() {
     console.log('5. Testing error handling...');
     try {
       // This should not throw during service method calls, only during actual API calls
-      const paradigmTools = azureService.getParadigmResearchTools('bernard');
+      azureService.getParadigmResearchTools('bernard');
       console.log('   ✅ Error handling mechanisms in place');
     } catch (error) {
       console.log('   ❌ Unexpected error during method call:', error);

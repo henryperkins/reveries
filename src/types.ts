@@ -46,7 +46,7 @@ export interface ResearchStep {
   type: ResearchStepType;
   title: string;
   content: string | React.ReactNode;
-  icon: React.ElementType; // For SVG components
+  icon: React.ComponentType | null; // Fixed: More consistent type
   timestamp?: string;
   isSpinning?: boolean;
   sources?: Citation[];

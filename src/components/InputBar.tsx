@@ -148,7 +148,7 @@ export const InputBar: React.FC<InputBarProps> = ({
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
             placeholder={placeholder}
             disabled={disabled || isLoading}
-            className="flex-1 px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg resize-none outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 placeholder:text-gray-500 min-h-[24px] max-h-[200px]"
+            className="flex-1 px-4 py-3 bg-theme-secondary border border-theme-primary rounded-lg resize-none outline-none focus-theme-ring text-theme-primary placeholder:text-theme-secondary min-h-[24px] max-h-[200px]"
             rows={1}
             aria-label="Research question input"
             aria-expanded={showSuggestions}
@@ -157,7 +157,7 @@ export const InputBar: React.FC<InputBarProps> = ({
             <button
               type="submit"
               disabled={!value.trim() || disabled || isLoading}
-              className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              className="px-6 py-3 bg-westworld-gold text-westworld-nearBlack rounded-lg hover:bg-westworld-darkGold disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               aria-label="Submit research question"
             >
               <PaperAirplaneIcon className="w-5 h-5" />
@@ -169,18 +169,18 @@ export const InputBar: React.FC<InputBarProps> = ({
       {/* Suggestions dropdown - positioned above input */}
       {showSuggestions && suggestions.length > 0 && (
         <div
-          className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-lg
-                   border border-gray-200 max-h-80 overflow-y-auto suggestions-dropdown"
+          className="absolute bottom-full left-0 right-0 mb-2 bg-theme-primary rounded-lg shadow-lg
+                   border border-theme-primary max-h-80 overflow-y-auto suggestions-dropdown"
           role="listbox"
         >
           <div className="p-2">
             <div className="flex items-center justify-between px-2 py-1 mb-2">
-              <span className="text-xs text-gray-500 font-medium">
+              <span className="text-xs text-theme-secondary font-medium">
                 AI Suggestions ({suggestions.length})
               </span>
               <button
                 onClick={() => setShowSuggestions(false)}
-                className="text-gray-400 hover:text-gray-600 p-1"
+                className="text-theme-secondary hover:text-theme-primary p-1"
                 aria-label="Close suggestions"
               >
                 <XMarkIcon className="w-3 h-3" />
@@ -211,12 +211,12 @@ export const InputBar: React.FC<InputBarProps> = ({
                     {getSuggestionIcon(suggestion.type)}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 mb-1">
+                    <div className="text-sm font-medium text-theme-primary mb-1">
                       {suggestion.text}
                     </div>
-                    <div className="text-xs text-gray-600 flex items-center gap-2">
+                    <div className="text-xs text-theme-secondary flex items-center gap-2">
                       <span>{suggestion.source}</span>
-                      <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                      <span className="w-1 h-1 bg-theme-secondary rounded-full"></span>
                       <span>
                         {Math.round(suggestion.confidence * 100)}% match
                       </span>
@@ -229,7 +229,7 @@ export const InputBar: React.FC<InputBarProps> = ({
         </div>
       )}
 
-        <p className="mt-2 text-xs text-gray-500 text-center">
+        <p className="mt-2 text-xs text-theme-secondary text-center">
           Press Enter to submit, Shift+Enter for new line, Tab to apply suggestions
         </p>
       </div>

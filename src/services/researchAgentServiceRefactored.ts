@@ -41,7 +41,7 @@ import { ResearchMemoryService } from './memory/ResearchMemoryService';
 import { ResearchUtilities } from './utils/ResearchUtilities';
 import { ContextEngineeringService } from './contextEngineeringService';
 import { ParadigmClassifier } from './paradigmClassifier';
-import { DatabaseService } from './databaseService';
+import { DatabaseService } from './databaseServiceAdapter';
 
 // ────────────────────────────────────────────────────────────
 //  Context‑layer services

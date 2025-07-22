@@ -333,8 +333,20 @@ describe('Azure OpenAI Streaming with Tools', () => {
       (global.fetch as MockedFunction<typeof global.fetch>).mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
+        status: 200,
+        statusText: 'OK',
+        type: 'default',
+        url: '',
+        redirected: false,
+        clone: vi.fn(),
+        bodyUsed: false,
+        arrayBuffer: vi.fn(),
+        blob: vi.fn(),
+        formData: vi.fn(),
+        json: vi.fn(),
+        text: vi.fn(),
         body: {
-          getReader: () => ({
+          getReader: (() => ({
             read: vi.fn()
               .mockResolvedValueOnce({
                 done: false,
@@ -345,24 +357,28 @@ describe('Azure OpenAI Streaming with Tools', () => {
                 value: new TextEncoder().encode(mockChunks[1] + '\n')
               })
               .mockResolvedValueOnce({ done: true }),
-            releaseLock: vi.fn()
-          })
-        }
-      }).mockResolvedValueOnce({
+            releaseLock: vi.fn(),
+            closed: Promise.resolve(undefined),
+            cancel: vi.fn().mockResolvedValue(undefined)
+          } as ReadableStreamDefaultReader<Uint8Array>))
+        } as ReadableStream<Uint8Array>
+      } as Response).mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
         body: {
-          getReader: () => ({
+          getReader: (() => ({
             read: vi.fn()
               .mockResolvedValueOnce({
                 done: false,
                 value: new TextEncoder().encode('data: {"type":"response.done"}\n')
               })
               .mockResolvedValueOnce({ done: true }),
-            releaseLock: vi.fn()
-          })
-        }
-      });
+            releaseLock: vi.fn(),
+            closed: Promise.resolve(undefined),
+            cancel: vi.fn().mockResolvedValue(undefined)
+          } as ReadableStreamDefaultReader<Uint8Array>))
+        } as ReadableStream<Uint8Array>
+      } as Response);
 
       await azureService.streamResponseWithTools(
         "Strategic planning query",
@@ -396,8 +412,20 @@ describe('Azure OpenAI Streaming with Tools', () => {
       (global.fetch as MockedFunction<typeof global.fetch>).mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
+        status: 200,
+        statusText: 'OK',
+        type: 'default',
+        url: '',
+        redirected: false,
+        clone: vi.fn(),
+        bodyUsed: false,
+        arrayBuffer: vi.fn(),
+        blob: vi.fn(),
+        formData: vi.fn(),
+        json: vi.fn(),
+        text: vi.fn(),
         body: {
-          getReader: () => ({
+          getReader: (() => ({
             read: vi.fn()
               .mockResolvedValueOnce({
                 done: false,
@@ -416,24 +444,28 @@ describe('Azure OpenAI Streaming with Tools', () => {
                 value: new TextEncoder().encode(mockChunks[3] + '\n')
               })
               .mockResolvedValueOnce({ done: true }),
-            releaseLock: vi.fn()
-          })
-        }
-      }).mockResolvedValueOnce({
+            releaseLock: vi.fn(),
+            closed: Promise.resolve(undefined),
+            cancel: vi.fn().mockResolvedValue(undefined)
+          } as ReadableStreamDefaultReader<Uint8Array>))
+        } as ReadableStream<Uint8Array>
+      } as Response).mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
         body: {
-          getReader: () => ({
+          getReader: (() => ({
             read: vi.fn()
               .mockResolvedValueOnce({
                 done: false,
                 value: new TextEncoder().encode('data: {"type":"response.done"}\n')
               })
               .mockResolvedValueOnce({ done: true }),
-            releaseLock: vi.fn()
-          })
-        }
-      });
+            releaseLock: vi.fn(),
+            closed: Promise.resolve(undefined),
+            cancel: vi.fn().mockResolvedValue(undefined)
+          } as ReadableStreamDefaultReader<Uint8Array>))
+        } as ReadableStream<Uint8Array>
+      } as Response);
 
       const phases: string[] = [];
 

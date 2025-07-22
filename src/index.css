@@ -1,5 +1,41 @@
-/* 
+/*
  * Main CSS Entry Point
  * All styles are now organized in src/styles/ directory
  */
-@import './styles/index.css';
+
+/* Tailwind base must come first */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Import all custom styles in the correct order */
+@import './styles/design-tokens.css';
+@import './styles/base.css';
+@import './styles/dark-mode.css';
+@import './styles/z-index.css';
+@import './styles/theme-utilities.css';
+/*  <--  NEW  */
+@import './styles/typography.css';
+@import './styles/components.css';
+@import './styles/animations.css';
+@import './styles/interactions.css';
+@import './styles/layout.css';
+@import './styles/responsive.css';
+@import './styles/accessibility.css';
+@import './styles/print.css';
+
+/* Any final overrides */
+@layer utilities {
+
+    /* Westworld-specific utility classes */
+    .westworld-title {
+        @apply text-4xl font-bold bg-gradient-to-r from-westworld-gold to-westworld-darkGold bg-clip-text text-transparent;
+    }
+
+    /* Remove duplicate theme utilities - they're now in theme-utilities.css */
+    /* Keeping only Westworld-specific utilities here */
+
+    .shadow-theme {
+        box-shadow: 0 4px 6px rgba(107, 86, 55, 0.1);
+    }
+}

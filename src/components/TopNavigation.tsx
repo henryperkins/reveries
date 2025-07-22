@@ -18,14 +18,14 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ activeTab, onTabCh
 
   return (
     <>
-      <nav className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+      <nav className="sticky top-0 z-sticky bg-theme-primary border-b border-theme-primary shadow-theme">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-westworld-gold to-westworld-copper bg-clip-text text-transparent">
                 Reverie Engine
               </h1>
-              
+
               <div className="hidden md:flex ml-10 space-x-1">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
@@ -33,11 +33,11 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ activeTab, onTabCh
                     <button
                       key={tab.id}
                       onClick={() => onTabChange(tab.id)}
-                      className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${
+                      className={`btn btn-sm ${
                         activeTab === tab.id
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                      }`}
+                          ? 'bg-westworld-gold text-westworld-nearBlack'
+                          : 'btn-ghost'
+                      } flex items-center gap-2`}
                     >
                       <Icon className="w-4 h-4" />
                       {tab.label}
@@ -48,12 +48,12 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ activeTab, onTabCh
             </div>
 
             <div className="flex items-center gap-4">
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                <User className="w-5 h-5 text-gray-600" />
+              <button className="btn-icon btn-ghost">
+                <User className="w-5 h-5" />
               </button>
-              
+
               <button
-                className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+                className="md:hidden btn-icon btn-ghost"
                 onClick={() => setShowMobileMenu(!showMobileMenu)}
               >
                 {showMobileMenu ? (
@@ -68,21 +68,21 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ activeTab, onTabCh
       </nav>
 
       {showMobileMenu && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-modal md:hidden">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowMobileMenu(false)} />
-          <div className="fixed right-0 top-0 h-full w-64 bg-white shadow-xl">
-            <div className="p-4 border-b border-gray-200">
+          <div className="fixed right-0 top-0 h-full w-64 bg-theme-primary shadow-xl">
+            <div className="p-4 border-b border-theme-primary">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+                <h2 className="text-lg font-semibold text-theme-primary">Menu</h2>
                 <button
                   onClick={() => setShowMobileMenu(false)}
-                  className="p-2 rounded-lg hover:bg-gray-100"
+                  className="btn-icon btn-ghost"
                 >
                   <X className="w-5 h-5 text-gray-600" />
                 </button>
               </div>
             </div>
-            
+
             <div className="p-4 space-y-2">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
@@ -93,11 +93,11 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ activeTab, onTabCh
                       onTabChange(tab.id);
                       setShowMobileMenu(false);
                     }}
-                    className={`w-full px-4 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-3 ${
+                    className={`w-full btn ${
                       activeTab === tab.id
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
+                        ? 'bg-westworld-gold text-westworld-nearBlack'
+                        : 'btn-ghost'
+                    } flex items-center gap-3`}
                   >
                     <Icon className="w-5 h-5" />
                     {tab.label}

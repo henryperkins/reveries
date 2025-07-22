@@ -180,6 +180,7 @@ export const designSystem = {
   // Component Variants
   components: {
     button: {
+      base: 'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
       sizes: {
         sm: {
           px: '0.75rem',
@@ -196,6 +197,11 @@ export const designSystem = {
           py: '0.75rem',
           fontSize: '1.125rem',
         },
+        xl: {
+          px: '2rem',
+          py: '1rem',
+          fontSize: '1.25rem',
+        },
       },
       
       variants: {
@@ -209,6 +215,13 @@ export const designSystem = {
           color: 'westworld.white',
           hoverBg: 'westworld.darkCopper',
         },
+        outline: {
+          bg: 'transparent',
+          color: 'westworld.brown',
+          border: 'westworld.tan',
+          hoverBg: 'westworld.tan',
+          hoverColor: 'westworld.nearBlack',
+        },
         ghost: {
           bg: 'transparent',
           color: 'westworld.brown',
@@ -221,6 +234,21 @@ export const designSystem = {
           color: 'westworld.white',
           hoverBg: 'semantic.errorDark',
         },
+      },
+    },
+    
+    card: {
+      base: 'rounded-lg bg-white shadow-md',
+      variants: {
+        elevated: 'shadow-lg hover:shadow-xl transition-shadow',
+        outlined: 'border border-gray-200',
+        minimal: 'border-0 shadow-none',
+      },
+      padding: {
+        sm: '0.5rem',
+        md: '1rem',
+        lg: '1.5rem',
+        xl: '2rem',
       },
     },
     

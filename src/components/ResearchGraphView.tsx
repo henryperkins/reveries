@@ -644,31 +644,27 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-modal p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="graph-title"
     >
       <div
-        className="bg-white rounded-xl max-w-7xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
-        style={{ backgroundColor: THEME.cardBackground }}
+        className="bg-theme-primary rounded-xl max-w-7xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
       >
         <div
-          className="p-6 border-b flex justify-between items-center"
-          style={{ borderColor: THEME.border, backgroundColor: THEME.background }}
+          className="p-6 border-b border-theme-primary flex justify-between items-center bg-theme-secondary"
         >
           <h2
             id="graph-title"
-            className="text-2xl font-bold flex items-center gap-2"
-            style={{ color: THEME.text }}
+            className="text-2xl font-bold flex items-center gap-2 text-theme-primary"
           >
             <ChartBarIcon className="w-6 h-6" />
             Research Graph Analysis
           </h2>
           <button
             onClick={onClose}
-            className="transition-colors p-2 rounded"
-            style={{ color: THEME.textSecondary }}
+            className="transition-colors p-2 rounded text-theme-secondary hover:text-theme-primary"
             aria-label="Close graph view (Escape key)"
           >
             <XMarkIcon className="w-6 h-6" />
@@ -681,44 +677,28 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
             <div className="flex gap-2 mb-4" role="toolbar" aria-label="Graph controls">
               <button
                 onClick={handleZoomIn}
-                className="px-3 py-2 rounded transition-colors"
-                style={{
-                  backgroundColor: THEME.accent,
-                  color: 'white'
-                }}
+                className="px-3 py-2 rounded transition-colors bg-westworld-copper text-white hover:bg-westworld-darkCopper"
                 aria-label="Zoom in"
               >
                 <ArrowsPointingOutIcon className="w-4 h-4" />
               </button>
               <button
                 onClick={handleZoomOut}
-                className="px-3 py-2 rounded transition-colors"
-                style={{
-                  backgroundColor: THEME.accent,
-                  color: 'white'
-                }}
+                className="px-3 py-2 rounded transition-colors bg-westworld-copper text-white hover:bg-westworld-darkCopper"
                 aria-label="Zoom out"
               >
                 <ArrowsPointingInIcon className="w-4 h-4" />
               </button>
               <button
                 onClick={handleResetView}
-                className="px-3 py-2 rounded transition-colors"
-                style={{
-                  backgroundColor: THEME.accent,
-                  color: 'white'
-                }}
+                className="px-3 py-2 rounded transition-colors bg-westworld-copper text-white hover:bg-westworld-darkCopper"
                 aria-label="Reset view"
               >
                 <ArrowPathIcon className="w-4 h-4" />
               </button>
               <button
                 onClick={handleExportMermaid}
-                className="px-3 py-2 rounded transition-colors"
-                style={{
-                  backgroundColor: THEME.success,
-                  color: 'white'
-                }}
+                className="px-3 py-2 rounded transition-colors bg-westworld-gold text-westworld-nearBlack hover:bg-westworld-darkGold"
                 aria-label="Export as Mermaid diagram"
               >
                 <DocumentArrowDownIcon className="w-4 h-4" />
@@ -727,19 +707,14 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
             <canvas
               ref={canvasRef}
-              className="w-full h-full border rounded"
-              style={{
-                borderColor: THEME.border,
-                backgroundColor: THEME.background
-              }}
+              className="w-full h-full border border-theme-primary rounded bg-westworld-cream"
               role="img"
               aria-label={`Research graph with ${layoutData.nodes.length} nodes and ${layoutData.edges.length} connections`}
             />
 
             {layoutData.nodes.length === 0 && (
               <div
-                className="absolute inset-0 flex items-center justify-center"
-                style={{ color: THEME.textSecondary }}
+                className="absolute inset-0 flex items-center justify-center text-theme-secondary"
               >
                 <p>No research steps to display yet.</p>
               </div>
@@ -748,43 +723,39 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
           {/* Sidebar */}
           <div
-            className="w-80 border-l p-6 overflow-y-auto"
-            style={{
-              borderColor: THEME.border,
-              backgroundColor: THEME.background
-            }}
+            className="w-80 border-l border-theme-primary p-6 overflow-y-auto bg-theme-secondary"
           >
             {/* Statistics */}
             <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3" style={{ color: THEME.text }}>
+              <h3 className="text-lg font-semibold mb-3 text-theme-primary">
                 Graph Statistics
               </h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span style={{ color: THEME.textSecondary }}>Total Nodes:</span>
-                  <span style={{ color: THEME.text }}>{stats.totalNodes}</span>
+                  <span className="text-theme-secondary">Total Nodes:</span>
+                  <span className="text-theme-primary">{stats.totalNodes}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span style={{ color: THEME.textSecondary }}>Duration:</span>
-                  <span style={{ color: THEME.text }}>{formatDuration(stats.totalDuration)}</span>
+                  <span className="text-theme-secondary">Duration:</span>
+                  <span className="text-theme-primary">{formatDuration(stats.totalDuration)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span style={{ color: THEME.textSecondary }}>Avg Step:</span>
-                  <span style={{ color: THEME.text }}>{formatDuration(stats.averageStepDuration)}</span>
+                  <span className="text-theme-secondary">Avg Step:</span>
+                  <span className="text-theme-primary">{formatDuration(stats.averageStepDuration)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span style={{ color: THEME.textSecondary }}>Success Rate:</span>
-                  <span style={{ color: THEME.text }}>
+                  <span className="text-theme-secondary">Success Rate:</span>
+                  <span className="text-theme-primary">
                     {isNaN(stats.successRate) ? '0%' : `${(stats.successRate * 100).toFixed(1)}%`}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span style={{ color: THEME.textSecondary }}>Sources:</span>
-                  <span style={{ color: THEME.text }}>{stats.sourcesCollected}</span>
+                  <span className="text-theme-secondary">Sources:</span>
+                  <span className="text-theme-primary">{stats.sourcesCollected}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span style={{ color: THEME.textSecondary }}>Citations:</span>
-                  <span style={{ color: THEME.text }}>{stats.uniqueCitations}</span>
+                  <span className="text-theme-secondary">Citations:</span>
+                  <span className="text-theme-primary">{stats.uniqueCitations}</span>
                 </div>
               </div>
             </div>
@@ -820,10 +791,10 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
             {/* Usage Instructions */}
             <div>
-              <h3 className="text-lg font-semibold mb-3" style={{ color: THEME.text }}>
+              <h3 className="text-lg font-semibold mb-3 text-theme-primary">
                 Controls
               </h3>
-              <div className="text-sm space-y-2" style={{ color: THEME.textSecondary }}>
+              <div className="text-sm space-y-2 text-theme-secondary">
                 <div>• Click nodes to select and view details</div>
                 <div>• Drag to pan the view</div>
                 <div>• Scroll to zoom in/out</div>
