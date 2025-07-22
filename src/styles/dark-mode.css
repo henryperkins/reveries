@@ -1,77 +1,56 @@
-/* Dark Mode Styles */
-@layer base {
+/* Dark Mode Component Styles */
+/* Theme variables are now managed by JS in themeConfig.ts */
+/* This file contains only component-specific dark mode styles */
 
-  /* Base theme colors with CSS variables */
-  :root {
-    /* Light mode colors (default) */
-    --color-bg-primary: #FAF6F2;
-    --color-bg-secondary: #F5EDE4;
-    --color-bg-tertiary: #E8D5C4;
-    --color-text-primary: #2A2522;
-    --color-text-secondary: #6B5637;
-    --color-text-muted: #8B6F47;
-    --color-border: #E8D5C4;
-    --color-border-light: rgba(232, 213, 196, 0.5);
-    --color-accent: #D4AF37;
-    --color-accent-hover: #B8941F;
-    --color-surface: #FFFFFF;
-    --color-surface-hover: #FAF6F2;
-
-    /* Component-specific colors */
-    --color-input-bg: #FFFFFF;
-    --color-input-border: #E8D5C4;
-    --color-button-primary: #D4AF37;
-    --color-button-secondary: #8B6F47;
-
-    /* Original Westworld colors for reference */
-    --color-westworld-cream: #FAF6F2;
-    --color-westworld-beige: #F5EDE4;
-    --color-westworld-tan: #E8D5C4;
-    --color-westworld-brown: #8B6F47;
-    --color-westworld-darkBrown: #6B5637;
-    --color-westworld-nearBlack: #2A2522;
-    --color-westworld-black: #1A1512;
-    --color-westworld-gold: #D4AF37;
-    --color-westworld-darkGold: #B8941F;
-    --color-westworld-rust: #A85732;
-    --color-westworld-copper: #C87543;
-    --color-westworld-darkCopper: #A65E36;
-    --color-westworld-white: #FFFFFF;
-
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+@layer components {
+  /* Base dark mode styles using CSS variables */
+  body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
   }
 
-  /* Dark mode overrides */
-  .dark {
-    /* Dark mode colors - actual dark colors, not inverted */
-    --color-bg-primary: #1A1512;
-    --color-bg-secondary: #2A2522;
-    --color-bg-tertiary: #3A3532;
-    --color-text-primary: #FAF6F2;
-    --color-text-secondary: #E8D5C4;
-    --color-text-muted: #A68B6F;
-    --color-border: #3A3532;
-    --color-border-light: rgba(58, 53, 50, 0.5);
-    --color-accent: #D4AF37;
-    --color-accent-hover: #E4BF47;
-    --color-surface: #2A2522;
-    --color-surface-hover: #3A3532;
+  /* Component styles using CSS variables */
+  .research-container {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-md);
+  }
 
-    /* Component-specific colors */
-    --color-input-bg: #2A2522;
-    --color-input-border: #3A3532;
-    --color-button-primary: #D4AF37;
-    --color-button-secondary: #3A3532;
+  .input-bar {
+    background-color: var(--color-bg-secondary);
+    border-top: 1px solid var(--color-border);
+  }
 
-    /* Adjusted shadows for dark mode */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+  .btn-primary {
+    background-color: var(--color-button-primary);
+    color: var(--color-bg-primary);
+  }
+
+  /* Input styles */
+  input,
+  textarea,
+  select {
+    background-color: var(--color-input-bg);
+    border-color: var(--color-input-border);
+    color: var(--color-text-primary);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-accent), 0 0 0 4px var(--color-bg-primary);
+  }
+
+  /* Selection colors */
+  ::selection {
+    background-color: var(--color-accent);
+    background-color: rgba(212, 175, 55, 0.3);
+    color: var(--color-text-primary);
   }
 }
 
@@ -262,5 +241,4 @@
 
 .dark .text-amber-700 {
   @apply text-amber-300;
-}
 }

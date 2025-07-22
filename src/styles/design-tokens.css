@@ -1,22 +1,8 @@
-/* Design Tokens - Single source of truth for design values */
+/* Design Tokens - Base design values only */
+/* Theme variables are now managed by JS in themeConfig.ts */
 
 @layer base {
   :root {
-    /* Colors - Westworld Theme */
-    --color-westworld-cream: #FAF6F2;
-    --color-westworld-beige: #E5D5C8;
-    --color-westworld-tan: #C9A66B;
-    --color-westworld-brown: #6B5637;
-    --color-westworld-darkBrown: #4A3C28;
-    --color-westworld-nearBlack: #1A1512;
-    --color-westworld-black: #0A0908;
-    --color-westworld-gold: #D4AF37;
-    --color-westworld-darkGold: #B8941F;
-    --color-westworld-rust: #8B4513;
-    --color-westworld-copper: #B87333;
-    --color-westworld-darkCopper: #A0522D;
-    --color-westworld-white: #FFFFFF;
-
     /* Typography */
     --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-serif: 'Crimson Text', Georgia, serif;
@@ -67,13 +53,5 @@
     --breakpoint-lg: 1024px;
     --breakpoint-xl: 1280px;
     --breakpoint-2xl: 1536px;
-  }
-
-  /* Dark mode color overrides */
-  .dark {
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
   }
 }

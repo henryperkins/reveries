@@ -4,22 +4,60 @@ import { PARADIGM_COLORS } from './paradigm';
 import { ThemeMode, UnifiedTheme } from './types';
 
 // Generate CSS variables from design system
-export function generateCSSVariables(_mode: ThemeMode): Record<string, string> {
+export function generateCSSVariables(mode: ThemeMode): Record<string, string> {
   const variables: Record<string, string> = {};
+  const isDark = mode === 'dark';
 
-  // Westworld color variables
+  // Westworld color variables - use camelCase to match Tailwind config
   const westworldColors = designSystem.colors.westworld;
   Object.entries(westworldColors).forEach(([key, value]) => {
-    variables[`--color-westworld-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`] = value;
+    variables[`--color-westworld-${key}`] = value;
   });
 
-  // Semantic color variables
+  // Semantic color variables - use camelCase to match Tailwind config
   const semanticColors = designSystem.colors.semantic;
   Object.entries(semanticColors).forEach(([key, value]) => {
     if (typeof value === 'string') {
-      variables[`--color-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`] = value;
+      variables[`--color-${key}`] = value;
     }
   });
+
+  // Theme-specific semantic variables
+  if (isDark) {
+    variables['--color-bg-primary'] = '#1A1512';
+    variables['--color-bg-secondary'] = '#2A2522';
+    variables['--color-bg-tertiary'] = '#3A3532';
+    variables['--color-text-primary'] = '#FAF6F2';
+    variables['--color-text-secondary'] = '#E8D5C4';
+    variables['--color-text-muted'] = '#A68B6F';
+    variables['--color-border'] = '#3A3532';
+    variables['--color-border-light'] = 'rgba(58, 53, 50, 0.5)';
+    variables['--color-accent'] = '#D4AF37';
+    variables['--color-accent-hover'] = '#E4BF47';
+    variables['--color-surface'] = '#2A2522';
+    variables['--color-surface-hover'] = '#3A3532';
+    variables['--color-input-bg'] = '#2A2522';
+    variables['--color-input-border'] = '#3A3532';
+    variables['--color-button-primary'] = '#D4AF37';
+    variables['--color-button-secondary'] = '#3A3532';
+  } else {
+    variables['--color-bg-primary'] = '#FAF6F2';
+    variables['--color-bg-secondary'] = '#F5EDE4';
+    variables['--color-bg-tertiary'] = '#E8D5C4';
+    variables['--color-text-primary'] = '#2A2522';
+    variables['--color-text-secondary'] = '#6B5637';
+    variables['--color-text-muted'] = '#8B6F47';
+    variables['--color-border'] = '#E8D5C4';
+    variables['--color-border-light'] = 'rgba(232, 213, 196, 0.5)';
+    variables['--color-accent'] = '#D4AF37';
+    variables['--color-accent-hover'] = '#B8941F';
+    variables['--color-surface'] = '#FFFFFF';
+    variables['--color-surface-hover'] = '#FAF6F2';
+    variables['--color-input-bg'] = '#FFFFFF';
+    variables['--color-input-border'] = '#E8D5C4';
+    variables['--color-button-primary'] = '#D4AF37';
+    variables['--color-button-secondary'] = '#8B6F47';
+  }
 
   // Typography variables
   Object.entries(designSystem.typography.fontSize).forEach(([key, value]) => {
@@ -50,6 +88,11 @@ export function generateCSSVariables(_mode: ThemeMode): Record<string, string> {
   // Transition variables
   Object.entries(designSystem.transitions.duration).forEach(([key, value]) => {
     variables[`--transition-${key}`] = value;
+  });
+
+  // Z-index variables
+  Object.entries(designSystem.zIndex).forEach(([key, value]) => {
+    variables[`--z-${key}`] = String(value);
   });
 
   return variables;
