@@ -1,6 +1,6 @@
 // services/interHostCollaboration.ts
 import { HostParadigm, ModelType, EffortType, Citation } from '../types';
-import { ResearchAgentService } from './researchAgentService';
+import { ResearchAgentService } from './researchAgentServiceWrapper';
 import { WriteLayerService } from './contextLayers/writeLayer';
 
 interface CollaborationRequest {

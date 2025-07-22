@@ -1,6 +1,6 @@
 // services/multiParadigmBlender.ts
 import { HostParadigm, ParadigmProbabilities, Citation, ModelType, EffortType, EnhancedResearchResults } from '../types';
-import { ResearchAgentService } from './researchAgentService';
+import { ResearchAgentService } from './researchAgentServiceWrapper';
 
 interface BlendedStrategy {
   paradigms: HostParadigm[];
