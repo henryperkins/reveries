@@ -409,6 +409,17 @@ export class ResearchAgentService {
     }
   > {
     console.log('📍 ResearchAgent.processQuery called with:', { query: query.substring(0, 50), model });
+    
+    // Special logging for O3 model
+    if (model === 'o3' || (model as string).toLowerCase().includes('o3')) {
+      console.log('🎯 O3 MODEL DETECTED IN RESEARCH FLOW:', {
+        model,
+        effort: metadata?.effort || 'MEDIUM',
+        phase: metadata?.phase || 'discovery',
+        queryLength: query.length,
+        timestamp: new Date().toISOString()
+      });
+    }
     try {
       // 1) Detect paradigm with learning adjustments
       console.log('🔍 Detecting paradigm...');

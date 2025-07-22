@@ -139,54 +139,120 @@ export class ModelProviderService {
 
         case AZURE_O3_MODEL:
           console.log('🎯 O3 MODEL SELECTED - Processing query with Azure O3');
+          console.log('📊 O3 Journey Start:', {
+            model,
+            effort,
+            promptLength: prompt.length,
+            promptPreview: prompt.substring(0, 200) + '...',
+            timestamp: new Date().toISOString()
+          });
+          
           // Prioritize Azure AI Agent Service with Bing Search if available
           if (this.azureAIAgent) {
             onProgress?.('tool_used:azure_ai_agent');
-            console.log('✅ Using Azure AI Agent Service with O3 model (Bing Search grounding enabled)');
+            console.log('✅ O3 Route: Azure AI Agent Service (Bing Search grounding enabled)');
+            console.log('🔍 O3 Agent Details:', {
+              service: 'Azure AI Agent',
+              features: ['Bing Search grounding', 'Real-time web data'],
+              connectionAvailable: true
+            });
+            
             try {
+              const agentStartTime = Date.now();
+              console.log('🚀 O3 Agent Request initiated at:', new Date(agentStartTime).toISOString());
+              
               const agentResult = await this.azureAIAgent.generateText(prompt, model, effort);
+              
+              const agentDuration = Date.now() - agentStartTime;
               onProgress?.(`tool_used:completed:azure_ai_agent:${startTime}`);
-              console.log(`✅ O3 Azure AI Agent completed: ${agentResult.sources?.length || 0} sources returned`);
+              console.log('✅ O3 Azure AI Agent completed:', {
+                duration: `${agentDuration}ms`,
+                sourcesReturned: agentResult.sources?.length || 0,
+                responseLength: agentResult.text?.length || 0,
+                hasText: !!agentResult.text,
+                timestamp: new Date().toISOString()
+              });
 
               // Ensure we have a valid response
               if (!agentResult.text || agentResult.text.trim() === '') {
-                console.warn('⚠️ Azure AI Agent returned empty response, falling back');
+                console.warn('⚠️ O3 Agent returned empty response:', {
+                  responseKeys: Object.keys(agentResult),
+                  sourcesCount: agentResult.sources?.length || 0,
+                  error: 'Empty text response'
+                });
                 throw new Error('Empty response from Azure AI Agent');
               }
+
+              console.log('🎉 O3 Journey Complete via Azure AI Agent:', {
+                totalDuration: `${Date.now() - startTime}ms`,
+                route: 'Azure AI Agent with Bing Search',
+                success: true
+              });
 
               return {
                 text: agentResult.text,
                 sources: agentResult.sources || []
               };
             } catch (error) {
-              console.warn('⚠️ O3 Azure AI Agent Service failed, falling back to Azure OpenAI:', error);
+              console.warn('⚠️ O3 Azure AI Agent Service failed:', {
+                error: error instanceof Error ? error.message : String(error),
+                errorType: error instanceof Error ? error.constructor.name : typeof error,
+                willFallback: true,
+                timestamp: new Date().toISOString()
+              });
               // Fall through to Azure OpenAI
             }
           }
 
           // Fallback to Azure OpenAI with agentic tools for research capabilities
-          console.log('📌 Falling back to Azure OpenAI O3 service');
+          console.log('📌 O3 Route: Azure OpenAI Service (fallback)');
+          console.log('🔄 O3 Fallback Details:', {
+            reason: this.azureAIAgent ? 'Agent service failed' : 'Agent service not available',
+            nextRoute: 'Azure OpenAI with research tools'
+          });
+          
           onProgress?.('tool_used:azure_openai');
           if (!AzureOpenAIService.isAvailable()) {
-            console.warn('❌ Azure OpenAI not available for O3, falling back to Gemini');
+            console.warn('❌ O3 Azure OpenAI not available, falling back to Gemini:', {
+              finalFallback: 'Gemini Flash',
+              reason: 'No Azure services available'
+            });
             return this.generateText(prompt, GENAI_MODEL_FLASH, effort, onProgress);
           }
-          console.log('✅ Azure OpenAI is available, getting instance...');
+          console.log('✅ O3 Azure OpenAI is available, getting instance...');
           const azureService = AzureOpenAIService.getInstance();
 
           // Get available research tools for agentic workflow
           const researchTools = azureService.getAvailableResearchTools();
-          console.log(`📋 Available research tools: ${researchTools?.length || 0}`);
+          console.log('🔧 O3 Research Tools Check:', {
+            toolsAvailable: researchTools?.length || 0,
+            toolNames: researchTools?.map(t => t.name) || [],
+            willUseTools: !!(researchTools && researchTools.length > 0)
+          });
 
           if (researchTools && researchTools.length > 0) {
             // Use agentic workflow with tools for enhanced research capabilities
-            console.log(`✅ Using Azure OpenAI O3 with ${researchTools.length} research tools for agentic workflow`);
+            console.log('🤖 O3 Agentic Workflow Enabled:', {
+              toolCount: researchTools.length,
+              maxIterations: 5,
+              mode: 'research-enhanced'
+            });
 
             // Track tool usage
+            const toolUsageLog: { toolName: string; timestamp: number }[] = [];
             const toolUsageHandler = (toolName: string) => {
-              console.log(`🔧 Tool used: ${toolName}`);
+              const toolUseTime = Date.now();
+              console.log(`🔧 O3 Tool Invoked:`, {
+                toolName,
+                invocationTime: new Date(toolUseTime).toISOString(),
+                elapsedSinceStart: `${toolUseTime - startTime}ms`
+              });
+              toolUsageLog.push({ toolName, timestamp: toolUseTime });
               onProgress?.(`tool_used:${toolName}`);
             };
+
+            const azureStartTime = Date.now();
+            console.log('🚀 O3 Azure OpenAI Request initiated at:', new Date(azureStartTime).toISOString());
 
             const azureResult = await azureService.generateResponseWithTools(
               prompt,
@@ -198,22 +264,76 @@ export class ModelProviderService {
               toolUsageHandler // Add callback for tool usage tracking
             );
 
+            const azureDuration = Date.now() - azureStartTime;
             onProgress?.(`tool_used:completed:azure_openai_with_tools:${startTime}`);
+            
+            console.log('✅ O3 Azure OpenAI with Tools completed:', {
+              duration: `${azureDuration}ms`,
+              toolsInvoked: toolUsageLog.length,
+              toolsUsed: toolUsageLog.map(t => t.toolName),
+              iterationsCompleted: azureResult.iterationCount || 'unknown',
+              sourcesReturned: azureResult.sources?.length || 0,
+              responseLength: azureResult.text?.length || 0,
+              timestamp: new Date().toISOString()
+            });
+
             if (!azureResult || !azureResult.text) {
+              console.error('❌ O3 Azure OpenAI invalid response:', {
+                hasResult: !!azureResult,
+                resultKeys: azureResult ? Object.keys(azureResult) : [],
+                error: 'Invalid or empty response'
+              });
               throw new Error('Azure OpenAI service returned invalid response');
             }
+
+            console.log('🎉 O3 Journey Complete via Azure OpenAI with Tools:', {
+              totalDuration: `${Date.now() - startTime}ms`,
+              route: 'Azure OpenAI with research tools',
+              toolsUsed: toolUsageLog.length,
+              success: true
+            });
+
             return {
               text: azureResult.text,
               sources: azureResult.sources || []
             };
           } else {
             // Fallback to basic response without tools
-            console.log('⚠️ No research tools available, using basic Azure O3 response');
+            console.log('⚠️ O3 Basic Mode:', {
+              reason: 'No research tools available',
+              mode: 'basic-response'
+            });
+
+            const basicStartTime = Date.now();
+            console.log('🚀 O3 Basic Request initiated at:', new Date(basicStartTime).toISOString());
+
             const azureResult = await azureService.generateResponse(prompt, effort);
+            
+            const basicDuration = Date.now() - basicStartTime;
             onProgress?.(`tool_used:completed:azure_openai:${startTime}`);
+            
+            console.log('✅ O3 Basic Azure OpenAI completed:', {
+              duration: `${basicDuration}ms`,
+              responseLength: azureResult.text?.length || 0,
+              hasReasoningContent: !!azureResult.reasoningContent,
+              timestamp: new Date().toISOString()
+            });
+
             if (!azureResult || !azureResult.text) {
+              console.error('❌ O3 Basic Azure OpenAI invalid response:', {
+                hasResult: !!azureResult,
+                resultKeys: azureResult ? Object.keys(azureResult) : [],
+                error: 'Invalid or empty response'
+              });
               throw new Error('Azure OpenAI service returned invalid response');
             }
+
+            console.log('🎉 O3 Journey Complete via Basic Azure OpenAI:', {
+              totalDuration: `${Date.now() - startTime}ms`,
+              route: 'Azure OpenAI basic mode',
+              success: true
+            });
+
             return {
               text: azureResult.text,
               sources: azureResult.sources || []

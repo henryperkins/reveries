@@ -90,8 +90,11 @@ export class AzureAIAgentService {
    */
   private async initializeAgent(model: ModelType): Promise<string> {
     if (this.agentId) {
+      console.log('🔄 O3 Agent: Using existing agent ID:', this.agentId);
       return this.agentId;
     }
+
+    console.log('🚀 O3 Agent: Initializing new agent with model:', model);
 
     const bingTool: BingGroundingTool = {
       type: 'bing_grounding',
@@ -172,12 +175,33 @@ When responding:
     effort: EffortType,
     onProgress?: (message: string) => void
   ): Promise<AgentResponse> {
+    const requestId = `o3-agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log('🎯 O3 Azure AI Agent generateEnhancedResponse called:', {
+      requestId,
+      model,
+      effort,
+      queryPreview: query.substring(0, 100) + '...',
+      queryLength: query.length,
+      timestamp: new Date().toISOString()
+    });
+    
     // Apply base rate limiting for the entire search operation
     const estimatedQueryTokens = estimateTokens(query) + 500; // Add overhead for search
+    console.log(`📊 O3 Agent Token Estimation [${requestId}]:`, {
+      queryTokens: estimatedQueryTokens - 500,
+      searchOverhead: 500,
+      totalEstimated: estimatedQueryTokens
+    });
+    
     await this.rateLimiter.waitForCapacity(estimatedQueryTokens);
 
     onProgress?.('Initializing Azure AI Agent with Bing Search grounding...');
     const agentId = await this.initializeAgent(model);
+    console.log(`✅ O3 Agent Initialized [${requestId}]:`, {
+      agentId,
+      model,
+      features: ['Bing Search grounding', 'Enhanced research capabilities']
+    });
 
     onProgress?.('Creating enhanced research thread...');
     const threadResponse = await withRetry(async () => {

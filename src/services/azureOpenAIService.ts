@@ -116,13 +116,32 @@ export class AzureOpenAIService {
     temperature: number = 0.7,
     maxTokens: number = 4096
   ): Promise<AzureOpenAIResponse> {
-    console.log('generateResponse called with:', { prompt: prompt.substring(0, 100), effort, useReasoningEffort });
+    const requestId = `o3-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log('🎯 O3 Azure OpenAI generateResponse called:', {
+      requestId,
+      promptPreview: prompt.substring(0, 100) + '...',
+      promptLength: prompt.length,
+      effort,
+      useReasoningEffort,
+      temperature: this.config.deploymentName.includes('o3') ? 'N/A (deterministic)' : temperature,
+      maxTokens,
+      deployment: this.config.deploymentName,
+      timestamp: new Date().toISOString()
+    });
+    
     try {
       return await withRetry(async () => {
         // Wait for rate-limit capacity before dispatching the request
         const estimatedPromptTokens = estimateTokens(prompt);
         const estimatedCompletionTokens = maxTokens;
         const totalEstimatedTokens = estimatedPromptTokens + estimatedCompletionTokens;
+        
+        console.log(`📊 O3 Token Estimation [${requestId}]:`, {
+          promptTokens: estimatedPromptTokens,
+          maxCompletionTokens: estimatedCompletionTokens,
+          totalEstimated: totalEstimatedTokens
+        });
+        
         await this.rateLimiter.waitForCapacity(totalEstimatedTokens);
 
         let data: any;
@@ -144,11 +163,25 @@ export class AzureOpenAIService {
         // Reasoning effort for paradigmatic models now sits under a
         // top-level `reasoning` object.
         if (useReasoningEffort && this.config.deploymentName.includes('o3')) {
-          requestBody.reasoning = { effort: this.mapEffortToReasoning(effort) } as any;
+          const reasoningEffort = this.mapEffortToReasoning(effort);
+          requestBody.reasoning = { effort: reasoningEffort } as any;
+          console.log(`🧠 O3 Reasoning Configuration [${requestId}]:`, {
+            effort: reasoningEffort,
+            mapping: `${effort} → ${reasoningEffort}`
+          });
         }
 
-        console.log('Making Azure OpenAI request to:', url);
-        console.log('Request body:', requestBody);
+        console.log(`🚀 O3 API Request [${requestId}]:`, {
+          url,
+          method: 'POST',
+          apiVersion: this.config.apiVersion,
+          deployment: this.config.deploymentName,
+          hasReasoning: !!requestBody.reasoning
+        });
+        console.log(`📋 O3 Request Body [${requestId}]:`, {
+          ...requestBody,
+          input: requestBody.input.substring(0, 100) + '...'
+        });
 
         const response = await fetch(url, {
           method: 'POST',
@@ -159,12 +192,21 @@ export class AzureOpenAIService {
           body: JSON.stringify(requestBody)
         });
 
-        console.log('Azure OpenAI response status:', response.status);
+        console.log(`📨 O3 Response Status [${requestId}]:`, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: {
+            'content-type': response.headers.get('content-type'),
+            'operation-location': response.headers.get('operation-location'),
+            'retry-after': response.headers.get('retry-after')
+          }
+        });
 
         // ── Background-task shortcut ─────────────────────────────
         if (response.status === 202) {
           const operationUrl = response.headers.get('operation-location');
           if (!operationUrl) {
+            console.error(`❌ O3 Background Task Error [${requestId}]: No operation-location header`);
             throw new APIError(
               'Azure returned 202 but no operation-location header.',
               'BACKGROUND_TASK_ERROR',
@@ -172,12 +214,24 @@ export class AzureOpenAIService {
               500,
             );
           }
-          console.log(`O3 background task started → polling ${operationUrl}`);
+          console.log(`⏳ O3 Background Task Started [${requestId}]:`, {
+            operationUrl,
+            status: 'accepted',
+            message: 'Long-running operation initiated'
+          });
+          
           // Enhanced timeout for O3 models which can take significantly longer
           const isO3Model = this.config.deploymentName.includes('o3');
           const timeout = isO3Model ? 30 * 60 * 1000 : 10 * 60 * 1000; // 30min for O3, 10min for others
+          
+          console.log(`⏱️ O3 Background Task Configuration [${requestId}]:`, {
+            isO3Model,
+            timeoutMinutes: timeout / 60000,
+            pollStrategy: 'exponential-backoff'
+          });
+          
           data = await this.pollBackgroundTask(operationUrl, timeout, (message) => {
-            console.log(`O3 Background Task: ${message}`);
+            console.log(`📊 O3 Background Task Progress [${requestId}]: ${message}`);
           });
         } else
 
@@ -316,18 +370,39 @@ export class AzureOpenAIService {
     timeoutMs = 10 * 60 * 1000,
     onProgress?: (message: string) => void
   ): Promise<any> {
+    const pollId = `poll-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
     const startTime = Date.now();
     let backoffMs = 1000;          // initial back-off = 1 s
     const maxBackoffMs = 60_000;   // cap back-off at 60 s
     let attempt = 0;
 
+    console.log(`🔄 O3 Background Polling Started [${pollId}]:`, {
+      operationUrl,
+      timeoutMs,
+      timeoutMinutes: timeoutMs / 60000,
+      startTime: new Date(startTime).toISOString()
+    });
+
     onProgress?.('O3 model processing in background, polling for completion...');
 
     while (true) {
       attempt++;
+      const elapsedMs = Date.now() - startTime;
+      const elapsedSec = Math.round(elapsedMs / 1000);
+
+      console.log(`🔍 O3 Poll Attempt #${attempt} [${pollId}]:`, {
+        elapsedTime: `${elapsedSec}s`,
+        elapsedMinutes: (elapsedMs / 60000).toFixed(2),
+        remainingTimeMs: timeoutMs - elapsedMs
+      });
 
       // Abort if we exceed the timeout window
-      if (Date.now() - startTime > timeoutMs) {
+      if (elapsedMs > timeoutMs) {
+        console.error(`❌ O3 Background Task Timeout [${pollId}]:`, {
+          attempts: attempt,
+          elapsedMinutes: (elapsedMs / 60000).toFixed(2),
+          timeoutMinutes: timeoutMs / 60000
+        });
         throw new APIError(
           `Background task polling timed out after ${timeoutMs / 1000}s`,
           'BACKGROUND_TASK_TIMEOUT',
@@ -341,11 +416,28 @@ export class AzureOpenAIService {
         headers: { 'api-key': this.config.apiKey },
       });
 
+      console.log(`📡 O3 Poll Response #${attempt} [${pollId}]:`, {
+        status: resp.status,
+        statusText: resp.statusText,
+        headers: {
+          'retry-after': resp.headers.get('retry-after'),
+          'content-type': resp.headers.get('content-type')
+        }
+      });
+
       // 202 → still processing, no body
       if (resp.status === 202) {
         const retryAfter = parseInt(resp.headers.get('retry-after') ?? '0', 10);
         const waitMs = (retryAfter > 0 ? retryAfter * 1000 : backoffMs);
-        const elapsedSec = Math.round((Date.now() - startTime) / 1000);
+        
+        console.log(`⏳ O3 Still Processing [${pollId}]:`, {
+          attempt,
+          elapsedSeconds: elapsedSec,
+          nextPollIn: `${waitMs / 1000}s`,
+          usingRetryAfter: retryAfter > 0,
+          backoffMs: retryAfter > 0 ? 'N/A' : backoffMs
+        });
+        
         onProgress?.(`O3 model still processing (${elapsedSec}s elapsed), waiting ${waitMs / 1000}s...`);
         await new Promise(r => setTimeout(r, waitMs));
         backoffMs = Math.min(backoffMs * 2, maxBackoffMs);
@@ -357,12 +449,26 @@ export class AzureOpenAIService {
         const body: any = await resp.json().catch(() => ({}));
         const status = (body?.status ?? '').toString().toLowerCase();
 
+        console.log(`📋 O3 Task Status [${pollId}]:`, {
+          attempt,
+          status,
+          hasBody: !!body,
+          bodyKeys: Object.keys(body || {}),
+          elapsedSeconds: elapsedSec
+        });
+
         switch (status) {
           case 'notstarted':
           case 'running': {
             const retryAfter = parseInt(resp.headers.get('retry-after') ?? '0', 10);
             const waitMs = (retryAfter > 0 ? retryAfter * 1000 : backoffMs);
-            const elapsedSec = Math.round((Date.now() - startTime) / 1000);
+            
+            console.log(`🔄 O3 Task ${status.charAt(0).toUpperCase() + status.slice(1)} [${pollId}]:`, {
+              status,
+              nextCheckIn: `${waitMs / 1000}s`,
+              progressPercentage: body?.percentComplete || 'unknown'
+            });
+            
             onProgress?.(`O3 model ${status} (${elapsedSec}s elapsed), checking again in ${waitMs / 1000}s...`);
             await new Promise(r => setTimeout(r, waitMs));
             backoffMs = Math.min(backoffMs * 2, maxBackoffMs);
@@ -370,13 +476,27 @@ export class AzureOpenAIService {
           }
 
           case 'succeeded':
+            console.log(`✅ O3 Task Succeeded [${pollId}]:`, {
+              totalAttempts: attempt,
+              totalDurationSeconds: elapsedSec,
+              totalDurationMinutes: (elapsedMs / 60000).toFixed(2),
+              hasOutput: !!body.output,
+              hasUsage: !!body.usage,
+              reasoningTokens: body?.usage?.output_tokens_details?.reasoning_tokens || 'N/A'
+            });
             return body;
 
           case 'failed':
           case 'cancelled':
           case 'canceled': // some SDKs spell it this way
+            console.error(`❌ O3 Task ${status} [${pollId}]:`, {
+              status,
+              error: body?.error || 'Unknown error',
+              attempts: attempt,
+              elapsedMinutes: (elapsedMs / 60000).toFixed(2)
+            });
             throw new APIError(
-              `Background task ${status}`,
+              `Background task ${status}: ${body?.error?.message || 'Unknown error'}`,
               'BACKGROUND_TASK_ERROR',
               false,
               500,
@@ -384,6 +504,11 @@ export class AzureOpenAIService {
 
           default:
             // Unknown status → treat as failure
+            console.error(`❓ O3 Unknown Task Status [${pollId}]:`, {
+              status: status || '(empty)',
+              body,
+              attempts: attempt
+            });
             throw new APIError(
               `Unrecognized background-task status: ${status || '(empty)'}`,
               'BACKGROUND_TASK_ERROR',
