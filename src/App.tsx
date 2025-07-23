@@ -16,6 +16,7 @@ import { useFunctionCalls } from '@/components/FunctionCallDock'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
 import { ThemeProvider, ThemeToggle } from '@/theme';
 import { GraphContextProvider } from '@/contexts/GraphContext';
+import { formatToolName } from '@/utils/toolMessageParser';
 
 import {
     ResearchStep,
@@ -79,7 +80,10 @@ const App: React.FC = () => {
     // --- Function call context helpers --------------------------------------
     const {
         addToHistory,
-        liveCalls
+        liveCalls,
+        addLiveCall,
+        updateLiveCall,
+        addToolUsed
     } = useFunctionCalls();
 
     // Timeout manager for centralized cleanup
@@ -89,7 +93,7 @@ const App: React.FC = () => {
     const createdPhaseCardsRef = useRef<Set<string>>(new Set());
 
     // Track active operations to prevent duplicate card creation
-    const activeOperationsRef = useRef<Set<string>>(new Set());
+    const activeOperationsRef = useRef<Map<string, string>>(new Map());
 
     // Initialize progress manager with configuration
     const progressManager = useProgressManager({
@@ -106,7 +110,9 @@ const App: React.FC = () => {
                 'synthesizing': 80,
                 'complete': 100
             };
-            setProgress(progressMap[phase]);
+            const newProgress = progressMap[phase];
+            console.log(`[Progress Debug] Phase: ${phase}, Progress: ${newProgress}%`);
+            setProgress(newProgress);
 
             // Complete previous spinning steps
             if (phase !== 'idle') {
@@ -139,6 +145,31 @@ const App: React.FC = () => {
                     console.error(`Error creating ${progressState} phase card:`, error);
                     // Remove from created phases on error
                     createdPhaseCardsRef.current.delete(progressState);
+                }
+            }
+        },
+        onToolDetected: (toolName: string, type: 'start' | 'complete') => {
+            // Add tool to used tools list
+            addToolUsed(toolName);
+            
+            // Create or update live call
+            if (type === 'start') {
+                const callId = addLiveCall({
+                    name: formatToolName(toolName),
+                    status: 'running',
+                    startTime: Date.now(),
+                    context: `Processing ${formatToolName(toolName)}`
+                });
+                // Store the call ID for completion tracking
+                activeOperationsRef.current.set(toolName, callId);
+            } else if (type === 'complete') {
+                const callId = activeOperationsRef.current.get(toolName);
+                if (callId) {
+                    updateLiveCall(callId, {
+                        status: 'completed',
+                        endTime: Date.now()
+                    });
+                    activeOperationsRef.current.delete(toolName);
                 }
             }
         },
@@ -393,7 +424,7 @@ const App: React.FC = () => {
     return (
         <ThemeProvider>
         <GraphContextProvider graphManager={graphManager}>
-            <div className="min-h-screen bg-westworld-cream dark:bg-westworld-nearBlack text-westworld-nearBlack dark:text-westworld-cream transition-colors duration-300">
+            <div className="min-h-screen bg-theme-background text-theme-foreground transition-colors duration-300">
             {/* Theme toggle button - positioned according to responsive design patterns */}
             <div className="fixed top-4 right-4 z-modal safe-padding-top safe-padding-right">
                 <ThemeToggle />
@@ -472,38 +503,47 @@ const App: React.FC = () => {
                             <div className="animate-slide-up mb-6 bg-theme-surface rounded-lg border border-theme-border p-4">
                                 <h3 className="text-sm font-medium text-theme-secondary mb-3">Research Workflow Progress</h3>
                                 <ProgressMeterGroup
-                                    meters={[
-                                        {
-                                            label: 'Analysis',
-                                            value: progressState === 'idle' ? 0 : progressState === 'analyzing' ? 50 : 100,
-                                            paradigm: paradigm || undefined,
-                                            id: 'analysis-progress'
-                                        },
-                                        {
-                                            label: 'Routing',
-                                            value: ['idle', 'analyzing'].includes(progressState) ? 0 : progressState === 'routing' ? 50 : 100,
-                                            paradigm: paradigm || undefined,
-                                            id: 'routing-progress'
-                                        },
-                                        {
-                                            label: 'Research',
-                                            value: ['idle', 'analyzing', 'routing'].includes(progressState) ? 0 : progressState === 'researching' ? 50 : 100,
-                                            paradigm: paradigm || undefined,
-                                            id: 'research-progress'
-                                        },
-                                        {
-                                            label: 'Evaluation',
-                                            value: ['idle', 'analyzing', 'routing', 'researching'].includes(progressState) ? 0 : progressState === 'evaluating' ? 50 : 100,
-                                            paradigm: paradigm || undefined,
-                                            id: 'evaluation-progress'
-                                        },
-                                        {
-                                            label: 'Synthesis',
-                                            value: ['idle', 'analyzing', 'routing', 'researching', 'evaluating'].includes(progressState) ? 0 : progressState === 'synthesizing' ? 50 : 100,
-                                            paradigm: paradigm || undefined,
-                                            id: 'synthesis-progress'
-                                        }
-                                    ]}
+                                    meters={(() => {
+                                        // Calculate progress for each phase based on overall progress
+                                        const meters = [
+                                            {
+                                                label: 'Analysis',
+                                                value: Math.min(Math.max((progress / 15) * 100, 0), 100),
+                                                paradigm: paradigm || undefined,
+                                                id: 'analysis-progress'
+                                            },
+                                            {
+                                                label: 'Routing',
+                                                value: progress <= 15 ? 0 : Math.min(Math.max(((progress - 15) / 10) * 100, 0), 100),
+                                                paradigm: paradigm || undefined,
+                                                id: 'routing-progress'
+                                            },
+                                            {
+                                                label: 'Research',
+                                                value: progress <= 25 ? 0 : Math.min(Math.max(((progress - 25) / 15) * 100, 0), 100),
+                                                paradigm: paradigm || undefined,
+                                                id: 'research-progress'
+                                            },
+                                            {
+                                                label: 'Evaluation',
+                                                value: progress <= 40 ? 0 : Math.min(Math.max(((progress - 40) / 20) * 100, 0), 100),
+                                                paradigm: paradigm || undefined,
+                                                id: 'evaluation-progress'
+                                            },
+                                            {
+                                                label: 'Synthesis',
+                                                value: progress <= 60 ? 0 : Math.min(Math.max(((progress - 60) / 20) * 100, 0), 100),
+                                                paradigm: paradigm || undefined,
+                                                id: 'synthesis-progress'
+                                            }
+                                        ];
+                                        console.log('[Progress Meters Debug]', {
+                                            progress,
+                                            progressState,
+                                            meterValues: meters.map(m => ({ label: m.label, value: m.value }))
+                                        });
+                                        return meters;
+                                    })()}
                                     variant="gradient"
                                     showValues={true}
                                     showLabels={true}
@@ -539,7 +579,7 @@ const App: React.FC = () => {
                                         <h3 className="text-sm font-semibold text-theme-primary">Semantic Search</h3>
                                         <button
                                             onClick={() => setShowSemanticSearch(!showSemanticSearch)}
-                                            className="text-xs text-westworld-copper hover:text-westworld-darkCopper"
+                                            className="text-xs text-theme-muted hover:text-theme-foreground transition-colors"
                                         >
                                             {showSemanticSearch ? 'Hide' : 'Show'}
                                         </button>

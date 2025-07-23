@@ -1,4 +1,4 @@
-import { useTheme } from './ThemeProvider';
+import { useTheme } from './useTheme';
 import { AnimationName, AnimationOptions } from '@/hooks/useAnimation';
 
 /**
@@ -17,7 +17,7 @@ export interface ThemeAnimationVariant {
  * Hook for theme-aware animations
  */
 export function useThemeAnimation() {
-  const { theme, getCSSVariable } = useTheme();
+  const { getCSSVariable } = useTheme();
   
   const getThemeAnimationOptions = (
     variant: ThemeAnimationVariant,
@@ -145,10 +145,13 @@ export const themeAnimationVariants = {
  */
 export function getThemeAnimationClass(
   animationType: keyof typeof themeAnimationVariants,
-  animationName: keyof typeof themeAnimationVariants[typeof animationType],
+  animationName: string,
   paradigm?: string
 ): string {
-  const variant = themeAnimationVariants[animationType][animationName];
+  const variantGroup = themeAnimationVariants[animationType] as any;
+  const variant = variantGroup[animationName];
+  if (!variant) return '';
+  
   const classes = [`animate-${variant.name}`];
   
   if (variant.themeOptions?.paradigmAware && paradigm) {

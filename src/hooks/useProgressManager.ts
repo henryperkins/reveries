@@ -2,16 +2,18 @@ import { useCallback, useRef } from 'react';
 import { TimeoutManager } from '@/utils/timeoutManager';
 import { TIMEOUTS } from '@/constants';
 import { ResearchStep, ResearchStepType } from '@/types';
+import { parseToolMessage } from '@/utils/toolMessageParser';
 
 export type ProgressState = 'idle' | 'analyzing' | 'routing' | 'researching' | 'evaluating' | 'synthesizing' | 'complete';
 
 interface ProgressManagerConfig {
   onProgressUpdate: (phase: ProgressState, message?: string) => void;
   onStepUpdate: (step: ResearchStep) => void;
+  onToolDetected?: (toolName: string, type: 'start' | 'complete') => void;
   isO3Model: boolean;
 }
 
-export function useProgressManager({ onProgressUpdate, onStepUpdate, isO3Model }: ProgressManagerConfig) {
+export function useProgressManager({ onProgressUpdate, onStepUpdate, onToolDetected, isO3Model }: ProgressManagerConfig) {
   const progressTimeoutMgr = useRef<TimeoutManager>(new TimeoutManager());
   const currentProgressRef = useRef<number>(0);
 
@@ -114,6 +116,15 @@ export function useProgressManager({ onProgressUpdate, onStepUpdate, isO3Model }
   }, []);
 
   const handleProgressMessage = useCallback((message: string) => {
+    // First check for tool messages
+    const toolMessage = parseToolMessage(message);
+    if (toolMessage && onToolDetected) {
+      onToolDetected(toolMessage.toolName, toolMessage.type);
+      // Reset timeout on tool activity
+      resetProgressTimeout();
+    }
+    
+    // Then handle progress state transitions
     if (message.includes('Query classified as:')) {
       updateProgressState('analyzing', message);
       startProgressTimeout('analyzing');
@@ -134,10 +145,11 @@ export function useProgressManager({ onProgressUpdate, onStepUpdate, isO3Model }
     } else if (message.includes('O3 model') && message.includes('processing')) {
       console.log(`O3 reasoning in progress: ${message}`);
       resetProgressTimeout(TIMEOUTS.PROGRESS_RESEARCH * 8);
-    } else {
+    } else if (!toolMessage) {
+      // Only reset timeout if not a tool message
       resetProgressTimeout();
     }
-  }, [updateProgressState, startProgressTimeout, resetProgressTimeout]);
+  }, [updateProgressState, startProgressTimeout, resetProgressTimeout, onToolDetected]);
 
   return {
     updateProgressState,

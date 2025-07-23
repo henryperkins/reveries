@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { HostParadigm, ResearchPhase } from '@/types'
-import { useTheme, useParadigmTheme, getParadigmClasses, componentVariants } from '@/theme'
+import { useTheme, useParadigmTheme, getParadigmClasses } from '@/theme'
 import { ProgressMeter } from '@/components/atoms'
 import { useAnimation, useAnimationChain } from '@/hooks/useAnimation'
 import { useThemeAnimation, themeAnimationVariants } from '@/theme/animations'
@@ -66,7 +66,7 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
   showHostColors = false,
   isLoading = false
 }) => {
-  const { theme, getCSSVariable } = useTheme();
+  const { getCSSVariable } = useTheme();
   const getParadigmTheme = useParadigmTheme();
   const [hoveredContext, setHoveredContext] = useState<string | null>(null);
   const [prevDensities, setPrevDensities] = useState(densities);
@@ -76,14 +76,14 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
   const paradigmTheme = paradigm ? getParadigmTheme(paradigm) : null;
   const paradigmClasses = paradigm ? getParadigmClasses(paradigm) : null;
 
-  // Get theme-aware colors
+  // Get theme-aware colors using design system
   const themeColors = {
-    textSecondary: getCSSVariable('--colors-semantic-text-muted', '#8B6F47'),
-    surface: getCSSVariable('--colors-semantic-surface', '#FAF6F2'),
-    border: getCSSVariable('--colors-semantic-border', '#E8D5C4'),
-    gold: getCSSVariable('--colors-westworld-gold', '#d4af37'),
-    copper: getCSSVariable('--colors-westworld-copper', '#b87333'),
-    rust: getCSSVariable('--colors-westworld-rust', '#8b4513'),
+    textSecondary: getCSSVariable('--colors-semantic-text-muted'),
+    surface: getCSSVariable('--colors-semantic-surface'),
+    border: getCSSVariable('--colors-semantic-border'),
+    gold: getCSSVariable('--colors-westworld-gold'),
+    copper: getCSSVariable('--colors-westworld-copper'),
+    rust: getCSSVariable('--colors-westworld-rust'),
   };
 
   // Auto-detect dominant context
@@ -155,19 +155,19 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
   // Loading skeleton
   if (isLoading) {
     return (
-      <div className={cn(componentVariants.card.base, "animate-pulse")}>
+      <div className={cn("bg-theme-surface rounded-lg border border-theme-border p-4", "animate-pulse")}>
         <div className="flex items-center justify-between mb-2">
-          <div className="h-6 w-32 rounded animate-shimmer" style={{ backgroundColor: `${themeColors.border}40` }}></div>
-          <div className="h-5 w-24 rounded animate-shimmer" style={{ backgroundColor: `${themeColors.border}40` }}></div>
+          <div className="h-6 w-32 rounded animate-shimmer bg-theme-border/40"></div>
+          <div className="h-5 w-24 rounded animate-shimmer bg-theme-border/40"></div>
         </div>
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
             <div key={i}>
               <div className="flex justify-between mb-1">
-                <div className="h-4 w-20 rounded animate-shimmer" style={{ backgroundColor: `${themeColors.border}40` }}></div>
-                <div className="h-4 w-12 rounded animate-shimmer" style={{ backgroundColor: `${themeColors.border}40` }}></div>
+                <div className="h-4 w-20 rounded animate-shimmer bg-theme-border/40"></div>
+                <div className="h-4 w-12 rounded animate-shimmer bg-theme-border/40"></div>
               </div>
-              <div className="h-2 w-full rounded animate-shimmer" style={{ backgroundColor: `${themeColors.border}40` }}></div>
+              <div className="h-2 w-full rounded animate-shimmer bg-theme-border/40"></div>
             </div>
           ))}
         </div>
@@ -185,16 +185,12 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
       }}
       id="context-density-container"
       className={cn(
-        componentVariants.card.base,
-        componentVariants.card.variants.elevated,
+        "bg-theme-surface rounded-lg border border-theme-border p-4",
         "relative overflow-hidden",
         "transition-all duration-300",
-        isUpdating && "ring-2",
+        isUpdating && "ring-2 ring-westworld-gold/50",
         "hover:shadow-lg"
       )}
-      style={{
-        ...(isUpdating && { boxShadow: `0 0 0 2px ${themeColors.gold}50` }),
-      }}
     >
       {/* Westworld-themed background pattern */}
       <div className="absolute inset-0 opacity-5 pointer-events-none">
@@ -206,10 +202,9 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <PhaseIcon className={cn(
               "transition-all duration-300",
-              isUpdating && "animate-pulse"
-            )}
-            style={isUpdating ? { color: themeColors.gold } : undefined}
-            />
+              isUpdating && "animate-pulse",
+              isUpdating && "text-westworld-gold"
+            )} />
             <span className="animate-typewriter">Context Analysis</span>
           </h3>
           <div className="flex items-center gap-2">
@@ -255,32 +250,25 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
                     <span className={cn(
                       "capitalize flex items-center gap-1 transition-all duration-300",
                       isDominant && `font-semibold animate-glow ${paradigm ? `animate-paradigm-${paradigm}` : ''}`,
-                      isHovered && "transform translateX-1"
+                      isHovered && "transform translateX-1",
+                      isDominant && !useParadigmStyle && "text-westworld-gold",
+                      isDominant && useParadigmStyle && paradigmClasses?.text
                     )}
-                    style={{
-                      ...(isDominant && !useParadigmStyle && { color: themeColors.gold }),
-                      ...(isDominant && useParadigmStyle && paradigmTheme && { color: paradigmTheme.primary })
-                    }}
                     >
                       {context}
                       {isDominant && (
                         <DominantStarIcon className={cn(
                           "inline-block transition-all duration-300",
                           isHovered && "rotate-180",
-                          ""
-                        )}
-                        style={{
-                          color: useParadigmStyle && paradigmTheme ? paradigmTheme.primary : themeColors.gold
-                        }}
-                        />
+                          useParadigmStyle && paradigmClasses ? paradigmClasses.text : "text-westworld-gold"
+                        )} />
                       )}
                     </span>
                     <span className={cn(
                       "transition-all duration-300",
-                      isHovered && "font-semibold"
-                    )}
-                    style={isDominant ? { color: themeColors.gold } : undefined}
-                    >
+                      isHovered && "font-semibold",
+                      isDominant && "text-westworld-gold"
+                    )}>
                       {density}%
                     </span>
                   </div>
@@ -288,12 +276,12 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
                 <div className="relative">
                   <ProgressMeter
                     value={density}
-                    variant={useParadigmStyle && isDominant ? 'paradigm' : 'gradient'}
+                    variant={useParadigmStyle && isDominant ? 'paradigm' : (isDominant ? 'gradient' : 'default')}
                     paradigm={useParadigmStyle && isDominant ? paradigm : undefined}
                     showPercentage={false}
                     label=""
-                    gradientClass={isDominant && !useParadigmStyle ? 'from-westworld-gold to-westworld-copper' : undefined}
-                    colorClass={!isDominant ? 'bg-westworld-copper' : undefined}
+                    gradientClass={isDominant && !useParadigmStyle ? 'bg-gradient-to-r from-westworld-gold to-westworld-copper' : undefined}
+                    colorClass={!isDominant ? 'bg-westworld-copper/70' : undefined}
                   />
                   {/* Hover effect overlay */}
                   {isHovered && (
@@ -312,7 +300,7 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
           <svg className="w-full h-full opacity-20">
             <path
               d="M0,50 L100,50"
-              stroke={themeColors.gold}
+              stroke="rgb(var(--colors-westworld-gold) / 1)"
               strokeWidth="2"
               strokeDasharray="5,5"
               className="animate-circuit"
