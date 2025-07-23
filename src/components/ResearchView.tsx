@@ -58,18 +58,18 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-westworld-gold bg-opacity-10 dark:bg-westworld-gold dark:bg-opacity-20 rounded-lg border border-westworld-gold border-opacity-30 p-6">
-          <h4 className="font-semibold text-westworld-darkBrown dark:text-westworld-gold mb-2">Quick Actions</h4>
+        <div className="bg-westworld-gold/10 rounded-lg border border-westworld-gold/30 p-6">
+          <h4 className="font-semibold text-westworld-darkBrown mb-2">Quick Actions</h4>
           <div className="space-y-2">
-            <button className="w-full text-left px-3 py-2 text-westworld-darkBrown dark:text-westworld-gold hover-theme-primary rounded transition-colors flex items-center gap-2">
+            <button className="w-full text-left px-3 py-2 text-westworld-darkBrown hover:bg-westworld-gold/10 rounded transition-colors flex items-center gap-2">
               <Download className="w-4 h-4" />
               Export Results
             </button>
-            <button className="w-full text-left px-3 py-2 text-westworld-darkBrown dark:text-westworld-gold hover-theme-primary rounded transition-colors flex items-center gap-2">
+            <button className="w-full text-left px-3 py-2 text-westworld-darkBrown hover:bg-westworld-gold/10 rounded transition-colors flex items-center gap-2">
               <BookOpen className="w-4 h-4" />
               View Sources
             </button>
-            <button className="w-full text-left px-3 py-2 text-westworld-darkBrown dark:text-westworld-gold hover-theme-primary rounded transition-colors flex items-center gap-2">
+            <button className="w-full text-left px-3 py-2 text-westworld-darkBrown hover:bg-westworld-gold/10 rounded transition-colors flex items-center gap-2">
               <Target className="w-4 h-4" />
               Refine Query
             </button>

@@ -104,8 +104,8 @@ export const ResearchStepCard: React.FC<ResearchStepCardProps> = ({
       {/* Background pattern for visual interest - adapted to Westworld aesthetic */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute inset-0" style={{
-          backgroundImage: `radial-gradient(circle at 20% 80%, var(--westworld-gold) 0%, transparent 50%),
-                           radial-gradient(circle at 80% 20%, var(--westworld-darkBrown) 0%, transparent 50%)`,
+          backgroundImage: `radial-gradient(circle at 20% 80%, var(--colors-westworld-gold) 0%, transparent 50%),
+                           radial-gradient(circle at 80% 20%, var(--colors-westworld-dark-brown) 0%, transparent 50%)`,
         }} />
       </div>
 

@@ -533,7 +533,7 @@ const EnhancedInputBar = forwardRef<InputBarRef, InputBarProps>(
             >
               {allSuggestions.map((suggestion, index) => (
                 <button
-                  key={index}
+                  key={`suggestion-${suggestion.substring(0, 20)}-${index}`}
                   type="button"
                   onClick={() => applySuggestion(suggestion)}
                   className={cn(

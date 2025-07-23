@@ -175,7 +175,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
 
               return (
                 <div
-                  key={index}
+                  key={`segment-${segment.value}-${segment.color || segment.paradigm || index}`}
                   className={`${segmentClasses} ${animate ? 'transition-all duration-500' : ''}`}
                   style={{ width: `${segment.value}%` }}
                   title={segment.label || `${Math.round(segment.value)}%`}
@@ -190,7 +190,7 @@ export const ProgressMeter: React.FC<ProgressMeterProps> = ({
           <div className="flex flex-wrap gap-2 mt-2">
             {normalizedSegments.map((segment, index) => (
               segment.label && (
-                <div key={index} className="flex items-center gap-1 text-xs">
+                <div key={`legend-${segment.label}-${index}`} className="flex items-center gap-1 text-xs">
                   <div
                     className={`w-3 h-3 rounded ${segment.paradigm
                       ? getParadigmClasses(segment.paradigm).gradient

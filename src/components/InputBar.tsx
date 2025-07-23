@@ -112,15 +112,15 @@ export const InputBar: React.FC<InputBarProps> = ({
   const getSuggestionColor = (type: string) => {
     switch (type) {
       case 'memory':
-        return 'border-l-4 border-l-blue-500 bg-blue-500/10';
+        return 'border-l-4 border-l-westworld-copper bg-westworld-copper/10';
       case 'paradigm':
-        return 'border-l-4 border-l-purple-500 bg-purple-500/10';
+        return 'border-l-4 border-l-westworld-gold bg-westworld-gold/10';
       case 'tool':
-        return 'border-l-4 border-l-green-500 bg-green-500/10';
+        return 'border-l-4 border-l-westworld-darkBrown bg-westworld-darkBrown/10';
       case 'collaboration':
-        return 'border-l-4 border-l-orange-500 bg-orange-500/10';
+        return 'border-l-4 border-l-westworld-rust bg-westworld-rust/10';
       default:
-        return 'border-l-4 border-l-gray-500 bg-gray-500/10';
+        return 'border-l-4 border-l-theme-border bg-theme-secondary';
     }
   };
 
@@ -190,12 +190,12 @@ export const InputBar: React.FC<InputBarProps> = ({
 
             {suggestions.map((suggestion, index) => (
               <button
-                key={index}
+                key={`${suggestion.type}-${suggestion.text.substring(0, 20)}-${index}`}
                 onClick={() => applySuggestion(suggestion)}
                 className={`w-full text-left p-3 rounded-md transition-colors mb-1
                           ${
                             index === selectedSuggestionIndex
-                              ? 'bg-indigo-500/20 border-l-4 border-l-indigo-500'
+                              ? 'bg-westworld-gold/20 border-l-4 border-l-westworld-gold'
                               : `hover:bg-theme-secondary ${getSuggestionColor(
                                   suggestion.type
                                 )}`

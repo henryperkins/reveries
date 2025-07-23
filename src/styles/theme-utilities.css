@@ -56,6 +56,34 @@
     color: var(--colors-semantic-primary);
 }
 
+.bg-theme-accent {
+    background-color: var(--colors-semantic-primary);
+}
+
+.bg-theme-accent-dark {
+    background-color: var(--colors-semantic-primary-dark);
+}
+
+.text-theme-accent {
+    color: var(--colors-semantic-primary);
+}
+
+.border-theme-accent {
+    border-color: var(--colors-semantic-primary);
+}
+
+.ring-theme-accent {
+    --tw-ring-color: var(--colors-semantic-primary);
+}
+
+.hover\:bg-theme-accent-dark:hover {
+    background-color: var(--colors-semantic-primary-dark);
+}
+
+.focus\:ring-theme-accent:focus {
+    --tw-ring-color: var(--colors-semantic-primary);
+}
+
 /* Shadow utilities using CSS variables */
 .shadow-theme-sm {
     box-shadow: var(--shadows-sm);
@@ -71,6 +99,11 @@
 
 .shadow-theme-xl {
     box-shadow: var(--shadows-xl);
+}
+
+/* Westworld-specific shadow utilities */
+.shadow-westworld-glow {
+    box-shadow: 0 0 20px color-mix(in srgb, var(--colors-westworld-gold) 30%, transparent);
 }
 
 /* Interactive theme utilities */

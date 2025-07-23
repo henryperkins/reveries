@@ -210,8 +210,7 @@ export const ContextLayerProgress: React.FC<{
       <div className="relative flex items-center justify-between">
         {/* timeline track - use CSS variable instead of hardcoded z-0 */}
         <div
-          className="absolute top-6 left-0 right-0 h-1 bg-gray-200"
-          style={{ zIndex: 0 }}
+          className="absolute top-6 left-0 right-0 h-1 bg-gray-200 z-0"
         />
 
         {layers.map((layer, idx) => {
@@ -223,10 +222,9 @@ export const ContextLayerProgress: React.FC<{
           return (
             <div
               key={layer}
-              className="relative flex flex-col items-center"
+              className="relative flex flex-col items-center z-[1]"
               style={{
-                width: `${100 / layers.length}%`,
-                zIndex: 1 // Use low z-index, not 10
+                width: `${100 / layers.length}%`
               }}
             >
               <div

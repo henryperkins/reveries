@@ -51,7 +51,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history }) => {
 
         return (
           <div
-            key={index}
+            key={`call-${call.timestamp}-${call.function}`}
             className="border-b border-theme-primary last:border-b-0"
           >
             {/* Header Row */}

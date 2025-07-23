@@ -8,7 +8,7 @@ export { useTheme, useThemeMode, useThemeColors, useParadigmTheme, useComponentV
 export { ThemeToggle } from '../components/ThemeToggle';
 
 // Theme configuration and utilities
-export { createThemeConfig, generateCSSVariables, applyThemeToDOM, initializeTheme } from './themeConfig';
+export { generateCSSVariables, applyThemeToDOM, initializeTheme } from './themeConfig';
 
 // Types
 export type { ThemeMode, UnifiedTheme, ThemeContextType, ParadigmTheme, HostParadigm } from './types';

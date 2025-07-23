@@ -12,7 +12,7 @@ export const componentVariants = {
       xl: 'px-6 py-3 text-base rounded-lg',
     },
     variants: {
-      primary: 'bg-westworld-copper text-white hover:bg-westworld-darkCopper focus:ring-westworld-copper',
+      primary: 'bg-theme-accent text-white hover:bg-theme-accent-dark focus:ring-theme-accent',
       secondary: 'bg-theme-secondary text-theme-primary hover:bg-theme-secondary/80 focus:ring-theme-border',
       outline: 'border border-theme-border bg-transparent hover:bg-theme-secondary focus:ring-theme-border',
       ghost: 'bg-transparent hover:bg-theme-secondary focus:ring-theme-border',
@@ -53,7 +53,7 @@ export const componentVariants = {
     base: 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
     variants: {
       default: 'bg-theme-secondary text-theme-primary',
-      primary: 'bg-westworld-copper/10 text-westworld-copper',
+      primary: 'bg-theme-accent/10 text-theme-accent',
       success: 'bg-semantic-success/10 text-semantic-success',
       warning: 'bg-semantic-warning/10 text-semantic-warning',
       error: 'bg-semantic-error/10 text-semantic-error',

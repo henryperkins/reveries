@@ -654,27 +654,27 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-modal p-4"
+      className="fixed inset-0 bg-westworld-nearBlack/50 flex items-center justify-center z-modal p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="graph-title"
     >
       <div
-        className="bg-semantic-surface rounded-xl max-w-7xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
+        className="bg-theme-primary rounded-xl max-w-7xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
       >
         <div
-          className="p-6 border-b border-semantic-primary flex justify-between items-center bg-semantic-text-muted"
+          className="p-6 border-b border-theme-primary flex justify-between items-center bg-westworld-cream"
         >
           <h2
             id="graph-title"
-            className="text-2xl font-bold flex items-center gap-2 text-semantic-primary"
+            className="text-2xl font-bold flex items-center gap-2 text-westworld-darkBrown"
           >
             <ChartBarIcon className="w-6 h-6" />
             Research Graph Analysis
           </h2>
           <button
             onClick={onClose}
-            className="transition-colors p-2 rounded text-semantic-text-muted hover:text-semantic-primary"
+            className="transition-colors p-2 rounded text-westworld-rust hover:text-westworld-darkBrown"
             aria-label="Close graph view (Escape key)"
           >
             <XMarkIcon className="w-6 h-6" />
@@ -717,14 +717,14 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
             <canvas
               ref={canvasRef}
-              className="w-full h-full border border-semantic-primary rounded bg-westworld-cream"
+              className="w-full h-full border border-westworld-gold/30 rounded bg-westworld-cream"
               role="img"
               aria-label={`Research graph with ${layoutData.nodes.length} nodes and ${layoutData.edges.length} connections`}
             />
 
             {layoutData.nodes.length === 0 && (
               <div
-                className="absolute inset-0 flex items-center justify-center text-semantic-text-muted"
+                className="absolute inset-0 flex items-center justify-center text-westworld-rust"
               >
                 <p>No research steps to display yet.</p>
               </div>
@@ -733,39 +733,39 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
           {/* Sidebar */}
           <div
-            className="w-80 border-l border-semantic-primary p-6 overflow-y-auto bg-semantic-text-muted"
+            className="w-80 border-l border-westworld-gold/30 p-6 overflow-y-auto bg-westworld-beige"
           >
             {/* Statistics */}
             <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3 text-semantic-primary">
+              <h3 className="text-lg font-semibold mb-3 text-westworld-darkBrown">
                 Graph Statistics
               </h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-semantic-text-muted">Total Nodes:</span>
-                  <span className="text-semantic-primary">{stats.totalNodes}</span>
+                  <span className="text-westworld-rust">Total Nodes:</span>
+                  <span className="text-westworld-darkBrown font-medium">{stats.totalNodes}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-semantic-text-muted">Duration:</span>
-                  <span className="text-semantic-primary">{formatDuration(stats.totalDuration)}</span>
+                  <span className="text-westworld-rust">Duration:</span>
+                  <span className="text-westworld-darkBrown font-medium">{formatDuration(stats.totalDuration)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-semantic-text-muted">Avg Step:</span>
-                  <span className="text-semantic-primary">{formatDuration(stats.averageStepDuration)}</span>
+                  <span className="text-westworld-rust">Avg Step:</span>
+                  <span className="text-westworld-darkBrown font-medium">{formatDuration(stats.averageStepDuration)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-semantic-text-muted">Success Rate:</span>
-                  <span className="text-semantic-primary">
+                  <span className="text-westworld-rust">Success Rate:</span>
+                  <span className="text-westworld-darkBrown font-medium">
                     {isNaN(stats.successRate) ? '0%' : `${(stats.successRate * 100).toFixed(1)}%`}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-semantic-text-muted">Sources:</span>
-                  <span className="text-semantic-primary">{stats.sourcesCollected}</span>
+                  <span className="text-westworld-rust">Sources:</span>
+                  <span className="text-westworld-darkBrown font-medium">{stats.sourcesCollected}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-semantic-text-muted">Citations:</span>
-                  <span className="text-semantic-primary">{stats.uniqueCitations}</span>
+                  <span className="text-westworld-rust">Citations:</span>
+                  <span className="text-westworld-darkBrown font-medium">{stats.uniqueCitations}</span>
                 </div>
               </div>
             </div>
@@ -773,16 +773,16 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
             {/* Selected Node Details */}
             {selectedDetails && (
               <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3 text-semantic-text">
+                <h3 className="text-lg font-semibold mb-3 text-westworld-darkBrown">
                   Selected Node
                 </h3>
                 <div
-                  className="p-4 rounded border border-semantic-border bg-semantic-surface"
+                  className="p-4 rounded border border-westworld-gold/30 bg-westworld-cream"
                 >
-                  <h4 className="font-medium mb-2 text-semantic-text">
+                  <h4 className="font-medium mb-2 text-westworld-darkBrown">
                     {selectedDetails.title}
                   </h4>
-                  <div className="text-sm space-y-1 text-semantic-text-muted">
+                  <div className="text-sm space-y-1 text-westworld-rust">
                     <div>Type: {selectedDetails.type}</div>
                     {selectedDetails.duration && (
                       <div>Duration: {formatDuration(selectedDetails.duration)}</div>
@@ -797,10 +797,10 @@ export const ResearchGraphView: React.FC<ResearchGraphViewProps> = ({
 
             {/* Usage Instructions */}
             <div>
-              <h3 className="text-lg font-semibold mb-3 text-semantic-primary">
+              <h3 className="text-lg font-semibold mb-3 text-westworld-darkBrown">
                 Controls
               </h3>
-              <div className="text-sm space-y-2 text-semantic-text-muted">
+              <div className="text-sm space-y-2 text-westworld-rust">
                 <div>• Click nodes to select and view details</div>
                 <div>• Drag to pan the view</div>
                 <div>• Scroll to zoom in/out</div>

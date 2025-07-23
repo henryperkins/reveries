@@ -160,7 +160,7 @@ export const Controls: React.FC<ControlsProps> = ({
 
           <button
             onClick={() => setShowConfig((v: boolean) => !v)}
-            className="flex items-center gap-2 px-3 py-2 text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100"
+            className="flex items-center gap-2 px-3 py-2 text-theme-secondary bg-theme-secondary rounded-lg hover:bg-theme-tertiary transition-colors"
           >
             <AdjustmentsHorizontalIcon className="w-4 h-4" />
             Settings
@@ -215,7 +215,7 @@ export const Controls: React.FC<ControlsProps> = ({
                 {Object.values(EffortType).map((effort) => (
                   <label
                     key={effort}
-                    className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-white"
+                    className="flex items-center p-3 border border-theme-primary rounded-lg cursor-pointer hover:bg-theme-secondary transition-colors"
                   >
                     <input
                       type="radio"

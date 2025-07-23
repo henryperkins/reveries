@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ThemeContext } from './ThemeContext';
 import { ThemeMode, ThemeContextType } from './types';
-import { createThemeConfig, applyThemeToDOM, initializeTheme } from './themeConfig';
+import { applyThemeToDOM, initializeTheme } from './themeConfig';
 import { getParadigmTheme } from './paradigm';
 import { designSystem } from './designSystem';
 
@@ -25,7 +25,14 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   }, [mode]);
 
   // Create unified theme configuration
-  const theme = useMemo(() => createThemeConfig(mode), [mode]);
+  const theme = useMemo(() => ({
+    mode,
+    colors: designSystem.colors,
+    typography: designSystem.typography,
+    spacing: designSystem.spacing,
+    transitions: designSystem.transitions,
+    breakpoints: designSystem.breakpoints
+  }), [mode]);
 
   // Theme switching functions
   const toggleTheme = useCallback(() => {

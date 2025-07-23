@@ -57,9 +57,9 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ activeTab, onTabCh
                 onClick={() => setShowMobileMenu(!showMobileMenu)}
               >
                 {showMobileMenu ? (
-                  <X className="w-6 h-6 text-gray-600" />
+                  <X className="w-6 h-6 text-theme-secondary" />
                 ) : (
-                  <Menu className="w-6 h-6 text-gray-600" />
+                  <Menu className="w-6 h-6 text-theme-secondary" />
                 )}
               </button>
             </div>
@@ -69,7 +69,7 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ activeTab, onTabCh
 
       {showMobileMenu && (
         <div className="fixed inset-0 z-modal md:hidden">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setShowMobileMenu(false)} />
+          <div className="fixed inset-0 bg-westworld-nearBlack/50" onClick={() => setShowMobileMenu(false)} />
           <div className="fixed right-0 top-0 h-full w-64 bg-theme-primary shadow-xl">
             <div className="p-4 border-b border-theme-primary">
               <div className="flex items-center justify-between">
@@ -78,7 +78,7 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ activeTab, onTabCh
                   onClick={() => setShowMobileMenu(false)}
                   className="btn-icon btn-ghost"
                 >
-                  <X className="w-5 h-5 text-gray-600" />
+                  <X className="w-5 h-5 text-theme-secondary" />
                 </button>
               </div>
             </div>

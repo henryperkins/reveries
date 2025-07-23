@@ -26,7 +26,7 @@ export const ResearchArea: React.FC<ResearchAreaProps> = ({ steps }) => {
   if (!steps || !Array.isArray(steps)) {
     return (
       <div className="research-area flex-1 space-y-4">
-        <div className="flex items-center justify-center" style={{ minHeight: 'var(--height-research-area-min, 200px)' }}>
+        <div className="flex items-center justify-center min-h-[200px]">
           <p className="text-lg text-theme-secondary">Begin your journey by entering a query above...</p>
         </div>
       </div>
@@ -36,7 +36,7 @@ export const ResearchArea: React.FC<ResearchAreaProps> = ({ steps }) => {
   return (
     <div className="research-area flex-1 space-y-4">
       {steps.length === 0 ? (
-        <div className="flex items-center justify-center" style={{ minHeight: 'var(--height-research-area-min, 200px)' }}>
+        <div className="flex items-center justify-center min-h-[200px]">
           <p className="text-lg text-theme-secondary">Begin your journey by entering a query above...</p>
         </div>
       ) : (
@@ -45,10 +45,7 @@ export const ResearchArea: React.FC<ResearchAreaProps> = ({ steps }) => {
             const isFinalAnswer = step.type === ResearchStepType.FINAL_ANSWER && index === steps.length - 1;
             if (isFinalAnswer) {
               return (
-                <div key={step.id} className="mt-8 p-6 rounded-lg border-l-4" style={{ 
-                  background: 'linear-gradient(to right, rgb(var(--westworld-gold) / 0.1), transparent)',
-                  borderLeftColor: 'rgb(var(--westworld-gold))'
-                }}>
+                <div key={step.id} className="mt-8 p-6 rounded-lg border-l-4 border-l-westworld-gold bg-gradient-to-r from-westworld-gold/10 to-transparent">
                   <h3 className="text-xl font-bold text-westworld-darkBrown mb-2">
                     Research Complete
                   </h3>

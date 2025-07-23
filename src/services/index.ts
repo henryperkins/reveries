@@ -1,25 +1,52 @@
-// Core Services
-export { ResearchAgentService } from './researchAgentServiceWrapper'
-export { ContextEngineeringService } from './contextEngineeringService'
-export { FunctionCallingService } from './functionCallingService'
+/**
+ * Central export file for all services
+ */
 
-// Export refactored sub-services for direct access if needed
-export * from './research/types'
+// Core research services
+export { ResearchAgentService } from './researchAgentServiceWrapper';
+export { default as ResearchAgentServiceRefactored } from './researchAgentServiceRefactored';
 
-// AI Provider Services
-export { GeminiService } from './geminiService'
-export { GrokService } from './grokService'
-export { AzureOpenAIService } from './azureOpenAIService'
+// AI and model services
+export { GeminiService } from './geminiService';
+export { GrokService } from './grokService';
+export { AzureOpenAIService } from './azureOpenAIService';
+export { AzureAIAgentService } from './azureAIAgentService';
+export { ModelProviderService } from './providers/ModelProviderService';
 
-// Utility Services
-export { APIError, ErrorBoundary, withRetry } from './errorHandler'
-export { RateLimiter } from './rateLimiter'
+// Database services
+export { DatabaseService } from './databaseService';
+export { DatabaseServiceAdapter } from './databaseServiceAdapter';
 
-// Stubs for browser builds
-export { AzureOpenAIService as azureOpenAIStub } from './azureOpenAIStub'
+// Context and paradigm services
+export { ContextEngineeringService } from './contextEngineeringService';
+export { ParadigmClassifier } from './paradigmClassifier';
+export { ParadigmLearningService } from './paradigmLearningService';
+export { MultiParadigmBlender } from './multiParadigmBlender';
+export { InterHostCollaboration } from './interHostCollaboration';
 
-// Re-export the appropriate DatabaseService based on environment
-// This allows imports to use a single path regardless of environment
+// Research services
+export { ComprehensiveResearchService } from './research/ComprehensiveResearchService';
+export { EvaluationService } from './research/EvaluationService';
+export { ResearchStrategyService } from './research/ResearchStrategyService';
+export { ResearchTaskService } from './research/ResearchTaskService';
+export { WebResearchService } from './research/WebResearchService';
 
-// Always use the adapter which provides compatibility layer
-export { DatabaseService, databaseService } from './databaseServiceAdapter';
+// Context layers
+export * from './contextLayers';
+
+// Supporting services
+export { FunctionCallingService } from './functionCallingService';
+export { ResearchToolsService } from './researchToolsService';
+export { SearchProviderService } from './search/SearchProviderService';
+export { ResearchMemoryService } from './memory/ResearchMemoryService';
+export { EmbeddingService } from './ai/EmbeddingService';
+
+// Utilities
+export { RateLimiter } from './rateLimiter';
+export { RequestQueue } from './requestQueue';
+export { errorHandler } from './errorHandler';
+export { ResearchUtilities } from './utils/ResearchUtilities';
+
+// Types
+export * from './research/types';
+export * from './contextLayers/types';
