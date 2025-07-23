@@ -1,4 +1,4 @@
-import { designSystem } from './designSystem';
+import { designSystem, designSystemDark } from './designSystem';
 import { ThemeMode } from './types';
 
 // Helper function to convert camelCase to kebab-case
@@ -33,7 +33,8 @@ export function applyThemeToDOM(mode: ThemeMode): void {
   if (typeof document === 'undefined') return;
 
   const root = document.documentElement;
-  const variables = generateCSSVariables(designSystem);
+  const activeDS = mode === 'dark' ? designSystemDark : designSystem;
+  const variables = generateCSSVariables(activeDS);
 
   // Remove old theme classes
   root.classList.remove('light', 'dark', 'theme-transition');
@@ -53,7 +54,9 @@ export function applyThemeToDOM(mode: ThemeMode): void {
   if (metaThemeColor) {
     metaThemeColor.setAttribute(
       'content',
-      mode === 'dark' ? designSystem.colors.westworld.nearBlack : designSystem.colors.westworld.cream
+      mode === 'dark'
+        ? activeDS.colors.semantic.background
+        : activeDS.colors.semantic.surface
     );
   }
 

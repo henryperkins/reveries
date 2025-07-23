@@ -4,7 +4,7 @@ import { ThemeContext } from './ThemeContext';
 import { ThemeMode, ThemeContextType } from './types';
 import { applyThemeToDOM, initializeTheme } from './themeConfig';
 import { getParadigmTheme, PARADIGM_COLORS } from './paradigm';
-import { designSystem } from './designSystem';
+import { designSystem, designSystemDark } from './designSystem';
 
 interface ThemeProviderProps {
   children: React.ReactNode;
@@ -25,18 +25,20 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   }, [mode]);
 
   // Create unified theme configuration
+  const activeDS = mode === 'dark' ? designSystemDark : designSystem;
+
   const theme = useMemo(() => ({
     mode,
-    colors: designSystem.colors,
-    typography: designSystem.typography,
-    spacing: designSystem.spacing,
-    borderRadius: designSystem.borderRadius,
-    shadows: designSystem.shadows,
-    zIndex: designSystem.zIndex,
-    transitions: designSystem.transitions,
-    breakpoints: designSystem.breakpoints,
-    components: designSystem.components,
-    paradigms: PARADIGM_COLORS
+    colors:       activeDS.colors,
+    typography:   activeDS.typography,
+    spacing:      activeDS.spacing,
+    borderRadius: activeDS.borderRadius,
+    shadows:      activeDS.shadows,
+    zIndex:       activeDS.zIndex,
+    transitions:  activeDS.transitions,
+    breakpoints:  activeDS.breakpoints,
+    components:   activeDS.components,
+    paradigms:    PARADIGM_COLORS,
   }), [mode]);
 
   // Theme switching functions

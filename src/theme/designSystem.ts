@@ -1,3 +1,5 @@
+import { generateCSSVariables } from './themeConfig';
+
 /**
  * Unified Design System for Reveries
  * Single source of truth for all design tokens and theme configuration

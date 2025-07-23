@@ -14,7 +14,7 @@ export { generateCSSVariables, applyThemeToDOM, initializeTheme } from './themeC
 export type { ThemeMode, UnifiedTheme, ThemeContextType, ParadigmTheme, HostParadigm } from './types';
 
 // Design system components
-export { designSystem, getCSSVariable } from './designSystem';
+export { designSystem, designSystemDark, getCSSVariable } from './designSystem';
 export { componentVariants, layout, spacingUtils, zIndexUtils, responsive } from './componentSystem';
 
 // Paradigm system

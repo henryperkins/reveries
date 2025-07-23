@@ -31,6 +31,8 @@ export default {
                 'secondary-dark': 'var(--colors-semantic-secondary-dark)',
                 background: 'var(--colors-semantic-background)',
                 surface: 'var(--colors-semantic-surface)',
+                backgroundDark: 'var(--colors-semantic-background)',
+                surfaceDark:    'var(--colors-semantic-surface)',
                 text: 'var(--colors-semantic-text)',
                 'text-muted': 'var(--colors-semantic-text-muted)',
                 border: 'var(--colors-semantic-border)',
