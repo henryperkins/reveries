@@ -33,3 +33,6 @@ export { spacing, zIndex, shadows, transitions, breakpoints, borderRadius } from
 
 // CSS-in-JS utilities (for advanced usage)
 export { styled, keyframes, themeTransition } from './styled';
+
+// Theme-aware animations
+export { useThemeAnimation, themeAnimationVariants, getThemeAnimationClass } from './animations';

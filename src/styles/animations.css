@@ -115,13 +115,13 @@
   
   @keyframes glow {
     0%, 100% {
-      box-shadow: 0 0 5px theme('colors.westworld.gold'),
-                  0 0 10px theme('colors.westworld.gold');
+      box-shadow: 0 0 5px var(--animation-color, theme('colors.westworld.gold')),
+                  0 0 10px var(--animation-color, theme('colors.westworld.gold'));
     }
     50% {
-      box-shadow: 0 0 10px theme('colors.westworld.gold'),
-                  0 0 20px theme('colors.westworld.gold'),
-                  0 0 30px theme('colors.westworld.gold');
+      box-shadow: 0 0 10px var(--animation-color, theme('colors.westworld.gold')),
+                  0 0 20px var(--animation-color, theme('colors.westworld.gold')),
+                  0 0 30px var(--animation-color, theme('colors.westworld.gold'));
     }
   }
   
@@ -461,6 +461,35 @@
     --ease-circ-out: cubic-bezier(0.075, 0.82, 0.165, 1);
   }
   
+  /* ===== CIRCUIT PATTERN BACKGROUND ===== */
+  .bg-circuit-pattern {
+    background-image: 
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 10px,
+        rgba(212, 175, 55, 0.03) 10px,
+        rgba(212, 175, 55, 0.03) 20px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 10px,
+        rgba(212, 175, 55, 0.03) 10px,
+        rgba(212, 175, 55, 0.03) 20px
+      ),
+      radial-gradient(
+        circle at 20% 50%,
+        rgba(212, 175, 55, 0.05) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 80% 30%,
+        rgba(212, 175, 55, 0.05) 0%,
+        transparent 50%
+      );
+  }
+
   /* ===== REDUCED MOTION ===== */
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -475,6 +504,89 @@
     .animate-spin-slow,
     .animate-spin-fast {
       animation: none;
+    }
+  }
+  
+  /* ===== PARADIGM-AWARE ANIMATIONS ===== */
+  .animate-paradigm-dolores {
+    --animation-color: theme('colors.westworld.rust');
+  }
+  
+  .animate-paradigm-teddy {
+    --animation-color: theme('colors.westworld.beige');
+  }
+  
+  .animate-paradigm-bernard {
+    --animation-color: theme('colors.westworld.tan');
+  }
+  
+  .animate-paradigm-maeve {
+    --animation-color: theme('colors.westworld.copper');
+  }
+  
+  /* Paradigm-specific glow animations */
+  .animate-glow.animate-paradigm-dolores {
+    animation: glow-dolores var(--transitions-duration-slower) ease-in-out;
+  }
+  
+  .animate-glow.animate-paradigm-teddy {
+    animation: glow-teddy var(--transitions-duration-slower) ease-in-out;
+  }
+  
+  .animate-glow.animate-paradigm-bernard {
+    animation: glow-bernard var(--transitions-duration-slower) ease-in-out;
+  }
+  
+  .animate-glow.animate-paradigm-maeve {
+    animation: glow-maeve var(--transitions-duration-slower) ease-in-out;
+  }
+  
+  /* Paradigm-specific keyframes */
+  @keyframes glow-dolores {
+    0%, 100% {
+      box-shadow: 0 0 5px theme('colors.westworld.rust'),
+                  0 0 10px theme('colors.westworld.rust');
+    }
+    50% {
+      box-shadow: 0 0 10px theme('colors.westworld.rust'),
+                  0 0 20px theme('colors.westworld.rust'),
+                  0 0 30px theme('colors.westworld.rust');
+    }
+  }
+  
+  @keyframes glow-teddy {
+    0%, 100% {
+      box-shadow: 0 0 5px theme('colors.westworld.beige'),
+                  0 0 10px theme('colors.westworld.beige');
+    }
+    50% {
+      box-shadow: 0 0 10px theme('colors.westworld.beige'),
+                  0 0 20px theme('colors.westworld.beige'),
+                  0 0 30px theme('colors.westworld.beige');
+    }
+  }
+  
+  @keyframes glow-bernard {
+    0%, 100% {
+      box-shadow: 0 0 5px theme('colors.westworld.tan'),
+                  0 0 10px theme('colors.westworld.tan');
+    }
+    50% {
+      box-shadow: 0 0 10px theme('colors.westworld.tan'),
+                  0 0 20px theme('colors.westworld.tan'),
+                  0 0 30px theme('colors.westworld.tan');
+    }
+  }
+  
+  @keyframes glow-maeve {
+    0%, 100% {
+      box-shadow: 0 0 5px theme('colors.westworld.copper'),
+                  0 0 10px theme('colors.westworld.copper');
+    }
+    50% {
+      box-shadow: 0 0 10px theme('colors.westworld.copper'),
+                  0 0 20px theme('colors.westworld.copper'),
+                  0 0 30px theme('colors.westworld.copper');
     }
   }
 }
