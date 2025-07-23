@@ -752,7 +752,7 @@ export class AzureOpenAIService {
 
         const requestBody: any = {
           model: this.config.deploymentName,
-          max_output_tokens: 32000
+          max_output_tokens: Math.min(this.config.maxOutputTokens ?? 8192, 32000),
         };
 
         // Handle input vs previous_response_id properly
