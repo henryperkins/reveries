@@ -1,0 +1,1025 @@
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { ResearchAgentService } from '@/services/researchAgentServiceWrapper'
+import { FunctionCallingService } from '@/services/functionCallingService'
+import { DatabaseService } from '@/services'
+import { ResearchGraphManager } from '@/researchGraph'
+import { TopNavigation } from '@/components/TopNavigation'
+import { ReverieHeader } from '@/components/ReverieHeader'
+import { ResearchView } from '@/components/ResearchView'
+import { SessionsView } from '@/components/SessionsView'
+import { AnalyticsView } from '@/components/AnalyticsView'
+import { EnhancedInputBar, ErrorDisplay, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress, Controls, ParadigmIndicator, InterHostCollaboration } from '@/components'
+import type { InputBarRef } from '@/components/EnhancedInputBar'
+import ResearchGraphView from '@/components/ResearchGraphView';
+import { ProgressMeter } from '@/components/atoms'
+import { usePersistentState, ResearchSession, useProgressManager } from '@/hooks'
+import { useFunctionCalls } from '@/components/FunctionCallDock'
+import { useErrorHandling } from '@/hooks/useErrorHandling'
+import { ThemeToggle } from '@/theme';
+
+import {
+    ResearchStep,
+    ResearchStepType,
+    EffortType,
+    HostParadigm,
+    ParadigmProbabilities,
+    ContextLayer,
+    ResearchPhase,
+    ModelType,
+    FunctionCallHistory,
+    ResearchResponse,
+    ContextDensity
+} from '@/types'
+import { exportToMarkdown, downloadFile } from '@/utils/exportUtils'
+import { DEFAULT_MODEL, TIMEOUTS } from '@/constants'
+import { useTimeoutManager } from '@/utils/timeoutManager'
+import { ProgressState } from '@/hooks/useProgressManager'
+
+const App: React.FC = () => {
+    // ThemeProvider handles theme application
+
+    const [research, setResearch] = usePersistentState<ResearchStep[]>('reveries_research', [], { version: 1 })
+    const [isLoading, setIsLoading] = useState(false)
+    const [progress, setProgress] = useState(0)
+    const [currentModel, setCurrentModel] = useState<ModelType>(DEFAULT_MODEL)
+    const [showGraph, setShowGraph] = useState(false)
+    const [enhancedMode, setEnhancedMode] = useState(true)
+    const [effort, setEffort] = useState<EffortType>(EffortType.MEDIUM)
+    const [paradigm, setParadigm] = useState<HostParadigm | null>(null)
+    const [paradigmProbabilities, setParadigmProbabilities] = useState<ParadigmProbabilities | null>(null)
+    const [contextLayers, setContextLayers] = useState<ContextLayer[]>([])
+    const [currentLayer, setCurrentLayer] = useState<ContextLayer | null>(null)
+    const [currentPhase, setCurrentPhase] = useState<ResearchPhase>('discovery')
+    const [blendedParadigms, setBlendedParadigms] = useState<HostParadigm[]>([])
+    const [activeCollaborations, setActiveCollaborations] = useState<{
+        id: string;
+        fromHost: HostParadigm;
+        toHost: HostParadigm;
+        reason: string;
+        status: 'pending' | 'processing' | 'completed' | 'failed';
+    }[]>([])
+    const [activeTab, setActiveTab] = useState('research')
+
+    // Progress state machine
+    const [progressState, setProgressState] = useState<ProgressState>('idle')
+    const { error, handleError, clearError } = useErrorHandling()
+
+    const graphManager = useMemo(() => new ResearchGraphManager(), [])
+    // Track the last node ID for parent-child relationships
+    const lastNodeIdRef = useRef<string | null>(null)
+
+    // Singleton services - already instances, no wrapper needed
+    const researchAgent = ResearchAgentService.getInstance();
+    const functionCallingService = FunctionCallingService.getInstance();
+    const databaseService = DatabaseService.getInstance();
+
+    const [functionHistory, setFunctionHistory] = useState<FunctionCallHistory[]>([])
+    const [showSemanticSearch, setShowSemanticSearch] = useState(false)
+    const [isSearching, setIsSearching] = useState(false)
+    const [showSessionHistory, setShowSessionHistory] = useState(false)
+
+    // --- Function call context helpers --------------------------------------
+    const {
+        addLiveCall,
+        updateLiveCall,
+        addToolUsed,
+        addToHistory,
+        liveCalls
+    } = useFunctionCalls();
+
+    // Map tool-name -> context live-call id so we can mark completion
+    const liveCallIdMap = useRef<Record<string, string>>({});
+
+    // Timeout manager for centralized cleanup
+    const timeoutManager = useTimeoutManager();
+
+    // Track which phase cards have been created to prevent duplicates
+    const createdPhaseCardsRef = useRef<Set<string>>(new Set());
+
+    // Track active operations to prevent duplicate card creation
+    const activeOperationsRef = useRef<Set<string>>(new Set());
+
+    // Initialize progress manager with configuration
+    const progressManager = useProgressManager({
+        onProgressUpdate: (phase: ProgressState, message?: string) => {
+            setProgressState(phase);
+            
+            // Update progress percentage
+            const progressMap = {
+                'idle': 0,
+                'analyzing': 15,
+                'routing': 25,
+                'researching': 40,
+                'evaluating': 60,
+                'synthesizing': 80,
+                'complete': 100
+            };
+            setProgress(progressMap[phase]);
+
+            // Complete previous spinning steps
+            if (phase !== 'idle') {
+                setResearch(prev => prev.map(step =>
+                    step.isSpinning ? { ...step, isSpinning: false } : step
+                ));
+            }
+
+            // Reset phase tracking on completion
+            if (phase === 'complete') {
+                createdPhaseCardsRef.current.clear();
+                activeOperationsRef.current.clear();
+            }
+        },
+        onStepUpdate: (newStep: ResearchStep) => {
+            // Skip creating cards for phases that show tool operations
+            const skipPhases = ['researching', 'routing', 'analyzing'];
+            const shouldCreateCard = !skipPhases.includes(progressState) &&
+                !createdPhaseCardsRef.current.has(progressState);
+
+            if (shouldCreateCard) {
+                try {
+                    createdPhaseCardsRef.current.add(progressState);
+                    setResearch(prev => [...(Array.isArray(prev) ? prev : []), newStep]);
+
+                    // Keep research graph in sync with parent-child relationships
+                    graphManager.addNode(newStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
+                    lastNodeIdRef.current = newStep.id;
+                } catch (error) {
+                    console.error(`Error creating ${progressState} phase card:`, error);
+                    // Remove from created phases on error
+                    createdPhaseCardsRef.current.delete(progressState);
+                }
+            }
+        },
+        isO3Model: currentModel.includes('o3') || currentModel.includes('azure-o3')
+    });
+
+    // Research sessions management
+    const [sessions, setSessions] = usePersistentState<ResearchSession[]>('research_sessions', [], { version: 1 })
+
+    const addSession = useCallback((session: ResearchSession) => {
+        setSessions(prev => [...prev, session].slice(-10)); // Keep last 10 sessions
+    }, [setSessions]);
+
+    const deleteSession = useCallback((id: string) => {
+        setSessions(prev => prev.filter(s => s.id !== id));
+    }, [setSessions]);
+
+    // Update function history when research changes
+    useEffect(() => {
+        const history = functionCallingService.getExecutionHistory();
+        setFunctionHistory(history);
+
+        // Push any new records into the shared context so they appear in the dock.
+        history.forEach((call) => addToHistory(call));
+    }, [research, functionCallingService, addToHistory]);
+
+    const advancePhase = useCallback(() => {
+        const phases: ResearchPhase[] = ['discovery', 'exploration', 'synthesis', 'validation'];
+        const currentIndex = phases.indexOf(currentPhase);
+        if (currentIndex < phases.length - 1) {
+            setCurrentPhase(phases[currentIndex + 1]);
+        }
+    }, [currentPhase, setCurrentPhase]);
+
+    // Add ref for input bar
+    const inputBarRef = useRef<InputBarRef>(null)
+
+    // Add state for input value
+    const [inputValue, setInputValue] = useState('')
+
+    // Add validation rules for research questions
+    const validationRules = useMemo(() => [
+        {
+            type: 'required' as const,
+            message: 'Please enter a research question'
+        },
+        {
+            type: 'minLength' as const,
+            value: 5,
+            message: 'Research question should be at least 5 characters'
+        },
+        {
+            type: 'custom' as const,
+            message: 'Research question should end with a question mark',
+            validator: (value: string) => value.trim().endsWith('?') || value.trim().length < 10
+        }
+    ], [])
+
+    // Add dynamic placeholder hints based on paradigm
+    const dynamicPlaceholderHints = useMemo(() => {
+        const baseHints = [
+            'What are the latest developments in quantum computing?',
+            'How does climate change affect global food security?',
+            'What is the future of artificial intelligence in healthcare?'
+        ]
+
+        if (paradigm === 'Dolores') {
+            return [
+                'What is the nature of consciousness?',
+                'How do we define free will?',
+                'What makes us human?'
+            ]
+        } else if (paradigm === 'Maeve') {
+            return [
+                'How can we fight systemic injustice?',
+                'What drives revolutionary change?',
+                'How do power structures maintain control?'
+            ]
+        }
+
+        return baseHints
+    }, [paradigm])
+
+    // Handle input submission
+    const handleInputSubmit = useCallback(async (value: string) => {
+        if (isLoading) return
+
+        try {
+            setIsLoading(true)
+            clearError()
+
+            // Clear input immediately for better UX
+            inputBarRef.current?.clear()
+
+            // Start the research process
+            progressManager.updateProgressState('analyzing', `Analyzing: "${value}"`)
+
+            // Create initial research step
+            const initialStep: ResearchStep = {
+                id: Date.now().toString(),
+                type: ResearchStepType.GENERATING_QUERIES,
+                content: `Processing query: "${value}"`,
+                timestamp: new Date(),
+                status: 'pending' as const,
+                metadata: {
+                    query: value,
+                    model: currentModel,
+                    effort,
+                    paradigm: paradigm || undefined
+                }
+            }
+
+            setResearch(prev => [...prev, initialStep])
+
+            // Add to graph
+            const nodeId = graphManager.addNode({
+                ...initialStep,
+                parentId: lastNodeIdRef.current || undefined
+            })
+            lastNodeIdRef.current = nodeId
+
+            // Continue with existing research logic...
+            // (The rest of the research flow would continue here)
+
+        } catch (error) {
+            handleError(error)
+        } finally {
+            setIsLoading(false)
+            progressManager.updateProgressState('idle')
+        }
+    }, [isLoading, clearError, progressManager, currentModel, effort, paradigm, setResearch, graphManager, handleError])
+
+    const handleSubmit = useCallback(async (input: string) => {
+        if (!input.trim() || isLoading) {
+            return;
+        }
+
+        setIsLoading(true)
+        setProgress(0)
+        setProgressState('idle')
+        setCurrentLayer(null)
+        setRealTimeContextDensities(null)
+        clearError()
+        lastNodeIdRef.current = null; // Reset node tracking for new query
+        activeOperationsRef.current.clear(); // Clear active operations for new query
+
+        // Extended global research timeout to accommodate O3 models
+        const isO3Model = currentModel.includes('o3') || currentModel.includes('azure-o3');
+        const globalTimeout = isO3Model ? TIMEOUTS.GLOBAL_RESEARCH * 3 : TIMEOUTS.GLOBAL_RESEARCH; // 30min for O3, 10min for others
+
+        timeoutManager.set('global-research', () => {
+            if (isLoading) {
+                console.warn(`Global research timeout reached (${globalTimeout / 60000}min)`);
+                progressManager.updateProgressState('complete');
+                setIsLoading(false);
+            }
+        }, globalTimeout);
+
+        try {
+            // Create initial step
+            const initialStep: ResearchStep = {
+                id: crypto.randomUUID(),
+                title: 'User Query',
+                icon: () => null,
+                content: input,
+                timestamp: new Date().toISOString(),
+                type: ResearchStepType.USER_QUERY,
+                sources: []
+            }
+
+            setResearch(prev => [...(Array.isArray(prev) ? prev : []), initialStep])
+
+            // Add to graph and track as root node
+            graphManager.addNode(initialStep);
+            lastNodeIdRef.current = initialStep.id;
+            console.log('Added initial node to graph. Total nodes:', graphManager.getNodes().length);
+
+            // Process with enhanced research agent using processQuery
+            console.log('🚀 Processing query with model:', currentModel, { isO3: currentModel === 'o3' });
+
+            // Check available services
+            try {
+                const { AzureOpenAIService } = await import('./services/azureOpenAIService');
+                const { AzureAIAgentService } = await import('./services/azureAIAgentService');
+                const azureOpenAIAvailable = AzureOpenAIService.isAvailable();
+                const azureAIAgentAvailable = AzureAIAgentService.isAvailable();
+                console.log('📋 Service availability:', {
+                    azureOpenAI: azureOpenAIAvailable,
+                    azureAIAgent: azureAIAgentAvailable,
+                    currentModel
+                });
+            } catch (e) {
+                console.error('Failed to check service availability:', e);
+            }
+
+            let result: ResearchResponse & {
+                paradigmProbabilities?: ParadigmProbabilities;
+                contextDensity?: ContextDensity;
+                contextLayers?: ContextLayer[];
+                layerResults?: Record<string, unknown>;
+                synthesis?: string;
+                adaptiveMetadata?: {
+                    blendedParadigms?: HostParadigm[];
+                    [key: string]: unknown;
+                };
+            };
+            try {
+                result = await researchAgent.processQuery(
+                    input,
+                    currentModel,
+                    {
+                        phase: currentPhase,
+                        onProgress: (message: string) => {
+                            console.log('🔄 Research Progress:', message);
+
+                            // Handle tool usage tracking
+                            if (message.startsWith('tool_used:')) {
+                                // Completion message pattern: tool_used:completed:<toolName>:<startTime>
+                                if (message.startsWith('tool_used:completed:')) {
+                                    const [, , completedToolName] = message.split(':');
+                                    console.log(`✅ Tool completed: ${completedToolName}`);
+
+                                    // Update shared context
+                                    const liveId = liveCallIdMap.current[completedToolName];
+                                    if (liveId) {
+                                        updateLiveCall(liveId, { status: 'completed', endTime: Date.now() });
+                                    }
+
+                                    // Clear timeout for this tool
+                                    timeoutManager.clear(`tool-fallback-${completedToolName}`);
+                                    return;
+                                }
+
+                                // New tool used message pattern: tool_used:<toolName>
+                                const [, toolName] = message.split(':');
+                                console.log(`🔧 Tool started: ${toolName}`);
+
+                                // Add to shared context with description
+                                const ctxId = addLiveCall({
+                                    name: toolName,
+                                    status: 'running',
+                                    startTime: Date.now(),
+                                    context: `Processing ${input.substring(0, 100)}${input.length > 100 ? '...' : ''}`
+                                });
+                                liveCallIdMap.current[toolName] = ctxId;
+                                console.log('📊 Added live call:', { toolName, ctxId, totalLiveCalls: liveCalls.length + 1 });
+
+                                // Track tool usage for tools view
+                                addToolUsed(toolName);
+
+                                // Create research step for search tools
+                                if (toolName.includes('search') || toolName === 'web_search' ||
+                                    toolName === 'bing_search' || toolName === 'google_search' ||
+                                    toolName === 'academic_search' || toolName === 'comprehensive_research') {
+                                    setResearch(prev => {
+                                        const existingSearchStep = prev.find(step =>
+                                            step.type === ResearchStepType.WEB_RESEARCH && step.isSpinning
+                                        );
+
+                                        if (!existingSearchStep) {
+                                            const newStep: ResearchStep = {
+                                                id: crypto.randomUUID(),
+                                                title: toolName === 'comprehensive_research' ? 'Comprehensive Research' : 'Web Search',
+                                                icon: () => null,
+                                                content: `Performing ${toolName.replace(/_/g, ' ')}...`,
+                                                timestamp: new Date().toISOString(),
+                                                type: ResearchStepType.WEB_RESEARCH,
+                                                sources: [],
+                                                isSpinning: true,
+                                                toolsUsed: [toolName]
+                                            };
+                                            graphManager.addNode(newStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
+                                            lastNodeIdRef.current = newStep.id;
+                                            return [...prev, newStep];
+                                        } else {
+                                            // Update existing step with new tool
+                                            return prev.map(step =>
+                                                step.id === existingSearchStep.id
+                                                    ? {
+                                                        ...step,
+                                                        content: step.content + `\nUsing ${toolName.replace(/_/g, ' ')}...`,
+                                                        toolsUsed: [...(step.toolsUsed || []), toolName]
+                                                    }
+                                                    : step
+                                            );
+                                        }
+                                    });
+                                }
+
+                                // Fallback completion timeout for operations without explicit completion signal
+                                // Increase timeout for research tools
+                                const isO3Model = currentModel.includes('o3') || currentModel.includes('azure-o3');
+                                const baseTimeout = isO3Model ? TIMEOUTS.TOOL_FALLBACK * 6 : TIMEOUTS.TOOL_FALLBACK; // 3 minutes for O3 models
+                                const toolTimeout = toolName.includes('research') || toolName.includes('search')
+                                    ? baseTimeout * 2
+                                    : baseTimeout;
+
+                                timeoutManager.set(`tool-fallback-${toolName}`, () => {
+                                    console.log(`⏱️ Tool timeout reached for ${toolName}, marking as completed`);
+                                    // Context update
+                                    const id = liveCallIdMap.current[toolName];
+                                    if (id) {
+                                        updateLiveCall(id, { status: 'completed', endTime: Date.now() });
+                                    }
+                                }, toolTimeout);
+
+                                // Also propagate to current spinning step's toolsUsed
+                                setResearch((prev) =>
+                                    prev.map((step) => {
+                                        if (step.isSpinning) {
+                                            const currentTools = step.toolsUsed || [];
+                                            if (!currentTools.includes(toolName)) {
+                                                return { ...step, toolsUsed: [...currentTools, toolName] };
+                                            }
+                                        }
+                                        return step;
+                                    })
+                                );
+
+                                return;
+                            }
+
+                            // Use progress manager to handle progress messages
+                            progressManager.handleProgressMessage(message);
+
+                            // Update any existing steps with more detailed content
+                            if (message.includes('[Dolores]') || message.includes('[Teddy]') || message.includes('[Bernard]') ||
+                                message.includes('[Maeve]') || message.includes('evaluation') || message.includes('quality')) {
+                                setResearch(prev => {
+                                    const hasReflectionStep = prev.some(step =>
+                                        step.isSpinning && (step.type === ResearchStepType.REFLECTION || step.type === ResearchStepType.GENERATING_QUERIES)
+                                    );
+
+                                    if (hasReflectionStep) {
+                                        // Update existing reflection/evaluation step
+                                        return prev.map(step => {
+                                            if (step.isSpinning && (step.type === ResearchStepType.REFLECTION || step.type === ResearchStepType.GENERATING_QUERIES)) {
+                                                return { ...step, content: step.content + '\n\n' + message };
+                                            }
+                                            return step;
+                                        });
+                                    } else if (message.includes('[') && message.includes(']')) {
+                                        // Only create a new reflection step if we have actual host content
+                                        const newStep: ResearchStep = {
+                                            id: crypto.randomUUID(),
+                                            title: 'Research Evaluation',
+                                            icon: () => null,
+                                            content: message,
+                                            timestamp: new Date().toISOString(),
+                                            type: ResearchStepType.REFLECTION,
+                                            sources: [],
+                                            isSpinning: true,
+                                            toolsUsed: []
+                                        };
+                                        // Add to graph manager with parent relationship
+                                        graphManager.addNode(newStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
+                                        lastNodeIdRef.current = newStep.id;
+                                        return [...prev, newStep];
+                                    }
+                                    return prev;
+                                });
+                            }
+
+                            // Handle layer progress messages
+                            if (message.startsWith('layer_progress:')) {
+                                const layer = message.split(':')[1] as ContextLayer;
+                                setCurrentLayer(layer);
+                            }
+                            // Also handle legacy message-based detection
+                            else if (message.includes('Writing') || message.includes('memory')) setCurrentLayer('write')
+                            else if (message.includes('Selecting') || message.includes('sources')) setCurrentLayer('select')
+                            else if (message.includes('Compressing') || message.includes('synthesis')) setCurrentLayer('compress')
+                            else if (message.includes('Isolating') || message.includes('analysis')) setCurrentLayer('isolate')
+                        }
+                    }
+                )
+            } catch (error) {
+                console.error('❌ Error during O3 query processing:', error);
+                handleError(error instanceof Error ? error : new Error(String(error)));
+                return;
+            }
+
+            progressManager.updateProgressState('complete')
+
+            // Create final answer step
+            const finalAnswerStep: ResearchStep = {
+                id: crypto.randomUUID(),
+                title: 'Research Complete',
+                icon: () => null,
+                content: 'synthesis' in result ? String(result.synthesis) : String((result as { text: string }).text),
+                timestamp: new Date().toISOString(),
+                type: ResearchStepType.FINAL_ANSWER,
+                sources: result.sources || []
+            }
+
+            // Stop any remaining spinning indicators (handled by updateProgressState, but ensure cleanup)
+            setResearch(prev =>
+                prev.map(step => ({ ...step, isSpinning: false }))
+            )
+
+            // Add final answer step
+            setResearch(prev => [...(Array.isArray(prev) ? prev : []), finalAnswerStep])
+
+            // Add final answer to graph with parent relationship
+            graphManager.addNode(finalAnswerStep, lastNodeIdRef.current ? `node-${lastNodeIdRef.current}` : null);
+            lastNodeIdRef.current = finalAnswerStep.id;
+
+            // Update paradigm information
+            if ('paradigmProbabilities' in result && result.paradigmProbabilities) {
+                setParadigmProbabilities(result.paradigmProbabilities)
+                const dominantParadigms = Object.entries(result.paradigmProbabilities)
+                    .sort(([, a], [, b]) => (b as number) - (a as number))
+                if (dominantParadigms.length > 0) {
+                    setParadigm(dominantParadigms[0][0] as HostParadigm)
+                }
+
+                // Check if we have blended paradigms from the result
+                if ('adaptiveMetadata' in result && result.adaptiveMetadata?.blendedParadigms) {
+                    setBlendedParadigms(result.adaptiveMetadata.blendedParadigms)
+                }
+            }
+
+            // Update context information
+            setContextLayers('contextLayers' in result ? result.contextLayers || [] : [])
+
+            // Update context densities with real data
+            if ('contextDensity' in result && result.contextDensity) {
+                const density = result.contextDensity.density || 0.5;
+                const phase = result.contextDensity.phase || currentPhase;
+
+                // Calculate realistic context densities based on phase and paradigm
+                let analytical = Math.floor(density * 100);
+                let narrative = 20;
+                let memory = 15;
+                let adaptive = 25;
+
+                // Adjust based on paradigm
+                if (paradigm === 'bernard') {
+                    analytical += 20;
+                    memory += 10;
+                } else if (paradigm === 'dolores') {
+                    narrative += 15;
+                    adaptive += 10;
+                } else if (paradigm === 'maeve') {
+                    adaptive += 20;
+                    analytical += 10;
+                } else if (paradigm === 'teddy') {
+                    narrative += 10;
+                    memory += 15;
+                }
+
+                // Adjust based on phase
+                if (phase === 'discovery') {
+                    analytical += 10;
+                } else if (phase === 'exploration') {
+                    adaptive += 15;
+                } else if (phase === 'synthesis') {
+                    memory += 20;
+                    analytical += 5;
+                } else if (phase === 'validation') {
+                    analytical += 15;
+                    memory += 10;
+                }
+
+                setRealTimeContextDensities({
+                    narrative: Math.min(narrative, 100),
+                    analytical: Math.min(analytical, 100),
+                    memory: Math.min(memory, 100),
+                    adaptive: Math.min(adaptive, 100)
+                });
+            }
+
+
+            // Progress phase if needed
+            advancePhase()
+
+        } catch (err) {
+            handleError(err as Error)
+            // On error, show partial progress but don't complete
+            setProgress(prev => prev > 0 ? prev : 10)
+        } finally {
+            // Clean up all research-related timeouts
+            timeoutManager.clear('global-research');
+            progressManager.clearAllTimeouts();
+
+            setIsLoading(false)
+            // Complete progress before reset for visual feedback
+            timeoutManager.set('progress-reset', () => {
+                setProgress(0);
+            }, TIMEOUTS.PROGRESS_RESET);
+            setCurrentLayer(null)
+            // Keep context densities to show final results
+        }
+    }, [isLoading, clearError, currentModel, timeoutManager, progressManager, setResearch, graphManager, advancePhase, researchAgent, currentPhase, addLiveCall, liveCalls.length, addToolUsed, updateLiveCall, handleError, paradigm])
+
+    const handleClear = useCallback(() => {
+        setResearch([]);
+        setParadigm(null);
+        setParadigmProbabilities(null);
+        setBlendedParadigms([]);
+        setActiveCollaborations([]);
+        graphManager.reset();
+        functionCallingService.resetToolState();
+        setFunctionHistory([]);
+        lastNodeIdRef.current = null; // Reset node tracking
+    }, [setResearch, functionCallingService, graphManager]);
+
+    const handleToggleGraph = useCallback(() => {
+        console.log('Toggling graph. Current nodes:', graphManager.getNodes().length);
+        console.log('Graph nodes:', graphManager.getNodes());
+        setShowGraph(prev => !prev)
+    }, [graphManager])
+
+    const handleEnhancedModeChange = useCallback((enabled: boolean) => {
+        setEnhancedMode(enabled)
+    }, [])
+
+    const handleSemanticSearch = useCallback(async (query: string): Promise<ResearchStep[]> => {
+        try {
+            setIsSearching(true)
+            // Get a session ID from first research step or generate one
+            const sessionId = research.length > 0 ? research[0].id : undefined
+            const results = await databaseService.semanticSearch(query, sessionId)
+            return results
+        } catch (error) {
+            console.error('Semantic search error:', error)
+            return []
+        } finally {
+            setIsSearching(false)
+        }
+    }, [databaseService, research])
+
+    const handleSelectSearchResult = useCallback((step: ResearchStep) => {
+        // Add the selected result to the current research
+        setResearch(prev => [...(Array.isArray(prev) ? prev : []), { ...step, id: crypto.randomUUID() }])
+        setShowSemanticSearch(false)
+    }, [setResearch])
+
+    const handleLoadSession = useCallback((session: ResearchSession) => {
+        // Load session data into current state
+        setResearch(Array.isArray(session.steps) ? session.steps : [])
+        setParadigm(session.paradigm || null)
+        setParadigmProbabilities(session.paradigmProbabilities || null)
+        setCurrentPhase(session.phase || 'discovery')
+        setShowSessionHistory(false)
+    }, [setResearch])
+
+    const handleSaveCurrentSession = useCallback(async () => {
+        if (research.length === 0) return;
+
+        const session = {
+            id: crypto.randomUUID(),
+            query: typeof research[0]?.content === 'string'
+                ? research[0].content
+                : research[0]?.title || 'Untitled Session',
+            timestamp: Date.now(),
+            steps: research,
+            completed: !isLoading,
+            duration: undefined, // Could track this if needed
+            model: currentModel,
+            effort: effort
+        };
+
+        await addSession(session);
+    }, [research, isLoading, currentModel, effort, addSession])
+
+    const handleExport = useCallback(async () => {
+        try {
+            const query = research[0]?.content || 'Research Export'
+            const markdown = await exportToMarkdown(query as string, research, {
+                model: currentModel,
+                effort: enhancedMode ? 'enhanced' : 'standard',
+                timestamp: new Date().toLocaleString(),
+                duration: graphManager.getStatistics().totalDuration
+            })
+            const timestamp = new Date().toISOString().split('T')[0]
+            downloadFile(markdown, `research-${timestamp}.md`, 'text/markdown')
+        } catch (err) {
+            handleError(err as Error)
+        }
+    }, [research, currentModel, enhancedMode, handleError, graphManager])
+
+    // State for real context densities from research
+    const [realTimeContextDensities, setRealTimeContextDensities] = useState<{
+        narrative: number;
+        analytical: number;
+        memory: number;
+        adaptive: number;
+    } | null>(null)
+
+    // Calculate context densities - use real data when available, fallback to progress-based
+    const contextDensities = useMemo(() => {
+        if (!isLoading) return null
+
+        if (realTimeContextDensities) {
+            return realTimeContextDensities
+        }
+
+        // Fallback to progress-based estimation during initial loading
+        const base = progress / 100
+        return {
+            narrative: Math.floor(base * 25 + 15),
+            analytical: Math.floor(base * 35 + 20),
+            memory: Math.floor(base * 20 + 10),
+            adaptive: Math.floor(base * 20 + 10)
+        }
+    }, [progress, realTimeContextDensities, isLoading])
+
+    return (
+        <div className="min-h-screen bg-westworld-cream dark:bg-westworld-nearBlack text-westworld-nearBlack dark:text-westworld-cream transition-colors duration-300">
+            {/* Theme toggle button - positioned according to responsive design patterns */}
+            <div className="fixed top-4 right-4 z-modal safe-padding-top safe-padding-right">
+                <ThemeToggle />
+            </div>
+
+            <TopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+
+            <main className="max-w-7xl mx-auto px-4 py-8 pb-24">
+                <div className="flex justify-between items-center mb-6">
+                    <ReverieHeader />
+                </div>
+
+                {activeTab === 'research' && (
+                    <>
+                        <Controls
+                            selectedEffort={effort}
+                            onEffortChange={setEffort}
+                            selectedModel={currentModel}
+                            onModelChange={setCurrentModel}
+                            onNewSearch={handleClear}
+                            onExport={research.length > 0 ? handleExport : undefined}
+                            onToggleGraph={graphManager.getNodes().length > 0 ? handleToggleGraph : undefined}
+                            isLoading={isLoading}
+                            enhancedMode={enhancedMode}
+                            onEnhancedModeChange={handleEnhancedModeChange}
+                        />
+
+                        {error && (
+                            <ErrorDisplay error={error.message} onDismiss={clearError} />
+                        )}
+
+                        <ResearchGraphView graphManager={graphManager} isOpen={showGraph} onClose={handleToggleGraph} />
+                        {/* Show paradigm UI when detected */}
+                        {paradigm && paradigmProbabilities && !isLoading && (
+                            <div className="animate-fade-in mb-6">
+                                <ParadigmIndicator
+                                    paradigm={paradigm}
+                                    probabilities={paradigmProbabilities}
+                                    confidence={paradigmProbabilities ? Math.max(...Object.values(paradigmProbabilities)) : 0}
+                                    blendedParadigms={blendedParadigms}
+                                />
+                            </div>
+                        )}
+
+                        {/* Show active collaborations */}
+                        {activeCollaborations.length > 0 && (
+                            <div className="animate-slide-up mb-4 space-y-2">
+                                <h3 className="text-sm font-medium text-theme-secondary mb-2">Inter-Host Collaborations</h3>
+                                {activeCollaborations.map(collab => (
+                                    <InterHostCollaboration
+                                        key={collab.id}
+                                        fromHost={collab.fromHost}
+                                        toHost={collab.toHost}
+                                        reason={collab.reason}
+                                        status={collab.status}
+                                    />
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Show context density during processing */}
+                        {isLoading && contextDensities && (
+                            <div className="animate-slide-up mb-6">
+                                <ContextDensityBar
+                                    densities={contextDensities}
+                                    phase={currentPhase}
+                                    paradigm={paradigm || undefined}
+                                    showHostColors={enhancedMode}
+                                    showLabels={true}
+                                />
+                            </div>
+                        )}
+
+                        <div className="research-container flex flex-col">
+                            <ResearchView
+                                steps={Array.isArray(research) ? research : []}
+                                activeModel={currentModel}
+                                confidence={paradigmProbabilities ? Math.max(...Object.values(paradigmProbabilities)) : 0}
+                                sourceCount={Array.isArray(research) ? research.flatMap(s => s.sources || []).length : 0}
+                                paradigm={paradigm}
+                                isLoading={isLoading}
+                                progressState={progressState}
+                            />
+
+                            {/* Function Call Dock - shows both live and history */}
+                            {(() => {
+                                console.log('FunctionCallDock render check:', {
+                                    enhancedMode,
+                                    liveCalls: liveCalls.length,
+                                    functionHistory: functionHistory.length,
+                                    shouldRender: enhancedMode && (liveCalls.length > 0 || functionHistory.length > 0)
+                                });
+                                return null;
+                            })()}
+                            <div className="mt-4">
+                                <FunctionCallDock
+                                    mode={liveCalls.length > 0 ? 'live' : 'history'}
+                                    showModeSelector={true}
+                                />
+                            </div>
+
+                            {/* Semantic Search */}
+                            {enhancedMode && (
+                                <div className="mt-4 p-4 bg-theme-primary rounded-lg shadow-theme">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="text-sm font-semibold text-theme-primary">Semantic Search</h3>
+                                        <button
+                                            onClick={() => setShowSemanticSearch(!showSemanticSearch)}
+                                            className="text-xs text-westworld-copper hover:text-westworld-darkCopper"
+                                        >
+                                            {showSemanticSearch ? 'Hide' : 'Show'}
+                                        </button>
+                                    </div>
+                                    {showSemanticSearch && (
+                                        <SemanticSearch
+                                            onSearch={handleSemanticSearch}
+                                            isSearching={isSearching}
+                                            onSelectResult={handleSelectSearchResult}
+                                        />
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Session Management */}
+                            {enhancedMode && (
+                                <div className="mt-4 p-4 bg-theme-primary rounded-lg shadow-theme">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="text-sm font-semibold text-theme-primary">Session Management</h3>
+                                        <span className="text-xs text-theme-secondary">{sessions.length} saved sessions</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setShowSessionHistory(true)}
+                                            className="flex-1 btn btn-primary btn-sm"
+                                        >
+                                            Browse History
+                                        </button>
+                                        <button
+                                            onClick={handleSaveCurrentSession}
+                                            disabled={research.length === 0}
+                                            className="flex-1 btn btn-secondary btn-sm"
+                                        >
+                                            Save Session
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
+
+                {activeTab === 'sessions' && (
+                    <SessionsView
+                        sessions={sessions}
+                        onLoadSession={handleLoadSession}
+                    />
+                )}
+
+                {activeTab === 'analytics' && (
+                    <AnalyticsView />
+                )}
+
+                {activeTab === 'settings' && (
+                    <div className="bg-theme-primary rounded-xl shadow-theme border border-theme-primary p-6 transition-colors duration-300">
+                        <h3 className="text-xl font-semibold text-theme-primary mb-6">Settings</h3>
+                        <div className="space-y-6">
+                            <div>
+                                <h4 className="text-lg font-medium text-theme-primary mb-4">Appearance</h4>
+                                <div className="flex items-center justify-between p-4 bg-theme-secondary rounded-lg">
+                                    <span className="text-theme-secondary">Theme Mode</span>
+                                    <ThemeToggle />
+                                </div>
+                            </div>
+                            <div className="p-4 bg-theme-secondary rounded-lg">
+                                <p className="text-theme-secondary">More settings coming soon...</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+            </main>
+
+            {/* Global progress bar – positioned above input bar with proper spacing */}
+            {isLoading && (
+                <div className="progress-meter-container px-4">
+                    <ProgressMeter
+                        value={progress}
+                        label="Research Progress"
+                        variant="gradient"
+                        showLoadingDots={true}
+                        showSegments={true}
+                        showShimmer={true}
+                        animate={true}
+                        onError={(error) => console.error('ProgressMeter error:', error)}
+                    />
+                </div>
+            )}
+
+            {/* Replace the existing InputBar with EnhancedInputBar */}
+            <div className="fixed bottom-0 left-0 right-0 z-40 bg-theme-surface border-t border-theme-border safe-padding-bottom">
+                <div className="container mx-auto px-4 py-4">
+                    <EnhancedInputBar
+                        ref={inputBarRef}
+                        value={inputValue}
+                        onChange={setInputValue}
+                        onSubmit={handleInputSubmit}
+                        disabled={isLoading}
+                        isLoading={isLoading}
+                        placeholder="Enter your research question..."
+                        maxLength={500}
+                        minLength={5}
+                        validationRules={validationRules}
+                        dynamicPlaceholderHints={dynamicPlaceholderHints}
+                        currentParadigm={paradigm}
+                        paradigmProbabilities={paradigmProbabilities}
+                        className="max-w-4xl mx-auto"
+                        aria-label="Research question input"
+                        testId="main-input-bar"
+                    />
+
+                    {/* Progress and context indicators */}
+                    {isLoading && progressState !== 'idle' && (
+                        <div className="mt-4 flex items-center justify-center gap-4 animate-fade-in">
+                            <span className="text-sm text-theme-secondary">
+                                {progressState.charAt(0).toUpperCase() + progressState.slice(1)}...
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Paradigm Dashboard */}
+            {paradigmProbabilities && (
+                <div className="paradigm-dashboard">
+                    <ParadigmDashboard
+                        paradigm={paradigm || 'bernard'}
+                        probabilities={paradigmProbabilities}
+                        layers={contextLayers}
+                    />
+                </div>
+            )}
+
+            {/* Context Layer Progress */}
+            {isLoading && contextLayers.length > 0 && paradigm && (
+                <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-notification">
+                    <ContextLayerProgress
+                        layers={contextLayers}
+                        currentLayer={currentLayer || undefined}
+                        paradigm={paradigm}
+                    />
+                </div>
+            )}
+
+            {/* Session History Browser */}
+            <SessionHistoryBrowser
+                sessions={sessions}
+                onLoadSession={handleLoadSession}
+                onDeleteSession={deleteSession}
+                onClose={() => setShowSessionHistory(false)}
+                isVisible={showSessionHistory}
+            />
+        </div>
+    )
+}
+
+export default App
