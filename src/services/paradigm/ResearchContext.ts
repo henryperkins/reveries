@@ -36,6 +36,7 @@ export interface ResearchContext {
   // Progress tracking
   pendingTasks: Set<string>;
   completedTasks: Set<string>;
+  failedTasks: Set<string>;
   
   // Final synthesis (populated at end)
   synthesis?: string;
@@ -73,7 +74,8 @@ export class ResearchContextManager {
         memories: []
       },
       pendingTasks: new Set(),
-      completedTasks: new Set()
+      completedTasks: new Set(),
+      failedTasks: new Set()
     };
   }
   
@@ -95,8 +97,23 @@ export class ResearchContextManager {
   // Mark task complete and store result
   completeTask(context: ResearchContext, taskId: string, result: any): void {
     context.pendingTasks.delete(taskId);
-    context.completedTasks.add(taskId);
-    context.findings.isolatedTasks.set(taskId, result);
+    
+    // Check if task failed
+    if (result && result.error) {
+      context.failedTasks.add(taskId);
+      context.findings.isolatedTasks.set(taskId, { 
+        status: 'failed', 
+        error: result.error,
+        taskId 
+      });
+    } else {
+      context.completedTasks.add(taskId);
+      context.findings.isolatedTasks.set(taskId, { 
+        status: 'completed', 
+        data: result,
+        taskId 
+      });
+    }
   }
   
   // Check if all tasks are complete
@@ -115,12 +132,29 @@ export class ResearchContextManager {
     
     // Isolated task results
     if (context.findings.isolatedTasks.size > 0) {
-      parts.push('\nFocused Analysis Results:');
+      const completedTasks: string[] = [];
+      const failedTasks: string[] = [];
+      
       context.findings.isolatedTasks.forEach((result) => {
-        if (result?.synthesis || result?.analysis) {
-          parts.push(`- ${result.synthesis || result.analysis}`);
+        if (result.status === 'failed') {
+          failedTasks.push(`Task ${result.taskId}: Failed - ${result.error}`);
+        } else if (result.status === 'completed' && result.data) {
+          const data = result.data;
+          if (data?.synthesis || data?.analysis) {
+            completedTasks.push(data.synthesis || data.analysis);
+          }
         }
       });
+      
+      if (completedTasks.length > 0) {
+        parts.push('\nFocused Analysis Results:');
+        completedTasks.forEach(task => parts.push(`- ${task}`));
+      }
+      
+      if (failedTasks.length > 0) {
+        parts.push('\nFailed Tasks:');
+        failedTasks.forEach(task => parts.push(`- ${task}`));
+      }
     }
     
     // Compressed insights

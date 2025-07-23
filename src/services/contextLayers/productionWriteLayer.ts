@@ -43,6 +43,7 @@ export class ProductionWriteLayer {
   private vectorStore?: VectorStoreAdapter;
   private cache?: any; // Redis for fast access
   private isInitialized = false;
+  private initializationPromise?: Promise<void>;
   
   private readonly SIMILARITY_THRESHOLD = 0.7;
   private readonly MAX_RELATED_MEMORIES = 5;
@@ -61,8 +62,26 @@ export class ProductionWriteLayer {
   }
 
   private async initializeVectorStore(): Promise<void> {
+    // Return existing initialization if in progress
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+    
+    // Return immediately if already initialized
     if (this.isInitialized) return;
     
+    // Create and store the initialization promise
+    this.initializationPromise = this.performInitialization();
+    
+    try {
+      await this.initializationPromise;
+    } finally {
+      // Clear the promise after completion (success or failure)
+      this.initializationPromise = undefined;
+    }
+  }
+
+  private async performInitialization(): Promise<void> {
     try {
       const config = VectorStoreFactory.getConfigFromEnv();
       this.vectorStore = await VectorStoreFactory.create(config);
@@ -74,11 +93,13 @@ export class ProductionWriteLayer {
         this.vectorStore = await VectorStoreFactory.create({ ...config, type: 'memory' });
       }
       
-      this.isInitialized = true;
       console.log(`Initialized ${this.vectorStore.name} vector store`);
       
       // Initialize cache if configured
       await this.initializeCache();
+      
+      // Set initialized flag only after everything succeeds
+      this.isInitialized = true;
     } catch (error) {
       console.error('Failed to initialize vector store:', error);
       // Fallback to memory store

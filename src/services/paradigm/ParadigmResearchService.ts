@@ -14,7 +14,7 @@ import { ParadigmClassifier } from '@/services/paradigmClassifier';
 import { WebResearchService } from '@/services/research/WebResearchService';
 import { ModelProviderService } from '@/services/providers/ModelProviderService';
 import { EvaluationService } from '@/services/research/EvaluationService';
-import { WriteLayerService } from '@/services/contextLayers/writeLayer';
+import { ProductionWriteLayer } from '@/services/contextLayers/productionWriteLayer';
 import { SelectLayerService } from '@/services/contextLayers/selectLayer';
 import { CompressLayerService } from '@/services/contextLayers/compressLayer';
 import { IsolateLayerService } from '@/services/contextLayers/isolateLayer';
@@ -31,7 +31,7 @@ export class ParadigmResearchService {
   private contextManager: ResearchContextManager;
   
   // Context layers
-  private writeLayer: WriteLayerService;
+  private writeLayer: ProductionWriteLayer;
   private selectLayer: SelectLayerService;
   private compressLayer: CompressLayerService;
   private isolateLayer: IsolateLayerService;
@@ -45,7 +45,7 @@ export class ParadigmResearchService {
     this.contextManager = ResearchContextManager.getInstance();
     
     // Initialize context layers
-    this.writeLayer = WriteLayerService.getInstance();
+    this.writeLayer = ProductionWriteLayer.getInstance();
     this.selectLayer = SelectLayerService.getInstance();
     this.compressLayer = CompressLayerService.getInstance();
     this.isolateLayer = IsolateLayerService.getInstance();
@@ -155,7 +155,7 @@ export class ParadigmResearchService {
     }
 
     // Store final results in memory
-    this.writeLayer.write('research_result', {
+    await this.writeLayer.writeWithEmbedding('research_result', {
       query,
       synthesis: result.synthesis,
       sources: result.sources,
@@ -190,7 +190,7 @@ export class ParadigmResearchService {
         onProgress?.(`[${paradigm}] Writing reveries to memory banks...`);
 
         // Store query patterns and initial thoughts
-        this.writeLayer.write('query_pattern', {
+        await this.writeLayer.writeWithEmbedding('query_pattern', {
           query,
           timestamp: Date.now(),
           paradigm
@@ -198,12 +198,12 @@ export class ParadigmResearchService {
 
         // Store any preliminary insights
         if (content) {
-          this.writeLayer.write('initial_insights', content, density, paradigm);
+          await this.writeLayer.writeWithEmbedding('initial_insights', content, density, paradigm);
         }
         
         // Retrieve relevant memories for context
-        const memories = this.writeLayer.getParadigmMemories(paradigm);
-        researchContext.findings.memories = Array.from(memories.values()).slice(0, 5); // Keep top 5 relevant
+        const searchResults = await this.writeLayer.searchMemories(query, paradigm, { topK: 5 });
+        researchContext.findings.memories = searchResults.map(result => result.memory.content);
         return undefined; // Write layer just stores, doesn't return data
       }
 

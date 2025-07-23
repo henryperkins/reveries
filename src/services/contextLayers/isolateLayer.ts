@@ -46,8 +46,17 @@ export class IsolateLayerService {
   private static instance: IsolateLayerService;
   private tasks: Map<string, IsolationTask> = new Map();
   private rateLimiter = RateLimiter.getInstance();
+  
+  // Memory management constants
+  private readonly MAX_TASKS = 100;
+  private readonly TASK_TTL = 30 * 60 * 1000; // 30 minutes
+  private readonly CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  private cleanupTimer?: NodeJS.Timeout;
 
-  private constructor() {}
+  private constructor() {
+    // Start periodic cleanup
+    this.startCleanupTimer();
+  }
 
   public static getInstance(): IsolateLayerService {
     if (!IsolateLayerService.instance) {
@@ -72,6 +81,17 @@ export class IsolateLayerService {
       status: 'pending',
       sandbox: this.createSandboxContext(paradigm)
     };
+
+    // Check task limit before adding
+    if (this.tasks.size >= this.MAX_TASKS) {
+      // Try to clean up first
+      this.cleanupOldTasks();
+      
+      // If still at limit, reject new task
+      if (this.tasks.size >= this.MAX_TASKS) {
+        throw new Error(`Task limit reached (${this.MAX_TASKS}). Please wait for existing tasks to complete.`);
+      }
+    }
 
     this.tasks.set(taskId, isolationTask);
 
@@ -376,5 +396,63 @@ export class IsolateLayerService {
 
   getParadigmTasks(paradigm: HostParadigm): IsolationTask[] {
     return Array.from(this.tasks.values()).filter(task => task.paradigm === paradigm);
+  }
+
+  /**
+   * Start periodic cleanup of old tasks
+   */
+  private startCleanupTimer(): void {
+    this.cleanupTimer = setInterval(() => {
+      this.cleanupOldTasks();
+    }, this.CLEANUP_INTERVAL);
+  }
+
+  /**
+   * Clean up old completed/failed tasks and enforce task limit
+   */
+  private cleanupOldTasks(): void {
+    const now = Date.now();
+    const tasksToDelete: string[] = [];
+
+    // Identify old tasks
+    this.tasks.forEach((task, taskId) => {
+      if (task.status === 'completed' || task.status === 'failed') {
+        const age = task.endTime ? now - task.endTime : now - (task.startTime || now);
+        if (age > this.TASK_TTL) {
+          tasksToDelete.push(taskId);
+        }
+      }
+    });
+
+    // Delete old tasks
+    tasksToDelete.forEach(taskId => this.tasks.delete(taskId));
+
+    // If still over limit, remove oldest completed/failed tasks
+    if (this.tasks.size > this.MAX_TASKS) {
+      const completedTasks = Array.from(this.tasks.entries())
+        .filter(([_, task]) => task.status === 'completed' || task.status === 'failed')
+        .sort((a, b) => (a[1].endTime || 0) - (b[1].endTime || 0));
+
+      const toRemove = this.tasks.size - this.MAX_TASKS;
+      completedTasks.slice(0, toRemove).forEach(([taskId]) => {
+        this.tasks.delete(taskId);
+      });
+    }
+
+    // Log cleanup results
+    if (tasksToDelete.length > 0 || this.tasks.size > this.MAX_TASKS) {
+      console.log(`IsolateLayer cleanup: removed ${tasksToDelete.length} old tasks, ${this.tasks.size} tasks remaining`);
+    }
+  }
+
+  /**
+   * Clean up resources on service destruction
+   */
+  destroy(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = undefined;
+    }
+    this.tasks.clear();
   }
 }

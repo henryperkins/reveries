@@ -1,5 +1,6 @@
 import { HostParadigm } from '@/types';
 import crypto from 'crypto';
+import { EmbeddingService } from '@/services/ai/EmbeddingService';
 
 type MemoryType = 'procedural' | 'episodic' | 'semantic';
 
@@ -10,18 +11,21 @@ interface Memory {
   density: number;
   type: MemoryType;
   taskId?: string;
-  embedding?: number[];
+  embedding?: number[]; // Keep as number[] for compatibility
 }
 
 export class WriteLayerService {
   private static instance: WriteLayerService;
   private scratchpad: Map<string, Memory> = new Map();
   private memoryStore: Map<string, Memory> = new Map();
+  private embeddingService: EmbeddingService;
   
   private readonly SCRATCHPAD_TTL = 10 * 60 * 1000; // 10 minutes
   private readonly MEMORY_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
-  private constructor() {}
+  private constructor() {
+    this.embeddingService = EmbeddingService.getInstance();
+  }
 
   public static getInstance(): WriteLayerService {
     if (!WriteLayerService.instance) {
@@ -30,7 +34,7 @@ export class WriteLayerService {
     return WriteLayerService.instance;
   }
 
-  write(key: string, value: any, density: number, paradigm: HostParadigm): void {
+  async write(key: string, value: any, density: number, paradigm: HostParadigm): Promise<void> {
     // Determine memory type based on content
     const memoryType = this.classifyMemoryType(key, value);
     
@@ -41,7 +45,7 @@ export class WriteLayerService {
       density,
       type: memoryType,
       taskId: this.generateTaskId(key, paradigm),
-      embedding: this.generateEmbedding(value)
+      embedding: await this.generateEmbedding(value)
     };
 
     if (density > 80) {
@@ -58,7 +62,7 @@ export class WriteLayerService {
   /**
    * ACE-Graph style memory writing with explicit type classification
    */
-  writeMemory(taskId: string, content: string, memoryType: MemoryType, paradigm: HostParadigm, density = 50): void {
+  async writeMemory(taskId: string, content: string, memoryType: MemoryType, paradigm: HostParadigm, density = 50): Promise<void> {
     const memory: Memory = {
       content: { task: taskId, body: content, type: memoryType },
       timestamp: Date.now(),
@@ -66,7 +70,7 @@ export class WriteLayerService {
       density,
       type: memoryType,
       taskId,
-      embedding: this.generateEmbedding(content)
+      embedding: await this.generateEmbedding(content)
     };
 
     const key = `${memoryType}:${taskId}`;
@@ -159,17 +163,25 @@ export class WriteLayerService {
     return crypto.createHash('md5').update(`${paradigm}:${key}:${timestamp}`).digest('hex').substring(0, 12);
   }
 
-  private generateEmbedding(content: any): number[] {
-    // Simplified embedding - in production would use actual embedding model
+  private async generateEmbedding(content: any): Promise<number[]> {
     const text = typeof content === 'string' ? content : JSON.stringify(content);
-    const hash = crypto.createHash('sha256').update(text).digest();
-    const embedding: number[] = [];
     
-    for (let i = 0; i < Math.min(128, hash.length); i++) {
-      embedding.push((hash[i] - 128) / 128); // Normalize to [-1, 1]
+    try {
+      // Use real embedding service
+      const embeddingVector = await this.embeddingService.generateEmbedding(text);
+      return embeddingVector.values; // Extract the values array
+    } catch (error) {
+      console.warn('Failed to generate embedding, falling back to hash-based:', error);
+      // Fallback to hash-based embedding if service fails
+      const hash = crypto.createHash('sha256').update(text).digest();
+      const embedding: number[] = [];
+      
+      for (let i = 0; i < Math.min(128, hash.length); i++) {
+        embedding.push((hash[i] - 128) / 128); // Normalize to [-1, 1]
+      }
+      
+      return embedding;
     }
-    
-    return embedding;
   }
 
   /**

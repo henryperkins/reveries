@@ -1,4 +1,5 @@
 import { HostParadigm, Citation } from '@/types';
+import { EmbeddingService } from '@/services/ai/EmbeddingService';
 
 interface SelectionStrategy {
   paradigm: HostParadigm;
@@ -17,6 +18,8 @@ interface RetrievalResult {
 
 export class SelectLayerService {
   private static instance: SelectLayerService;
+  private embeddingService: EmbeddingService;
+  private embeddingCache: Map<string, import('@/services/ai/EmbeddingService').EmbeddingVector> = new Map();
 
   private strategies: Record<HostParadigm, SelectionStrategy> = {
     dolores: {
@@ -73,7 +76,9 @@ export class SelectLayerService {
     }
   };
 
-  private constructor() {}
+  private constructor() {
+    this.embeddingService = EmbeddingService.getInstance();
+  }
 
   public static getInstance(): SelectLayerService {
     if (!SelectLayerService.instance) {
@@ -118,7 +123,7 @@ export class SelectLayerService {
     k: number
   ): Promise<Citation[]> {
     // ACE-Graph hybrid retrieval: combine semantic and keyword scoring
-    const hybridResults = this.hybridRetrieve(query, sources, paradigm);
+    const hybridResults = await this.hybridRetrieve(query, sources, paradigm);
 
     // Apply paradigm-specific reranking
     const rerankedResults = this.rerank(hybridResults);
@@ -131,14 +136,14 @@ export class SelectLayerService {
    * ACE-Graph Hybrid Retrieval implementation
    * Combines semantic similarity with keyword matching
    */
-  private hybridRetrieve(query: string, sources: Citation[], paradigm: HostParadigm): RetrievalResult[] {
-    const results: RetrievalResult[] = [];
+  private async hybridRetrieve(query: string, sources: Citation[], paradigm: HostParadigm): Promise<RetrievalResult[]> {
     const queryLower = query.toLowerCase();
     const strategy = this.strategies[paradigm];
 
-    for (const source of sources) {
-      // Semantic scoring (simplified - would use actual embeddings in production)
-      const semanticScore = this.calculateSemanticSimilarity(query, source);
+    // Process sources in parallel for better performance
+    const retrievalPromises = sources.map(async (source) => {
+      // Semantic scoring with real embeddings
+      const semanticScore = await this.calculateSemanticSimilarity(query, source);
       
       // Keyword scoring based on paradigm priorities
       const keywordScore = this.calculateKeywordScore(queryLower, source, strategy);
@@ -146,28 +151,62 @@ export class SelectLayerService {
       // Combined score with weights
       const combinedScore = (semanticScore * 0.6) + (keywordScore * 0.4);
       
-      results.push({
+      return {
         source,
         semanticScore,
         keywordScore,
         combinedScore,
         relevanceReason: this.generateRelevanceReason(source, strategy, semanticScore, keywordScore)
-      });
-    }
+      };
+    });
 
+    // Wait for all calculations to complete
+    const results = await Promise.all(retrievalPromises);
     return results;
   }
 
-  private calculateSemanticSimilarity(query: string, source: Citation): number {
-    // Simplified semantic similarity - in production would use embeddings
-    const queryWords = query.toLowerCase().split(' ');
-    const sourceText = `${source.title || ''} ${source.snippet || ''}`.toLowerCase();
+  private async calculateSemanticSimilarity(query: string, source: Citation): Promise<number> {
+    try {
+      // Get or generate embeddings
+      const queryEmbedding = await this.getOrGenerateEmbedding(query);
+      const sourceText = `${source.title || ''} ${source.snippet || ''}`;
+      const sourceEmbedding = await this.getOrGenerateEmbedding(sourceText);
+      
+      // Calculate cosine similarity
+      return this.embeddingService.calculateSimilarity(queryEmbedding, sourceEmbedding);
+    } catch (error) {
+      console.warn('Failed to calculate semantic similarity, falling back to keyword matching:', error);
+      // Fallback to simple keyword matching
+      const queryWords = query.toLowerCase().split(' ');
+      const sourceText = `${source.title || ''} ${source.snippet || ''}`.toLowerCase();
+      
+      const matchedWords = queryWords.filter(word => 
+        word.length > 2 && sourceText.includes(word)
+      );
+      
+      return matchedWords.length / Math.max(queryWords.length, 1);
+    }
+  }
+
+  private async getOrGenerateEmbedding(text: string): Promise<import('@/services/ai/EmbeddingService').EmbeddingVector> {
+    // Check cache first
+    const cached = this.embeddingCache.get(text);
+    if (cached) return cached;
     
-    const matchedWords = queryWords.filter(word => 
-      word.length > 2 && sourceText.includes(word)
-    );
+    // Generate new embedding
+    const embedding = await this.embeddingService.generateEmbedding(text);
     
-    return matchedWords.length / Math.max(queryWords.length, 1);
+    // Cache it (limit cache size to prevent memory issues)
+    if (this.embeddingCache.size > 1000) {
+      // Remove oldest entries
+      const firstKey = this.embeddingCache.keys().next().value;
+      if (firstKey) {
+        this.embeddingCache.delete(firstKey);
+      }
+    }
+    this.embeddingCache.set(text, embedding);
+    
+    return embedding;
   }
 
   private calculateKeywordScore(_query: string, source: Citation, strategy: SelectionStrategy): number {

@@ -71,7 +71,7 @@
     "autoprefixer": "^10.4.21",
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.1",
-    "dotenv": "^17.2.0",
+    "dotenv": "^16.6.1",
     "esbuild": "^0.25.6",
     "eslint": "^9.31.0",
     "eslint-plugin-react-hooks": "^5.2.0",
