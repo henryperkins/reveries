@@ -1,0 +1,181 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Users table for session management
+model User {
+  id          String   @id @default(cuid())
+  sessionId   String   @unique @map("session_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  preferences Json     @default("{}") @db.JsonB
+
+  // Relations
+  researchSessions ResearchSession[]
+
+  @@map("users")
+}
+
+// Research sessions table
+model ResearchSession {
+  id                    String    @id @default(cuid())
+  userId                String    @map("user_id")
+  sessionId             String    @map("session_id")
+  query                 String    @db.Text
+  title                 String?   @db.VarChar(500)
+  status                String    @default("active") @db.VarChar(50)
+  modelType             String?   @map("model_type") @db.VarChar(100)
+  effortLevel           String?   @map("effort_level") @db.VarChar(50)
+  paradigm              String?   @db.VarChar(50)
+  paradigmProbabilities Json?     @map("paradigm_probabilities") @db.JsonB
+  graphData             Json?     @map("graph_data") @db.JsonB
+  metadata              Json      @default("{}") @db.JsonB
+  startedAt             DateTime? @map("started_at")
+  completedAt           DateTime? @map("completed_at")
+  durationMs            Int?      @map("duration_ms")
+  totalSteps            Int       @default(0) @map("total_steps")
+  totalSources          Int       @default(0) @map("total_sources")
+  successRate           Decimal?  @map("success_rate") @db.Decimal(5, 4)
+  errorCount            Int       @default(0) @map("error_count")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  researchSteps   ResearchStep[]
+  researchSources ResearchSource[]
+  graphNodes      GraphNode[]
+  graphEdges      GraphEdge[]
+  functionCalls   FunctionCall[]
+
+  @@map("research_sessions")
+}
+
+// Research steps table for detailed step tracking
+model ResearchStep {
+  id           String    @id @default(cuid())
+  sessionId    String    @map("session_id")
+  stepId       String    @map("step_id")
+  stepType     String    @map("step_type")
+  title        String?   @db.Text
+  content      String?   @db.Text
+  stepIndex    Int       @map("step_index")
+  status       String    @default("pending") @map("status")
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  durationMs   Int?      @map("duration_ms")
+  metadata     Json      @default("{}") @db.JsonB
+  errorMessage String?   @map("error_message") @db.Text
+  embedding    String?   @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  researchSession ResearchSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  researchSources ResearchSource[]
+  functionCalls   FunctionCall[]
+
+  @@map("research_steps")
+}
+
+// Sources table for citation tracking
+model ResearchSource {
+  id        String   @id @default(cuid())
+  sessionId String   @map("session_id")
+  stepId    String   @map("step_id")
+  url       String   @db.Text
+  title     String?  @db.Text
+  name      String?  @db.Text
+  authors   String[]
+  year      Int?
+  published String?  @db.Text
+  accessed  DateTime @default(now())
+  snippet   String?  @db.Text
+  domain    String?
+  metadata  Json     @default("{}") @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  researchSession ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  researchStep    ResearchStep    @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@map("research_sources")
+}
+
+// Graph nodes table for research graph visualization
+model GraphNode {
+  id          String   @id @default(cuid())
+  sessionId   String   @map("session_id")
+  nodeId      String   @map("node_id")
+  stepId      String   @map("step_id")
+  nodeType    String   @map("node_type")
+  title       String?  @db.Text
+  nodeIndex   Int      @map("node_index")
+  content     String?  @db.Text
+  metadata    Json     @default("{}") @db.JsonB
+  position    Json?    @db.JsonB
+  styling     Json?    @db.JsonB
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  researchSession ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sourceEdges     GraphEdge[]     @relation("SourceNode")
+  targetEdges     GraphEdge[]     @relation("TargetNode")
+
+  @@map("graph_nodes")
+}
+
+// Graph edges table for node relationships
+model GraphEdge {
+  id           String   @id @default(cuid())
+  sessionId    String   @map("session_id")
+  sourceNodeId String   @map("source_node_id")
+  targetNodeId String   @map("target_node_id")
+  edgeType     String   @map("edge_type")
+  label        String?  @db.Text
+  weight       Decimal? @db.Decimal(10, 6)
+  metadata     Json     @default("{}") @db.JsonB
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  researchSession ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sourceNode      GraphNode       @relation("SourceNode", fields: [sourceNodeId], references: [id], onDelete: Cascade)
+  targetNode      GraphNode       @relation("TargetNode", fields: [targetNodeId], references: [id], onDelete: Cascade)
+
+  @@map("graph_edges")
+}
+
+// Function calls table for LangGraph tracking
+model FunctionCall {
+  id           String    @id @default(cuid())
+  sessionId    String    @map("session_id")
+  stepId       String    @map("step_id")
+  functionName String    @map("function_name")
+  arguments    Json?     @db.JsonB
+  result       Json?     @db.JsonB
+  startedAt    DateTime  @default(now()) @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  durationMs   Int?      @map("duration_ms")
+  status       String    @default("completed")
+  errorMessage String?   @map("error_message") @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  researchSession ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  researchStep    ResearchStep    @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@map("function_calls")
+}

@@ -260,13 +260,42 @@ export const keyframes = `
   }
 `;
 
-// Theme transition styles
+// Theme transition styles with granular control
 export const themeTransition = `
-  .theme-transition * {
+  /* Global theme transitions with opt-out support */
+  .theme-transition *:not([data-theme-transition-opt-out="true"]):not([data-theme-transition-opt-out="true"] *) {
     transition: background-color var(--transitions-duration-slow),
                 color var(--transitions-duration-slow),
                 border-color var(--transitions-duration-slow),
                 box-shadow var(--transitions-duration-slow);
+  }
+
+  /* Controlled theme transitions with custom properties */
+  .theme-transition-controlled {
+    /* Transition set via JavaScript */
+  }
+
+  /* Specific transition durations for different properties */
+  .theme-transition-color {
+    transition: color var(--transitions-duration-color, var(--transitions-duration-slow));
+  }
+
+  .theme-transition-background {
+    transition: background-color var(--transitions-duration-background, var(--transitions-duration-slow));
+  }
+
+  .theme-transition-border {
+    transition: border-color var(--transitions-duration-border, var(--transitions-duration-slow));
+  }
+
+  .theme-transition-shadow {
+    transition: box-shadow var(--transitions-duration-shadow, var(--transitions-duration-slow));
+  }
+
+  /* Disable transitions for specific elements */
+  .no-theme-transition,
+  .no-theme-transition * {
+    transition: none !important;
   }
 `;
 

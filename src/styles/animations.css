@@ -161,37 +161,146 @@
     }
   }
   
+  @keyframes typewriter {
+    from {
+      width: 0;
+      border-right-color: theme('colors.westworld.gold');
+    }
+    to {
+      width: 100%;
+      border-right-color: transparent;
+    }
+  }
+  
+  @keyframes matrixRain {
+    0% {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(100vh);
+      opacity: 0;
+    }
+  }
+  
+  @keyframes glitch {
+    0%, 100% {
+      transform: translate(0);
+      filter: hue-rotate(0deg);
+    }
+    20% {
+      transform: translate(-2px, 2px);
+      filter: hue-rotate(90deg);
+    }
+    40% {
+      transform: translate(-2px, -2px);
+      filter: hue-rotate(180deg);
+    }
+    60% {
+      transform: translate(2px, 2px);
+      filter: hue-rotate(270deg);
+    }
+    80% {
+      transform: translate(2px, -2px);
+      filter: hue-rotate(360deg);
+    }
+  }
+  
+  @keyframes circuit {
+    0% {
+      stroke-dashoffset: 1000;
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      stroke-dashoffset: 0;
+      opacity: 1;
+    }
+  }
+  
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+  
+  @keyframes ripple {
+    0% {
+      transform: scale(0);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+  
+  @keyframes shake {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+      transform: translateX(-10px);
+    }
+    20%, 40%, 60%, 80% {
+      transform: translateX(10px);
+    }
+  }
+  
+  @keyframes morphing {
+    0% {
+      border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    }
+    50% {
+      border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+    }
+    100% {
+      border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    }
+  }
+  
   /* ===== ANIMATION CLASSES ===== */
   .animate-fadeIn {
-    animation: fadeIn var(--transition-base) ease-out;
+    animation: fadeIn var(--transitions-duration-base) ease-out;
   }
   
   .animate-fadeOut {
-    animation: fadeOut var(--transition-base) ease-in;
+    animation: fadeOut var(--transitions-duration-base) ease-in;
   }
   
   .animate-slideUp {
-    animation: slideUp var(--transition-base) ease-out;
+    animation: slideUp var(--transitions-duration-base) ease-out;
   }
   
   .animate-slideDown {
-    animation: slideDown var(--transition-base) ease-out;
+    animation: slideDown var(--transitions-duration-base) ease-out;
   }
   
   .animate-slideLeft {
-    animation: slideLeft var(--transition-base) ease-out;
+    animation: slideLeft var(--transitions-duration-base) ease-out;
   }
   
   .animate-slideRight {
-    animation: slideRight var(--transition-base) ease-out;
+    animation: slideRight var(--transitions-duration-base) ease-out;
   }
   
   .animate-scaleIn {
-    animation: scaleIn var(--transition-base) ease-out;
+    animation: scaleIn var(--transitions-duration-base) ease-out;
   }
   
   .animate-scaleOut {
-    animation: scaleOut var(--transition-base) ease-in;
+    animation: scaleOut var(--transitions-duration-base) ease-in;
   }
   
   .animate-spin-slow {
@@ -223,33 +332,69 @@
     animation: blink 1s step-end infinite;
   }
   
+  .animate-typewriter {
+    overflow: hidden;
+    white-space: nowrap;
+    border-right: 3px solid theme('colors.westworld.gold');
+    animation: typewriter 3s steps(40, end), blink 0.75s step-end infinite;
+  }
+  
+  .animate-matrixRain {
+    animation: matrixRain 5s linear infinite;
+  }
+  
+  .animate-glitch {
+    animation: glitch 0.3s ease-in-out infinite;
+  }
+  
+  .animate-circuit {
+    stroke-dasharray: 1000;
+    animation: circuit 2s ease-out forwards;
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-ripple {
+    animation: ripple 0.6s ease-out;
+  }
+  
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+  
+  .animate-morphing {
+    animation: morphing 8s ease-in-out infinite;
+  }
+  
   /* ===== TRANSITION UTILITIES ===== */
   .transition-opacity {
     transition-property: opacity;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: var(--transition-base);
+    transition-duration: var(--transitions-duration-base);
   }
   
   .transition-transform {
     transition-property: transform;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: var(--transition-base);
+    transition-duration: var(--transitions-duration-base);
   }
   
   .transition-colors {
     transition-property: color, background-color, border-color;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: var(--transition-base);
+    transition-duration: var(--transitions-duration-base);
   }
   
   .transition-shadow {
     transition-property: box-shadow;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: var(--transition-base);
+    transition-duration: var(--transitions-duration-base);
   }
   
   .transition-all-smooth {
-    transition: all var(--transition-base) cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all var(--transitions-duration-base) cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   /* ===== ANIMATION DELAYS ===== */
@@ -271,6 +416,49 @@
   
   .animation-delay-1000 {
     animation-delay: 1000ms;
+  }
+  
+  /* ===== PAGE TRANSITIONS ===== */
+  .page-exit {
+    animation: pageExit 0.3s ease-in-out forwards;
+  }
+  
+  .page-enter {
+    animation: pageEnter 0.3s ease-in-out forwards;
+  }
+  
+  @keyframes pageExit {
+    from {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-50px) scale(0.95);
+    }
+  }
+  
+  @keyframes pageEnter {
+    from {
+      opacity: 0;
+      transform: translateX(50px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+  
+  /* ===== ADVANCED EASING FUNCTIONS ===== */
+  :root {
+    --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --ease-elastic: cubic-bezier(0.68, -0.6, 0.32, 1.6);
+    --ease-back-in: cubic-bezier(0.6, -0.28, 0.735, 0.045);
+    --ease-back-out: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --ease-expo-in: cubic-bezier(0.95, 0.05, 0.795, 0.035);
+    --ease-expo-out: cubic-bezier(0.19, 1, 0.22, 1);
+    --ease-circ-in: cubic-bezier(0.6, 0.04, 0.98, 0.335);
+    --ease-circ-out: cubic-bezier(0.075, 0.82, 0.165, 1);
   }
   
   /* ===== REDUCED MOTION ===== */
