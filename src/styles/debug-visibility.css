@@ -1,7 +1,7 @@
 /* Debug visibility - temporary debugging styles */
 
 /* Force all elements to be visible */
-* {
+body.debug-visibility * {
   visibility: visible !important;
   opacity: 1 !important;
 }
@@ -45,17 +45,6 @@
   display: block !important;
 }
 
-/* Ensure buttons are visible */
-button[type="submit"],
-.btn,
-input[type="submit"] {
-  display: inline-block !important;
-  padding: 0.5rem 1rem !important;
-  background-color: var(--colors-semantic-primary, #D4AF37) !important;
-  color: white !important;
-  border: none !important;
-  border-radius: 4px !important;
-}
 
 /* Force Tailwind to show everything */
 @media (max-width: 768px) {

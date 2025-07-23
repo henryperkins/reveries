@@ -7,15 +7,6 @@
     display: block !important;
   }
 
-  /* Ensure CSS variables are properly initialized */
-  :root {
-    --colors-westworld-cream: #FAF6F2 !important;
-    --colors-westworld-near-black: #2A2522 !important;
-    --colors-westworld-gold: #D4AF37 !important;
-    --colors-semantic-primary: #D4AF37 !important;
-    --colors-semantic-background: #F5EDE4 !important;
-    --colors-semantic-text: #2A2522 !important;
-  }
 
   /* Force component visibility - override all responsive hiding */
   .top-navigation,
@@ -148,5 +139,4 @@
   .table { display: table !important; }
   .table-cell { display: table-cell !important; }
   .table-row { display: table-row !important; }
-  .hidden { display: block !important; } /* Override hidden */
 }
