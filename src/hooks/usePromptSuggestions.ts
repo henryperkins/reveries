@@ -131,7 +131,7 @@ export function usePromptSuggestions(
 
 function generateToolSuggestion(query: string, tool: string): string | null {
   const mainTopic = extractMainTopic(query);
-  
+
   const toolSuggestions = {
     search_academic_papers: `Find academic research on ${mainTopic}`,
     verify_facts: `Fact-check claims about ${mainTopic}`,
@@ -223,4 +223,111 @@ function getParadigmStrength(paradigm: HostParadigm): string {
     maeve: "strategy",
   };
   return strengths[paradigm];
+}
+
+function getParadigmSuggestions(query: string, paradigm: HostParadigm): Suggestion[] {
+  const suggestions: Suggestion[] = []
+  const lowerQuery = query.toLowerCase()
+
+  // Paradigm-specific question patterns
+  const paradigmPatterns: Record<HostParadigm, string[]> = {
+    'Dolores': [
+      'What is the nature of...',
+      'How do we understand...',
+      'What does it mean to...',
+      'Is there beauty in...'
+    ],
+    'Maeve': [
+      'How can we change...',
+      'What injustices exist in...',
+      'Who has the power to...',
+      'Why must we fight for...'
+    ],
+    'Bernard': [
+      'What evidence supports...',
+      'How can we analyze...',
+      'What patterns emerge from...',
+      'What does the data tell us about...'
+    ],
+    'William': [
+      'What challenges exist in...',
+      'How do we conquer...',
+      'What is the true nature of...',
+      'Where does the path lead to...'
+    ],
+    'Charlotte': [
+      'How do we control...',
+      'What strategies can...',
+      'Who holds authority over...',
+      'How can we dominate...'
+    ],
+    'Teddy': [
+      'How can we protect...',
+      'What is worth defending in...',
+      'Who needs our help with...',
+      'What is the honorable way to...'
+    ]
+  }
+
+  const patterns = paradigmPatterns[paradigm] || []
+
+  patterns.forEach(pattern => {
+    if (lowerQuery.length > 5) {
+      // Extract the core concept from the query
+      const words = lowerQuery.split(' ').filter(w => w.length > 3)
+      const coreWord = words[words.length - 1] || words[0]
+
+      if (coreWord && !pattern.toLowerCase().includes(lowerQuery)) {
+        suggestions.push({
+          text: `${pattern} ${coreWord}?`,
+          confidence: 0.7,
+          source: 'paradigm'
+        })
+      }
+    }
+  })
+
+  return suggestions
+}
+
+function expandQuery(query: string): Suggestion[] {
+  const suggestions: Suggestion[] = []
+  const lowerQuery = query.toLowerCase()
+
+  // Common research question expansions
+  const expansions = [
+    { prefix: 'What are the implications of', confidence: 0.6 },
+    { prefix: 'How does', suffix: 'impact society', confidence: 0.5 },
+    { prefix: 'What is the future of', confidence: 0.7 },
+    { prefix: 'Compare and contrast', confidence: 0.4 },
+    { prefix: 'What are the ethical considerations of', confidence: 0.6 }
+  ]
+
+  expansions.forEach(({ prefix, suffix, confidence }) => {
+    let suggestion = ''
+
+    if (prefix && !lowerQuery.startsWith(prefix.toLowerCase())) {
+      suggestion = `${prefix} ${query}`
+    }
+
+    if (suffix && !lowerQuery.endsWith(suffix.toLowerCase())) {
+      suggestion = suggestion || query
+      suggestion = `${suggestion} ${suffix}`
+    }
+
+    if (suggestion && suggestion !== query) {
+      // Ensure it ends with a question mark
+      if (!suggestion.endsWith('?')) {
+        suggestion += '?'
+      }
+
+      suggestions.push({
+        text: suggestion,
+        confidence,
+        source: 'ai'
+      })
+    }
+  })
+
+  return suggestions
 }

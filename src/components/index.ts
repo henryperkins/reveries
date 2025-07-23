@@ -2,7 +2,8 @@
 export { Controls } from './Controls';
 export { ErrorDisplay } from './ErrorDisplay';
 export { Header } from './Header';
-export { InputBar } from './InputBar';
+export { default as EnhancedInputBar } from './EnhancedInputBar';
+export type { InputBarProps, InputBarRef, ValidationRule } from './EnhancedInputBar';
 export { ResearchArea } from './ResearchArea';
 export { default as ResearchGraphView } from './ResearchGraphView';
 export { ResearchStepCard } from './ResearchStepCard';
