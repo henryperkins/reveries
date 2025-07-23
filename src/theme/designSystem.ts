@@ -277,32 +277,22 @@ export const designSystem = {
   },
 };
 
-// Helper function to convert camelCase to kebab-case
-const toKebabCase = (str: string): string => {
-  return str.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
+/** Dark-mode overrides applied on top of the base design system */
+export const designSystemDark: typeof designSystem = {
+  ...designSystem,
+  colors: {
+    ...designSystem.colors,
+    semantic: {
+      ...designSystem.colors.semantic,
+      background: '#1A1512',
+      surface:    '#2A2522',
+      text:       '#FAF6F2',
+      textMuted:  '#E8D5C4',
+      border:     '#4B4B4B',
+    },
+  },
 };
 
-// Generate CSS variables from design tokens
-export const generateCSSVariables = (obj: any, prefix = '--'): Record<string, string> => {
-  const variables: Record<string, string> = {};
-
-  const traverse = (current: any, path: string[] = []) => {
-    for (const [key, value] of Object.entries(current)) {
-      const kebabKey = toKebabCase(key);
-      const currentPath = [...path, kebabKey];
-
-      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        traverse(value, currentPath);
-      } else {
-        const variableName = `${prefix}${currentPath.join('-')}`;
-        variables[variableName] = String(value);
-      }
-    }
-  };
-
-  traverse(obj);
-  return variables;
-};
 
 // Helper function to get CSS variables
 export const getCSSVariable = (path: string) => {
@@ -318,7 +308,6 @@ export const getCSSVariable = (path: string) => {
 };
 
 // Generate all CSS variables
-export const cssVariables = generateCSSVariables(designSystem);
 
 // Export individual sections for convenience
 export const { colors, typography, spacing, shadows, zIndex, transitions, breakpoints, components } = designSystem;
