@@ -183,7 +183,7 @@ export const Controls: React.FC<ControlsProps> = ({
                   return (
                     <label
                       key={model}
-                      className="flex items-center p-3 border border-theme-primary rounded-lg cursor-pointer hover-theme-primary"
+                      className="flex items-center p-3 border border-theme-primary rounded-lg cursor-pointer hover:bg-theme-tertiary transition-colors"
                     >
                       <input
                         type="radio"
@@ -215,7 +215,7 @@ export const Controls: React.FC<ControlsProps> = ({
                 {Object.values(EffortType).map((effort) => (
                   <label
                     key={effort}
-                    className="flex items-center p-3 border border-theme-primary rounded-lg cursor-pointer hover:bg-theme-secondary transition-colors"
+                    className="flex items-center p-3 border border-theme-primary rounded-lg cursor-pointer hover:bg-theme-tertiary transition-colors"
                   >
                     <input
                       type="radio"
@@ -244,7 +244,7 @@ export const Controls: React.FC<ControlsProps> = ({
                 <label className="block text-sm font-medium text-theme-primary mb-2">
                   Features
                 </label>
-                <label className="flex items-center p-3 border border-theme-primary rounded-lg cursor-pointer hover-theme-primary">
+                <label className="flex items-center p-3 border border-theme-primary rounded-lg cursor-pointer hover:bg-theme-tertiary transition-colors">
                   <input
                     type="checkbox"
                     checked={enhancedMode}

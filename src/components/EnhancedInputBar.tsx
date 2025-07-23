@@ -233,6 +233,18 @@ const EnhancedInputBar = forwardRef<InputBarRef, InputBarProps>(
       }
     }, [value]);
 
+    // Automatically toggle suggestion dropdown based on current input and suggestion availability
+    useEffect(() => {
+      if (!isFocused) return;
+
+      // Show suggestions when there are any available
+      if (allSuggestions.length > 0) {
+        setShowSuggestions(true);
+      } else {
+        setShowSuggestions(false);
+      }
+    }, [allSuggestions, isFocused]);
+
     // Announce validation state changes
     useEffect(() => {
       if (validationState.errors.length > 0) {

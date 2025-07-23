@@ -337,7 +337,16 @@ export class MemoryAdapter implements VectorStoreAdapter {
  * Vector store factory
  */
 export class VectorStoreFactory {
+  private static adapterRegistry: Map<string, VectorStoreAdapter> = new Map();
+
   static async create(config: VectorStoreConfig): Promise<VectorStoreAdapter> {
+    const registryKey = config.type;
+
+    const cachedAdapter = this.adapterRegistry.get(registryKey);
+    if (cachedAdapter) {
+      return cachedAdapter;
+    }
+
     let adapter: VectorStoreAdapter;
 
     switch (config.type) {
@@ -356,6 +365,8 @@ export class VectorStoreFactory {
     if ('initialize' in adapter) {
       await (adapter as { initialize: () => Promise<void> }).initialize();
     }
+
+    this.adapterRegistry.set(registryKey, adapter);
 
     return adapter;
   }

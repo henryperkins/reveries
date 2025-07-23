@@ -276,8 +276,11 @@ const App: React.FC = () => {
         } catch (error) {
             handleError(error as Error)
         } finally {
-            setIsLoading(false)
-            progressManager.updateProgressState('idle')
+            // Mark workflow as complete and allow UI to remain responsive
+            progressManager.updateProgressState('complete');
+
+            // Re-enable input after progress reaches completion
+            setIsLoading(false);
         }
     }, [isLoading, clearError, progressManager, currentModel, effort, paradigm, setResearch, graphManager, handleError])
 
@@ -611,7 +614,7 @@ const App: React.FC = () => {
             </main>
 
             {/* Global progress bar – positioned above input bar with proper spacing */}
-            {isLoading && (
+            {(isLoading || progressState !== 'idle') && (
                 <div className="progress-meter-container px-4">
                     <ProgressMeter
                         value={progress}
@@ -649,7 +652,7 @@ const App: React.FC = () => {
                     />
 
                     {/* Progress and context indicators */}
-                    {isLoading && progressState !== 'idle' && (
+                    {(isLoading || progressState !== 'idle') && (
                         <div className="mt-4 flex items-center justify-center gap-4 animate-fade-in">
                             <span className="text-sm text-theme-secondary">
                                 {progressState.charAt(0).toUpperCase() + progressState.slice(1)}...
