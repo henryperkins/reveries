@@ -38,6 +38,7 @@
     "@google/generative-ai": "^0.24.1",
     "@heroicons/react": "^2.2.0",
     "@ibm-cloud/watsonx-ai": "^1.6.8",
+    "@jridgewell/sourcemap-codec": "^1.5.4",
     "@langchain/community": "^0.3.49",
     "@langchain/openai": "^0.3.0",
     "@pinecone-database/pinecone": "^6.1.1",
