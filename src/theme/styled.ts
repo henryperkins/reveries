@@ -56,8 +56,7 @@ export const styles = {
     color: white;
 
     &:hover:not(:disabled) {
-      background: var(--colors-semantic-primary);
-      filter: brightness(0.9);
+      background: var(--colors-semantic-primary-dark);
     }
   `,
 
@@ -67,8 +66,7 @@ export const styles = {
     border-color: var(--colors-semantic-border);
 
     &:hover:not(:disabled) {
-      background: var(--colors-semantic-secondary);
-      filter: brightness(0.95);
+      background: var(--colors-semantic-secondary-dark);
     }
   `,
 

@@ -37,3 +37,7 @@ export { RateLimitIndicator } from './RateLimitIndicator';
 export * as Icons from './icons';
 
 // Prototype components are in ./prototype/
+
+// UI Components
+export { default as Button } from './ui/Button';
+export type { ButtonProps } from './ui/Button';

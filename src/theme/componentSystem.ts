@@ -6,62 +6,62 @@ export const componentVariants = {
   button: {
     base: 'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
     sizes: {
-      sm: `px-3 py-1.5 text-sm ${borderRadius.md}`,
-      md: `px-4 py-2 text-sm ${borderRadius.md}`,
-      lg: `px-4 py-3 text-base ${borderRadius.md}`,
-      xl: `px-6 py-3 text-base ${borderRadius.lg}`,
+      sm: 'px-3 py-1.5 text-sm rounded-md',
+      md: 'px-4 py-2 text-sm rounded-md',
+      lg: 'px-4 py-3 text-base rounded-md',
+      xl: 'px-6 py-3 text-base rounded-lg',
     },
     variants: {
-      primary: 'bg-primary text-white hover:bg-primary-dark focus:ring-primary',
-      secondary: 'bg-secondary text-white hover:bg-secondary-dark focus:ring-secondary',
-      outline: 'border border-gray-300 bg-transparent hover:bg-gray-50 focus:ring-gray-500',
-      ghost: 'bg-transparent hover:bg-gray-100 focus:ring-gray-500',
-      danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+      primary: 'bg-westworld-copper text-white hover:bg-westworld-darkCopper focus:ring-westworld-copper',
+      secondary: 'bg-theme-secondary text-theme-primary hover:bg-theme-secondary/80 focus:ring-theme-border',
+      outline: 'border border-theme-border bg-transparent hover:bg-theme-secondary focus:ring-theme-border',
+      ghost: 'bg-transparent hover:bg-theme-secondary focus:ring-theme-border',
+      danger: 'bg-semantic-error text-white hover:bg-semantic-error-dark focus:ring-semantic-error',
     },
   },
 
   card: {
-    base: `rounded-lg ${shadows.md} bg-white`,
+    base: 'rounded-lg shadow-md bg-theme-surface',
     variants: {
-      elevated: `${shadows.lg} hover:${shadows.xl} transition-shadow ${transitions.duration.base}`,
-      outlined: 'border border-gray-200',
+      elevated: 'shadow-lg hover:shadow-xl transition-shadow duration-200',
+      outlined: 'border border-theme-border',
       minimal: 'border-0 shadow-none',
     },
     padding: {
-      sm: spacing[2],
-      md: spacing[4],
-      lg: spacing[6],
-      xl: spacing[8],
+      sm: 'p-2',
+      md: 'p-4',
+      lg: 'p-6',
+      xl: 'p-8',
     },
   },
 
   input: {
-    base: `block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary ${transitions.duration.base}`,
+    base: 'block w-full rounded-md border-theme-border shadow-sm focus:border-semantic-primary focus:ring-semantic-primary transition-all duration-200',
     sizes: {
-      sm: `px-3 py-2 text-sm ${borderRadius.md}`,
-      md: `px-4 py-2 text-sm ${borderRadius.md}`,
-      lg: `px-4 py-3 text-base ${borderRadius.md}`,
+      sm: 'px-3 py-2 text-sm rounded-md',
+      md: 'px-4 py-2 text-sm rounded-md',
+      lg: 'px-4 py-3 text-base rounded-md',
     },
     states: {
-      error: 'border-red-500 focus:border-red-500 focus:ring-red-500',
-      success: 'border-green-500 focus:border-green-500 focus:ring-green-500',
-      warning: 'border-yellow-500 focus:border-yellow-500 focus:ring-yellow-500',
+      error: 'border-semantic-error focus:border-semantic-error focus:ring-semantic-error',
+      success: 'border-semantic-success focus:border-semantic-success focus:ring-semantic-success',
+      warning: 'border-semantic-warning focus:border-semantic-warning focus:ring-semantic-warning',
     },
   },
 
   badge: {
     base: 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
     variants: {
-      default: 'bg-gray-100 text-gray-800',
-      primary: 'bg-primary-light text-primary-dark',
-      success: 'bg-green-100 text-green-800',
-      warning: 'bg-yellow-100 text-yellow-800',
-      error: 'bg-red-100 text-red-800',
+      default: 'bg-theme-secondary text-theme-primary',
+      primary: 'bg-westworld-copper/10 text-westworld-copper',
+      success: 'bg-semantic-success/10 text-semantic-success',
+      warning: 'bg-semantic-warning/10 text-semantic-warning',
+      error: 'bg-semantic-error/10 text-semantic-error',
     },
   },
 
   tooltip: {
-    base: 'absolute z-50 px-3 py-2 text-sm bg-gray-900 text-white rounded-md shadow-lg',
+    base: 'absolute z-50 px-3 py-2 text-sm bg-theme-primary text-theme-primary rounded-md shadow-lg',
     placement: {
       top: 'bottom-full left-1/2 transform -translate-x-1/2 mb-2',
       bottom: 'top-full left-1/2 transform -translate-x-1/2 mt-2',

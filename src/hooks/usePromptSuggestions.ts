@@ -281,7 +281,8 @@ function getParadigmSuggestions(query: string, paradigm: HostParadigm): Suggesti
         suggestions.push({
           text: `${pattern} ${coreWord}?`,
           confidence: 0.7,
-          source: 'paradigm'
+          source: 'paradigm',
+          type: "paradigm"
         })
       }
     }
@@ -324,7 +325,8 @@ function expandQuery(query: string): Suggestion[] {
       suggestions.push({
         text: suggestion,
         confidence,
-        source: 'ai'
+        source: 'ai',
+        type: "paradigm"
       })
     }
   })

@@ -3,74 +3,74 @@
 
 /* Color utilities using CSS variables */
 .bg-theme-primary {
-    background-color: var(--color-bg-primary);
+    background-color: var(--colors-semantic-background);
 }
 
 .bg-theme-secondary {
-    background-color: var(--color-bg-secondary);
+    background-color: var(--colors-semantic-surface);
 }
 
 .bg-theme-tertiary {
-    background-color: var(--color-bg-tertiary);
+    background-color: var(--colors-semantic-border);
 }
 
 .text-theme-primary {
-    color: var(--color-text-primary);
+    color: var(--colors-semantic-text);
 }
 
 .text-theme-secondary {
-    color: var(--color-text-secondary);
+    color: var(--colors-semantic-text-muted);
 }
 
 .text-theme-muted {
-    color: var(--color-text-muted);
+    color: var(--colors-semantic-text-muted);
 }
 
 .border-theme-primary {
-    border-color: var(--color-border);
+    border-color: var(--colors-semantic-border);
 }
 
 .border-theme-light {
-    border-color: var(--color-border-light);
+    border-color: var(--colors-semantic-border);
 }
 
 /* Surface utilities */
 .bg-surface {
-    background-color: var(--color-surface);
+    background-color: var(--colors-semantic-surface);
 }
 
 .bg-surface-hover {
-    background-color: var(--color-surface-hover);
+    background-color: var(--colors-semantic-surface);
 }
 
 /* Accent utilities */
 .bg-accent {
-    background-color: var(--color-accent);
+    background-color: var(--colors-semantic-primary);
 }
 
 .bg-accent-hover {
-    background-color: var(--color-accent-hover);
+    background-color: var(--colors-semantic-primary-dark);
 }
 
 .text-accent {
-    color: var(--color-accent);
+    color: var(--colors-semantic-primary);
 }
 
 /* Shadow utilities using CSS variables */
 .shadow-theme-sm {
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadows-sm);
 }
 
 .shadow-theme-md {
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadows-md);
 }
 
 .shadow-theme-lg {
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadows-lg);
 }
 
 .shadow-theme-xl {
-    box-shadow: var(--shadow-xl);
+    box-shadow: var(--shadows-xl);
 }
 
 /* Interactive theme utilities */
@@ -79,164 +79,164 @@
 }
 
 .hover-theme-primary:hover {
-    background-color: var(--color-bg-secondary);
+    background-color: var(--colors-semantic-surface);
 }
 
 .focus-theme-ring {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent), 0 0 0 4px var(--color-bg-primary);
+    box-shadow: 0 0 0 2px var(--colors-semantic-primary), 0 0 0 4px var(--colors-semantic-background);
 }
 
 /* Theme-aware gradients */
 .gradient-theme-primary {
-    background: linear-gradient(135deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
+    background: linear-gradient(135deg, var(--colors-semantic-background) 0%, var(--colors-semantic-surface) 100%);
 }
 
 .gradient-theme-accent {
-    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
+    background: linear-gradient(135deg, var(--colors-semantic-primary) 0%, var(--colors-semantic-primary-dark) 100%);
 }
 
 /* Westworld-specific utilities */
 .bg-westworld-cream {
-    background-color: var(--color-westworld-cream);
+    background-color: var(--colors-westworld-cream);
 }
 
 .bg-westworld-beige {
-    background-color: var(--color-westworld-beige);
+    background-color: var(--colors-westworld-beige);
 }
 
 .bg-westworld-tan {
-    background-color: var(--color-westworld-tan);
+    background-color: var(--colors-westworld-tan);
 }
 
 .bg-westworld-brown {
-    background-color: var(--color-westworld-brown);
+    background-color: var(--colors-westworld-brown);
 }
 
 .bg-westworld-darkBrown {
-    background-color: var(--color-westworld-darkBrown);
+    background-color: var(--colors-westworld-dark-brown);
 }
 
 .bg-westworld-nearBlack {
-    background-color: var(--color-westworld-nearBlack);
+    background-color: var(--colors-westworld-near-black);
 }
 
 .bg-westworld-gold {
-    background-color: var(--color-westworld-gold);
+    background-color: var(--colors-westworld-gold);
 }
 
 .bg-westworld-darkGold {
-    background-color: var(--color-westworld-darkGold);
+    background-color: var(--colors-westworld-dark-gold);
 }
 
 .bg-westworld-rust {
-    background-color: var(--color-westworld-rust);
+    background-color: var(--colors-westworld-rust);
 }
 
 .bg-westworld-copper {
-    background-color: var(--color-westworld-copper);
+    background-color: var(--colors-westworld-copper);
 }
 
 .bg-westworld-darkCopper {
-    background-color: var(--color-westworld-darkCopper);
+    background-color: var(--colors-westworld-dark-copper);
 }
 
 .bg-westworld-white {
-    background-color: var(--color-westworld-white);
+    background-color: var(--colors-westworld-white);
 }
 
 .text-westworld-cream {
-    color: var(--color-westworld-cream);
+    color: var(--colors-westworld-cream);
 }
 
 .text-westworld-beige {
-    color: var(--color-westworld-beige);
+    color: var(--colors-westworld-beige);
 }
 
 .text-westworld-tan {
-    color: var(--color-westworld-tan);
+    color: var(--colors-westworld-tan);
 }
 
 .text-westworld-brown {
-    color: var(--color-westworld-brown);
+    color: var(--colors-westworld-brown);
 }
 
 .text-westworld-darkBrown {
-    color: var(--color-westworld-darkBrown);
+    color: var(--colors-westworld-dark-brown);
 }
 
 .text-westworld-nearBlack {
-    color: var(--color-westworld-nearBlack);
+    color: var(--colors-westworld-near-black);
 }
 
 .text-westworld-gold {
-    color: var(--color-westworld-gold);
+    color: var(--colors-westworld-gold);
 }
 
 .text-westworld-darkGold {
-    color: var(--color-westworld-darkGold);
+    color: var(--colors-westworld-dark-gold);
 }
 
 .text-westworld-rust {
-    color: var(--color-westworld-rust);
+    color: var(--colors-westworld-rust);
 }
 
 .text-westworld-copper {
-    color: var(--color-westworld-copper);
+    color: var(--colors-westworld-copper);
 }
 
 .text-westworld-darkCopper {
-    color: var(--color-westworld-darkCopper);
+    color: var(--colors-westworld-dark-copper);
 }
 
 .text-westworld-white {
-    color: var(--color-westworld-white);
+    color: var(--colors-westworld-white);
 }
 
 .border-westworld-cream {
-    border-color: var(--color-westworld-cream);
+    border-color: var(--colors-westworld-cream);
 }
 
 .border-westworld-beige {
-    border-color: var(--color-westworld-beige);
+    border-color: var(--colors-westworld-beige);
 }
 
 .border-westworld-tan {
-    border-color: var(--color-westworld-tan);
+    border-color: var(--colors-westworld-tan);
 }
 
 .border-westworld-brown {
-    border-color: var(--color-westworld-brown);
+    border-color: var(--colors-westworld-brown);
 }
 
 .border-westworld-darkBrown {
-    border-color: var(--color-westworld-darkBrown);
+    border-color: var(--colors-westworld-dark-brown);
 }
 
 .border-westworld-nearBlack {
-    border-color: var(--color-westworld-nearBlack);
+    border-color: var(--colors-westworld-near-black);
 }
 
 .border-westworld-gold {
-    border-color: var(--color-westworld-gold);
+    border-color: var(--colors-westworld-gold);
 }
 
 .border-westworld-darkGold {
-    border-color: var(--color-westworld-darkGold);
+    border-color: var(--colors-westworld-dark-gold);
 }
 
 .border-westworld-rust {
-    border-color: var(--color-westworld-rust);
+    border-color: var(--colors-westworld-rust);
 }
 
 .border-westworld-copper {
-    border-color: var(--color-westworld-copper);
+    border-color: var(--colors-westworld-copper);
 }
 
 .border-westworld-darkCopper {
-    border-color: var(--color-westworld-darkCopper);
+    border-color: var(--colors-westworld-dark-copper);
 }
 
 .border-westworld-white {
-    border-color: var(--color-westworld-white);
+    border-color: var(--colors-westworld-white);
 }

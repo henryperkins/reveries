@@ -9,44 +9,44 @@ export const designSystem = {
     // Westworld Theme Colors
     westworld: {
       cream: '#FAF6F2',
-      beige: '#F5EDE4', 
+      beige: '#F5EDE4',
       tan: '#E8D5C4',
       brown: '#8B6F47',
-      'dark-brown': '#6B5637',
-      'near-black': '#2A2522',
+      darkBrown: '#6B5637',
+      nearBlack: '#2A2522',
       black: '#1A1512',
       gold: '#D4AF37',
-      'dark-gold': '#B8941F',
+      darkGold: '#B8941F',
       rust: '#A85732',
       copper: '#C87543',
-      'dark-copper': '#A65E36',
+      darkCopper: '#A65E36',
       white: '#FFFFFF',
     },
-    
+
     // Semantic Colors
     semantic: {
       primary: '#D4AF37', // gold
-      'primary-dark': '#B8941F',
+      primaryDark: '#B8941F',
       secondary: '#C87543', // copper
-      'secondary-dark': '#A65E36',
+      secondaryDark: '#A65E36',
       background: '#F5EDE4', // beige
       surface: '#FAF6F2', // cream
       text: '#2A2522', // near-black
-      'text-muted': '#8B6F47', // brown
+      textMuted: '#8B6F47', // brown
       border: '#E8D5C4', // tan
-      
+
       // State colors
       success: '#10B981',
-      'success-light': '#D1FAE5',
+      successLight: '#D1FAE5',
       warning: '#F59E0B',
-      'warning-light': '#FEF3C7',
+      warningLight: '#FEF3C7',
       error: '#EF4444',
-      'error-light': '#FEE2E2',
+      errorLight: '#FEE2E2',
       info: '#3B82F6',
-      'info-light': '#DBEAFE',
+      infoLight: '#DBEAFE',
     },
   },
-  
+
   // Typography Scale
   typography: {
     'font-family': {
@@ -54,7 +54,7 @@ export const designSystem = {
       serif: "'Georgia', 'Times New Roman', serif",
       mono: "'JetBrains Mono', 'Consolas', 'Monaco', monospace",
     },
-    
+
     'font-size': {
       xs: '0.75rem',    // 12px
       sm: '0.875rem',   // 14px
@@ -66,7 +66,7 @@ export const designSystem = {
       '4xl': '2.25rem', // 36px
       '5xl': '3rem',    // 48px
     },
-    
+
     'font-weight': {
       thin: 100,
       light: 300,
@@ -76,7 +76,7 @@ export const designSystem = {
       bold: 700,
       extrabold: 800,
     },
-    
+
     'line-height': {
       none: 1,
       tight: 1.25,
@@ -86,7 +86,7 @@ export const designSystem = {
       loose: 2,
     },
   },
-  
+
   // Spacing Scale
   spacing: {
     0: '0',
@@ -103,9 +103,9 @@ export const designSystem = {
     20: '5rem',     // 80px
     24: '6rem',     // 96px
   },
-  
+
   // Border Radius
-  'border-radius': {
+  borderRadius: {
     none: '0',
     sm: '0.125rem',  // 2px
     base: '0.25rem', // 4px
@@ -116,7 +116,7 @@ export const designSystem = {
     '3xl': '1.5rem', // 24px
     full: '9999px',
   },
-  
+
   // Shadows
   shadows: {
     none: 'none',
@@ -127,12 +127,12 @@ export const designSystem = {
     xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
     '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
     inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
-    
+
     // Custom shadows
     glow: '0 0 10px rgba(212, 175, 55, 0.5)',
     glowLg: '0 0 20px rgba(212, 175, 55, 0.8), 0 0 30px rgba(212, 175, 55, 0.6)',
   },
-  
+
   // Z-index Scale
   zIndex: {
     auto: 'auto',
@@ -148,7 +148,7 @@ export const designSystem = {
     notification: 80,
     top: 90,
   },
-  
+
   // Transitions
   transitions: {
     duration: {
@@ -157,7 +157,7 @@ export const designSystem = {
       slow: '300ms',
       slower: '500ms',
     },
-    
+
     timing: {
       linear: 'linear',
       ease: 'ease',
@@ -167,7 +167,7 @@ export const designSystem = {
       bounce: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
     },
   },
-  
+
   // Breakpoints
   breakpoints: {
     xs: '475px',
@@ -177,7 +177,7 @@ export const designSystem = {
     xl: '1280px',
     '2xl': '1536px',
   },
-  
+
   // Component Variants
   components: {
     button: {
@@ -204,7 +204,7 @@ export const designSystem = {
           fontSize: '1.25rem',
         },
       },
-      
+
       variants: {
         primary: {
           bg: 'westworld.gold',
@@ -237,7 +237,7 @@ export const designSystem = {
         },
       },
     },
-    
+
     card: {
       base: 'rounded-lg bg-white shadow-md',
       variants: {
@@ -252,7 +252,7 @@ export const designSystem = {
         xl: '2rem',
       },
     },
-    
+
     input: {
       sizes: {
         sm: {
@@ -283,12 +283,12 @@ const toKebabCase = (str: string): string => {
 // Generate CSS variables from design tokens
 export const generateCSSVariables = (obj: any, prefix = '--'): Record<string, string> => {
   const variables: Record<string, string> = {};
-  
+
   const traverse = (current: any, path: string[] = []) => {
     for (const [key, value] of Object.entries(current)) {
       const kebabKey = toKebabCase(key);
       const currentPath = [...path, kebabKey];
-      
+
       if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
         traverse(value, currentPath);
       } else {
@@ -297,7 +297,7 @@ export const generateCSSVariables = (obj: any, prefix = '--'): Record<string, st
       }
     }
   };
-  
+
   traverse(obj);
   return variables;
 };
@@ -306,12 +306,12 @@ export const generateCSSVariables = (obj: any, prefix = '--'): Record<string, st
 export const getCSSVariable = (path: string) => {
   const keys = path.split('.');
   let value: unknown = designSystem;
-  
+
   for (const key of keys) {
     value = (value as Record<string, unknown>)[key];
     if (value === undefined) return undefined;
   }
-  
+
   return value;
 };
 
@@ -320,4 +320,4 @@ export const cssVariables = generateCSSVariables(designSystem);
 
 // Export individual sections for convenience
 export const { colors, typography, spacing, shadows, zIndex, transitions, breakpoints, components } = designSystem;
-export const borderRadius = designSystem['border-radius'];
+export const borderRadius = designSystem.borderRadius;

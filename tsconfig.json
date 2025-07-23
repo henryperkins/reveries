@@ -56,6 +56,12 @@
   "exclude": [
     "components",
     "**/*.spec.ts",
-    "workflows-starter/**/*"
+    "workflows-starter/**/*",
+    "vite.config.ts"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    }
   ]
 }
