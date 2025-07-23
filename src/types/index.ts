@@ -73,6 +73,19 @@ export {
   GraphError,
 } from '../components/types';
 
+// Component prop types
+export type {
+  ButtonProps,
+} from '../components/ui/Button';
+
+export type {
+  ThemeToggleProps,
+} from '../components/ThemeToggle';
+
+export type {
+  CardProps,
+} from '../components/ui/Card';
+
 // FunctionCallDock types from src/components/FunctionCallDock/types.ts
 export type {
   LiveFunctionCall,

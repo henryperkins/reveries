@@ -10,11 +10,12 @@ import { AnalyticsView } from '@/components/AnalyticsView'
 import { EnhancedInputBar, ErrorDisplay, ContextDensityBar, FunctionCallDock, SemanticSearch, SessionHistoryBrowser, ParadigmDashboard, ContextLayerProgress, Controls, ParadigmIndicator, InterHostCollaboration } from '@/components'
 import type { InputBarRef } from '@/components/EnhancedInputBar'
 import ResearchGraphView from '@/components/ResearchGraphView';
-import { ProgressMeter } from '@/components/atoms'
+import { ProgressMeter, ProgressMeterGroup } from '@/components/atoms'
 import { usePersistentState, ResearchSession, useProgressManager } from '@/hooks'
 import { useFunctionCalls } from '@/components/FunctionCallDock'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
 import { ThemeToggle } from '@/theme';
+import { GraphContextProvider } from '@/contexts/GraphContext';
 
 import {
     ResearchStep,
@@ -369,13 +370,14 @@ const App: React.FC = () => {
 
     // Calculate context densities - use real data when available, fallback to progress-based
     const contextDensities = useMemo(() => {
-        if (!isLoading) return null;
-
         if (realTimeContextDensities) {
             return realTimeContextDensities;
         }
 
-        // Fallback to progress-based estimation during initial loading
+        // Show context densities during research or based on progress
+        if (!isLoading && progressState === 'idle') return null;
+
+        // Fallback to progress-based estimation
         const base = progress / 100;
         return {
             narrative: Math.floor(base * 25 + 15),
@@ -383,10 +385,11 @@ const App: React.FC = () => {
             memory: Math.floor(base * 20 + 10),
             adaptive: Math.floor(base * 20 + 10)
         };
-    }, [progress, realTimeContextDensities, isLoading]);
+    }, [progress, realTimeContextDensities, isLoading, progressState]);
 
     return (
-        <div className="min-h-screen bg-westworld-cream dark:bg-westworld-nearBlack text-westworld-nearBlack dark:text-westworld-cream transition-colors duration-300">
+        <GraphContextProvider graphManager={graphManager}>
+            <div className="min-h-screen bg-westworld-cream dark:bg-westworld-nearBlack text-westworld-nearBlack dark:text-westworld-cream transition-colors duration-300">
             {/* Theme toggle button - positioned according to responsive design patterns */}
             <div className="fixed top-4 right-4 z-modal safe-padding-top safe-padding-right">
                 <ThemeToggle />
@@ -448,7 +451,7 @@ const App: React.FC = () => {
                         )}
 
                         {/* Show context density during processing */}
-                        {isLoading && contextDensities && (
+                        {contextDensities && (
                             <div className="animate-slide-up mb-6">
                                 <ContextDensityBar
                                     densities={contextDensities}
@@ -456,6 +459,51 @@ const App: React.FC = () => {
                                     paradigm={paradigm || undefined}
                                     showHostColors={enhancedMode}
                                     showLabels={true}
+                                />
+                            </div>
+                        )}
+
+                        {/* Show workflow progress */}
+                        {(isLoading || progressState !== 'idle') && (
+                            <div className="animate-slide-up mb-6 bg-theme-surface rounded-lg border border-theme-border p-4">
+                                <h3 className="text-sm font-medium text-theme-secondary mb-3">Research Workflow Progress</h3>
+                                <ProgressMeterGroup
+                                    meters={[
+                                        {
+                                            label: 'Analysis',
+                                            value: progressState === 'idle' ? 0 : progressState === 'analyzing' ? 50 : 100,
+                                            paradigm: paradigm || undefined,
+                                            id: 'analysis-progress'
+                                        },
+                                        {
+                                            label: 'Routing',
+                                            value: ['idle', 'analyzing'].includes(progressState) ? 0 : progressState === 'routing' ? 50 : 100,
+                                            paradigm: paradigm || undefined,
+                                            id: 'routing-progress'
+                                        },
+                                        {
+                                            label: 'Research',
+                                            value: ['idle', 'analyzing', 'routing'].includes(progressState) ? 0 : progressState === 'researching' ? 50 : 100,
+                                            paradigm: paradigm || undefined,
+                                            id: 'research-progress'
+                                        },
+                                        {
+                                            label: 'Evaluation',
+                                            value: ['idle', 'analyzing', 'routing', 'researching'].includes(progressState) ? 0 : progressState === 'evaluating' ? 50 : 100,
+                                            paradigm: paradigm || undefined,
+                                            id: 'evaluation-progress'
+                                        },
+                                        {
+                                            label: 'Synthesis',
+                                            value: ['idle', 'analyzing', 'routing', 'researching', 'evaluating'].includes(progressState) ? 0 : progressState === 'synthesizing' ? 50 : 100,
+                                            paradigm: paradigm || undefined,
+                                            id: 'synthesis-progress'
+                                        }
+                                    ]}
+                                    variant="gradient"
+                                    showValues={true}
+                                    showLabels={true}
+                                    animate={true}
                                 />
                             </div>
                         )}
@@ -641,6 +689,7 @@ const App: React.FC = () => {
                 isVisible={showSessionHistory}
             />
         </div>
+        </GraphContextProvider>
     );
 }
 

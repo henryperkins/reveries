@@ -145,7 +145,8 @@ export class RateLimiter {
           this.tokenBucket -= estimatedTokens;
           this.requestBucket -= 1;
           this.requestHistory.push({ timestamp: timeNow, tokensReserved: estimatedTokens });
-          return; // We are good – lock released in finally.
+          release(); // Release the lock before returning
+          return;
         }
 
         // Not enough capacity – calculate wait time before retrying.
@@ -161,7 +162,7 @@ export class RateLimiter {
         
         await new Promise(r => setTimeout(r, waitMs));
       } finally {
-        // release already called above
+        // release() is called explicitly in both success and wait paths
       }
       // Loop again after waiting.
     }

@@ -51,6 +51,9 @@ interface GraphContextProviderProps {
 
 export function GraphContextProvider({ graphManager, children }: GraphContextProviderProps) {
   const { calculateLayout, isCalculating: isLayoutCalculating, error: layoutError } = useSmartGraphLayout();
+  
+  // Use ref to persist timeout across renders
+  const timeoutIdRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const [snapshot, setSnapshot] = useState<GraphSnapshot>({
     nodes: [],
@@ -75,13 +78,16 @@ export function GraphContextProvider({ graphManager, children }: GraphContextPro
   useEffect(() => {
     if (!graphManager) return;
 
-    let timeoutId: NodeJS.Timeout;
-
     const handleGraphEvent = () => {
+      // Clear any existing timeout before setting a new one
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+      }
+      
       // Debounce rapid updates
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
+      timeoutIdRef.current = setTimeout(() => {
         setRefreshTrigger(prev => prev + 1);
+        timeoutIdRef.current = null;
       }, 50);
     };
 
@@ -89,7 +95,10 @@ export function GraphContextProvider({ graphManager, children }: GraphContextPro
 
     return () => {
       unsubscribe();
-      clearTimeout(timeoutId);
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
     };
   }, [graphManager]);
 

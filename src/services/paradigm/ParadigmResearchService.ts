@@ -181,9 +181,9 @@ export class ParadigmResearchService {
   private async executeContextLayer(
     layer: ContextLayer,
     researchContext: ResearchContext,
-    context: ContextLayerContext
+    layerContext: ContextLayerContext
   ): Promise<LayerResult | undefined> {
-    const { query, paradigm, density, sources, content, model, effort, onProgress } = context;
+    const { query, paradigm, density, sources, content, model, effort, onProgress } = layerContext;
 
     switch (layer) {
       case 'write': {

@@ -41,3 +41,20 @@ export * as Icons from './icons';
 // UI Components
 export { default as Button } from './ui/Button';
 export type { ButtonProps } from './ui/Button';
+export {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter
+} from './ui/Card';
+
+// Theme
+export { ThemeToggle } from './ThemeToggle';
+
+// Graph Error Handling
+export { default as GraphErrorBoundary } from './GraphErrorBoundary';
+export { default as GraphAccessibilityLayer } from './GraphAccessibilityLayer';
+export { GraphLayoutErrorBoundary, GraphCanvasErrorBoundary } from './GraphErrorBoundaryUtils';
+export { withGraphErrorBoundary } from './withGraphErrorBoundary';
