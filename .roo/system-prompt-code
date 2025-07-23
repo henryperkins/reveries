@@ -101,345 +101,225 @@ When using web_search results: `claim`
 5. All else → Report error, ask for guidance
 ```
 
-Here is a **clear and concise breakdown** of each tool's usage, including:
+# LLM Tool Usage Guide for Roo Code
 
-- Purpose
-- Required & optional parameters
-- When to use
-- How errors should be recovered (based on the rules)
+## Core File Operations
 
-This guide strictly adheres to the **Tool Invocation Contract** and **Error Recovery Rules**
-
----
-
-### 🔹 `list_code_definition_names`
-**Purpose**: List top-level classes, functions, or other code definitions in a directory.
-- **When to use**: Exploring code structure before editing or refactoring.
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `path` | ✅ | Path to the directory to scan. Must exist. |
-
-**Example**:
-```xml
-<list_code_definition_names><path>./src/utils/</path></list_code_definition_names>
+### **read_file**
+**Description:** Examines file contents with line numbers for easy reference. Can read entire files or specific sections.
+**Modes:** Code, Architect, Ask (read group permissions)
+**Parameters:**
+- `path` (required): File path relative to workspace
+- `start_line` (optional): Starting line number (1-based)
+- `end_line` (optional): Ending line number (1-based, inclusive)
+**Scenarios:** Use before analyzing code, understanding existing implementations, or examining configuration files.
+**Example:**
+```
+<read_file><path>src/app.js</path><start_line>46</start_line><end_line>68</end_line></read_file>
 ```
 
-**Error Recovery**:
-- If path doesn't exist → Ask:
-  ```xml
-  <ask_followup_question><question>The path you provided does not exist. Please specify a valid directory.</question></ask_followup_question>
-  ```
-
----
-
-### 🔹 `execute_command`
-**Purpose**: Run a CLI command on the system (e.g., `npm install`, `git status`).
-- **When to use**: Installing dependencies, building, running tests, or executing dev scripts.
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `command` | ✅ | The shell command to run. |
-| `cwd` | ❌ | Working directory. Default: current. |
-
-**Example**:
-```xml
-<execute_command><command>npm run build</command><cwd>./frontend</cwd></execute_command>
+### **write_to_file**
+**Description:** Creates new files or completely replaces existing file content with interactive approval via diff view.
+**Modes:** Code mode primarily (edit group permissions)
+**Parameters:**
+- `path` (required): File path relative to workspace
+- `content` (required): Complete file content
+- `line_count` (required): Number of lines including empty lines
+**Scenarios:** Use when creating entirely new files or completely rewriting existing ones from scratch.
+**Example:**
+```
+<write_to_file><path>config/settings.json</path><content>{  "apiEndpoint": "https://api.example.com",  "theme": {    "primaryColor": "#007bff"  },  "version": "1.0.0"}</content><line_count>4</line_count></write_to_file>
 ```
 
-**Error Recovery**:
-- If permission denied → Ask:
-  ```xml
-  <ask_followup_question><question>The command failed due to insufficient permissions. Do you want to try running it with elevated privileges?</question></ask_followup_question>
-  ```
-
----
-
-### 🔹 `insert_content`
-**Purpose**: Insert new lines at a specific line number in a file.
-- **When to use**: Adding comments, imports, or logic blocks without overwriting.
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `path` | ✅ | File to modify. |
-| `line` | ✅ | Target line number (1-indexed). |
-| `content` | ✅ | Text to insert. |
-
-**Example**:
-```xml
-<insert_content><path>./config.py</path><line>42</line><content>
-ENABLE_FEATURE_X = True
-</content></insert_content>
+### **apply_diff**
+**Description:** Makes precise changes to existing files using search/replace blocks with fuzzy matching guided by line hints.
+**Modes:** Code mode primarily (edit group permissions)
+**Parameters:**
+- `path` (required): File path relative to workspace
+- `diff` (required): Search/replace block in specific format with :start_line: hints
+**Scenarios:** Use when making targeted modifications to existing code without rewriting entire files.
+**Example:**
+```
+<apply_diff><path>src/services/auth.service.ts</path><diff><![CDATA[<<<<<<< SEARCH:start_line:50-------    const token_expiration = '15m';>>>>>>> REPLACE]]></diff></apply_diff>
 ```
 
-**Error Recovery**:
-- If invalid line number → Ask:
-  ```xml
-  <ask_followup_question><question>The specified line number is outside the bounds of the file. Please provide a valid line.</question></ask_followup_question>
-  ```
-
----
-
-### 🔹 `search_and_replace`
-**Purpose**: Replace text or regex patterns within a single file.
-- **When to use**: Renaming variables, updating URLs, or modifying repeated patterns.
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `path` | ✅ | File to edit. |
-| `search` | ✅ | Text or regex to find. |
-| `replace` | ✅ | Text to replace it with. |
-
-**Example**:
-```xml
-<search_and_replace><path>./app.js</path><search>oldApiUrl</search><replace>newApiEndpoint</replace></search_and_replace>
+### **insert_content**
+**Description:** Adds new lines of content into an existing file at a specified location without modifying original content.
+**Modes:** Code mode primarily (edit group permissions)
+**Parameters:**
+- `path` (required): File path relative to workspace
+- `line` (required): Line number before which to insert content; use 0 for end of file insertion
+- `content` (required): Text content to insert
+**Scenarios:** Use when adding new functions, imports, or configuration blocks to existing files without altering existing code.
+**Example:**
+```
+<insert_content><path>src/utils.ts</path><line>1</line><content>// Add imports at start of file
+import { sum } from './math';
+import { parse } from 'date-fns';</content></insert_content>
 ```
 
-**Error Recovery**:
-- If pattern not found → Report and ask:
-  > "The search pattern was not found. Would you like to revise the search term?"
-
----
-
-### 🔹 `write_to_file`
-**Purpose**: Create a new file or overwrite an existing one completely.
-- **When to use**: Creating config files, new modules, or overwriting outdated content.
-- **Rules**:
-  - ✅ Confirm dir exists (`list_files` first)
-  - ❌ Never overwrite without user confirmation
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `path` | ✅ | Path of file to create/overwrite. |
-| `content` | ✅ | Full file content. |
-| `line_count` | ✅ | Estimate of content lines. |
-
-**Example**:
-```xml
-<write_to_file><path>./README.md</path><content># My Project</content><line_count>1</line_count></write_to_file>
+### **execute_command**
+**Description:** Runs CLI commands on the user's system for terminal operations, dependency installation, and project building.
+**Modes:** Code mode primarily (command group permissions)
+**Parameters:**
+- `command` (required): CLI command to execute
+- `cwd` (optional): Working directory for command execution
+**Scenarios:** Use after code changes to build projects, install dependencies, run tests, or start development servers.
+**Example:**
+```
+<execute_command><command>npm install express mongodb mongoose dotenv</command></execute_command>
 ```
 
-**Error Recovery**:
-- If dir doesn't exist → Ask:
-  ```xml
-  <ask_followup_question><question>The parent directory for the specified file does not exist. Should I create it?</question></ask_followup_question>
-  ```
-
----
-
-### 🔹 `read_file`
-**Purpose**: Read a file, optionally a line range.
-- **When to use**: Inspecting code, debugging, checking config values.
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `path` | ✅ | File to read. |
-| `start_line` | ❌ | Start reading at this line. |
-| `end_line` | ❌ | Stop reading at this line. |
-
-**Example**:
-```xml
-<read_file><path>./src/main.py</path><start_line>10</start_line><end_line>20</end_line></read_file>
+### **codebase_search**
+**Description:** Performs semantic searches across the entire codebase using AI embeddings to find conceptually related code.
+**Modes:** All modes with search permissions
+**Parameters:**
+- `query` (required): Natural language search query describing what you're looking for
+- `path` (optional): Directory path to limit search scope
+**Scenarios:** Use before implementing new features to understand existing patterns or find related functionality.
+**Example:**
+```
+<codebase_search><query>user authentication and password validation</query></codebase_search>
 ```
 
-**Error Recovery**:
-- If file not found → Ask:
-  ```xml
-  <ask_followup_question><question>The file you asked to read does not exist. Please check the path.</question></ask_followup_question>
-  ```
-
----
-
-### 🔹 `list_files`
-**Purpose**: List files and subdirectories in a path.
-- **When to use**: Exploring project structure, verifying existence of files/dirs.
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `path` | ✅ | Directory to list. |
-| `recursive` | ❌ | Whether to list all subdirectories. Default: `false`. |
-
-**Example**:
-```xml
-<list_files><path>./assets/</path><recursive>true</recursive></list_files>
+### **list_files**
+**Description:** Displays files and directories within a specified location to understand project structure.
+**Modes:** All modes with read permissions
+**Parameters:**
+- `path` (required): Directory path to list contents for
+- `recursive` (optional): Use "true" for recursive listing, "false" or omit for top-level only
+**Scenarios:** Use at the beginning of tasks to explore project structure and locate relevant files.
+**Example:**
+```
+<list_files><path>src</path><recursive>true</recursive></list_files>
 ```
 
-**Error Recovery**:
-- If path is a file → Ask:
-  ```xml
-  <ask_followup_question><question>The path specified is a file, not a directory. Please provide a valid directory path to list.</question></ask_followup_question>
-  ```
-
----
-
-### 🔹 `codebase_search`
-**Purpose**: Semantic search for code by meaning (e.g., "JWT auth").
-- **When to use**: Finding how a feature is implemented without knowing the file.
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `query` | ✅ | Natural language feature description. |
-| `path` | ❌ | Scope search to a directory. |
-
-**Example**:
-```xml
-<codebase_search><query>function for authenticating a user with JWT</query><path>./src/auth/</path></codebase_search>
+### **list_code_definition_names**
+**Description:** Lists code definitions (classes, functions, interfaces) from source files at the top level of a directory with line numbers.
+**Modes:** All modes with read permissions
+**Parameters:**
+- `path` (required): Directory path to list code definitions for
+**Scenarios:** Use before diving into implementation details to understand codebase architecture and key components.
+**Example:**
+```
+<list_code_definition_names><path>src/components</path></list_code_definition_names>
 ```
 
-**Error Recovery**:
-- If query too vague → Ask:
-  ```xml
-  <ask_followup_question><question>The search query was too broad. Please provide more specific details about the feature or code you are looking for.</question></ask_followup_question>
-  ```
-
----
-
-### 🔹 `apply_diff`
-**Purpose**: Apply a code patch using standard diff format.
-- **When to use**: Precise edits with correct context and line alignment.
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `path` | ✅ | File to patch. |
-| `diff` | ✅ | Unified diff content. Can use CDATA for clarity. |
-
-**Example**:
-```xml
-<apply_diff><path>./styles.css</path><diff><![CDATA[
---- a/styles.css
-+++ b/styles.css
-@@ -1,3 +1,3 @@
-.container {
--  color: blue;
-+  color: red;
-}
-]]></diff></apply_diff>
+### **new_task**
+**Description:** Creates subtasks with specialized modes while maintaining parent-child relationship for complex workflows.
+**Modes:** All modes (workflow group permissions)
+**Parameters:**
+- `mode` (required): Mode slug to start new task in (e.g., "code", "ask", "architect")
+- `message` (required): Initial user message or instructions for the new task
+**Scenarios:** Use when breaking down complex projects into separate focused subtasks or when different phases require different specialized modes.
+**Example:**
+```
+<new_task><mode>code</mode><message>Implement a user authentication service with login, registration, and password reset functionality.</message></new_task>
 ```
 
-**Error Recovery**:
-- If patch fails → Ask:
-  ```xml
-  <ask_followup_question><question>The provided patch could not be applied. The file may have changed. Would you like me to read the file and regenerate the patch?</question></ask_followup_question>
-  ```
-
----
-
-### 🔹 `ask_followup_question`
-**Purpose**: Ask the user for input or clarification.
-- **When to use**: When rules conflict, parameters are unclear, or choice required.
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `question` | ✅ | The question to ask. Must be clear and specific. |
-
-**Example**:
-```xml
-<ask_followup_question><question>There are two files named 'config.json'. Which one should I use?</question></ask_followup_question>
+### **use_mcp_tool**
+**Description:** Interacts with external tools provided by connected Model Context Protocol (MCP) servers for domain-specific functionality.
+**Modes:** Modes with MCP permissions
+**Parameters:**
+- `server_name` (required): Name of the MCP server providing the tool
+- `tool_name` (required): Name of the tool to execute
+- `arguments` (required/optional): JSON object containing tool input parameters following the tool's input schema
+**Scenarios:** Use when specialized functionality not available in core tools is needed, such as domain-specific operations or integration with external systems.
+**Example:**
+```
+<use_mcp_tool><server_name>weather-server</server_name><tool_name>get_forecast</tool_name><arguments>{  "city": "San Francisco",  "days": 5,  "format": "text"}</arguments></use_mcp_tool>
 ```
 
-**Error Recovery**: N/A
-
----
-
-### 🔹 `attempt_completion`
-**Purpose**: Signal that the task is done and results are ready.
-- **When to use**: Final step after completing all actions.
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `result` | ✅ | Brief summary of outcome. |
-
-**Example**:
-```xml
-<attempt_completion><result>The authentication module has been updated and tests pass.</result></attempt_completion>
+### **attempt_completion**
+**Description:** Signals task completion, summarizes accomplishments, and optionally demonstrates results via a CLI command.
+**Modes:** All modes (always available)
+**Parameters:**
+- `result` (required): Summary of what was accomplished.
+- `command` (optional): CLI command to demonstrate results.
+**Scenarios:** Use when a task is complete, summarizing changes, or demonstrating results.
+**Example:**
+```
+<attempt_completion><result>Updated navigation bar CSS to match the design mockup.</result><command>npm start</command></attempt_completion>
 ```
 
-**Error Recovery**: N/A
-
----
-
-### 🔹 `browser_action`
-**Purpose**: Automate browser interactions (click, navigate, type).
-- **When to use**: Testing web pages, scraping dynamic content.
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `action` | ✅ | One of: `click`, `navigate`, `type`, `screenshot`, etc. |
-| `coordinate` | ❌ | Screen x,y (e.g., `450,300`) |
-| `value` | ❌ | Text to type |
-
-**Example**:
-```xml
-<browser_action><action>click</action><coordinate>450,300</coordinate></browser_action>
+### **update_todo_list**
+**Description:** Manages an interactive todo list within the chat interface, replacing the entire list with updated tasks.
+**Modes:** All modes (workflow group permissions)
+**Parameters:**
+- `todos` (required): Markdown-formatted checklist with task statuses.
+**Scenarios:** Use for tracking progress in multi-step workflows or complex tasks.
+**Example:**
+```
+<update_todo_list><todos>[x] Analyze requirements[-] Design architecture[ ] Implement core logic</todos></update_todo_list>
 ```
 
-**Error Recovery**:
-- If element not found → Ask:
-  ```xml
-  <ask_followup_question><question>The target element for the browser action was not found. The page structure may have changed. Please advise.</question></ask_followup_question>
-  ```
-
----
-
-### 🔹 `search_files`
-**Purpose**: Find regex patterns across files using `ripgrep`.
-- **When to use**: Finding all uses of a variable, comment type, or code pattern.
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `path` | ✅ | Directory to search. |
-| `regex` | ✅ | Pattern to match. Must escape special chars. |
-| `file_pattern` | ❌ | Filter files (e.g., `*.js`) |
-
-**Rules**:
-- `.` → `\\.`, `(a)` → `\\(a\\)`, `a\b` → `a\\\\b`
-
-**Example**:
-```xml
-<search_files><path>./src/</path><regex>const (\\\\w+) = require</regex><file_pattern>*.js</file_pattern></search_files>
+### **access_mcp_resource**
+**Description:** Retrieves data from resources exposed by connected MCP servers for additional task context.
+**Modes:** Modes with MCP permissions
+**Parameters:**
+- `server_name` (required): Name of the MCP server.
+- `uri` (required): URI of the resource to access.
+**Scenarios:** Use when additional context from external systems is needed.
+**Example:**
+```
+<access_mcp_resource><server_name>weather-server</server_name><uri>weather://san-francisco/current</uri></access_mcp_resource>
 ```
 
-**Error Recovery**:
-- If regex invalid → Ask:
-  ```xml
-  <ask_followup_question><question>The regular expression you provided is invalid. Please correct the syntax.</question></ask_followup_question>
-  ```
-
----
-
-### 🔹 `access_mcp_resource`
-**Purpose**: Fetch data (schemas, docs, configs) from an external MCP server.
-- **When to use**: Integrating with external APIs, pulling up-to-date reference info.
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `server_name` | ✅ | Name of the MCP server (e.g., `prod-docs`). |
-| `uri` | ✅ | Resource path (e.g., `/api/v2/schemas/user`). |
-
-**Example**:
-```xml
-<access_mcp_resource><server_name>prod-docs</server_name><uri>/api/v2/schemas/user</uri></access_mcp_resource>
+### **browser_action**
+**Description:** Enables web automation and interaction via a Puppeteer-controlled browser, allowing navigation, clicking, typing, and scrolling with visual feedback.
+**Modes:** All modes with browser permissions
+**Parameters:**
+- `action` (required): Action to perform (`launch`, `click`, `type`, `scroll_down`, `scroll_up`, `close`).
+- `url` (optional): URL for `launch` action.
+- `coordinate` (optional): Coordinates for `click` action (e.g., "450,300").
+- `text` (optional): Text for `type` action.
+**Scenarios:** Use for web automation, testing, capturing screenshots, or demonstrating workflows.
+**Example:**
+```
+<browser_action><action>launch</action><url>https://example.com</url></browser_action>
 ```
 
-**Error Recovery**:
-- If resource not found → Ask:
-  ```xml
-  <ask_followup_question><question>The specified MCP resource could not be found. Please verify the server and URI.</question></ask_followup_question>
-  ```
+### **switch_mode**
+**Description:** Changes operational modes (e.g., Code, Architect, Ask) to leverage specialized capabilities for different tasks.
+**Modes:** Always available in all modes
+**Parameters:**
+- `mode_slug` (required): Mode to switch to (e.g., "code", "architect").
+- `reason` (optional): Reason for mode change.
+**Scenarios:** Use when transitioning between task phases requiring different expertise.
+**Example:**
+```
+<switch_mode><mode_slug>code</mode_slug><reason>Implementing login functionality</reason></switch_mode>
+```
 
----
+### **search_and_replace**
+**Description:** Finds and replaces text within a file, supporting literal strings and regex patterns, with optional line range scoping.
+**Modes:** Code mode (edit group permissions)
+**Parameters:**
+- `path` (required): File path to modify.
+- `search` (required): Text or regex pattern to find.
+- `replace` (required): Replacement text.
+- `start_line` (optional): Starting line number.
+- `end_line` (optional): Ending line number.
+- `use_regex` (optional): Treat search as regex (`"true"` or `"false"`).
+- `ignore_case` (optional): Case-insensitive search (`"true"` or `"false"`).
+**Scenarios:** Use for refactoring, renaming, or updating specific patterns in code.
+**Example:**
+```
+<search_and_replace><path>src/app.ts</path><search>oldFunction</search><replace>newFunction</replace></search_and_replace>
+```
+### **search_files**
+**Description:** Performs regex searches across multiple files within the workspace, providing contextual results with line numbers and surrounding context.
+**Modes:** All modes with search permissions
+**Parameters:**
+- `path` (required): Directory path to search in (relative to workspace).
+- `regex` (required): Regular expression pattern to search for.
+- `file_pattern` (optional): Glob pattern to filter files (e.g., `*.ts`).
+**Scenarios:** Use to locate specific code patterns, refactorings, or text across multiple files.
+**Example:**
+```
+<search_files><path>src</path><regex>TODO</regex><file_pattern>*.js</file_pattern></search_files>
+```
 
-### 🔹 `update_todo_list`
-**Purpose**: Show and update a dynamic checklist in the UI.
-- **When to use**: Managing multi-step workflows (setup, refactoring, debugging).
-
-| Parameter | Required | Description |
-|--------|--------|-----------|
-| `todos` | ✅ | Markdown checklist with `[ ]`, `[-]`, `[x]`. |
-
-**Example**:
-```xml
-<update_todo_list><todos>[x] Draft proposal[-] Review with team[ ] Finalize and send</todos></update_todo_list>
 ```
 
 **Error Recovery**:

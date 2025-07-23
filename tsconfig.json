@@ -56,6 +56,11 @@
   "exclude": [
     "components",
     "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/__tests__/**/*",
+    "src/stories/**/*",
     "workflows-starter/**/*",
     "vite.config.ts"
   ],

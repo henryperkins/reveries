@@ -486,18 +486,9 @@ class ExaSearchProvider implements SearchProvider {
 
   private async initializeSDK() {
     try {
-      // Try to dynamically import the official Exa SDK if available
-      // Use a condition to prevent Vite from trying to resolve this at build time
-      const ExaModule = typeof window !== 'undefined' && false ? await import('exa-js').catch(() => null) : null;
-
-      if (ExaModule) {
-        const Exa = ExaModule.default || ExaModule;
-        this.exaSDK = new Exa(this.apiKey) as unknown as { search?: (query: string, options: Record<string, unknown>) => Promise<ExaSearchResponse>; research?: { createTask: (options: Record<string, unknown>) => Promise<ExaResearchCreateResponse>; getTask: (id: string) => Promise<ExaResearchGetResponse> } };
-        console.log('[ExaSearchProvider] Using official Exa SDK');
-      } else {
-        this.exaSDK = null;
-        console.log('[ExaSearchProvider] Exa SDK not found, using direct HTTP calls');
-      }
+      // Exa SDK disabled for now - using direct HTTP calls
+      this.exaSDK = null;
+      console.log('[ExaSearchProvider] Using direct HTTP calls');
     } catch (_error) {
       // SDK not available, fall back to HTTP calls
       console.log('[ExaSearchProvider] Exa SDK initialization failed, using direct HTTP calls');

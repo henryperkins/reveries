@@ -1,5 +1,5 @@
 // Theme-agnostic component system that decouples from Westworld theme
-import { spacing, borderRadius, shadows, transitions } from './designSystem';
+import { spacing } from './designSystem';
 
 // Base component variants that can be themed
 export const componentVariants = {

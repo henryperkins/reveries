@@ -107,8 +107,7 @@ export type {
 } from '../services/research/types';
 
 // Import types needed for utility functions
-import type { HostParadigm, HouseParadigm, ResearchPhase, ContextLayer, ModelType } from '../types';
-import { GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL } from '../types';
+import { GENAI_MODEL_FLASH, GROK_MODEL_4, AZURE_O3_MODEL, type HostParadigm, type HouseParadigm, type ResearchPhase, type ContextLayer, type ModelType } from '../types';
 
 // Type guards and utility types
 export type DeepPartial<T> = {

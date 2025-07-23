@@ -1,6 +1,5 @@
 import { designSystem } from './designSystem';
-import { PARADIGM_COLORS } from './paradigm';
-import { ThemeMode, UnifiedTheme } from './types';
+import { ThemeMode } from './types';
 
 // Helper function to convert camelCase to kebab-case
 const toKebabCase = (str: string): string => {

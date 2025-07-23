@@ -695,6 +695,18 @@ Insights:`;
       return stats.rows[0];
     });
   }
+
+  // Check if database is connected
+  get isConnected(): boolean {
+    return this.pool !== null && !this.pool.ended;
+  }
+
+  // Get user preferences (stub implementation - can be enhanced based on requirements)
+  async getUserPreferences(_userId?: string): Promise<Record<string, any> | null> {
+    // For now, return null or empty preferences
+    // This can be implemented with a user_preferences table if needed
+    return null;
+  }
 }
 
 export const databaseService = DatabaseService.getInstance();

@@ -4,7 +4,7 @@
 
 // Core research services
 export { ResearchAgentService } from './researchAgentServiceWrapper';
-export { default as ResearchAgentServiceRefactored } from './researchAgentServiceRefactored';
+export { ResearchAgentService as ResearchAgentServiceRefactored } from './researchAgentServiceRefactored';
 
 // AI and model services
 export { GeminiService } from './geminiService';
@@ -22,7 +22,7 @@ export { ContextEngineeringService } from './contextEngineeringService';
 export { ParadigmClassifier } from './paradigmClassifier';
 export { ParadigmLearningService } from './paradigmLearningService';
 export { MultiParadigmBlender } from './multiParadigmBlender';
-export { InterHostCollaboration } from './interHostCollaboration';
+export { InterHostCollaborationService } from './interHostCollaboration';
 
 // Research services
 export { ComprehensiveResearchService } from './research/ComprehensiveResearchService';
@@ -44,7 +44,7 @@ export { EmbeddingService } from './ai/EmbeddingService';
 // Utilities
 export { RateLimiter } from './rateLimiter';
 export { RequestQueue } from './requestQueue';
-export { errorHandler } from './errorHandler';
+export { APIError, ErrorBoundary } from './errorHandler';
 export { ResearchUtilities } from './utils/ResearchUtilities';
 
 // Types

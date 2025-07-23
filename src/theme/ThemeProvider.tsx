@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ThemeContext } from './ThemeContext';
 import { ThemeMode, ThemeContextType } from './types';
 import { applyThemeToDOM, initializeTheme } from './themeConfig';
-import { getParadigmTheme } from './paradigm';
+import { getParadigmTheme, PARADIGM_COLORS } from './paradigm';
 import { designSystem } from './designSystem';
 
 interface ThemeProviderProps {
@@ -30,8 +30,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     colors: designSystem.colors,
     typography: designSystem.typography,
     spacing: designSystem.spacing,
+    borderRadius: designSystem.borderRadius,
+    shadows: designSystem.shadows,
+    zIndex: designSystem.zIndex,
     transitions: designSystem.transitions,
-    breakpoints: designSystem.breakpoints
+    breakpoints: designSystem.breakpoints,
+    components: designSystem.components,
+    paradigms: PARADIGM_COLORS
   }), [mode]);
 
   // Theme switching functions

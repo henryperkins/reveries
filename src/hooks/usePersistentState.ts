@@ -85,7 +85,7 @@ export function usePersistentState<T>(
               const dbService = DatabaseService.getInstance();
               const userId = sessionStorage.getItem("reveries_user_session_id");
               if (userId) {
-                const isConnected = await dbService.isConnected();
+                const isConnected = await dbService.isConnected;
                 setIsDatabaseConnected(isConnected);
 
                 if (isConnected) {
@@ -597,7 +597,7 @@ export function useDatabaseHealth() {
     const checkHealth = async () => {
       try {
         const dbService = DatabaseService.getInstance();
-        const connected = await dbService.isConnected();
+        const connected = await dbService.isConnected;
         setIsConnected(connected);
         setLastError(null);
       } catch (error) {
