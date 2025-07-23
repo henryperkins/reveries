@@ -1,13 +1,11 @@
 /**
  * HMR State Preservation Utilities
- * 
+ *
  * These utilities help preserve complex component state during HMR updates,
  * particularly useful for the Four Hosts Research Architecture components.
  */
 
-interface HMRState {
-  [key: string]: any;
-}
+type HMRState = Record<string, any>;
 
 class HMRStateManager {
   private static instance: HMRStateManager;
@@ -32,7 +30,7 @@ class HMRStateManager {
    */
   saveState(componentId: string, state: any): void {
     this.state[componentId] = state;
-    
+
     // Persist to HMR data
     if (import.meta.hot) {
       import.meta.hot.data.preservedState = this.state;
@@ -51,7 +49,7 @@ class HMRStateManager {
    */
   clearState(componentId: string): void {
     delete this.state[componentId];
-    
+
     // Update HMR data
     if (import.meta.hot) {
       import.meta.hot.data.preservedState = this.state;
@@ -59,11 +57,18 @@ class HMRStateManager {
   }
 
   /**
+   * Get current state
+   */
+  getStateSnapshot(): HMRState {
+    return { ...this.state };
+  }
+
+  /**
    * Clear all preserved state
    */
   clearAll(): void {
     this.state = {};
-    
+
     if (import.meta.hot) {
       import.meta.hot.data.preservedState = {};
     }
@@ -76,10 +81,10 @@ class HMRStateManager {
 export function useHMRState<T>(
   componentId: string,
   initialState: T,
-  dependencies: any[] = []
+  _dependencies: any[] = []
 ): [T, (state: T) => void] {
   const manager = HMRStateManager.getInstance();
-  
+
   // Try to restore state from HMR
   const restoredState = manager.getState(componentId);
   const [state, setState] = useState<T>(restoredState ?? initialState);
@@ -100,10 +105,13 @@ export function useHMRState<T>(
   }, [componentId]);
 
   // Custom setState that also updates HMR state
-  const setHMRState = useCallback((newState: T) => {
-    setState(newState);
-    manager.saveState(componentId, newState);
-  }, [componentId]);
+  const setHMRState = useCallback(
+    (newState: T) => {
+      setState(newState);
+      manager.saveState(componentId, newState);
+    },
+    [componentId, manager]
+  );
 
   return [state, setHMRState];
 }
@@ -154,7 +162,7 @@ export function setupHMR(componentName: string) {
 
     import.meta.hot.dispose((data) => {
       // Save any global state before disposal
-      data.preservedState = HMRStateManager.getInstance()['state'];
+      data.preservedState = HMRStateManager.getInstance().getStateSnapshot();
     });
 
     // Listen for HMR events

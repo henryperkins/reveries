@@ -269,7 +269,43 @@
   }
 
   /* ===== ADDITIONAL COMPONENT STYLES (migrated from App.css) ===== */
-  
+
+  /* Visibility fixes for missing elements */
+  .force-visible {
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+  }
+
+  /* Ensure all components are visible */
+  .top-navigation,
+  .progress-meter-container,
+  .research-container,
+  .controls-section,
+  .paradigm-indicator,
+  .function-call-dock {
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* Ensure all buttons are visible */
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost {
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: inline-flex !important;
+  }
+
+  /* Force content visibility */
+  .card,
+  .research-step,
+  .input-bar {
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
   /* Progress bar container styling */
   .progress-bar-container {
     @apply fixed left-0 right-0 h-1 bg-amber-200;

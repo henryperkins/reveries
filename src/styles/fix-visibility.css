@@ -1,0 +1,152 @@
+/* Visibility fixes for missing UI elements */
+@layer base {
+  /* Force visibility for critical components */
+  .force-visible {
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+  }
+
+  /* Ensure CSS variables are properly initialized */
+  :root {
+    --colors-westworld-cream: #FAF6F2 !important;
+    --colors-westworld-near-black: #2A2522 !important;
+    --colors-westworld-gold: #D4AF37 !important;
+    --colors-semantic-primary: #D4AF37 !important;
+    --colors-semantic-background: #F5EDE4 !important;
+    --colors-semantic-text: #2A2522 !important;
+  }
+
+  /* Force component visibility - override all responsive hiding */
+  .top-navigation,
+  .progress-meter-container,
+  .research-container,
+  .controls-section,
+  .paradigm-indicator,
+  .function-call-dock,
+  .analytics-view,
+  .sessions-view {
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+  }
+
+  /* Ensure all buttons are visible */
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost {
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: inline-flex !important;
+  }
+
+  /* Force content visibility */
+  .card,
+  .research-step,
+  .input-bar {
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+  }
+
+  /* Override responsive hiding rules */
+  @media (max-width: 474px) {
+    .hide-xs {
+      display: block !important;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .hide-mobile {
+      display: block !important;
+    }
+
+    .show-mobile {
+      display: block !important;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    .hide-tablet {
+      display: block !important;
+    }
+
+    .show-tablet {
+      display: block !important;
+    }
+  }
+
+  @media (max-width: 1280px) {
+    .hide-desktop {
+      display: block !important;
+    }
+
+    .show-desktop {
+      display: block !important;
+    }
+  }
+
+  /* Ensure components are never hidden by responsive rules */
+  .top-navigation {
+    display: block !important;
+    min-height: 4rem;
+  }
+
+  .progress-meter-container {
+    display: block !important;
+    position: relative !important;
+    margin: 1rem 0;
+  }
+
+  .function-call-dock {
+    display: block !important;
+    margin: 1rem 0;
+  }
+
+  .analytics-view {
+    display: block !important;
+    min-height: 50vh;
+  }
+
+  .sessions-view {
+    display: block !important;
+    min-height: 50vh;
+  }
+
+  /* Ensure buttons are always clickable */
+  button[type="submit"],
+  .btn-submit,
+  .btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding: 0.5rem 1rem;
+    margin: 0.25rem;
+  }
+
+  /* Debug mode for testing */
+  .debug-mode * {
+    outline: 1px solid red !important;
+    background-color: rgba(255, 0, 0, 0.1) !important;
+  }
+
+  /* Ensure all React components mount visibly */
+  [class*="Component"],
+  [class*="component"] {
+    display: block !important;
+  }
+
+  /* Force Tailwind display utilities */
+  .block { display: block !important; }
+  .inline-block { display: inline-block !important; }
+  .inline { display: inline !important; }
+  .flex { display: flex !important; }
+  .inline-flex { display: inline-flex !important; }
+  .grid { display: grid !important; }
+  .table { display: table !important; }
+  .table-cell { display: table-cell !important; }
+  .table-row { display: table-row !important; }
+  .hidden { display: block !important; } /* Override hidden */
+}

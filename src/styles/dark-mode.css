@@ -164,6 +164,14 @@
     @apply border-westworld-tan border-opacity-30;
   }
 
+  .dark .bg-theme-surface {
+    @apply bg-westworld-black;
+  }
+
+  .dark .border-theme-border {
+    @apply border-westworld-tan border-opacity-20;
+  }
+
   /* Dark mode scrollbar */
   .dark ::-webkit-scrollbar-track {
     @apply bg-westworld-darkBrown;

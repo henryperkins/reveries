@@ -1,0 +1,68 @@
+/* Debug visibility - temporary debugging styles */
+
+/* Force all elements to be visible */
+* {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Debug missing components */
+.top-navigation {
+  background-color: rgba(255, 0, 0, 0.1) !important;
+  border: 2px dashed red !important;
+  min-height: 60px;
+}
+
+.progress-meter-container {
+  background-color: rgba(0, 255, 0, 0.1) !important;
+  border: 2px dashed green !important;
+  min-height: 40px;
+}
+
+.function-call-dock {
+  background-color: rgba(0, 0, 255, 0.1) !important;
+  border: 2px dashed blue !important;
+  min-height: 50px;
+}
+
+.analytics-view {
+  background-color: rgba(255, 255, 0, 0.1) !important;
+  border: 2px dashed yellow !important;
+  min-height: 100px;
+}
+
+.sessions-view {
+  background-color: rgba(255, 0, 255, 0.1) !important;
+  border: 2px dashed purple !important;
+  min-height: 100px;
+}
+
+/* Ensure components are never hidden */
+[class*="navigation"],
+[class*="progress"],
+[class*="analytics"],
+[class*="sessions"] {
+  display: block !important;
+}
+
+/* Ensure buttons are visible */
+button[type="submit"],
+.btn,
+input[type="submit"] {
+  display: inline-block !important;
+  padding: 0.5rem 1rem !important;
+  background-color: var(--colors-semantic-primary, #D4AF37) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+}
+
+/* Force Tailwind to show everything */
+@media (max-width: 768px) {
+  .hide-mobile,
+  .show-mobile,
+  .hide-xs,
+  .show-xs {
+    display: block !important;
+  }
+}

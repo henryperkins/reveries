@@ -14,7 +14,7 @@ import { ProgressMeter, ProgressMeterGroup } from '@/components/atoms'
 import { usePersistentState, ResearchSession, useProgressManager } from '@/hooks'
 import { useFunctionCalls } from '@/components/FunctionCallDock'
 import { useErrorHandling } from '@/hooks/useErrorHandling'
-import { ThemeToggle } from '@/theme';
+import { ThemeProvider, ThemeToggle } from '@/theme';
 import { GraphContextProvider } from '@/contexts/GraphContext';
 
 import {
@@ -388,6 +388,7 @@ const App: React.FC = () => {
     }, [progress, realTimeContextDensities, isLoading, progressState]);
 
     return (
+        <ThemeProvider>
         <GraphContextProvider graphManager={graphManager}>
             <div className="min-h-screen bg-westworld-cream dark:bg-westworld-nearBlack text-westworld-nearBlack dark:text-westworld-cream transition-colors duration-300">
             {/* Theme toggle button - positioned according to responsive design patterns */}
@@ -690,6 +691,7 @@ const App: React.FC = () => {
             />
         </div>
         </GraphContextProvider>
+        </ThemeProvider>
     );
 }
 

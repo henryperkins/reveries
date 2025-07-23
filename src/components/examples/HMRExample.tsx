@@ -29,7 +29,7 @@ export const ParadigmClassifierWithHMR: React.FC = () => {
       bernard: Math.random(),
       maeve: Math.random(),
     };
-    
+
     // Normalize
     const sum = Object.values(newProbs).reduce((a, b) => a + b, 0);
     Object.keys(newProbs).forEach((key) => {
@@ -49,7 +49,7 @@ export const ParadigmClassifierWithHMR: React.FC = () => {
         {Object.entries(classifierState.probabilities).map(([paradigm, prob]) => (
           <div key={paradigm} className="paradigm-bar">
             <span>{paradigm}: {(prob * 100).toFixed(1)}%</span>
-            <div 
+            <div
               className="probability-fill"
               style={{ width: `${prob * 100}%` }}
             />
@@ -60,7 +60,7 @@ export const ParadigmClassifierWithHMR: React.FC = () => {
         Recalculate Probabilities
       </button>
       <p>
-        Selected: {classifierState.selectedParadigm || 'None'} 
+        Selected: {classifierState.selectedParadigm || 'None'}
         (Confidence: {classifierState.confidence}%)
       </p>
     </div>
@@ -74,7 +74,7 @@ setupHMR('ParadigmClassifierWithHMR');
  * Example: Research Context with HMR
  */
 export const ResearchContextWithHMR: React.FC = () => {
-  const [contextState, setContextState] = useHMRState(
+  const [contextState, _setContextState] = useHMRState(
     'research-context',
     {
       phase: 'analysis' as const,
@@ -83,12 +83,12 @@ export const ResearchContextWithHMR: React.FC = () => {
     }
   );
 
-  const addQuery = (query: string) => {
-    setContextState({
-      ...contextState,
-      queryHistory: [...contextState.queryHistory, query],
-    });
-  };
+  // const addQuery = (query: string) => {
+  //   setContextState({
+  //     ...contextState,
+  //     queryHistory: [...contextState.queryHistory, query],
+  //   });
+  // };
 
   return (
     <div className="research-context">

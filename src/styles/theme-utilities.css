@@ -14,6 +14,10 @@
     background-color: var(--colors-semantic-border);
 }
 
+.bg-theme-surface {
+    background-color: var(--colors-semantic-surface);
+}
+
 .text-theme-primary {
     color: var(--colors-semantic-text);
 }
@@ -31,6 +35,10 @@
 }
 
 .border-theme-light {
+    border-color: var(--colors-semantic-border);
+}
+
+.border-theme-border {
     border-color: var(--colors-semantic-border);
 }
 

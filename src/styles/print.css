@@ -234,18 +234,32 @@
   }
 
   /* ===== ADDITIONAL PRINT STYLES (migrated from App.css) ===== */
-  .input-bar,
-  .progress-bar-container,
-  button {
-    display: none !important;
-  }
+  /*
+     IMPORTANT:  The following rules should only apply when printing.  They
+     were previously placed outside the @media print block, which meant they
+     were active for regular screen styles as well.  That inadvertently hid
+     every <button> element (and a few other components) in the normal UI,
+     making navigation items, progress meters and many interactive controls
+     disappear entirely at runtime.
 
-  main {
-    padding-bottom: 0;
-  }
+     Moving these rules inside the @media print block restricts them to print
+     rendering only, restoring the missing components in the application while
+     keeping the intended print-specific behaviour intact.
+  */
+  @media print {
+    .input-bar,
+    .progress-bar-container,
+    button {
+      display: none !important;
+    }
 
-  .research-container {
-    box-shadow: none;
-    border: 1px solid #ddd;
+    main {
+      padding-bottom: 0;
+    }
+
+    .research-container {
+      box-shadow: none;
+      border: 1px solid #ddd;
+    }
   }
 }
