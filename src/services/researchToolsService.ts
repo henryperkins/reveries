@@ -256,14 +256,26 @@ export class ResearchToolsService {
     }));
   }
 
+  /**
+   * Convert internal tool metadata to the format expected by Azure OpenAI
+   * Responses API.
+   *
+   * NOTE: The Responses API now expects the function schema to live at the top
+   * level of the tool object – the earlier preview placed it under a nested
+   * `function` key.  We update the shape to:
+   *   {
+   *     "type": "function",
+   *     "name": "tool_name",
+   *     "description": "…",
+   *     "parameters": { … }
+   *   }
+   */
   public getAzureOpenAIToolDefinitions(): Record<string, unknown>[] {
     return Array.from(this.tools.values()).map(tool => ({
       type: 'function',
-      function: {
-        name: tool.name,
-        description: tool.description,
-        parameters: tool.parameters
-      }
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.parameters
     }));
   }
 

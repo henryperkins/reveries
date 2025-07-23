@@ -108,7 +108,7 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
 
   // Theme-aware animations
   const { getThemeAnimationOptions } = useThemeAnimation();
-  
+
   // Entrance animation with theme
   const entranceAnimation = useAnimation(
     'slideUp',
@@ -150,7 +150,7 @@ export const ContextDensityBar: React.FC<ContextDensityBarProps> = ({
 
       setTimeout(() => setIsUpdating(false), 800);
     }
-  }, [densities, prevDensities, isLoading, createChain]);
+  }, [densities, prevDensities, isLoading, createChain, getThemeAnimationOptions, paradigm]);
 
   // Loading skeleton
   if (isLoading) {

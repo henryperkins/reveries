@@ -268,7 +268,9 @@ export class ModelProviderService {
             );
 
             const azureDuration = Date.now() - azureStartTime;
-            onProgress?.(`tool_used:completed:azure_openai_with_tools:${startTime}`);
+            // Mark completion for the same tool name that was used in the
+            // start message so Live-Call tracking can pair them correctly.
+            onProgress?.(`tool_used:completed:azure_openai:${startTime}`);
 
             console.log('✅ O3 Azure OpenAI with Tools completed:', {
               duration: `${azureDuration}ms`,
