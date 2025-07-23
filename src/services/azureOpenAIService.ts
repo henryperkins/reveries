@@ -41,6 +41,7 @@ export interface AzureOpenAIConfig {
   apiKey: string;
   deploymentName: string;
   apiVersion: string;
+  maxOutputTokens?: number;
 }
 
 export class AzureOpenAIService {
@@ -115,7 +116,17 @@ export class AzureOpenAIService {
       );
     }
 
-    return { endpoint, apiKey, deploymentName, apiVersion };
+    return {
+      endpoint,
+      apiKey,
+      deploymentName,
+      apiVersion,
+      maxOutputTokens:
+        Number(
+          getEnv('AZURE_OPENAI_MAX_OUTPUT_TOKENS', 'AZURE_OPENAI_MAX_OUTPUT_TOKENS')
+            || 8192                        // safe default below all current limits
+        ),
+    };
   }
 
   public static getInstance(): AzureOpenAIService {
@@ -696,6 +707,13 @@ export class AzureOpenAIService {
     maxIterations = 5,
     onToolUse?: (toolName: string) => void // Add this parameter
   ): Promise<AzureOpenAIResponse> {
+    const emitToolEvent = (tool: string, phase: 'start' | 'completed') => {
+      onToolUse?.(
+        phase === 'start'
+          ? `tool_used:${tool}`
+          : `tool_used:completed:${tool}:${Date.now()}`
+      );
+    };
     return withRetry(async () => {
       let iterationCount = 0;
       const toolsUsed: string[] = [];
@@ -755,7 +773,7 @@ export class AzureOpenAIService {
               hasFunction: !!filteredTools[0].function,
               hasName: !!(filteredTools[0].function?.name || filteredTools[0].name),
               hasDescription: !!(filteredTools[0].function?.description || filteredTools[0].description),
-              hasParameters: !!(filteredTools[0].function?.parameters || filteredTools[0].parameters)
+              hasParameters: !!filteredTools[0].parameters
             }
           });
           console.log('📋 O3 First Tool Full Format:', JSON.stringify(filteredTools[0], null, 2));
@@ -863,6 +881,7 @@ export class AzureOpenAIService {
               }
 
               console.log(`Executing tool: ${toolName} with args:`, toolArgs);
+              emitToolEvent(toolName, 'start');
 
               // Execute the tool with enhanced context
               const toolContext: ParadigmAwareToolContext = {
@@ -881,9 +900,7 @@ export class AzureOpenAIService {
 
               if (executionResult.success) {
                 toolsUsed.push(toolName);
-
-                // Notify about tool usage
-                onToolUse?.(toolName);
+                emitToolEvent(toolName, 'completed');
 
                 // Add tool result for next iteration
                 const callId = toolCall.call_id || toolCall.id;
