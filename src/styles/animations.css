@@ -1,130 +1,8 @@
 /* Animation keyframes and animation utilities */
 
 @layer utilities {
-  /* ===== KEYFRAMES ===== */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  
-  @keyframes fadeOut {
-    from {
-      opacity: 1;
-    }
-    to {
-      opacity: 0;
-    }
-  }
-  
-  @keyframes slideUp {
-    from {
-      transform: translateY(20px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  
-  @keyframes slideDown {
-    from {
-      transform: translateY(-20px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-  
-  @keyframes slideLeft {
-    from {
-      transform: translateX(20px);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-  
-  @keyframes slideRight {
-    from {
-      transform: translateX(-20px);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-  
-  @keyframes scaleIn {
-    from {
-      transform: scale(0.9);
-      opacity: 0;
-    }
-    to {
-      transform: scale(1);
-      opacity: 1;
-    }
-  }
-  
-  @keyframes scaleOut {
-    from {
-      transform: scale(1);
-      opacity: 1;
-    }
-    to {
-      transform: scale(0.9);
-      opacity: 0;
-    }
-  }
-  
-  @keyframes spin {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
-  
-  @keyframes shimmer {
-    0% {
-      background-position: -200% 0;
-    }
-    100% {
-      background-position: 200% 0;
-    }
-  }
-  
-  @keyframes pulse-soft {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.8;
-    }
-  }
-  
-  @keyframes glow {
-    0%, 100% {
-      box-shadow: 0 0 5px var(--animation-color, theme('colors.westworld.gold')),
-                  0 0 10px var(--animation-color, theme('colors.westworld.gold'));
-    }
-    50% {
-      box-shadow: 0 0 10px var(--animation-color, theme('colors.westworld.gold')),
-                  0 0 20px var(--animation-color, theme('colors.westworld.gold')),
-                  0 0 30px var(--animation-color, theme('colors.westworld.gold'));
-    }
-  }
-  
+  /* ===== CUSTOM KEYFRAMES NOT IN TAILWIND CONFIG ===== */
+
   @keyframes bounce-soft {
     0%, 100% {
       transform: translateY(0);
@@ -133,7 +11,7 @@
       transform: translateY(-5px);
     }
   }
-  
+
   @keyframes progress-bar-stripes {
     from {
       background-position: 1rem 0;
@@ -142,7 +20,7 @@
       background-position: 0 0;
     }
   }
-  
+
   @keyframes typing {
     from {
       width: 0;
@@ -151,7 +29,7 @@
       width: 100%;
     }
   }
-  
+
   @keyframes blink {
     0%, 50%, 100% {
       opacity: 1;
@@ -160,18 +38,18 @@
       opacity: 0;
     }
   }
-  
+
   @keyframes typewriter {
     from {
       width: 0;
-      border-right-color: theme('colors.westworld.gold');
+      border-right-color: theme("colors.westworld.gold");
     }
     to {
       width: 100%;
       border-right-color: transparent;
     }
   }
-  
+
   @keyframes matrixRain {
     0% {
       transform: translateY(-100%);
@@ -188,7 +66,7 @@
       opacity: 0;
     }
   }
-  
+
   @keyframes glitch {
     0%, 100% {
       transform: translate(0);
@@ -211,7 +89,7 @@
       filter: hue-rotate(360deg);
     }
   }
-  
+
   @keyframes circuit {
     0% {
       stroke-dashoffset: 1000;
@@ -225,7 +103,7 @@
       opacity: 1;
     }
   }
-  
+
   @keyframes float {
     0%, 100% {
       transform: translateY(0px);
@@ -234,7 +112,7 @@
       transform: translateY(-20px);
     }
   }
-  
+
   @keyframes ripple {
     0% {
       transform: scale(0);
@@ -245,7 +123,7 @@
       opacity: 0;
     }
   }
-  
+
   @keyframes shake {
     0%, 100% {
       transform: translateX(0);
@@ -257,7 +135,7 @@
       transform: translateX(10px);
     }
   }
-  
+
   @keyframes morphing {
     0% {
       border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
@@ -269,164 +147,157 @@
       border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
     }
   }
-  
+
   /* ===== ANIMATION CLASSES ===== */
   .animate-fadeIn {
     animation: fadeIn var(--transitions-duration-base) ease-out;
   }
-  
+
   .animate-fadeOut {
     animation: fadeOut var(--transitions-duration-base) ease-in;
   }
-  
+
   .animate-slideUp {
     animation: slideUp var(--transitions-duration-base) ease-out;
   }
-  
+
   .animate-slideDown {
     animation: slideDown var(--transitions-duration-base) ease-out;
   }
-  
+
   .animate-slideLeft {
     animation: slideLeft var(--transitions-duration-base) ease-out;
   }
-  
+
   .animate-slideRight {
     animation: slideRight var(--transitions-duration-base) ease-out;
   }
-  
+
   .animate-scaleIn {
     animation: scaleIn var(--transitions-duration-base) ease-out;
   }
-  
+
   .animate-scaleOut {
     animation: scaleOut var(--transitions-duration-base) ease-in;
   }
-  
+
   .animate-spin-slow {
     animation: spin 3s linear infinite;
   }
-  
+
   .animate-spin-fast {
     animation: spin 0.5s linear infinite;
   }
-  
-  /* Shimmer animation is defined in tailwind.config.js
-     This custom class is removed to avoid conflicts */
-  
-  /* Pulse-soft animation is defined in tailwind.config.js */
-  
-  /* Glow animation is defined in tailwind.config.js */
-  
+
   .animate-bounce-soft {
     animation: bounce-soft 1s ease-in-out infinite;
   }
-  
+
   .animate-typing {
     overflow: hidden;
     white-space: nowrap;
     animation: typing 3s steps(30, end);
   }
-  
+
   .animate-blink {
     animation: blink 1s step-end infinite;
   }
-  
+
   .animate-typewriter {
     overflow: hidden;
     white-space: nowrap;
-    border-right: 3px solid theme('colors.westworld.gold');
+    border-right: 3px solid theme("colors.westworld.gold");
     animation: typewriter 3s steps(40, end), blink 0.75s step-end infinite;
   }
-  
+
   .animate-matrixRain {
     animation: matrixRain 5s linear infinite;
   }
-  
+
   .animate-glitch {
     animation: glitch 0.3s ease-in-out infinite;
   }
-  
+
   .animate-circuit {
     stroke-dasharray: 1000;
     animation: circuit 2s ease-out forwards;
   }
-  
+
   .animate-float {
     animation: float 3s ease-in-out infinite;
   }
-  
+
   .animate-ripple {
     animation: ripple 0.6s ease-out;
   }
-  
+
   .animate-shake {
     animation: shake 0.5s ease-in-out;
   }
-  
+
   .animate-morphing {
     animation: morphing 8s ease-in-out infinite;
   }
-  
+
   /* ===== TRANSITION UTILITIES ===== */
   .transition-opacity {
     transition-property: opacity;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: var(--transitions-duration-base);
   }
-  
+
   .transition-transform {
     transition-property: transform;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: var(--transitions-duration-base);
   }
-  
+
   .transition-colors {
     transition-property: color, background-color, border-color;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: var(--transitions-duration-base);
   }
-  
+
   .transition-shadow {
     transition-property: box-shadow;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: var(--transitions-duration-base);
   }
-  
+
   .transition-all-smooth {
     transition: all var(--transitions-duration-base) cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
   /* ===== ANIMATION DELAYS ===== */
   .animation-delay-100 {
     animation-delay: 100ms;
   }
-  
+
   .animation-delay-200 {
     animation-delay: 200ms;
   }
-  
+
   .animation-delay-300 {
     animation-delay: 300ms;
   }
-  
+
   .animation-delay-500 {
     animation-delay: 500ms;
   }
-  
+
   .animation-delay-1000 {
     animation-delay: 1000ms;
   }
-  
+
   /* ===== PAGE TRANSITIONS ===== */
   .page-exit {
     animation: pageExit 0.3s ease-in-out forwards;
   }
-  
+
   .page-enter {
     animation: pageEnter 0.3s ease-in-out forwards;
   }
-  
+
   @keyframes pageExit {
     from {
       opacity: 1;
@@ -437,7 +308,7 @@
       transform: translateX(-50px) scale(0.95);
     }
   }
-  
+
   @keyframes pageEnter {
     from {
       opacity: 0;
@@ -448,7 +319,7 @@
       transform: translateX(0) scale(1);
     }
   }
-  
+
   /* ===== ADVANCED EASING FUNCTIONS ===== */
   :root {
     --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
@@ -460,10 +331,10 @@
     --ease-circ-in: cubic-bezier(0.6, 0.04, 0.98, 0.335);
     --ease-circ-out: cubic-bezier(0.075, 0.82, 0.165, 1);
   }
-  
+
   /* ===== CIRCUIT PATTERN BACKGROUND ===== */
   .bg-circuit-pattern {
-    background-image: 
+    background-image:
       repeating-linear-gradient(
         90deg,
         transparent,
@@ -490,6 +361,23 @@
       );
   }
 
+  /* ===== PARADIGM-AWARE ANIMATIONS ===== */
+  .animate-paradigm-dolores {
+    --animation-color: theme("colors.dolores.600");
+  }
+
+  .animate-paradigm-teddy {
+    --animation-color: theme("colors.teddy.600");
+  }
+
+  .animate-paradigm-bernard {
+    --animation-color: theme("colors.bernard.600");
+  }
+
+  .animate-paradigm-maeve {
+    --animation-color: theme("colors.maeve.600");
+  }
+
   /* ===== REDUCED MOTION ===== */
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -500,93 +388,10 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
-    
+
     .animate-spin-slow,
     .animate-spin-fast {
       animation: none;
-    }
-  }
-  
-  /* ===== PARADIGM-AWARE ANIMATIONS ===== */
-  .animate-paradigm-dolores {
-    --animation-color: theme('colors.westworld.rust');
-  }
-  
-  .animate-paradigm-teddy {
-    --animation-color: theme('colors.westworld.beige');
-  }
-  
-  .animate-paradigm-bernard {
-    --animation-color: theme('colors.westworld.tan');
-  }
-  
-  .animate-paradigm-maeve {
-    --animation-color: theme('colors.westworld.copper');
-  }
-  
-  /* Paradigm-specific glow animations */
-  .animate-glow.animate-paradigm-dolores {
-    animation: glow-dolores var(--transitions-duration-slower) ease-in-out;
-  }
-  
-  .animate-glow.animate-paradigm-teddy {
-    animation: glow-teddy var(--transitions-duration-slower) ease-in-out;
-  }
-  
-  .animate-glow.animate-paradigm-bernard {
-    animation: glow-bernard var(--transitions-duration-slower) ease-in-out;
-  }
-  
-  .animate-glow.animate-paradigm-maeve {
-    animation: glow-maeve var(--transitions-duration-slower) ease-in-out;
-  }
-  
-  /* Paradigm-specific keyframes */
-  @keyframes glow-dolores {
-    0%, 100% {
-      box-shadow: 0 0 5px theme('colors.westworld.rust'),
-                  0 0 10px theme('colors.westworld.rust');
-    }
-    50% {
-      box-shadow: 0 0 10px theme('colors.westworld.rust'),
-                  0 0 20px theme('colors.westworld.rust'),
-                  0 0 30px theme('colors.westworld.rust');
-    }
-  }
-  
-  @keyframes glow-teddy {
-    0%, 100% {
-      box-shadow: 0 0 5px theme('colors.westworld.beige'),
-                  0 0 10px theme('colors.westworld.beige');
-    }
-    50% {
-      box-shadow: 0 0 10px theme('colors.westworld.beige'),
-                  0 0 20px theme('colors.westworld.beige'),
-                  0 0 30px theme('colors.westworld.beige');
-    }
-  }
-  
-  @keyframes glow-bernard {
-    0%, 100% {
-      box-shadow: 0 0 5px theme('colors.westworld.tan'),
-                  0 0 10px theme('colors.westworld.tan');
-    }
-    50% {
-      box-shadow: 0 0 10px theme('colors.westworld.tan'),
-                  0 0 20px theme('colors.westworld.tan'),
-                  0 0 30px theme('colors.westworld.tan');
-    }
-  }
-  
-  @keyframes glow-maeve {
-    0%, 100% {
-      box-shadow: 0 0 5px theme('colors.westworld.copper'),
-                  0 0 10px theme('colors.westworld.copper');
-    }
-    50% {
-      box-shadow: 0 0 10px theme('colors.westworld.copper'),
-                  0 0 20px theme('colors.westworld.copper'),
-                  0 0 30px theme('colors.westworld.copper');
     }
   }
 }

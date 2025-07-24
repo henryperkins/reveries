@@ -315,30 +315,12 @@
 
 /* ===== UTILITY CLASSES FOR RESPONSIVE DESIGN ===== */
 @layer utilities {
-
-  /* Responsive spacing */
-  .space-y-responsive>*+* {
-    margin-top: clamp(0.5rem, 2vw, 1.5rem);
-  }
-
-  .gap-responsive {
-    gap: clamp(0.5rem, 2vw, 1.5rem);
-  }
-
-  /* Responsive padding */
-  .p-responsive {
-    padding: clamp(0.75rem, 3vw, 1.5rem);
-  }
-
-  .px-responsive {
-    padding-left: clamp(0.75rem, 3vw, 1.5rem);
-    padding-right: clamp(0.75rem, 3vw, 1.5rem);
-  }
-
-  .py-responsive {
-    padding-top: clamp(0.75rem, 3vw, 1.5rem);
-    padding-bottom: clamp(0.75rem, 3vw, 1.5rem);
-  }
+  /* Use Tailwind's built-in responsive utilities instead:
+     - gap-2 sm:gap-4 lg:gap-6
+     - p-2 sm:p-4 lg:p-6
+     - px-3 sm:px-6 lg:px-8
+     - py-2 sm:py-4 lg:py-6
+  */
 
   /* Container with safe area support */
   .safe-padding-bottom {

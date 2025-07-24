@@ -1,20 +1,26 @@
 /*
  * Main CSS Entry Point
- * All styles are now organized in src/styles/ directory
+ * Following the recommended CSS file ordering from docs/codebaseissues.md
  */
 
-/* Tailwind base must come first */
+/* 1. CSS Variables / Design Tokens */
+@import './styles/design-tokens.css';
+
+/* 2. Tailwind Pre-flight (resets) */
 @import 'tailwindcss/base';
+
+/* 3. Custom Base Styles */
+@import './styles/base.css';
+
+/* 4. Tailwind Component layer */
 @import 'tailwindcss/components';
 
-/* Import custom styles before Tailwind utilities to avoid override issues */
-@import './styles/design-tokens.css';
-@import './styles/base.css';
-@import './styles/dark-mode.css';
-@import './styles/z-index.css';
-@import './styles/theme-utilities.css';
-@import './styles/typography.css';
+/* 5. Custom Components */
 @import './styles/components.css';
+
+/* 6. Custom styles organized by feature */
+@import './styles/dark-mode.css';
+@import './styles/typography.css';
 @import './styles/animations.css';
 @import './styles/interactions.css';
 @import './styles/layout.css';
@@ -22,23 +28,19 @@
 @import './styles/accessibility.css';
 @import './styles/print.css';
 
-/* Tailwind utilities must come last to ensure proper override behavior */
+/* 7. Tailwind Utilities layer */
 @import 'tailwindcss/utilities';
 
-/* Any final overrides */
-@layer utilities {
+/* 8. Custom Utility layer */
+@import './styles/theme-utilities.css';
+@import './styles/z-index.css';
 
-    /* Westworld-specific utility classes */
-    .westworld-title {
-        @apply text-4xl font-bold bg-gradient-to-r from-westworld-gold to-westworld-darkGold bg-clip-text text-transparent;
-    }
-
-    /* Remove duplicate theme utilities - they're now in theme-utilities.css */
-    /* Keeping only Westworld-specific utilities here */
-
-    .shadow-theme {
-        box-shadow: 0 4px 6px rgba(107, 86, 55, 0.1);
-    }
+/* 9. Final overrides */
+/* Westworld-specific utility classes */
+.westworld-title {
+  @apply text-4xl font-bold bg-gradient-to-r from-primary to-paradigm-accent bg-clip-text text-transparent;
 }
 
-
+.shadow-theme {
+  box-shadow: 0 4px 6px rgba(var(--color-westworld-brown) / 0.1);
+}
