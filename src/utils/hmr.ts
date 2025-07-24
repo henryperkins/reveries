@@ -92,7 +92,7 @@ export function useHMRState<T>(
   // Save state on changes
   useEffect(() => {
     manager.saveState(componentId, state);
-  }, [componentId, state]);
+  }, [componentId, manager, state]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -102,7 +102,7 @@ export function useHMRState<T>(
         manager.clearState(componentId);
       }
     };
-  }, [componentId]);
+  }, [componentId, manager]);
 
   // Custom setState that also updates HMR state
   const setHMRState = useCallback(

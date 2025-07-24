@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 
-export type AnimationName = 
-  | 'fadeIn' 
-  | 'slideUp' 
-  | 'shimmer' 
-  | 'pulse' 
-  | 'glow' 
+export type AnimationName =
+  | 'fadeIn'
+  | 'slideUp'
+  | 'shimmer'
+  | 'pulse'
+  | 'glow'
   | 'pulse-soft'
   | 'typewriter'
   | 'matrixRain'
@@ -131,7 +131,7 @@ export function useAnimation(
     // Get the Animation object if supported
     if ('getAnimations' in element) {
       const animations = element.getAnimations();
-      animationRef.current = animations.find(anim => 
+      animationRef.current = animations.find(anim =>
         anim instanceof CSSAnimation && anim.animationName === animationName
       ) as Animation | null;
     }
@@ -156,7 +156,7 @@ export function useAnimationGroup(
 
   useEffect(() => {
     refs.current = animations.map(() => React.createRef<HTMLElement | null>());
-  }, [animations.length]);
+  }, [animations, animations.length]);
 
   const playSequence = useCallback(() => {
     setIsPlaying(true);
@@ -232,32 +232,32 @@ export function createAnimationChain(): AnimationChain {
 
   const chain: AnimationChain = {
     animations,
-    
+
     add(name: AnimationName, options?: AnimationOptions) {
       animations.push({ name, options });
       return chain;
     },
-    
+
     delay(ms: number) {
       globalDelay = ms;
       return chain;
     },
-    
+
     stagger(ms: number) {
       staggerDelay = ms;
       return chain;
     },
-    
+
     parallel() {
       mode = 'parallel';
       return chain;
     },
-    
+
     sequential() {
       mode = 'sequential';
       return chain;
     },
-    
+
     async play() {
       if (mode === 'parallel') {
         const promises = animations.map((anim, index) => {
@@ -276,14 +276,14 @@ export function createAnimationChain(): AnimationChain {
                   options.direction,
                   options.fillMode
                 ].filter(Boolean).join(' ');
-                
+
                 anim.element.style.animation = animationStyle;
-                
+
                 const handleEnd = () => {
                   anim.element?.removeEventListener('animationend', handleEnd);
                   resolve();
                 };
-                
+
                 anim.element.addEventListener('animationend', handleEnd);
               } else {
                 resolve();
@@ -291,14 +291,14 @@ export function createAnimationChain(): AnimationChain {
             }, delay);
           });
         });
-        
+
         await Promise.all(promises);
       } else {
         // Sequential mode
         for (let i = 0; i < animations.length; i++) {
           const anim = animations[i];
           const delay = globalDelay + (staggerDelay * i);
-          
+
           await new Promise<void>((resolve) => {
             setTimeout(() => {
               if (anim.element) {
@@ -313,14 +313,14 @@ export function createAnimationChain(): AnimationChain {
                   options.direction,
                   options.fillMode
                 ].filter(Boolean).join(' ');
-                
+
                 anim.element.style.animation = animationStyle;
-                
+
                 const handleEnd = () => {
                   anim.element?.removeEventListener('animationend', handleEnd);
                   resolve();
                 };
-                
+
                 anim.element.addEventListener('animationend', handleEnd);
               } else {
                 resolve();
@@ -331,25 +331,25 @@ export function createAnimationChain(): AnimationChain {
       }
     }
   };
-  
+
   return chain;
 }
 
 // Hook for animation composition
 export function useAnimationChain() {
   const chainRef = useRef<AnimationChain | null>(null);
-  
+
   const createChain = useCallback(() => {
     chainRef.current = createAnimationChain();
     return chainRef.current;
   }, []);
-  
+
   const attachToElement = useCallback((element: HTMLElement | null, animationIndex: number) => {
     if (chainRef.current && chainRef.current.animations[animationIndex]) {
       chainRef.current.animations[animationIndex].element = element;
     }
   }, []);
-  
+
   return {
     createChain,
     attachToElement,

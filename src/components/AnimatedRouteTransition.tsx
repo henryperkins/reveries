@@ -5,7 +5,7 @@ import { useAnimation } from '../hooks/useAnimation';
 const useLocation = () => {
   const [pathname, setPathname] = useState('/');
   const [key, setKey] = useState('default');
-  
+
   // In a real app, this would come from react-router
   return { pathname, key, setPathname, setKey };
 };
@@ -24,10 +24,10 @@ export const AnimatedRouteTransition: React.FC<AnimatedRouteTransitionProps> = (
   const location = useLocation();
   const [displayLocation, setDisplayLocation] = useState(location);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  
+
   const exitAnimation = useAnimation(
-    transitionType === 'fade' ? 'fadeIn' : 
-    transitionType === 'slide' ? 'slideUp' : 
+    transitionType === 'fade' ? 'fadeIn' :
+    transitionType === 'slide' ? 'slideUp' :
     transitionType === 'scale' ? 'fadeIn' :
     transitionType === 'glitch' ? 'glitch' : 'morphing',
     {
@@ -36,10 +36,10 @@ export const AnimatedRouteTransition: React.FC<AnimatedRouteTransitionProps> = (
       fillMode: 'forwards'
     }
   );
-  
+
   const enterAnimation = useAnimation(
-    transitionType === 'fade' ? 'fadeIn' : 
-    transitionType === 'slide' ? 'slideUp' : 
+    transitionType === 'fade' ? 'fadeIn' :
+    transitionType === 'slide' ? 'slideUp' :
     transitionType === 'scale' ? 'fadeIn' :
     transitionType === 'glitch' ? 'glitch' : 'morphing',
     {
@@ -51,15 +51,15 @@ export const AnimatedRouteTransition: React.FC<AnimatedRouteTransitionProps> = (
   useEffect(() => {
     if (location.pathname !== displayLocation.pathname) {
       setIsTransitioning(true);
-      
+
       // Play exit animation
       exitAnimation.play();
-      
+
       setTimeout(() => {
         setDisplayLocation(location);
         // Play enter animation
         enterAnimation.play();
-        
+
         setTimeout(() => {
           setIsTransitioning(false);
         }, duration);
@@ -68,7 +68,7 @@ export const AnimatedRouteTransition: React.FC<AnimatedRouteTransitionProps> = (
   }, [location, displayLocation, duration, exitAnimation, enterAnimation]);
 
   return (
-    <div 
+    <div
       ref={(el) => {
         if (el) {
           if (isTransitioning && displayLocation.pathname === location.pathname) {
@@ -106,12 +106,12 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
   useEffect(() => {
     if (location.key !== currentKey) {
       setIsAnimating(true);
-      
+
       const timeout = setTimeout(() => {
         setCurrentKey(location.key);
         setIsAnimating(false);
       }, 600);
-      
+
       return () => clearTimeout(timeout);
     }
   }, [location.key, currentKey]);
@@ -119,24 +119,24 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
   const getTransitionClasses = () => {
     switch (effect) {
       case 'parallax':
-        return isAnimating 
-          ? 'transform translate-x-full opacity-0' 
+        return isAnimating
+          ? 'transform translate-x-full opacity-0'
           : 'transform translate-x-0 opacity-100';
       case 'zoom':
-        return isAnimating 
-          ? 'transform scale-150 opacity-0' 
+        return isAnimating
+          ? 'transform scale-150 opacity-0'
           : 'transform scale-100 opacity-100';
       case 'rotate':
-        return isAnimating 
-          ? 'transform rotate-180 opacity-0' 
+        return isAnimating
+          ? 'transform rotate-180 opacity-0'
           : 'transform rotate-0 opacity-100';
       case 'matrix':
-        return isAnimating 
-          ? 'animate-matrixRain' 
+        return isAnimating
+          ? 'animate-matrixRain'
           : '';
       case 'typewriter':
-        return isAnimating 
-          ? 'animate-typewriter' 
+        return isAnimating
+          ? 'animate-typewriter'
           : '';
       default:
         return '';
@@ -144,7 +144,7 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
   };
 
   return (
-    <div 
+    <div
       className={`
         transition-all duration-600 ease-in-out
         ${getTransitionClasses()}
@@ -158,33 +158,5 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
   );
 };
 
-// Hook for programmatic route transitions
-export const useAnimatedNavigation = () => {
-  const [isNavigating, setIsNavigating] = useState(false);
-
-  const animatedNavigate = async (
-    navigate: (path: string) => void, 
-    path: string,
-    animationDuration = 300
-  ) => {
-    setIsNavigating(true);
-    
-    // Trigger exit animation
-    document.body.classList.add('page-exit');
-    
-    await new Promise(resolve => setTimeout(resolve, animationDuration));
-    
-    navigate(path);
-    
-    // Trigger enter animation
-    document.body.classList.remove('page-exit');
-    document.body.classList.add('page-enter');
-    
-    await new Promise(resolve => setTimeout(resolve, animationDuration));
-    
-    document.body.classList.remove('page-enter');
-    setIsNavigating(false);
-  };
-
-  return { animatedNavigate, isNavigating };
-};
+// This file now only exports components for Fast Refresh compatibility
+// useAnimatedNavigation hook has been moved to src/hooks/useAnimatedNavigation.ts

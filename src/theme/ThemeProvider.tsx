@@ -39,7 +39,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     breakpoints:  activeDS.breakpoints,
     components:   activeDS.components,
     paradigms:    PARADIGM_COLORS,
-  }), [mode]);
+  }), [activeDS.borderRadius, activeDS.breakpoints, activeDS.colors, activeDS.components, activeDS.shadows, activeDS.spacing, activeDS.transitions, activeDS.typography, activeDS.zIndex, mode]);
 
   // Theme switching functions
   const toggleTheme = useCallback(() => {
