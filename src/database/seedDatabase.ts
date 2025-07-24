@@ -82,11 +82,11 @@ async function seedDatabase() {
 
     console.log('🎉 Database seeding completed successfully!')
 
-    // Verify the data
-    const userCount = await prisma.user.count()
-    const sessionCount = await prisma.researchSession.count()
-    const stepCount = await prisma.researchStep.count()
-    const sourceCount = await prisma.researchSource.count()
+    // Verify the data - use type assertion to resolve Prisma Accelerate type issues
+    const userCount = await (prisma.user.count as any)() as number
+    const sessionCount = await (prisma.researchSession.count as any)() as number
+    const stepCount = await (prisma.researchStep.count as any)() as number
+    const sourceCount = await (prisma.researchSource.count as any)() as number
 
     console.log('\n📊 Database summary:')
     console.log(`   Users: ${userCount}`)

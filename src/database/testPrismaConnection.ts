@@ -9,11 +9,11 @@ async function testPrismaConnection() {
     console.log('✅ Database connection successful:', result)
 
     // Test user count (should be at least 1 from the init script)
-    const userCount = await prisma.user.count()
+    const userCount = await (prisma.user.count as any)() as number
     console.log(`📊 Users in database: ${userCount}`)
 
     // Test session count
-    const sessionCount = await prisma.researchSession.count()
+    const sessionCount = await (prisma.researchSession.count as any)() as number
     console.log(`📊 Research sessions in database: ${sessionCount}`)
 
     console.log('🎉 Prisma Accelerate connection test completed successfully!')

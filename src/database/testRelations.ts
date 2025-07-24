@@ -5,11 +5,11 @@ async function testRelations() {
     console.log('🔍 Testing Prisma relations...')
 
     // Test user with related sessions - simplified to avoid type conflicts
-    const userWithSessions = await prisma.user.findFirst({
+    const userWithSessions = await (prisma.user.findFirst as any)({
       include: {
         researchSessions: true
       }
-    } as any)
+    })
 
     if (userWithSessions) {
       console.log('✅ User found with sessions:', {
@@ -24,13 +24,13 @@ async function testRelations() {
 
       // Get detailed data for the first session separately
       if (userWithSessions.researchSessions[0]) {
-        const detailedSession = await prisma.researchSession.findUnique({
+        const detailedSession = await (prisma.researchSession.findUnique as any)({
           where: { id: userWithSessions.researchSessions[0].id },
           include: {
             researchSteps: true,
             researchSources: true
           }
-        } as any)
+        })
 
         if (detailedSession) {
           console.log('   Session details:', {
@@ -42,7 +42,7 @@ async function testRelations() {
     }
 
     // Test session with all related data - simplified
-    const sessionWithData = await prisma.researchSession.findFirst({
+    const sessionWithData = await (prisma.researchSession.findFirst as any)({
       include: {
         user: true,
         researchSteps: true,
@@ -51,7 +51,7 @@ async function testRelations() {
         graphEdges: true,
         functionCalls: true
       }
-    } as any)
+    })
 
     if (sessionWithData) {
       console.log('✅ Session found with related data:', {
@@ -68,7 +68,7 @@ async function testRelations() {
     }
 
     // Test aggregation
-    const stats = await prisma.researchSession.aggregate({
+    const stats = await (prisma.researchSession.aggregate as any)({
       _count: {
         id: true
       },
@@ -76,7 +76,7 @@ async function testRelations() {
         totalSteps: true,
         totalSources: true
       }
-    } as any)
+    })
 
     console.log('✅ Aggregation stats:', stats)
 

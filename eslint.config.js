@@ -31,7 +31,8 @@ export default tseslint.config(
             'src/tests/manualIntegrationTest.ts',
             'src/tests/systemExhaustiveTest.ts',
             'src/tests/azureIntegrationTest.ts',
-            'src/generated/**/*'
+            'src/generated/**/*',
+            'generated/**/*'
         ]
     },
 

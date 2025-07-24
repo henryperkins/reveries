@@ -107,7 +107,7 @@ export function useScrollAnimation(options: ScrollAnimationOptions) {
 
 // Batch scroll animations for multiple elements
 export function useScrollAnimationGroup(
-  animations: Array<ScrollAnimationOptions & { id: string }>
+  animations: (ScrollAnimationOptions & { id: string })[]
 ) {
   const refs = useRef<Map<string, HTMLElement>>(new Map());
   const [visibleElements, setVisibleElements] = useState<Set<string>>(new Set());

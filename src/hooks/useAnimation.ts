@@ -211,11 +211,11 @@ export function useAnimationGroup(
 
 // Animation composition utilities
 export interface AnimationChain {
-  animations: Array<{
+  animations: {
     name: AnimationName;
     options?: AnimationOptions;
     element?: HTMLElement | null;
-  }>;
+  }[];
   add: (name: AnimationName, options?: AnimationOptions) => AnimationChain;
   delay: (ms: number) => AnimationChain;
   stagger: (ms: number) => AnimationChain;
@@ -225,7 +225,7 @@ export interface AnimationChain {
 }
 
 export function createAnimationChain(): AnimationChain {
-  let animations: AnimationChain['animations'] = [];
+  const animations: AnimationChain['animations'] = [];
   let mode: 'sequential' | 'parallel' = 'sequential';
   let staggerDelay = 0;
   let globalDelay = 0;
