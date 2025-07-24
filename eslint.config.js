@@ -23,13 +23,15 @@ export default tseslint.config(
             'coverage',
             '*.config.js',
             '*.config.ts',
+            'vite.config.js',  // Add this line
             'vite-env.d.ts',
             'actions-runner',
             '.github/actions',
             'workflows-starter/**/*',
             'src/tests/manualIntegrationTest.ts',
             'src/tests/systemExhaustiveTest.ts',
-            'src/tests/azureIntegrationTest.ts'
+            'src/tests/azureIntegrationTest.ts',
+            'src/generated/**/*'
         ]
     },
 

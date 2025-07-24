@@ -5,9 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:host": "vite --host",
     "build": "vite build",
+    "build:analyze": "vite build --mode analyze",
+    "build:profile": "vite build --profile",
     "lint": "eslint .",
     "preview": "vite preview",
+    "preview:host": "vite preview --host",
     "type-check": "tsc --noEmit",
     "build:check": "npm run type-check && npm run build",
     "clean": "rm -rf dist node_modules/.vite",
@@ -30,7 +34,8 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "lint:css": "stylelint \"src/**/*.css\"",
-    "lint:fix": "eslint . --fix && stylelint \"src/**/*.css\" --fix"
+    "lint:fix": "eslint . --fix && stylelint \"src/**/*.css\" --fix",
+    "optimize:analyze": "npx vite-bundle-visualizer"
   },
   "dependencies": {
     "@azure/openai": "^2.0.0",
