@@ -1,0 +1,71 @@
+{
+  "extends": [
+    "stylelint-config-standard",
+    "stylelint-config-tailwindcss"
+  ],
+  "plugins": [
+    "stylelint-order"
+  ],
+  "rules": {
+    "at-rule-no-unknown": [
+      true,
+      {
+        "ignoreAtRules": [
+          "tailwind",
+          "apply",
+          "layer",
+          "config"
+        ]
+      }
+    ],
+    "function-no-unknown": [
+      true,
+      {
+        "ignoreFunctions": [
+          "theme",
+          "screen"
+        ]
+      }
+    ],
+    "import-notation": "string",
+    "selector-class-pattern": null,
+    "custom-property-pattern": "^(color|spacing|font|radius|shadow|transition|easing|z|breakpoint)-[a-z0-9-]+$",
+    "color-no-hex": true,
+    "color-function-notation": "modern",
+    "alpha-value-notation": "number",
+    "declaration-block-no-duplicate-properties": true,
+    "declaration-block-no-redundant-longhand-properties": true,
+    "shorthand-property-no-redundant-values": true,
+    "value-no-vendor-prefix": true,
+    "property-no-vendor-prefix": true,
+    "media-feature-range-notation": "context",
+    "order/order": [
+      "custom-properties",
+      "dollar-variables",
+      "at-rules",
+      "declarations",
+      "rules"
+    ],
+    "order/properties-alphabetical-order": true
+  },
+  "overrides": [
+    {
+      "files": ["**/*.css"],
+      "rules": {
+        "no-descending-specificity": null,
+        "selector-pseudo-class-no-unknown": [
+          true,
+          {
+            "ignorePseudoClasses": ["global"]
+          }
+        ]
+      }
+    }
+  ],
+  "ignoreFiles": [
+    "dist/**/*",
+    "build/**/*",
+    "node_modules/**/*",
+    "**/*.min.css"
+  ]
+}

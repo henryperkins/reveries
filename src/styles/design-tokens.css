@@ -1,4 +1,13 @@
-/* ===== DESIGN TOKENS =====
+/**
+ * @deprecated This file is deprecated and will be removed.
+ * Please use /src/styles/unified-design-tokens.css instead.
+ * 
+ * Migration guide: /docs/CSS_DEPRECATION_GUIDE.md
+ * 
+ * DO NOT ADD NEW TOKENS HERE - Use unified-design-tokens.css
+ */
+
+/* ===== DESIGN TOKENS ===== [DEPRECATED]
    Unified design system tokens for Reveries
    Single source of truth for colors, spacing, typography, and other design values
 */
@@ -90,7 +99,7 @@
   --color-info-light: 239 246 255;
 
   /* ===== PARADIGM ACCENT ===== */
-  --paradigm-accent: var(--color-primary);
+  --color-paradigm-accent: var(--color-primary);
 
   /* ===== DARK MODE COLORS ===== */
   [data-theme="dark"] {
@@ -103,19 +112,19 @@
 
   /* ===== PARADIGM OVERRIDES ===== */
   [data-paradigm="dolores"] {
-    --paradigm-accent: var(--color-dolores-600);
+    --color-paradigm-accent: var(--color-dolores-600);
   }
 
   [data-paradigm="teddy"] {
-    --paradigm-accent: var(--color-teddy-600);
+    --color-paradigm-accent: var(--color-teddy-600);
   }
 
   [data-paradigm="bernard"] {
-    --paradigm-accent: var(--color-bernard-600);
+    --color-paradigm-accent: var(--color-bernard-600);
   }
 
   [data-paradigm="maeve"] {
-    --paradigm-accent: var(--color-maeve-600);
+    --color-paradigm-accent: var(--color-maeve-600);
   }
 
   /* ===== SPACING TOKENS ===== */
@@ -134,27 +143,27 @@
   --spacing-24: 6rem;
 
   /* ===== BORDER RADIUS TOKENS ===== */
-  --border-radius-none: 0;
-  --border-radius-sm: 0.125rem;
-  --border-radius-base: 0.25rem;
-  --border-radius-md: 0.375rem;
-  --border-radius-lg: 0.5rem;
-  --border-radius-xl: 0.75rem;
-  --border-radius-2xl: 1rem;
-  --border-radius-3xl: 1.5rem;
-  --border-radius-full: 9999px;
+  --radius-none: 0;
+  --radius-sm: 0.125rem;
+  --radius-base: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-full: 9999px;
 
   /* ===== SHADOW TOKENS ===== */
-  --shadows-none: none;
-  --shadows-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadows-base: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadows-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadows-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadows-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --shadows-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-  --shadows-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
-  --shadows-glow: 0 0 15px 0 rgb(var(--paradigm-accent) / 0.5);
-  --shadows-glow-lg: 0 0 30px 0 rgb(var(--paradigm-accent) / 0.7);
+  --shadow-none: none;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-base: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  --shadow-glow: 0 0 15px 0 rgb(var(--color-paradigm-accent) / 0.5);
+  --shadow-glow-lg: 0 0 30px 0 rgb(var(--color-paradigm-accent) / 0.7);
 
   /* ===== TRANSITION DURATION TOKENS ===== */
   --transitions-duration-fast: 150ms;
@@ -162,5 +171,5 @@
   --transitions-duration-slow: 500ms;
 
   /* ===== ANIMATION COLOR VARIABLE ===== */
-  --animation-color: var(--paradigm-accent);
+  --color-animation: var(--color-paradigm-accent);
 }

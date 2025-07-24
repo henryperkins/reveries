@@ -19,4 +19,26 @@ export default defineConfig({
     port: 5173,
     open: true,
   },
+  build: {
+    // Optimize CSS output
+    cssCodeSplit: true,
+    // Ensure development files are not included
+    rollupOptions: {
+      external: (id) => {
+        // Exclude debug CSS files from production build
+        if (id.includes('debug-visibility.css') || id.includes('fix-visibility.css')) {
+          return true;
+        }
+        return false;
+      },
+    },
+    // Enable CSS minification
+    cssMinify: true,
+    // Generate source maps for debugging
+    sourcemap: true,
+  },
+  // Optimize dependencies
+  optimizeDeps: {
+    include: ['react', 'react-dom'],
+  },
 })

@@ -1,4 +1,15 @@
-/* Animation keyframes and animation utilities */
+/**
+ * @deprecated This file is deprecated and will be removed.
+ * Core animations: /src/styles/animations-optimized.css
+ * On-demand animations: /src/styles/animations-[module].css
+ * 
+ * Migration guide: /docs/CSS_DEPRECATION_GUIDE.md
+ * Animation optimization guide: /docs/ANIMATION_OPTIMIZATION_GUIDE.md
+ * 
+ * DO NOT ADD NEW ANIMATIONS HERE
+ */
+
+/* Animation keyframes and animation utilities [DEPRECATED] */
 
 @layer utilities {
   /* ===== CUSTOM KEYFRAMES NOT IN TAILWIND CONFIG ===== */

@@ -1,0 +1,79 @@
+/**
+ * Consolidated Dark Mode Implementation
+ * This file combines all dark mode styles into a single source of truth
+ * using the unified design token system
+ */
+
+/* Dark mode overrides for CSS variables */
+[data-theme="dark"] {
+  /* Core color overrides */
+  --color-background: 17 24 39; /* gray-900 */
+  --color-surface: 31 41 55; /* gray-800 */
+  --color-surface-hover: 55 65 81; /* gray-700 */
+  
+  /* Text colors */
+  --color-text-primary: 243 244 246; /* gray-100 */
+  --color-text-secondary: 209 213 219; /* gray-300 */
+  --color-text-muted: 156 163 175; /* gray-400 */
+  
+  /* Border colors */
+  --color-border: 75 85 99; /* gray-600 */
+  --color-border-subtle: 55 65 81; /* gray-700 */
+  
+  /* Brand colors remain consistent but with adjusted contrast */
+  --color-primary-hover: 254 204 73; /* Brighter gold for dark mode */
+  
+  /* Component-specific colors */
+  --color-input-bg: 31 41 55; /* gray-800 */
+  --color-input-border: 75 85 99; /* gray-600 */
+  
+  /* Shadows (more subtle in dark mode) */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5);
+}
+
+/* Smooth theme transitions */
+[data-theme-transition="true"] * {
+  transition: background-color 200ms ease-in-out,
+              color 200ms ease-in-out,
+              border-color 200ms ease-in-out !important;
+}
+
+/* Scrollbar styling for dark mode */
+[data-theme="dark"] {
+  scrollbar-color: rgb(var(--color-border)) rgb(var(--color-surface));
+}
+
+[data-theme="dark"] ::-webkit-scrollbar {
+  background: rgb(var(--color-surface));
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-border));
+  border-radius: var(--radius-sm);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--color-border-subtle));
+}
+
+/* Focus styles for dark mode */
+[data-theme="dark"] *:focus-visible {
+  outline-offset: 2px;
+  outline-color: rgb(var(--color-primary));
+}
+
+/* Selection colors for dark mode */
+[data-theme="dark"] ::selection {
+  background-color: rgb(var(--color-primary) / 0.3);
+  color: rgb(var(--color-text-primary));
+}
+
+/* Print media - always use light mode */
+@media print {
+  :root {
+    --color-background: 255 255 255 !important;
+    --color-text-primary: 0 0 0 !important;
+  }
+}

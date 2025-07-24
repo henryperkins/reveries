@@ -1,0 +1,214 @@
+/**
+ * Optimized Animation System
+ * Core animations loaded by default, specialized animations loaded on demand
+ */
+
+/* =================================================================
+   CORE ANIMATIONS (Always loaded)
+   ================================================================= */
+
+@layer base {
+  /* Essential animations for common UI patterns */
+  
+  /* Fade animations */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  
+  /* Slide animations */
+  @keyframes slideUp {
+    from { 
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes slideDown {
+    from { 
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to { 
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+  
+  /* Scale animations */
+  @keyframes scaleIn {
+    from { 
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to { 
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  @keyframes scaleOut {
+    from { 
+      opacity: 1;
+      transform: scale(1);
+    }
+    to { 
+      opacity: 0;
+      transform: scale(0.95);
+    }
+  }
+  
+  /* Simple loading animation */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  /* Basic spinner */
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+}
+
+/* =================================================================
+   ANIMATION UTILITIES
+   ================================================================= */
+
+@layer utilities {
+  /* Core animation classes */
+  .animate-fadeIn { animation: fadeIn var(--transition-base, 200ms) ease-out; }
+  .animate-fadeOut { animation: fadeOut var(--transition-base, 200ms) ease-in; }
+  .animate-slideUp { animation: slideUp var(--transition-slow, 300ms) ease-out; }
+  .animate-slideDown { animation: slideDown var(--transition-slow, 300ms) ease-in; }
+  .animate-scaleIn { animation: scaleIn var(--transition-base, 200ms) ease-out; }
+  .animate-scaleOut { animation: scaleOut var(--transition-base, 200ms) ease-in; }
+  .animate-pulse { animation: pulse 2s ease-in-out infinite; }
+  .animate-spin { animation: spin 1s linear infinite; }
+  
+  /* Animation modifiers */
+  .animation-fill-both { animation-fill-mode: both; }
+  .animation-fill-forwards { animation-fill-mode: forwards; }
+  .animation-fill-backwards { animation-fill-mode: backwards; }
+  
+  /* Animation delays */
+  .animation-delay-75 { animation-delay: 75ms; }
+  .animation-delay-100 { animation-delay: 100ms; }
+  .animation-delay-150 { animation-delay: 150ms; }
+  .animation-delay-200 { animation-delay: 200ms; }
+  .animation-delay-300 { animation-delay: 300ms; }
+  .animation-delay-500 { animation-delay: 500ms; }
+  
+  /* Animation play state */
+  .animation-paused { animation-play-state: paused; }
+  .animation-running { animation-play-state: running; }
+}
+
+/* =================================================================
+   SPECIALIZED ANIMATIONS (Loaded on demand)
+   ================================================================= */
+
+/* Loading states - animations-loading.css */
+.needs-loading-animations {
+  @import './animations-loading.css';
+}
+
+/* Interactive effects - animations-interactive.css */
+.needs-interactive-animations {
+  @import './animations-interactive.css';
+}
+
+/* Westworld theme - animations-westworld.css */
+.needs-westworld-animations {
+  @import './animations-westworld.css';
+}
+
+/* Advanced effects - animations-advanced.css */
+.needs-advanced-animations {
+  @import './animations-advanced.css';
+}
+
+/* =================================================================
+   PERFORMANCE OPTIMIZATIONS
+   ================================================================= */
+
+/* GPU acceleration for animations */
+@layer base {
+  .will-animate {
+    will-change: transform, opacity;
+  }
+  
+  .will-animate-transform {
+    will-change: transform;
+  }
+  
+  .will-animate-opacity {
+    will-change: opacity;
+  }
+  
+  /* Clean up after animation */
+  .animation-complete {
+    will-change: auto;
+  }
+}
+
+/* =================================================================
+   REDUCED MOTION
+   ================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  /* Disable infinite animations completely */
+  .animate-pulse,
+  .animate-spin {
+    animation: none !important;
+  }
+}
+
+/* =================================================================
+   ANIMATION CONTAINER QUERIES
+   ================================================================= */
+
+/* Only animate when container is large enough */
+@container (min-width: 300px) {
+  .container-animate-slideUp {
+    animation: slideUp var(--transition-slow, 300ms) ease-out;
+  }
+}
+
+/* =================================================================
+   ANIMATION CUSTOM PROPERTIES
+   ================================================================= */
+
+@layer base {
+  :root {
+    /* Animation durations */
+    --animation-duration-fast: 150ms;
+    --animation-duration-base: 200ms;
+    --animation-duration-slow: 300ms;
+    --animation-duration-slower: 500ms;
+    
+    /* Animation easings */
+    --animation-ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --animation-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --animation-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --animation-ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+}

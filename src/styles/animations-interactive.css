@@ -1,0 +1,88 @@
+/**
+ * Interactive Animation Module
+ * Loaded on demand for interactive UI elements
+ */
+
+@layer utilities {
+  /* Bounce effect */
+  @keyframes bounce-soft {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  
+  .animate-bounce-soft {
+    animation: bounce-soft 0.5s ease-in-out;
+  }
+  
+  /* Ripple effect */
+  @keyframes ripple {
+    0% {
+      transform: scale(0);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+  
+  .animate-ripple {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .animate-ripple::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgb(var(--color-primary) / 0.3) 0%, transparent 70%);
+    transform: scale(0);
+    opacity: 0;
+  }
+  
+  .animate-ripple:active::after {
+    animation: ripple 0.6s ease-out;
+  }
+  
+  /* Shake effect */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+    20%, 40%, 60%, 80% { transform: translateX(2px); }
+  }
+  
+  .animate-shake {
+    animation: shake 0.3s ease-in-out;
+  }
+  
+  /* Float effect */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  /* Hover grow */
+  @keyframes hover-grow {
+    from { transform: scale(1); }
+    to { transform: scale(1.05); }
+  }
+  
+  .animate-hover-grow:hover {
+    animation: hover-grow 0.2s ease-out forwards;
+  }
+  
+  /* Click feedback */
+  @keyframes click-feedback {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+  }
+  
+  .animate-click:active {
+    animation: click-feedback 0.15s ease-out;
+  }
+}

@@ -1,0 +1,28 @@
+/**
+ * Unified CSS Entry Point
+ * Following the new simplified architecture
+ */
+
+/* 1. Import our unified global styles (includes Tailwind) */
+@import './styles/globals.css';
+
+/* 2. Import any necessary third-party styles */
+/* (Currently none required) */
+
+/* 3. Critical app-specific overrides only */
+@layer utilities {
+  /* Westworld-specific title effect */
+  .westworld-title {
+    @apply text-4xl font-bold;
+    background: linear-gradient(
+      to right,
+      rgb(var(--color-primary)),
+      rgb(var(--color-primary-hover))
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* That's it! Everything else should use Tailwind utilities directly in components */

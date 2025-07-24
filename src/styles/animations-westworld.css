@@ -1,0 +1,125 @@
+/**
+ * Westworld Theme Animation Module
+ * Loaded on demand for Westworld-specific effects
+ */
+
+@layer utilities {
+  /* Typewriter effect */
+  @keyframes typewriter {
+    from {
+      width: 0;
+      border-right-color: rgb(var(--color-primary));
+    }
+    to {
+      width: 100%;
+      border-right-color: transparent;
+    }
+  }
+  
+  @keyframes blink {
+    0%, 50%, 100% { opacity: 1; }
+    25%, 75% { opacity: 0; }
+  }
+  
+  .animate-typewriter {
+    overflow: hidden;
+    white-space: nowrap;
+    border-right: 3px solid rgb(var(--color-primary));
+    animation: 
+      typewriter 3s steps(40, end),
+      blink 0.75s step-end infinite;
+  }
+  
+  /* Matrix rain effect */
+  @keyframes matrix-rain {
+    0% {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.8;
+    }
+    90% {
+      opacity: 0.8;
+    }
+    100% {
+      transform: translateY(calc(100vh + 100%));
+      opacity: 0;
+    }
+  }
+  
+  .animate-matrix-rain {
+    --random-x: 0;
+    --duration: 3s;
+    --delay: 0s;
+    animation: matrix-rain var(--duration) linear infinite;
+    animation-delay: var(--delay);
+  }
+  
+  /* Glitch effect */
+  @keyframes glitch {
+    0%, 100% {
+      transform: translate(0);
+      filter: hue-rotate(0deg);
+    }
+    20% {
+      transform: translate(-1px, 1px);
+      filter: hue-rotate(90deg);
+    }
+    40% {
+      transform: translate(1px, -1px);
+      filter: hue-rotate(180deg);
+    }
+    60% {
+      transform: translate(-1px, -1px);
+      filter: hue-rotate(270deg);
+    }
+    80% {
+      transform: translate(1px, 1px);
+      filter: hue-rotate(360deg);
+    }
+  }
+  
+  .animate-glitch {
+    animation: glitch 0.3s linear;
+  }
+  
+  /* Circuit animation */
+  @keyframes circuit {
+    0% {
+      stroke-dashoffset: 1000;
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      stroke-dashoffset: 0;
+      opacity: 1;
+    }
+  }
+  
+  .animate-circuit {
+    stroke-dasharray: 1000;
+    animation: circuit 2s ease-out forwards;
+  }
+  
+  /* Glow effect */
+  @keyframes glow {
+    0%, 100% {
+      box-shadow: 
+        0 0 5px rgb(var(--color-primary) / 0.5),
+        0 0 10px rgb(var(--color-primary) / 0.3);
+    }
+    50% {
+      box-shadow: 
+        0 0 10px rgb(var(--color-primary) / 0.8),
+        0 0 20px rgb(var(--color-primary) / 0.5),
+        0 0 30px rgb(var(--color-primary) / 0.3);
+    }
+  }
+  
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite;
+  }
+}

@@ -1,4 +1,18 @@
-// Unified theme system exports
+/**
+ * @deprecated This entire theme system is deprecated and will be removed.
+ * 
+ * The theme system has been replaced with CSS-based theming using:
+ * - CSS custom properties in /src/styles/unified-design-tokens.css
+ * - Dark mode via [data-theme="dark"] attribute
+ * - No JavaScript theme context needed
+ * 
+ * Migration guide: /docs/CSS_DEPRECATION_GUIDE.md
+ * 
+ * DO NOT ADD NEW EXPORTS HERE
+ * DO NOT USE THESE EXPORTS IN NEW CODE
+ */
+
+// Unified theme system exports [DEPRECATED]
 
 // Core theme system
 export { ThemeProvider } from './ThemeProvider';

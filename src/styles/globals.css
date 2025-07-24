@@ -1,0 +1,241 @@
+/**
+ * Global Styles
+ * Minimal global styles following Tailwind-first approach
+ */
+
+/* Import Tailwind base styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import unified design tokens */
+@import './unified-design-tokens.css';
+
+/* Import consolidated dark mode implementation */
+@import './dark-mode-consolidated.css';
+
+/* =================================================================
+   GLOBAL RESETS & BASE STYLES
+   ================================================================= */
+
+@layer base {
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Remove tap highlight on mobile */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Better font rendering */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: var(--font-family-sans);
+    background-color: rgb(var(--color-background));
+    color: rgb(var(--color-text-primary));
+  }
+  
+  /* Remove default margins */
+  h1, h2, h3, h4, h5, h6, p {
+    margin: 0;
+  }
+  
+  /* Consistent focus styles */
+  :focus-visible {
+    outline: 2px solid rgb(var(--color-primary));
+    outline-offset: 2px;
+  }
+  
+  /* Remove focus outline for mouse users */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+  
+  /* Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* =================================================================
+   PRINT STYLES
+   ================================================================= */
+
+@media print {
+  /* Hide interactive elements */
+  button, 
+  input, 
+  select, 
+  textarea,
+  .no-print {
+    display: none !important;
+  }
+  
+  /* Optimize for print */
+  body {
+    color: black;
+    background: white;
+  }
+  
+  /* Ensure good contrast */
+  * {
+    color: black !important;
+    background: white !important;
+  }
+  
+  /* Show link URLs */
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+  }
+}
+
+/* =================================================================
+   UTILITY CLASSES (only what Tailwind can't do)
+   ================================================================= */
+
+@layer utilities {
+  /* Safe area spacing for mobile devices */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Scrollbar styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--color-border)) transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--color-border));
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--color-border-strong));
+  }
+  
+  /* Text selection colors */
+  ::selection {
+    background-color: rgb(var(--color-primary) / 0.2);
+    color: rgb(var(--color-text-primary));
+  }
+}
+
+/* =================================================================
+   ANIMATIONS (only complex ones Tailwind can't handle)
+   ================================================================= */
+
+@layer utilities {
+  /* Matrix-style rain effect for paradigm transitions */
+  @keyframes matrix-rain {
+    0% {
+      transform: translateY(-100%) translateX(var(--random-x, 0));
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.8;
+    }
+    90% {
+      opacity: 0.8;
+    }
+    100% {
+      transform: translateY(calc(100vh + 100%)) translateX(var(--random-x, 0));
+      opacity: 0;
+    }
+  }
+  
+  .animate-matrix-rain {
+    animation: matrix-rain var(--duration, 3s) linear infinite;
+    animation-delay: var(--delay, 0s);
+  }
+  
+  /* Glitch effect for error states */
+  @keyframes glitch {
+    0%, 100% {
+      transform: translate(0);
+      filter: hue-rotate(0deg);
+    }
+    20% {
+      transform: translate(-1px, 1px);
+      filter: hue-rotate(90deg);
+    }
+    40% {
+      transform: translate(1px, -1px);
+      filter: hue-rotate(180deg);
+    }
+    60% {
+      transform: translate(-1px, -1px);
+      filter: hue-rotate(270deg);
+    }
+    80% {
+      transform: translate(1px, 1px);
+      filter: hue-rotate(360deg);
+    }
+  }
+  
+  .animate-glitch {
+    animation: glitch 0.3s linear infinite;
+  }
+}
+
+/* =================================================================
+   ACCESSIBILITY ENHANCEMENTS
+   ================================================================= */
+
+/* Skip to main content link */
+.skip-to-main {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+  padding: 1rem;
+  background-color: rgb(var(--color-primary));
+  color: white;
+  text-decoration: none;
+}
+
+.skip-to-main:focus {
+  left: 50%;
+  transform: translateX(-50%);
+  top: 1rem;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --color-border: 0 0 0;
+    --color-border-strong: 0 0 0;
+  }
+  
+  [data-theme="dark"] {
+    --color-border: 255 255 255;
+    --color-border-strong: 255 255 255;
+  }
+}

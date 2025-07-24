@@ -10,6 +10,7 @@
     "build:analyze": "vite build --mode analyze",
     "build:profile": "vite build --profile",
     "lint": "eslint .",
+    "lint:tailwind": "eslint . --config .eslintrc.css.json --ext .tsx,.jsx",
     "preview": "vite preview",
     "preview:host": "vite preview --host",
     "type-check": "tsc --noEmit",
@@ -34,7 +35,8 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "lint:css": "stylelint \"src/**/*.css\"",
-    "lint:fix": "eslint . --fix && stylelint \"src/**/*.css\" --fix",
+    "lint:all": "npm run lint && npm run lint:tailwind && npm run lint:css",
+    "lint:fix": "eslint . --fix && eslint . --config .eslintrc.css.json --ext .tsx,.jsx --fix && stylelint \"src/**/*.css\" --fix",
     "optimize:analyze": "npx vite-bundle-visualizer"
   },
   "dependencies": {

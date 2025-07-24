@@ -1,0 +1,87 @@
+{
+  "extends": [
+    "./.eslintrc.json"
+  ],
+  "plugins": [
+    "tailwindcss"
+  ],
+  "rules": {
+    "tailwindcss/classnames-order": "warn",
+    "tailwindcss/no-custom-classname": [
+      "warn",
+      {
+        "whitelist": [
+          "westworld-title",
+          "safe-top",
+          "safe-bottom",
+          "safe-left",
+          "safe-right",
+          "scrollbar-thin",
+          "animate-matrix-rain",
+          "animate-glitch",
+          "skip-to-main"
+        ]
+      }
+    ],
+    "tailwindcss/no-contradicting-classname": "error",
+    "react/style-prop-object": "error",
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "JSXAttribute[name.name='style']",
+        "message": "Avoid inline styles. Use Tailwind utility classes instead."
+      }
+    ],
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["**/debug-visibility.css", "**/fix-visibility.css"],
+            "message": "Debug CSS files should only be imported via debug-visibility.ts"
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["*.tsx", "*.jsx"],
+      "rules": {
+        "no-restricted-syntax": [
+          "warn",
+          {
+            "selector": "JSXAttribute[name.name='style'] > JSXExpressionContainer > ObjectExpression",
+            "message": "Prefer Tailwind classes over inline styles. Use style prop only for truly dynamic values."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["*.css"],
+      "rules": {
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "Rule > Declaration[property=/^color$/] > Value > Hex",
+            "message": "Use CSS variables instead of hex colors"
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {
+    "tailwindcss": {
+      "callees": ["cn", "clsx", "classNames"],
+      "config": "./tailwind.config.unified.js",
+      "cssFiles": [
+        "./src/styles/unified-design-tokens.css",
+        "./src/styles/globals.css"
+      ],
+      "removeDuplicates": true,
+      "skipClassAttribute": false,
+      "tags": [],
+      "whitelist": []
+    }
+  }
+}

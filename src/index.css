@@ -1,39 +1,53 @@
-/*
- * Main CSS Entry Point
- * Following the recommended CSS file ordering from docs/codebaseissues.md
+/**
+ * ⚠️ DEPRECATED - DO NOT USE THIS FILE
+ * 
+ * This is the OLD CSS system entry point.
+ * Please use: src/index-unified.css
+ * 
+ * Migration guide: /docs/CSS_DEPRECATION_GUIDE.md
+ * New architecture: /docs/CSS_ARCHITECTURE.md
+ * 
+ * To use the new system:
+ * 1. Update your main.tsx to import './index-unified.css'
+ * 2. Remove all imports from this file
+ * 3. Follow the migration guide
+ */
+
+/* 
+ * WARNING: The following imports are DEPRECATED and will be removed:
  */
 
 /* 1. CSS Variables / Design Tokens */
-@import './styles/design-tokens.css';
+@import './styles/design-tokens.css'; /* ❌ Use unified-design-tokens.css */
 
 /* 2. Tailwind Pre-flight (resets) */
 @import 'tailwindcss/base';
 
 /* 3. Custom Base Styles */
-@import './styles/base.css';
+@import './styles/base.css'; /* ❌ Integrated into globals.css */
 
 /* 4. Tailwind Component layer */
 @import 'tailwindcss/components';
 
 /* 5. Custom Components */
-@import './styles/components.css';
+@import './styles/components.css'; /* ❌ Use Tailwind-first approach */
 
 /* 6. Custom styles organized by feature */
-@import './styles/dark-mode.css';
-@import './styles/typography.css';
-@import './styles/animations.css';
-@import './styles/interactions.css';
-@import './styles/layout.css';
-@import './styles/responsive.css';
-@import './styles/accessibility.css';
-@import './styles/print.css';
+@import './styles/dark-mode.css'; /* ❌ Use dark-mode-consolidated.css */
+@import './styles/typography.css'; /* ❌ Typography in unified-design-tokens.css */
+@import './styles/animations.css'; /* ❌ Use animations-optimized.css */
+@import './styles/interactions.css'; /* ❌ Load animations on demand */
+@import './styles/layout.css'; /* ❌ Use Tailwind spacing utilities */
+@import './styles/responsive.css'; /* ❌ Use Tailwind responsive utilities */
+@import './styles/accessibility.css'; /* ⚠️ Updated with new variable names */
+@import './styles/print.css'; /* ❌ Print styles in globals.css */
 
 /* 7. Tailwind Utilities layer */
 @import 'tailwindcss/utilities';
 
 /* 8. Custom Utility layer */
-@import './styles/theme-utilities.css';
-@import './styles/z-index.css';
+@import './styles/theme-utilities.css'; /* ❌ Use semantic Tailwind classes */
+@import './styles/z-index.css'; /* ❌ Z-index in unified-design-tokens.css */
 
 /* 9. Final overrides */
 /* Westworld-specific utility classes */

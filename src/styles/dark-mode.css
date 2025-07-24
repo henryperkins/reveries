@@ -1,4 +1,13 @@
-/* Dark Mode Component Styles */
+/**
+ * @deprecated This file is deprecated and will be removed.
+ * Please use /src/styles/dark-mode-consolidated.css instead.
+ * 
+ * Migration guide: /docs/CSS_DEPRECATION_GUIDE.md
+ * 
+ * DO NOT ADD NEW STYLES HERE - Use dark-mode-consolidated.css
+ */
+
+/* Dark Mode Component Styles [DEPRECATED] */
 /* Theme variables are now managed by JS in themeConfig.ts */
 /* This file contains only component-specific dark mode styles */
 

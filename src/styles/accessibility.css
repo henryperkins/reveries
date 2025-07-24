@@ -9,7 +9,7 @@
 
   /* Enhanced focus-visible styles */
   :focus-visible {
-    outline: 2px solid var(--colors-westworld-gold);
+    outline: 2px solid var(--color-westworld-gold);
     outline-offset: 2px;
     border-radius: 2px;
   }
@@ -17,7 +17,7 @@
   /* Dark backgrounds need light focus rings */
   .dark-bg :focus-visible,
   [data-theme="dark"] :focus-visible {
-    outline-color: var(--colors-westworld-cream);
+    outline-color: var(--color-westworld-cream);
   }
 
   /* Focus styles for different element types */
@@ -41,7 +41,7 @@
 
   /* Focus within containers */
   .card:focus-within {
-    box-shadow: 0 0 0 2px var(--colors-westworld-gold);
+    box-shadow: 0 0 0 2px var(--color-westworld-gold);
   }
 }
 
@@ -96,20 +96,20 @@
   /* Ensure minimum contrast ratios */
   .high-contrast {
     /* Text on light backgrounds */
-    --colors-semantic-text: #000000;
-    --colors-semantic-text-muted: #333333;
+    --color-semantic-text: #000000;
+    --color-semantic-text-muted: #333333;
 
     /* Text on dark backgrounds */
-    --colors-semantic-text-inverse: #FFFFFF;
-    --colors-semantic-text-inverse-muted: #E5E5E5;
+    --color-semantic-text-inverse: #FFFFFF;
+    --color-semantic-text-inverse-muted: #E5E5E5;
   }
 
   /* High contrast mode overrides */
   @media (prefers-contrast: high) {
     body {
-      --colors-semantic-text: #000000;
-      --colors-semantic-background: #FFFFFF;
-      --colors-semantic-border: #000000;
+      --color-semantic-text: #000000;
+      --color-semantic-background: #FFFFFF;
+      --color-semantic-border: #000000;
     }
 
     .btn {
